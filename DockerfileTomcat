@@ -1,0 +1,18 @@
+FROM eclipse-temurin:25-jdk
+
+ENV TOMCAT_VERSION=10.1.57
+ENV TOMCAT_HOME=/opt/tomcat
+
+RUN apt-get update && apt-get install -y wget && \
+    mkdir -p $TOMCAT_HOME && \
+    wget https://dlcdn.apache.org/tomcat/tomcat-10/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz && \
+    tar -xzvf apache-tomcat-${TOMCAT_VERSION}.tar.gz -C $TOMCAT_HOME --strip-components=1 && \
+    rm apache-tomcat-${TOMCAT_VERSION}.tar.gz
+
+COPY target/tallerwebi-base-1.0-SNAPSHOT.war $TOMCAT_HOME/webapps/
+
+EXPOSE 8080
+
+RUN chmod +x /opt/tomcat/bin/catalina.sh
+
+CMD ["/opt/tomcat/bin/catalina.sh", "run"]

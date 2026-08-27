@@ -1,0 +1,19 @@
+FROM eclipse-temurin:25-jdk
+
+ENV JETTY_VERSION=12.0.37
+ENV JETTY_HOME=/opt/jetty
+
+RUN apt-get update && apt-get install -y wget && \
+    mkdir -p $JETTY_HOME && \
+    wget https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-home/${JETTY_VERSION}/jetty-home-${JETTY_VERSION}.tar.gz -O jetty.tar.gz && \
+    tar -xzvf jetty.tar.gz -C $JETTY_HOME --strip-components=1 && \
+    rm jetty.tar.gz && \
+    cd $JETTY_HOME && echo "y" | java -jar start.jar --add-modules=server,http,deploy,ee10-deploy,ee10-webapp,ee10-servlet,ee10-annotations,ee10-jsp
+
+COPY target/tallerwebi-base-1.0-SNAPSHOT.war $JETTY_HOME/webapps/spring.war
+
+EXPOSE 8080
+
+WORKDIR $JETTY_HOME
+
+CMD ["java", "-jar", "./start.jar"]
