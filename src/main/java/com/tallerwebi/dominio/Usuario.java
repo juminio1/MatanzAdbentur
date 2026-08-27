@@ -16,24 +16,6 @@ public class Usuario {
   private String password;
   private String rol;
   private Boolean activo = false;
-  private Integer temperatura;
-  private String numeroRomano;
-
-  public String getNumeroRomano() {
-    return numeroRomano;
-  }
-
-  public void setNumeroRomano(String numeroRomano) {
-    this.numeroRomano = numeroRomano;
-  }
-
-  public Integer getTemperatura() {
-    return temperatura;
-  }
-
-  public void setTemperatura(Integer temperatura) {
-    this.temperatura = temperatura;
-  }
 
   public Long getId() {
     return id;

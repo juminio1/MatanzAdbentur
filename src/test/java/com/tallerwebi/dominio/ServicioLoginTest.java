@@ -2,15 +2,13 @@ package com.tallerwebi.dominio;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-import com.tallerwebi.dominio.excepcion.NumeroRomanoInvalido;
 import com.tallerwebi.dominio.excepcion.UsuarioExistente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.internal.matchers.Null;
+
 
 public class ServicioLoginTest {
 
@@ -69,34 +67,5 @@ public class ServicioLoginTest {
     verify(this.repositorioUsuarioMock, times(0)).guardar(usuario);
   }
 
-  //TDD - EJERCICIOS
-  // EJERCICIO 1
-  @Test
-  public void deberiaDevolverContraseniaInvalidaSiLaContraEsUnaCadenaVaciaONula() throws UsuarioExistente{
-   
-    Usuario usuario = new Usuario();
-    usuario.setPassword("12@$abcd22%?");
-    String contraseniaValidada = this.servicioLogin.validarContrasenia(usuario.getPassword());
-     assertThat( "INVALIDA", equalTo(contraseniaValidada));
-
-  }
-  // EJERCICIO 2
-  @Test
-  public void deberiaDevolverCongelanteSiLaTemperaturaEsMenorOIgualACero(){
-    Usuario usuario = new Usuario();
-    usuario.setTemperatura(42);
-    String temperaturaEvaluada = this.servicioLogin.clasificarTemperatura(usuario.getTemperatura());
-    assertEquals("PELIGROSA", temperaturaEvaluada);
-
-  }
-  // EJERCICIO 3
-  @Test
-  public void deberiaConvertirLosNumerosRomanosEnEnteros() throws NumeroRomanoInvalido{
-    Usuario usuario = new Usuario();
-    usuario.setNumeroRomano("I");
-
-    Integer numeroConvertido = this.servicioLogin.convertirNumeroRomanoAEntero(usuario.getNumeroRomano());
-    assertEquals(1, numeroConvertido);
-  }
 
 }
