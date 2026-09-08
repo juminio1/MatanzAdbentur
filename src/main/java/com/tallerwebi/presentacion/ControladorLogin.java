@@ -19,6 +19,9 @@ public class ControladorLogin {
   private ServicioLogin servicioLogin;
 
   @Autowired
+  private HttpServletRequest request;
+
+  @Autowired
   public ControladorLogin(ServicioLogin servicioLogin) {
     this.servicioLogin = servicioLogin;
   }
@@ -41,6 +44,7 @@ public class ControladorLogin {
     );
     if (usuarioBuscado != null) {
       request.getSession().setAttribute("ROL", usuarioBuscado.getRol());
+      request.getSession().setAttribute("NOMBRE", usuarioBuscado.getNombre());
       return new ModelAndView("redirect:/home");
     } else {
       Map<String, Object> model = new ModelMap();
@@ -73,7 +77,13 @@ public class ControladorLogin {
 
   @RequestMapping(path = "/home", method = RequestMethod.GET)
   public ModelAndView irAHome() {
-    return new ModelAndView("home");
+    Map<String, Object> modelo = new ModelMap();
+    String nombre = null;
+    if (request != null && request.getSession() != null) {
+      nombre = (String) request.getSession().getAttribute("NOMBRE");
+    }
+    modelo.put("nombreJugador", nombre != null ? nombre : "Vecino de La Matanza");
+    return new ModelAndView("home", modelo);
   }
 
   @RequestMapping(path = "/", method = RequestMethod.GET)
