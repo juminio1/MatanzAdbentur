@@ -1,10 +1,10 @@
 package com.tallerwebi.dominio.excepcion;
 
-public class ContraseniaInvalida extends Exception {
+public class ContraseniaInvalidaException extends Exception {
 
   private static final long serialVersionUID = 1L;
 
-  public ContraseniaInvalida(String mensaje) {
+  public ContraseniaInvalidaException(String mensaje) {
     super(mensaje);
   }
 }

@@ -1,11 +1,13 @@
 package com.tallerwebi.dominio;
 
-import com.tallerwebi.dominio.excepcion.ContraseniaInvalida;
-import com.tallerwebi.dominio.excepcion.UsuarioExistente;
+import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
+import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
+import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
+import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
+import com.tallerwebi.presentacion.RegistroDTO;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +18,6 @@ public class ServicioRegistroImpl implements ServicioRegistro {
 
   private static final int MASK_BYTE = 0xff;
   private static final int LONGITUD_UN_DIGITO = 1;
-  private static final Pattern PATRON_CONTRASENIA = Pattern.compile(
-    "^(?=.*[0-9])(?=.*[-_%$?!@]).{8,}$"
-  );
 
   private final RepositorioUsuario repositorioUsuario;
 
@@ -28,30 +27,32 @@ public class ServicioRegistroImpl implements ServicioRegistro {
   }
 
   @Override
-  public void registrar(Usuario usuario) throws UsuarioExistente, ContraseniaInvalida {
-    if (usuario == null || usuario.getEmail() == null || usuario.getPassword() == null) {
-      throw new ContraseniaInvalida("Los datos del usuario son obligatorios.");
-    }
-
-    Usuario usuarioExistente = repositorioUsuario.buscarUsuario(
-      usuario.getEmail(),
-      usuario.getPassword()
+  public void registrar(RegistroDTO datosRegistro)
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
+    Usuario usuarioExistenteEmail = repositorioUsuario.buscarUsuarioPorEmail(
+      datosRegistro.getEmail()
     );
-    if (usuarioExistente != null) {
-      throw new UsuarioExistente();
+    Usuario usuarioExistenteUsername = repositorioUsuario.buscarUsuarioPorUsername(
+      datosRegistro.getUsername()
+    );
+
+    if (usuarioExistenteEmail != null || usuarioExistenteUsername != null) {
+      throw new UsuarioExistenteException();
     }
 
-    validarContrasenia(usuario.getPassword());
+    this.validarContrasenia(datosRegistro);
 
-    usuario.setPassword(hashearContrasenia(usuario.getPassword()));
+    Usuario usuario = new Usuario();
+    usuario.setEmail(datosRegistro.getEmail());
+    usuario.setPassword(hashearContrasenia(datosRegistro.getPassword()));
+    usuario.setUsername(datosRegistro.getUsername());
+
     repositorioUsuario.guardar(usuario);
   }
 
-  private void validarContrasenia(String password) throws ContraseniaInvalida {
-    if (!PATRON_CONTRASENIA.matcher(password).matches()) {
-      throw new ContraseniaInvalida(
-        "La contraseña debe tener al menos 8 caracteres, 1 número y 1 símbolo (-_%$?!@)."
-      );
+  private void validarContrasenia(RegistroDTO registro) throws ContraseniaInvalidaException {
+    if (!registro.getPassword().equals(registro.getPasswordRepetido())) {
+      throw new ContraseniaInvalidaException("Las contraseñas deben coincidir");
     }
   }
 
