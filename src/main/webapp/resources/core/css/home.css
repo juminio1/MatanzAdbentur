@@ -1,0 +1,201 @@
+/* RESET BÁSICO */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background-color: #f7f7f7; 
+    background-image: 
+        linear-gradient(rgba(247, 247, 247, 0.85), rgba(247, 247, 247, 0.85)), 
+        url('/imagenes/brick-texture-drawing-in-doodle-style-vector.jpg');
+    background-repeat: no-repeat; 
+    background-attachment: fixed; 
+    background-size: cover; 
+    background-position: center;
+    color: #111;
+    overflow-x: hidden;
+}
+
+/* BARRA DE NAVEGACIÓN (HEADER) */
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 5%;
+    
+    /* Le damos el color gris claro a toda la barra */
+    background-color: #e5e5e5; 
+    
+    /* Esta sombra es la que crea ese efecto de degradado hacia el main */
+    box-shadow: 0px 10px 20px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Agregamos position y z-index para asegurar que el header quede 
+       por encima del contenedor principal y la sombra se proyecte correctamente */
+    position: relative;
+    z-index: 10;
+}
+
+.logo-nav-img {
+    height: 40px; /* Podés agrandar o achicar este número para ajustar el tamaño */
+    width: auto;  /* Esto asegura que la imagen no se estire ni se deforme */
+    cursor: pointer; /* Hace que aparezca la manito al pasar el mouse por encima */
+}
+
+.logo-nav {
+    font-size: 24px;
+    font-weight: 900;
+    color: #2b3990;
+    /* Azul del logo */
+    -webkit-text-stroke: 1px black;
+    /* Borde negro para simular tu logo */
+    text-shadow: 2px 2px 0px #b08d6a;
+    /* Sombra marrón */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+nav a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: #2b3990;
+}
+
+/* Botón de Iniciar Sesión */
+.btn-login {
+    background-color: #2b3990;
+    color: white !important;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.btn-login:hover {
+    background-color: #1c2665;
+}
+
+/* SECCIÓN PRINCIPAL (HERO) */
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 50px 5%;
+    min-height: 80vh;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* COLUMNA IZQUIERDA: TEXTOS */
+.hero-text {
+    flex: 1;
+    padding-right: 40px;
+    max-width: 600px;
+}
+
+/* ESTILOS PARA LA IMAGEN DEL TÍTULO */
+.main-title-img {
+    width: 100%;
+    max-width: 500px;
+    /* Podés agrandar o achicar este valor según cómo lo veas */
+    height: auto;
+    margin-bottom: 15px;
+    /* Le agregamos un pequeño drop-shadow para que resalte si es necesario */
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.subtitle {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 25px;
+    color: #111;
+}
+
+.hero-text p {
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Botón Jugar Ahora */
+.btn-play {
+    display: inline-block;
+    background-color: #ffd24c;
+    color: #111;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 18px;
+    padding: 15px 30px;
+    border: 2px solid #111;
+    border-radius: 12px;
+    margin-top: 20px;
+    box-shadow: 3px 3px 0px #111;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-play:hover {
+    background-color: #ffc926;
+}
+
+.btn-play:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0px 0px 0px #111;
+}
+
+/* COLUMNA DERECHA: IMAGEN */
+.hero-image {
+    flex: 1.2;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.hero-image img {
+    width: 100%;
+    max-width: 750px;
+    height: auto;
+    /* Si la imagen tiene fondo, podés recortarla en PNG y usar drop-shadow */
+    filter: drop-shadow(-10px 10px 15px rgba(0, 0, 0, 0.1));
+}
+
+/* RESPONSIVE (Para celulares) */
+@media (max-width: 900px) {
+    .hero {
+        flex-direction: column;
+        text-align: center;
+        padding: 30px 5%;
+    }
+
+    .hero-text {
+        padding-right: 0;
+        margin-bottom: 40px;
+    }
+
+    .main-title {
+        font-size: 50px;
+    }
+
+    .subtitle {
+        font-size: 28px;
+    }
+
+    nav {
+        display: none;
+        /* Podríamos agregar un menú hamburguesa después */
+    }
+}
