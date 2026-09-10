@@ -6,15 +6,21 @@
     font-family: 'Montserrat', sans-serif;
 }
 
-body {
-    background-color: #f7f7f7; 
-    background-image: 
-        linear-gradient(rgba(247, 247, 247, 0.85), rgba(247, 247, 247, 0.85)), 
-        url('/imagenes/brick-texture-drawing-in-doodle-style-vector.jpg');
-    background-repeat: no-repeat; 
-    background-attachment: fixed; 
-    background-size: cover; 
+ body {
+    background-color: #f7f7f7;
+
+    background-image:
+        linear-gradient(
+            rgba(247, 247, 247, 0.60),
+            rgba(247, 247, 247, 0.60)
+        ),
+        url('../imagenes/FondoLadrillos.jpg');
+
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
     background-position: center;
+
     color: #111;
     overflow-x: hidden;
 }
