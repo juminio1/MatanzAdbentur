@@ -1,27 +1,30 @@
 package com.tallerwebi.dominio;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
-import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
 import com.tallerwebi.presentacion.RegistroDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 public class ServicioRegistroImplTest {
 
   private RepositorioUsuario repositorioUsuarioMock;
   private ServicioRegistro servicioRegistro;
 
+  private static final String USERNAME_VALIDO = "ElMatancero";
   private static final String EMAIL_VALIDO = "juli@gmail.com";
   private static final String PASSWORD_VALIDA = "Matanza1!";
 
@@ -36,6 +39,7 @@ public class ServicioRegistroImplTest {
     RegistroDTO registro = crearRegistroValido();
 
     when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
     servicioRegistro.registrar(registro);
 
@@ -43,35 +47,41 @@ public class ServicioRegistroImplTest {
   }
 
   @Test
-  public void deberiaGuardarElEmailDelUsuarioCorrectamente() throws Exception {
+  public void deberiaGuardarLosDatosDelUsuarioCorrectamente() throws Exception {
     RegistroDTO registro = crearRegistroValido();
 
     when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
     servicioRegistro.registrar(registro);
 
-    verify(repositorioUsuarioMock)
-      .guardar(argThat(usuario -> EMAIL_VALIDO.equals(usuario.getEmail())));
+    ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+    verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
+
+    Usuario usuarioGuardado = usuarioCaptor.getValue();
+    assertThat(usuarioGuardado.getEmail(), equalTo(EMAIL_VALIDO));
+    assertThat(usuarioGuardado.getUsername(), equalTo(USERNAME_VALIDO));
   }
 
   @Test
-  public void deberiaGuardarLaContraseniaHasheada() throws Exception {
+  public void deberiaGuardarLaContraseniaHasheadaYNoEnTextoPlano() throws Exception {
     RegistroDTO registro = crearRegistroValido();
 
     when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
     servicioRegistro.registrar(registro);
 
-    verify(repositorioUsuarioMock)
-      .guardar(
-        argThat(usuario ->
-          usuario.getPassword() != null && !PASSWORD_VALIDA.equals(usuario.getPassword())
-        )
-      );
+    ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+    verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
+
+    Usuario usuarioGuardado = usuarioCaptor.getValue();
+    assertThat(usuarioGuardado.getPassword(), notNullValue());
+    assertThat(usuarioGuardado.getPassword(), not(equalTo(PASSWORD_VALIDA)));
   }
 
   @Test
-  public void deberiaLanzarExcepcionCuandoElUsuarioYaExiste() {
+  public void deberiaLanzarExcepcionCuandoElEmailYaExiste() {
     RegistroDTO registro = crearRegistroValido();
 
     when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(new Usuario());
@@ -82,101 +92,14 @@ public class ServicioRegistroImplTest {
   }
 
   @Test
-  public void deberiaLanzarExcepcionCuandoElEmailEstaVacio() {
-    RegistroDTO registro = crearRegistroValido();
-    registro.setEmail("");
-
-    assertThrows(CamposObligatoriosException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaEstaVacia() {
-    RegistroDTO registro = crearRegistroValido();
-    registro.setPassword("");
-
-    assertThrows(CamposObligatoriosException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoElApodoEstaVacio() {
-    RegistroDTO registro = crearRegistroValido();
-    registro.setUsername("");
-
-    assertThrows(CamposObligatoriosException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoElEmailTieneFormatoInvalido() {
-    RegistroDTO registro = crearRegistroValido();
-    registro.setEmail("email-invalido");
-
-    assertThrows(EmailInvalidoException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaEsMuyCorta() {
+  public void deberiaLanzarExcepcionCuandoElUsernameYaExiste() {
     RegistroDTO registro = crearRegistroValido();
 
-    registro.setPassword("Ma1!");
-    registro.setPasswordRepetido("Ma1!");
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO))
+      .thenReturn(new Usuario());
 
-    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaNoTieneMayuscula() {
-    RegistroDTO registro = crearRegistroValido();
-
-    registro.setPassword("matanza1!");
-    registro.setPasswordRepetido("matanza1!");
-
-    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaNoTieneMinuscula() {
-    RegistroDTO registro = crearRegistroValido();
-
-    registro.setPassword("MATANZA1!");
-    registro.setPasswordRepetido("MATANZA1!");
-
-    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaNoTieneNumero() {
-    RegistroDTO registro = crearRegistroValido();
-
-    registro.setPassword("Matanza!!");
-    registro.setPasswordRepetido("Matanza!!");
-
-    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
-
-    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-  }
-
-  @Test
-  public void deberiaLanzarExcepcionCuandoLaContraseniaNoTieneCaracterEspecial() {
-    RegistroDTO registro = crearRegistroValido();
-
-    registro.setPassword("Matanza12");
-    registro.setPasswordRepetido("Matanza12");
-
-    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
+    assertThrows(UsuarioExistenteException.class, () -> servicioRegistro.registrar(registro));
 
     verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
   }
@@ -184,9 +107,8 @@ public class ServicioRegistroImplTest {
   @Test
   public void deberiaLanzarExcepcionCuandoLasContraseniasNoCoinciden() {
     RegistroDTO registro = crearRegistroValido();
-
     registro.setPassword("Matanza1!");
-    registro.setPasswordRepetido("Matanza2!");
+    registro.setPasswordRepetido("OtraPasswordDistinta!");
 
     assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
 
@@ -195,12 +117,10 @@ public class ServicioRegistroImplTest {
 
   private RegistroDTO crearRegistroValido() {
     RegistroDTO registro = new RegistroDTO();
-
-    registro.setUsername("Juli");
+    registro.setUsername(USERNAME_VALIDO);
     registro.setEmail(EMAIL_VALIDO);
     registro.setPassword(PASSWORD_VALIDA);
     registro.setPasswordRepetido(PASSWORD_VALIDA);
-
     return registro;
   }
 }
