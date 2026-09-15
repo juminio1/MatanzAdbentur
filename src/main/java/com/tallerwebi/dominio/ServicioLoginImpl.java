@@ -24,12 +24,12 @@ public class ServicioLoginImpl implements ServicioLogin {
   @Override
   public void registrar(Usuario usuario) throws UsuarioExistente {
     Usuario usuarioEncontrado = repositorioUsuario.buscarUsuario(
-        usuario.getEmail(),
-        usuario.getPassword());
+      usuario.getEmail(),
+      usuario.getPassword()
+    );
     if (usuarioEncontrado != null) {
       throw new UsuarioExistente();
     }
     repositorioUsuario.guardar(usuario);
   }
-
 }

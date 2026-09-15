@@ -9,7 +9,6 @@ import com.tallerwebi.dominio.excepcion.UsuarioExistente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
 public class ServicioLoginTest {
 
   private ServicioLogin servicioLogin;
@@ -66,6 +65,4 @@ public class ServicioLoginTest {
     assertThrows(UsuarioExistente.class, () -> this.servicioLogin.registrar(usuario));
     verify(this.repositorioUsuarioMock, times(0)).guardar(usuario);
   }
-
-
 }
