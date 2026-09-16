@@ -1,12 +1,7 @@
-<header
-    xmlns:th="http://www.thymeleaf.org"
-    th:fragment="header">
+<header xmlns:th="http://www.thymeleaf.org" th:fragment="header">
 
     <a th:href="@{/home}">
-        <img
-            th:src="@{/imagenes/Logo.png}"
-            alt="El Matancero"
-            class="logo-nav-img">
+        <img th:src="@{/imagenes/Logo.png}" alt="El Matancero" class="logo-nav-img">
     </a>
 
     <nav>
@@ -17,49 +12,22 @@
 
 
         <!-- SIN SESIÓN -->
-        <a th:if="${session.NOMBRE == null}"
-           th:href="@{/login}"
-           class="btn-login">
+        <a th:if="${session.NOMBRE == null}" th:href="@{/login}" class="btn-login">
 
             Iniciar Sesión
 
         </a>
+        <a th:if="${session.NOMBRE != null}" href="#" class="btn-perfil" th:title="${session.NOMBRE}">
 
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 
-        <!-- CON SESIÓN -->
-        <div th:if="${session.NOMBRE != null}"
-             class="usuario-header">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
 
-            <span
-                th:text="${session.NOMBRE}"
-                class="nombre-usuario">
-                Usuario
-            </span>
+            </svg>
 
-            <a href="#"
-               class="btn-perfil"
-               aria-label="Mi perfil">
-
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round">
-
-                    <path d="M20 21a8 8 0 0 0-16 0"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-
-                </svg>
-
-            </a>
-
-        </div>
-
+        </a>
     </nav>
 
 </header>

@@ -1,48 +1,21 @@
-.usuario-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.nombre-usuario {
-    font-size: 14px;
-    font-weight: 700;
-    color: #333;
-}
-
 .btn-perfil {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    background-color: #2b3990;
-    color: white;
-
-    border: 2px solid #111;
-    border-radius: 50%;
-
-    box-shadow: 2px 2px 0 #111;
-
     text-decoration: none;
+    border-radius: 50%;
+}
 
-    transition:
-        background-color 0.2s ease,
-        transform 0.1s ease,
-        box-shadow 0.1s ease;
+.btn-perfil svg {
+    width: 24px;
+    height: 24px;
+    display: block;
 }
 
 .btn-perfil:hover {
-    background-color: #1c2665;
-    color: white;
-
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 #111;
-}
-
-.btn-perfil:active {
-    transform: translate(2px, 2px);
-    box-shadow: none;
+    background-color: rgba(43, 57, 144, 0.08);
 }
