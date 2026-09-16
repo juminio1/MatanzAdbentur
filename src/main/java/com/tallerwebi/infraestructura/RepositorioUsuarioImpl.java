@@ -74,4 +74,11 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
 
     return existente != null;
   }
+  public Usuario buscarUsuarioPorId(Integer id) {
+    return sessionFactory
+            .getCurrentSession()
+            .createQuery("from Usuario where id = :id", Usuario.class)
+            .setParameter("id", id)
+            .uniqueResult();
+  }
 }

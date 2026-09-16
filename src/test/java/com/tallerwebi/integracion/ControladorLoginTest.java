@@ -69,7 +69,7 @@ public class ControladorLoginTest {
     assert modelAndView != null;
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("login"));
     assertThat(
-      modelAndView.getModel().get("datosLogin").toString(),
+      modelAndView.getModel().get("LoginDTO").toString(),
       containsString("com.tallerwebi.presentacion.LoginDTO")
     );
   }

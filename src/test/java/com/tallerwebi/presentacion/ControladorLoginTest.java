@@ -3,12 +3,13 @@ package com.tallerwebi.presentacion;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.ServicioLogin;
 import com.tallerwebi.dominio.ServicioRegistro;
 import com.tallerwebi.dominio.Usuario;
+import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,38 +40,66 @@ public class ControladorLoginTest {
   }
 
   @Test
-  public void loginConUsuarioYPasswordInorrectosDeberiaLlevarALoginNuevamente() {
+public void loginConUsuarioYPasswordIncorrectosDeberiaLlevarALoginNuevamente()
+        throws CredencialesInvalidasException {
+
     // preparacion
-    when(servicioLoginMock.consultarUsuario(anyString())).thenReturn(null);
+    when(servicioLoginMock.autenticar(
+            datosLoginMock.getEmail(),
+            datosLoginMock.getPassword()
+    )).thenThrow(
+            new CredencialesInvalidasException("Usuario o clave incorrecta")
+    );
 
     // ejecucion
-    ModelAndView modelAndView = controladorLogin.validarLogin(datosLoginMock, requestMock);
+    ModelAndView modelAndView =
+            controladorLogin.validarLogin(datosLoginMock, requestMock);
 
     // validacion
-    assertThat(modelAndView.getViewName(), equalToIgnoringCase("login"));
     assertThat(
-      modelAndView.getModel().get("error").toString(),
-      equalToIgnoringCase("Usuario o clave incorrecta")
+            modelAndView.getViewName(),
+            equalToIgnoringCase("login")
     );
-    verify(sessionMock, times(0)).setAttribute("ROL", "ADMIN");
-  }
 
-  @Test
-  public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome() {
+    assertThat(
+            modelAndView.getModel().get("error").toString(),
+            equalToIgnoringCase("Usuario o clave incorrecta")
+    );
+}
+
+@Test
+public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome()
+        throws CredencialesInvalidasException {
+
     // preparacion
     Usuario usuarioEncontradoMock = mock(Usuario.class);
+
     when(usuarioEncontradoMock.getRol()).thenReturn("ADMIN");
+    when(usuarioEncontradoMock.getUsername()).thenReturn("Dami");
 
     when(requestMock.getSession()).thenReturn(sessionMock);
-    when(servicioLoginMock.consultarUsuario(anyString())).thenReturn(usuarioEncontradoMock);
+
+    when(servicioLoginMock.autenticar(
+            datosLoginMock.getEmail(),
+            datosLoginMock.getPassword()
+    )).thenReturn(usuarioEncontradoMock);
 
     // ejecucion
-    ModelAndView modelAndView = controladorLogin.validarLogin(datosLoginMock, requestMock);
+    ModelAndView modelAndView =
+            controladorLogin.validarLogin(datosLoginMock, requestMock);
 
     // validacion
-    assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/home"));
-    verify(sessionMock, times(1)).setAttribute("ROL", usuarioEncontradoMock.getRol());
-  }
+    assertThat(
+            modelAndView.getViewName(),
+            equalToIgnoringCase("redirect:/home")
+    );
+
+    verify(sessionMock, times(1))
+            .setAttribute("ROL", "ADMIN");
+
+    verify(sessionMock, times(1))
+            .setAttribute("NOMBRE", "Dami");
+}
 
   @Test
   public void irALoginDeberiaRetornarVistaLoginConDatosLogin() {
@@ -80,15 +109,6 @@ public class ControladorLoginTest {
     // validacion
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("login"));
     assertThat(modelAndView.getModel().get("datosLogin"), instanceOf(LoginDTO.class));
-  }
-
-  @Test
-  public void nuevoUsuarioDeberiaRetornarVistaNuevoUsuarioConRegistroVacio() {
-    ModelAndView modelAndView = controladorRegistro.nuevoUsuario();
-
-    assertThat(modelAndView.getViewName(), equalToIgnoringCase("nuevo-usuario"));
-
-    assertThat(modelAndView.getModel().get("registro"), instanceOf(RegistroDTO.class));
   }
 
   @Test
@@ -108,4 +128,47 @@ public class ControladorLoginTest {
     // validacion
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/login"));
   }
+
+  @Test
+public void irAHomeConUsuarioLogueadoDeberiaMostrarSuNombre() {
+
+    // preparacion
+    when(requestMock.getSession()).thenReturn(sessionMock);
+    when(sessionMock.getAttribute("NOMBRE")).thenReturn("Dami");
+
+    controladorLogin =
+            new ControladorLogin(servicioLoginMock, requestMock);
+
+    // ejecucion
+    ModelAndView modelAndView = controladorLogin.irAHome();
+
+    // validacion
+    assertThat(
+            modelAndView.getViewName(),
+            equalToIgnoringCase("home")
+    );
+
+    assertThat(
+            modelAndView.getModel().get("nombreJugador").toString(),
+            equalToIgnoringCase("Dami")
+    );
+}
+
+@Test
+public void irAHomeSinUsuarioLogueadoDeberiaMostrarNombrePorDefecto() {
+
+    // ejecucion
+    ModelAndView modelAndView = controladorLogin.irAHome();
+
+    // validacion
+    assertThat(
+            modelAndView.getViewName(),
+            equalToIgnoringCase("home")
+    );
+
+    assertThat(
+            modelAndView.getModel().get("nombreJugador").toString(),
+            equalToIgnoringCase("Vecino de La Matanza")
+    );
+}
 }

@@ -78,16 +78,9 @@ public class RepositorioUsuarioTest {
     String email = "test@test.com";
     Usuario usuario = this.dadoQueTengoUnUsuario(email, "123", "USER");
     this.dadoQueExisteElUsuario(usuario);
-    // Usuario obtenido = this.cuandoObtengoUnUsuarioPorEmail(email);
+     Usuario obtenido = this.repositorioUsuario.buscarUsuarioPorEmail(email);
 
-    // this.entoncesElUsuarioObtenidoEsCorrecto(obtenido, usuario);
-  }
-
-  @Test
-  @Transactional
-  public void noDeberiaEncontrarUnUsuarioInexistenteCuandoBuscoPorEmail() {
-    // Usuario obtenido = this.cuandoObtengoUnUsuarioPorEmail("test@test.com");
-    // this.entoncesElUsuarioObtenidoEsNull(obtenido);
+     this.entoncesElUsuarioObtenidoEsCorrecto(obtenido, usuario);
   }
 
   @Test
