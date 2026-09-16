@@ -78,4 +78,11 @@ public class ControladorLogin {
   public ModelAndView inicio() {
     return new ModelAndView("redirect:/login");
   }
+
+  @GetMapping("/cerrar-sesion")
+  public ModelAndView cerrarSesion(HttpServletRequest request) {
+    request.getSession().invalidate();
+
+    return new ModelAndView("redirect:/home");
+  }
 }
