@@ -8,16 +8,17 @@
   --font-texto: 'Barlow', sans-serif;
 
   /* Tamaños (desktop) */
-  --fs-h1: 2.4375em;   /* 39px */
-  --fs-h2: 1.9375em;   /* 31px */
-  --fs-h3: 1.5625em;   /* 25px */
-  --fs-h4: 1.25em;     /* 20px */
-  --fs-body: 1em;      /* 16px */
-  --fs-secundario: 0.875em; /* 14px */
-  --fs-boton: 1rem;    /* 16px */
-  --fs-label: 0.875rem;/* 14px */
-  --fs-caption: 0.75rem; /* 12px */
-  --fs-navbar: 1em;    /* 16px */
+  --fs-h1: 3rem;
+  /* 39px */
+  --fs-h2: 2.5rem;
+  /* 31px */
+  --fs-h3: 1.7rem;
+  /* 25px */
+  --fs-h4: 1.5rem;
+  /* 20px */
+  --fs-body: 1rem;
+  /* 16px */
+
 
   /* Colores principales */
   --color-blanco: #FAFAFA;
@@ -33,24 +34,24 @@
   --color-rojo: #E24F4A;
   --color-ladrillo: #DD805F;
   --color-ladrillo-oscuro: #AA6B62;
-  
+
 
   --color-fondo1: #FAFAFA;
-  --color-fondo2:var(--color-negro);
+  --color-fondo2: var(--color-negro);
 
- --color-text-main: var(--color-negro);
+  --color-text-main: var(--color-negro);
   --color-text-inverse: var(--color-blanco);
   --color-surface: var(--color-blanco);
   --color-background: var(--color-fondo1);
   --color-border: var(--color-negro);
- 
- 
+
+
   /* ---------- OTROS ---------- */
   --radius-btn: 999px;
   --border-btn: 2px solid var(--color-border);
   --transition-btn: 0.2s ease;
 }
- 
+
 body {
   margin: 0;
   font-family: var(--font-secundarios);
@@ -58,95 +59,126 @@ body {
   color: var(--color-text-main);
   background-color: var(--color-background);
 }
- 
+
 /* TIPOGRAFÍA*/
-h1, .h1,
-h2, .h2,
-h3, .h3,
-h4, .h4 {
-  font-family: var(--font-titulos);
-  font-weight: 700;
-  text-transform: uppercase;
+span,
+h1,
+.h1,
+h2,
+.h2,
+h3,
+.h3,
+h4,
+.h4 {
   line-height: 1.15;
   margin: 0 0 0.5em 0;
   color: var(--color-text-main);
 }
- 
-h1, .h1 { font-size: var(--fs-h1); font-weight: 800; }
-h2, .h2 { font-size: var(--fs-h2); font-weight: 700; }
-h3, .h3 { font-size: var(--fs-h3); font-weight: 600; }
-h4, .h4 { font-size: var(--fs-h4); font-weight: 600; }
- 
-p, .body-text {
-  font-family: var(--font-secundarios);
+
+h1,
+.h1 {
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h1);
+  font-weight: 800;
+}
+
+h2,
+.h2 {
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+}
+
+h3,
+.h3 {
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+
+h4,
+.h4,
+span {
+  font-family: var(--font-texto);
+  font-size: var(--fs-h4);
+  font-weight: 400;
+}
+
+p,
+.body-text {
+  font-family: var(--font-texto);
   font-size: var(--fs-body);
   font-weight: 400;
   line-height: 1.5;
   margin: 0 0 1em 0;
 }
- 
-.text-secundario {
-  font-family: var(--font-secundarios);
-}
- 
+
+
 /* BOTONES */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  font-family: var(--font-titulos);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
   border-radius: var(--radius-btn);
   padding: 0.75em 1.75em;
   cursor: pointer;
   transition: transform var(--transition-btn), filter var(--transition-btn);
-  text-decoration: none;
-  border: none;
 }
- 
+
 .btn:hover {
   filter: brightness(1.08);
   transform: translateY(-1px);
 }
- 
+
 .btn:active {
   transform: translateY(0);
   filter: brightness(0.95);
 }
- 
+
 /* Botón principal (azul, con borde) */
 .btn-primario {
   background-color: var(--color-azul);
-  color: var(--color-text-inverse);
+  color: var(--color-blanco);
   border: var(--border-btn);
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-weight: 700;
+  font-size: var(--fs-h3);
+
 }
- 
+
 .btn-primario:hover {
   background-color: var(--color-celeste);
   color: var(--color-text-main);
 }
- 
+
 /* Botón segundo (ladrillo oscuro, con borde) */
 .btn-secundario {
   background-color: var(--color-ladrillo-oscuro);
   color: var(--color-text-inverse);
   border: var(--border-btn);
+  font-variant: small-caps;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h4);
 }
 
 .btn-secundario:hover {
-   background-color: var(--color-ladrillo);
+  background-color: var(--color-ladrillo);
   color: var(--color-text-inverse);
 }
- 
+
 /* Botón tercero (gris, sin borde, más sutil) */
 .btn-terciario {
-  background-color: var(--color-gris-oscuro);
-  color: var(--color-text-main);
-  font-size: 0.9em;
+  border-radius: 2rem;
+  padding: 0.6rem;
+  box-shadow: 0 2px 4px var(--color-negro);
+  background-color: #B6A8A2;
+  color: var(--color-negro);
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h3);
 }
- 
-
- 
