@@ -1,0 +1,717 @@
+/* =========================
+   RESET
+   ========================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+
+/* =========================
+   BODY
+   ========================= */
+
+body {
+    min-height: 100vh;
+
+    background-color: #f7f7f7;
+
+    background-image:
+        linear-gradient(
+            rgba(247, 247, 247, 0.68),
+            rgba(247, 247, 247, 0.68)
+        ),
+        url('../imagenes/FondoLadrillos.jpg');
+
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+
+    color: #111;
+
+    overflow-x: hidden;
+}
+
+
+/* =========================
+   HEADER
+   ========================= */
+
+header {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 5%;
+
+    background-color: #e5e5e5;
+
+    box-shadow:
+        0 10px 20px -5px rgba(0, 0, 0, 0.1);
+
+    position: relative;
+
+    z-index: 10;
+}
+
+
+.logo-nav-img {
+    height: 40px;
+    width: auto;
+}
+
+
+header nav {
+    display: flex;
+
+    align-items: center;
+
+    gap: 30px;
+}
+
+
+header nav a {
+    color: #333;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition: color 0.2s ease;
+}
+
+
+header nav a:hover {
+    color: #2b3990;
+}
+
+
+.btn-volver {
+    padding: 10px 24px;
+
+    background-color: #2b3990;
+
+    color: white !important;
+
+    border-radius: 20px;
+}
+
+
+.btn-volver:hover {
+    background-color: #1c2665;
+}
+
+
+/* =========================
+   CONTENEDOR LOGIN
+   ========================= */
+
+.login-container {
+    min-height: calc(100vh - 80px);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 50px 5%;
+}
+
+
+/* =========================
+   CARD PRINCIPAL
+   ========================= */
+
+.login-card {
+    width: 100%;
+
+    max-width: 1000px;
+
+    min-height: 560px;
+
+    display: grid;
+
+    grid-template-columns: 0.9fr 1.1fr;
+
+    background-color: white;
+
+    border: 3px solid #111;
+
+    border-radius: 22px;
+
+    overflow: hidden;
+
+    box-shadow:
+        9px 9px 0 #111;
+}
+
+
+/* =========================
+   PANEL IZQUIERDO
+   ========================= */
+
+.login-info {
+    position: relative;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: flex-start;
+
+    padding: 50px;
+
+    background-color: #2b3990;
+
+    color: white;
+
+    overflow: hidden;
+}
+
+
+/* Forma decorativa */
+
+.login-info::before {
+    content: "";
+
+    position: absolute;
+
+    width: 300px;
+    height: 300px;
+
+    right: -170px;
+    bottom: -160px;
+
+    border-radius: 50%;
+
+    border: 45px solid rgba(255, 210, 76, 0.18);
+}
+
+
+/* Etiqueta */
+
+.login-etiqueta {
+    display: inline-block;
+
+    margin-bottom: 25px;
+
+    padding: 7px 15px;
+
+    background-color: #ffd24c;
+
+    color: #111;
+
+    border: 2px solid #111;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    box-shadow:
+        3px 3px 0 #111;
+}
+
+
+/* Logo grande */
+
+.login-logo {
+    width: 100%;
+
+    max-width: 330px;
+
+    margin-bottom: 25px;
+
+    filter:
+        drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.25));
+}
+
+
+/* Título */
+
+.login-info h1 {
+    margin-bottom: 15px;
+
+    color: white;
+
+    font-size: 38px;
+
+    font-weight: 900;
+}
+
+
+/* Texto */
+
+.login-info p {
+    max-width: 370px;
+
+    margin-bottom: 35px;
+
+    color: rgba(255, 255, 255, 0.9);
+
+    font-size: 15px;
+
+    font-weight: 500;
+
+    line-height: 1.6;
+}
+
+
+/* =========================
+   CASILLEROS DECORATIVOS
+   ========================= */
+
+.casilleros {
+    display: flex;
+
+    gap: 10px;
+}
+
+
+.casillero {
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border: 2px solid #111;
+
+    border-radius: 8px;
+
+    color: #111;
+
+    font-size: 18px;
+
+    font-weight: 900;
+
+    box-shadow:
+        3px 3px 0 #111;
+
+    transform: rotate(-3deg);
+}
+
+
+.casillero:nth-child(even) {
+    transform: rotate(3deg);
+}
+
+
+.casillero.azul {
+    background-color: #ffffff;
+}
+
+
+.casillero.amarillo {
+    background-color: #ffd24c;
+}
+
+
+.casillero.celeste {
+    background-color: #5dc7e5;
+}
+
+
+.casillero.rojo {
+    background-color: #e74c5b;
+
+    color: white;
+}
+
+
+/* =========================
+   FORMULARIO
+   ========================= */
+
+.login-form-section {
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    padding: 55px 65px;
+}
+
+
+/* Título formulario */
+
+.login-form-title {
+    margin-bottom: 32px;
+}
+
+
+.login-form-title > span {
+    display: block;
+
+    margin-bottom: 6px;
+
+    color: #2b3990;
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    letter-spacing: 1.5px;
+}
+
+
+.login-form-title h2 {
+    margin-bottom: 8px;
+
+    color: #111;
+
+    font-size: 36px;
+
+    font-weight: 900;
+}
+
+
+.login-form-title p {
+    color: #666;
+
+    font-size: 15px;
+
+    font-weight: 500;
+}
+
+
+/* =========================
+   INPUTS
+   ========================= */
+
+.form-group {
+    display: flex;
+
+    flex-direction: column;
+
+    margin-bottom: 22px;
+}
+
+
+.form-group label {
+    margin-bottom: 8px;
+
+    color: #222;
+
+    font-size: 14px;
+
+    font-weight: 700;
+}
+
+
+.form-control-login {
+    width: 100%;
+
+    height: 52px;
+
+    padding: 0 16px;
+
+    background-color: #f4f4f4;
+
+    border: 2px solid #111;
+
+    border-radius: 10px;
+
+    color: #111;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.form-control-login::placeholder {
+    color: #999;
+}
+
+
+.form-control-login:focus {
+    background-color: white;
+
+    border-color: #2b3990;
+
+    box-shadow:
+        0 0 0 3px rgba(43, 57, 144, 0.12);
+}
+
+
+/* =========================
+   ERROR
+   ========================= */
+
+.login-error {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 20px;
+
+    padding: 12px 15px;
+
+    background-color: #fff0f2;
+
+    border: 2px solid #e74c5b;
+
+    border-radius: 10px;
+
+    color: #b92335;
+
+    font-size: 14px;
+
+    font-weight: 600;
+}
+
+
+.error-icon {
+    min-width: 25px;
+    height: 25px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background-color: #e74c5b;
+
+    color: white;
+
+    border-radius: 50%;
+
+    font-weight: 900;
+}
+
+
+/* =========================
+   BOTÓN LOGIN
+   ========================= */
+
+.btn-ingresar {
+    width: 100%;
+
+    min-height: 52px;
+
+    margin-top: 5px;
+
+    padding: 14px 25px;
+
+    background-color: #ffd24c;
+
+    color: #111;
+
+    border: 2px solid #111;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+
+    font-weight: 900;
+
+    cursor: pointer;
+
+    box-shadow:
+        4px 4px 0 #111;
+
+    transition:
+        transform 0.1s ease,
+        box-shadow 0.1s ease,
+        background-color 0.2s ease;
+}
+
+
+.btn-ingresar:not(:disabled):hover {
+    background-color: #ffc926;
+
+    transform: translate(-2px, -2px);
+
+    box-shadow:
+        6px 6px 0 #111;
+}
+
+
+.btn-ingresar:not(:disabled):active {
+    transform: translate(4px, 4px);
+
+    box-shadow: none;
+}
+
+
+/* Disabled porque lo maneja login.js */
+
+.btn-ingresar:disabled {
+    opacity: 0.45;
+
+    cursor: not-allowed;
+
+    box-shadow:
+        2px 2px 0 #777;
+}
+
+
+/* =========================
+   REGISTRO
+   ========================= */
+
+.register-section {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    margin-top: 30px;
+
+    padding-top: 25px;
+
+    border-top: 1px solid #ddd;
+
+    color: #666;
+
+    font-size: 14px;
+}
+
+
+.register-section a {
+    color: #2b3990;
+
+    font-weight: 800;
+
+    text-decoration: none;
+}
+
+
+.register-section a:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 900px) {
+
+    .login-card {
+        max-width: 600px;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .login-info {
+        min-height: 340px;
+
+        padding: 40px;
+    }
+
+
+    .login-logo {
+        max-width: 270px;
+    }
+
+
+    .login-info h1 {
+        font-size: 32px;
+    }
+
+
+    .login-form-section {
+        padding: 45px;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    header {
+        padding: 15px 5%;
+    }
+
+
+    header nav {
+        display: none;
+    }
+
+
+    .logo-nav-img {
+        height: 35px;
+    }
+
+
+    .login-container {
+        padding: 25px 20px 40px;
+    }
+
+
+    .login-card {
+        border-radius: 16px;
+
+        box-shadow:
+            6px 6px 0 #111;
+    }
+
+
+    .login-info {
+        min-height: 300px;
+
+        padding: 30px;
+    }
+
+
+    .login-info h1 {
+        font-size: 28px;
+    }
+
+
+    .login-info p {
+        font-size: 14px;
+    }
+
+
+    .login-logo {
+        max-width: 240px;
+    }
+
+
+    .casillero {
+        width: 40px;
+        height: 40px;
+    }
+
+
+    .login-form-section {
+        padding: 35px 25px;
+    }
+
+
+    .login-form-title h2 {
+        font-size: 30px;
+    }
+
+
+    .register-section {
+        flex-direction: column;
+    }
+
+}
