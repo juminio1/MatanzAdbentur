@@ -1,11 +1,12 @@
 package com.tallerwebi.dominio;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.CascadeType;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -16,7 +17,34 @@ public class Partida {
     private Long id;
 
     private Instant tiempoInicio;
-    public Tablero tablero;
+    @OneToOne(cascade = CascadeType.PERSIST)
+    private Tablero tablero;
+    @ManyToMany
     private List<Usuario> usuarios;
+    private Boolean activa;
 
+    public Partida(){
+        this.usuarios = new ArrayList<>();
+        this.activa = true;
+    }
+
+    public Boolean agregarUsuario(Usuario usuario){
+        if (this.usuarios.size() < 4){
+            this.usuarios.add(usuario);
+            return true;
+        }
+        return false;
+    }
+
+    public void setTablero(Tablero tablero) {
+        this.tablero = tablero;
+    }
+
+    public void setTiempoInicio(Instant tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
+
+    public void finalizar(){
+        this.activa = false;
+    }
 }
