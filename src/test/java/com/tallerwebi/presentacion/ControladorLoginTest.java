@@ -6,7 +6,6 @@ import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.ServicioLogin;
-import com.tallerwebi.dominio.ServicioRegistro;
 import com.tallerwebi.dominio.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,9 +22,7 @@ public class ControladorLoginTest {
   private HttpServletRequest requestMock;
   private HttpSession sessionMock;
   private ServicioLogin servicioLoginMock;
-  private ControladorRegistro controladorRegistro;
-  private ServicioRegistro servicioRegistroMock;
-
+  
   @BeforeEach
   public void init() {
     datosLoginMock = new LoginDTO("dami@unlam.com", "123");
@@ -35,7 +32,7 @@ public class ControladorLoginTest {
     sessionMock = mock(HttpSession.class);
     servicioLoginMock = mock(ServicioLogin.class);
     controladorLogin = new ControladorLogin(servicioLoginMock);
-    controladorRegistro = new ControladorRegistro(servicioRegistroMock);
+   
   }
 
   @Test
@@ -143,4 +140,22 @@ public class ControladorLoginTest {
       equalToIgnoringCase("Vecino de La Matanza")
     );
   }
+
+  @Test
+public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirAHome() {
+
+    // preparacion
+    when(requestMock.getSession()).thenReturn(sessionMock);
+
+    // ejecucion
+    ModelAndView modelAndView = controladorLogin.cerrarSesion(requestMock);
+
+    // validacion
+    verify(sessionMock, times(1)).invalidate();
+
+    assertThat(
+        modelAndView.getViewName(),
+        equalToIgnoringCase("redirect:/home")
+    );
+}
 }
