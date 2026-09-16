@@ -22,6 +22,7 @@ public class Partida {
     @ManyToMany
     private List<Usuario> usuarios;
     private Boolean activa;
+    public static final int MAX_USUARIOS = 4;
 
     public Partida(){
         this.usuarios = new ArrayList<>();
@@ -29,7 +30,7 @@ public class Partida {
     }
 
     public Boolean agregarUsuario(Usuario usuario){
-        if (this.usuarios.size() < 4){
+        if (this.usuarios.size() < MAX_USUARIOS){
             this.usuarios.add(usuario);
             return true;
         }
