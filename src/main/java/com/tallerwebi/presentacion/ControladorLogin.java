@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -40,7 +41,7 @@ public class ControladorLogin {
     return new ModelAndView(VISTA_LOGIN, modelo);
   }
 
-  @PostMapping("/validar-login")
+  @RequestMapping(path = "validar-login", method = RequestMethod.POST)
   public ModelAndView validarLogin(
     @ModelAttribute("datosLogin") LoginDTO datosLogin,
     HttpServletRequest request

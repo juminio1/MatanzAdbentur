@@ -97,6 +97,4 @@ public class ControladorRegistroTest {
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("nuevo-usuario"));
     verify(servicioRegistroMock, never()).registrar(registroMock);
   }
-
-
 }

@@ -6,12 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
+import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import javax.security.auth.login.CredentialException;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 
 public class ServicioLoginTest {
 
@@ -23,10 +21,7 @@ public class ServicioLoginTest {
     this.repositorioUsuarioMock = mock(RepositorioUsuario.class);
     this.servicioLogin = new ServicioLoginImpl(this.repositorioUsuarioMock);
   }
-
-
-
- /* @Test
+  /* @Test
   public void consultarUsuarioDeberiaLlamarAlRepositorio() {
     // preparacion
     String email = "test@test.com";

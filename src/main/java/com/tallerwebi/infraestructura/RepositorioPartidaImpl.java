@@ -1,4 +1,4 @@
-package com.tallerwebi.infraestructura;
+/*package com.tallerwebi.infraestructura;
 
 import com.tallerwebi.dominio.Partida;
 import org.hibernate.SessionFactory;
@@ -24,4 +24,4 @@ public class RepositorioPartidaImpl implements RepositorioPartida{
     public Partida buscarPartidaActiva() {
         return null;
     }
-}
+}*/

@@ -1,4 +1,4 @@
-package com.tallerwebi.presentacion;
+/*package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.Partida;
 import com.tallerwebi.dominio.ServicioPartida;
@@ -30,4 +30,4 @@ public class ControladorPartida {
         return new ModelAndView("tablero", modelo);
     }
 
-}
+}*/

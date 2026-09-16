@@ -9,7 +9,6 @@ import com.tallerwebi.dominio.ServicioLogin;
 import com.tallerwebi.dominio.ServicioRegistro;
 import com.tallerwebi.dominio.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,37 +39,27 @@ public class ControladorLoginTest {
   }
 
   @Test
-public void loginConUsuarioYPasswordIncorrectosDeberiaLlevarALoginNuevamente()
-        throws CredencialesInvalidasException {
-
+  public void loginConUsuarioYPasswordIncorrectosDeberiaLlevarALoginNuevamente()
+    throws CredencialesInvalidasException {
     // preparacion
-    when(servicioLoginMock.autenticar(
-            datosLoginMock.getEmail(),
-            datosLoginMock.getPassword()
-    )).thenThrow(
-            new CredencialesInvalidasException("Usuario o clave incorrecta")
-    );
+    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+      .thenThrow(new CredencialesInvalidasException("Usuario o clave incorrecta"));
 
     // ejecucion
-    ModelAndView modelAndView =
-            controladorLogin.validarLogin(datosLoginMock, requestMock);
+    ModelAndView modelAndView = controladorLogin.validarLogin(datosLoginMock, requestMock);
 
     // validacion
-    assertThat(
-            modelAndView.getViewName(),
-            equalToIgnoringCase("login")
-    );
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("login"));
 
     assertThat(
-            modelAndView.getModel().get("error").toString(),
-            equalToIgnoringCase("Usuario o clave incorrecta")
+      modelAndView.getModel().get("error").toString(),
+      equalToIgnoringCase("Usuario o clave incorrecta")
     );
-}
+  }
 
-@Test
-public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome()
-        throws CredencialesInvalidasException {
-
+  @Test
+  public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome()
+    throws CredencialesInvalidasException {
     // preparacion
     Usuario usuarioEncontradoMock = mock(Usuario.class);
 
@@ -79,27 +68,19 @@ public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome()
 
     when(requestMock.getSession()).thenReturn(sessionMock);
 
-    when(servicioLoginMock.autenticar(
-            datosLoginMock.getEmail(),
-            datosLoginMock.getPassword()
-    )).thenReturn(usuarioEncontradoMock);
+    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+      .thenReturn(usuarioEncontradoMock);
 
     // ejecucion
-    ModelAndView modelAndView =
-            controladorLogin.validarLogin(datosLoginMock, requestMock);
+    ModelAndView modelAndView = controladorLogin.validarLogin(datosLoginMock, requestMock);
 
     // validacion
-    assertThat(
-            modelAndView.getViewName(),
-            equalToIgnoringCase("redirect:/home")
-    );
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/home"));
 
-    verify(sessionMock, times(1))
-            .setAttribute("ROL", "ADMIN");
+    verify(sessionMock, times(1)).setAttribute("ROL", "ADMIN");
 
-    verify(sessionMock, times(1))
-            .setAttribute("NOMBRE", "Dami");
-}
+    verify(sessionMock, times(1)).setAttribute("NOMBRE", "Dami");
+  }
 
   @Test
   public void irALoginDeberiaRetornarVistaLoginConDatosLogin() {
@@ -130,45 +111,36 @@ public void loginConUsuarioYPasswordCorrectosDeberiaLLevarAHome()
   }
 
   @Test
-public void irAHomeConUsuarioLogueadoDeberiaMostrarSuNombre() {
-
+  public void irAHomeConUsuarioLogueadoDeberiaMostrarSuNombre() {
     // preparacion
     when(requestMock.getSession()).thenReturn(sessionMock);
     when(sessionMock.getAttribute("NOMBRE")).thenReturn("Dami");
 
-    controladorLogin =
-            new ControladorLogin(servicioLoginMock, requestMock);
+    controladorLogin = new ControladorLogin(servicioLoginMock, requestMock);
 
     // ejecucion
     ModelAndView modelAndView = controladorLogin.irAHome();
 
     // validacion
-    assertThat(
-            modelAndView.getViewName(),
-            equalToIgnoringCase("home")
-    );
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("home"));
 
     assertThat(
-            modelAndView.getModel().get("nombreJugador").toString(),
-            equalToIgnoringCase("Dami")
+      modelAndView.getModel().get("nombreJugador").toString(),
+      equalToIgnoringCase("Dami")
     );
-}
+  }
 
-@Test
-public void irAHomeSinUsuarioLogueadoDeberiaMostrarNombrePorDefecto() {
-
+  @Test
+  public void irAHomeSinUsuarioLogueadoDeberiaMostrarNombrePorDefecto() {
     // ejecucion
     ModelAndView modelAndView = controladorLogin.irAHome();
 
     // validacion
-    assertThat(
-            modelAndView.getViewName(),
-            equalToIgnoringCase("home")
-    );
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("home"));
 
     assertThat(
-            modelAndView.getModel().get("nombreJugador").toString(),
-            equalToIgnoringCase("Vecino de La Matanza")
+      modelAndView.getModel().get("nombreJugador").toString(),
+      equalToIgnoringCase("Vecino de La Matanza")
     );
-}
+  }
 }

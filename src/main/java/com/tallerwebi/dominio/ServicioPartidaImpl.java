@@ -1,11 +1,11 @@
-package com.tallerwebi.dominio;
+/*package com.tallerwebi.dominio;
 
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+//import java.time.Instant;
 
 @Service("servicioPartida")
 @Transactional
@@ -32,8 +32,8 @@ public class ServicioPartidaImpl implements ServicioPartida{
 
         Partida partida = new Partida();
         partida.setTablero(tablero);
-        partida.setTiempoInicio(Instant.now());
-        partida.agregarUsuario(usuarioEncontrado);
+      //  partida.setTiempoInicio(Instant.now());
+       // partida.agregarUsuario(usuarioEncontrado);
 
         this.repositorioPartida.guardarPartida(partida);
 
@@ -41,4 +41,4 @@ public class ServicioPartidaImpl implements ServicioPartida{
     }
 
 
-}
+}*/
