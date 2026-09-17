@@ -57,9 +57,9 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
   @Override
   public Usuario buscarUsuarioPorId(Integer id) {
     return sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where id = :id", Usuario.class)
-            .setParameter("id", id)
-            .uniqueResult();
+      .getCurrentSession()
+      .createQuery("from Usuario where id = :id", Usuario.class)
+      .setParameter("id", id)
+      .uniqueResult();
   }
 }

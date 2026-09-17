@@ -1,100 +1,98 @@
 package com.tallerwebi.infraestructura;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.Partida;
-import com.tallerwebi.dominio.Usuario;
-import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
-import jakarta.transaction.Transactional;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.query.Query;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@ExtendWith(SpringExtension.class)
-@ContextConfiguration(classes = { HibernateInfraestructuraTestConfig.class })
-public class RepositorioPartidaTest {
+class RepositorioPartidaImplTest {
 
-    @Autowired
-    private SessionFactory sessionFactory;
+  private SessionFactory sessionFactory;
+  private Session session;
+  private RepositorioPartidaImpl repositorio;
 
-    private RepositorioPartida repositorioPartida;
+  @BeforeEach
+  void setUp() {
+    sessionFactory = mock(SessionFactory.class);
+    session = mock(Session.class);
 
-    @BeforeEach
-    public void init() {
-        repositorioPartida = new RepositorioPartidaImpl(sessionFactory);
-    }
+    when(sessionFactory.getCurrentSession()).thenReturn(session);
 
-    @Test
-    @Transactional
-    public void encontrarUnaPartidaActivaDisponible() {
-        Partida partida = new Partida();
+    repositorio = new RepositorioPartidaImpl(sessionFactory);
+  }
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+  @Test
+  void deberiaGuardarPartida() {
+    Partida partida = new Partida();
 
-        sessionFactory.getCurrentSession().persist(usuario);
+    repositorio.guardarPartida(partida);
 
-        partida.agregarUsuario(usuario);
+    verify(session).persist(partida);
+  }
 
-        sessionFactory.getCurrentSession().persist(partida);
+  @Test
+  void deberiaBuscarPartidaActivaPorCodigoUnico() {
+    String codigoUnico = "ABC123";
+    Partida partida = new Partida();
 
-        Partida partidaObtenida = repositorioPartida.buscarPartidaActiva();
+    @SuppressWarnings("unchecked")
+    Query<Partida> query = mock(Query.class);
 
-        assertThat(partidaObtenida, is(equalTo(partida)));
-    }
+    when(
+      session.createQuery(
+        "from Partida where codigoUnico = :codigoUnico and activa = true",
+        Partida.class
+      )
+    )
+      .thenReturn(query);
 
-    @Test
-    @Transactional
-    public void noEncontrarUnaPartidaActivaConCuatroJugadores() {
+    when(query.setParameter("codigoUnico", codigoUnico)).thenReturn(query);
 
-        Partida partida = new Partida();
+    when(query.uniqueResult()).thenReturn(partida);
 
-        for (int i = 1; i <= 4; i++) {
-            Usuario usuario = new Usuario();
-            usuario.setEmail("jugador" + i + "@test.com");
-            usuario.setPassword("123");
-            usuario.setRol("USER");
+    Partida resultado = repositorio.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-            sessionFactory.getCurrentSession().persist(usuario);
-            partida.agregarUsuario(usuario);
-        }
+    assertSame(partida, resultado);
 
-        sessionFactory.getCurrentSession().persist(partida);
+    verify(session)
+      .createQuery(
+        "from Partida where codigoUnico = :codigoUnico and activa = true",
+        Partida.class
+      );
 
-        Partida partidaObtenida = repositorioPartida.buscarPartidaActiva();
+    verify(query).setParameter("codigoUnico", codigoUnico);
+    verify(query).uniqueResult();
+  }
 
-        assertThat(partidaObtenida, is(nullValue()));
-    }
+  @Test
+  void deberiaRetornarNullSiNoExistePartidaActiva() {
+    String codigoUnico = "ABC123";
 
-    @Test
-    @Transactional
-    public void noEncontrarUnaPartidaFinalizada() {
+    @SuppressWarnings("unchecked")
+    Query<Partida> query = mock(Query.class);
 
-        Partida partida = new Partida();
+    when(
+      session.createQuery(
+        "from Partida where codigoUnico = :codigoUnico and activa = true",
+        Partida.class
+      )
+    )
+      .thenReturn(query);
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+    when(query.setParameter("codigoUnico", codigoUnico)).thenReturn(query);
 
-        sessionFactory.getCurrentSession().persist(usuario);
+    when(query.uniqueResult()).thenReturn(null);
 
-        partida.agregarUsuario(usuario);
+    Partida resultado = repositorio.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        partida.finalizar();
+    assertEquals(null, resultado);
 
-        sessionFactory.getCurrentSession().persist(partida);
-
-        Partida partidaObtenida = repositorioPartida.buscarPartidaActiva();
-
-        assertThat(partidaObtenida, is(nullValue()));
-    }
+    verify(query).uniqueResult();
+  }
 }
-
