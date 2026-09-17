@@ -22,6 +22,16 @@ public class RepositorioPartidaImpl implements RepositorioPartida{
 
     @Override
     public Partida buscarPartidaActiva() {
-        return null;
+        return sessionFactory
+                .getCurrentSession()
+                .createQuery(
+                        "select p from Partida p " +
+                                "where p.activa = true " +
+                                "and size(p.usuarios) < :maxUsuarios",
+                        Partida.class
+                )
+                .setParameter("maxUsuarios", Partida.MAX_USUARIOS)
+                .setMaxResults(1)
+                .uniqueResult();
     }
 }

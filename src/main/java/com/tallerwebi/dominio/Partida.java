@@ -45,6 +45,18 @@ public class Partida {
         this.tiempoInicio = tiempoInicio;
     }
 
+    public List<Usuario> getUsuarios() {
+        return usuarios;
+    }
+
+    public Tablero getTablero() {
+        return tablero;
+    }
+
+    public Instant getTiempoInicio() {
+        return tiempoInicio;
+    }
+
     public void finalizar(){
         this.activa = false;
     }
