@@ -41,7 +41,6 @@ class RepositorioPartidaImplTest {
     String codigoUnico = "ABC123";
     Partida partida = new Partida();
 
-    @SuppressWarnings("unchecked")
     Query<Partida> query = mock(Query.class);
 
     when(
@@ -74,7 +73,6 @@ class RepositorioPartidaImplTest {
   void deberiaRetornarNullSiNoExistePartidaActiva() {
     String codigoUnico = "ABC123";
 
-    @SuppressWarnings("unchecked")
     Query<Partida> query = mock(Query.class);
 
     when(
