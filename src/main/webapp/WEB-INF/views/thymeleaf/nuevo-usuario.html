@@ -26,18 +26,38 @@
 
     <div class="container">
       <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
-        <form action="#" th:action="@{/registrarme}" method="POST" th:object="${usuario}">
-          <h3 class="form-signin-heading">Nuevo Usuario</h3>
+        <form action="#" th:action="@{/registrarme}" method="POST" th:object="${registro}">
+          <h3 class="form-signin-heading text-center">Registro - Monopoly Matanza</h3>
           <hr class="colorgraph"><br>
 
-          <input th:field="*{email}" id="email" class="form-control" required />
-          <input th:field="*{password}" type="password" id="password" class="form-control" required />
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input th:field="*{username}" id="username" class="form-control" placeholder="Ej: El Brian de Lafe" required />
+          </div>
 
-          <button id="btn-registrarme" class="btn btn-lg btn-primary btn-block" Type="Submit">Registrarme</button>
-          <p th:if="${error != null}" class="alert alert-danger" th:text="'Error ' + ${error}">
-          </p>
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo Electrónico</label>
+            <input th:field="*{email}" type="email" id="email" class="form-control" placeholder="nombre@correo.com"
+              required />
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input th:field="*{password}" type="password" id="password" class="form-control"
+              placeholder="Contraseña segura" required />
+          </div>
+
+           <div class="mb-3">
+            <label for="passwordRepetido" class="form-label">Repetir Contraseña</label>
+            <input th:field="*{passwordRepetido}" type="password" id="passwordRepetido" class="form-control"
+              placeholder="passwordRepetido" required />
+          </div>
+
+          <button id="btn-registrarme" class="btn btn-lg btn-primary w-100 mt-3" type="submit">Registrarme para
+            Jugar</button>
+
+          <p th:if="${error != null}" class="alert alert-danger mt-3" th:text="'Error: ' + ${error}"></p>
         </form>
-
       </div>
     </div>
 

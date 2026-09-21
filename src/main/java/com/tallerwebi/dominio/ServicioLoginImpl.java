@@ -1,9 +1,10 @@
 package com.tallerwebi.dominio;
 
-import com.tallerwebi.dominio.excepcion.UsuarioExistente;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.tallerwebi.infraestructura.RepositorioUsuario;
 
 @Service("servicioLogin")
 @Transactional
@@ -17,19 +18,7 @@ public class ServicioLoginImpl implements ServicioLogin {
   }
 
   @Override
-  public Usuario consultarUsuario(String email, String password) {
-    return repositorioUsuario.buscarUsuario(email, password);
-  }
-
-  @Override
-  public void registrar(Usuario usuario) throws UsuarioExistente {
-    Usuario usuarioEncontrado = repositorioUsuario.buscarUsuario(
-      usuario.getEmail(),
-      usuario.getPassword()
-    );
-    if (usuarioEncontrado != null) {
-      throw new UsuarioExistente();
-    }
-    repositorioUsuario.guardar(usuario);
+  public Usuario consultarUsuario(String email) {
+    return repositorioUsuario.buscarUsuarioPorEmail(email);
   }
 }

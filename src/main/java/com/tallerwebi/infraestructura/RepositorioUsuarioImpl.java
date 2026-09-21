@@ -1,8 +1,7 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.RepositorioUsuario;
 import com.tallerwebi.dominio.Usuario;
-import com.tallerwebi.dominio.excepcion.UsuarioNoEncontrado;
+import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -18,27 +17,17 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
   }
 
   @Override
-  public Usuario buscarUsuario(String email, String password) {
+  public Usuario buscarUsuarioPorEmail(String email) {
     return sessionFactory
       .getCurrentSession()
-      .createQuery("from Usuario where email = :email and password = :password", Usuario.class)
+      .createQuery("from Usuario where email = :email", Usuario.class)
       .setParameter("email", email)
-      .setParameter("password", password)
       .uniqueResult();
   }
 
   @Override
   public void guardar(Usuario usuario) {
     sessionFactory.getCurrentSession().persist(usuario);
-  }
-
-  @Override
-  public Usuario buscar(String email) {
-    return sessionFactory
-      .getCurrentSession()
-      .createQuery("from Usuario where email = :email", Usuario.class)
-      .setParameter("email", email)
-      .uniqueResult();
   }
 
   @Override
@@ -49,17 +38,47 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
       .setParameter("id", usuario.getId())
       .uniqueResult();
     if (existente == null) {
-      throw new UsuarioNoEncontrado();
+      throw new UsuarioNoEncontradoException();
     }
     sessionFactory.getCurrentSession().merge(usuario);
   }
 
   @Override
-  public Usuario buscarUsuarioPorId(Integer id) {
+  public Usuario buscarUsuarioPorUsername(String nick) {
     return sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where id = :id", Usuario.class)
-            .setParameter("id", id)
-            .uniqueResult();
+      .getCurrentSession()
+      .createQuery("from Usuario where username = :username", Usuario.class)
+      .setParameter("username", nick)
+      .uniqueResult();
+  }
+
+  @Override
+  public Boolean verificarEmailExistente(String email) {
+    Usuario existente = sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where email = :email", Usuario.class)
+      .setParameter("email", email)
+      .uniqueResult();
+
+    return existente != null;
+  }
+
+  @Override
+  public Boolean verificarUsernameExistente(String username) {
+    Usuario existente = sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where username = :username", Usuario.class)
+      .setParameter("username", username)
+      .uniqueResult();
+
+    return existente != null;
+  }
+
+  public Usuario buscarUsuarioPorId(Long id) {
+    return sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where id = :id", Usuario.class)
+      .setParameter("id", id)
+      .uniqueResult();
   }
 }
