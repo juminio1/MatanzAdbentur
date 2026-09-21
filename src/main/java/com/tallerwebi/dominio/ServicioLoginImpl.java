@@ -27,6 +27,11 @@ public class ServicioLoginImpl implements ServicioLogin {
   }
 
   @Override
+  public Usuario consultarUsuarioPorUsername(String username) {
+    return repositorioUsuario.buscarUsuarioPorUsername(username);
+  }
+
+  @Override
   public Usuario autenticar(String email, String password) throws CredencialesInvalidasException {
     validarParametros(email, password);
 
