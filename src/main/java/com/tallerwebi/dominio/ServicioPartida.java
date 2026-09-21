@@ -1,7 +1,7 @@
-/*package com.tallerwebi.dominio;
+package com.tallerwebi.dominio;
 @SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface ServicioPartida {
 
-    Partida crearPartida(Integer id);
+     Partida crearPartida(Long id);
 
-}*/
+}

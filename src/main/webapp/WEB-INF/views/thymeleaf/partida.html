@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Matancero - Partida</title>
+  <script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
+  <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css">
+  <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css">
+</head>
+
+<body class="fondo-ladrillos">
+
+  <main class="contenedor-partida">
+
+    <section class="barra-superior">
+
+      <!-- Cronometro de turno -->
+      <div class="cronometro">
+        <figure class="contenedor-cronometro-icono">
+          <img src="../../../resources/images/iconos/Reloj de arena.svg" alt="Reloj de arena" class="relojdearena-img">
+        </figure>
+        <span class="cronometro-nro" id="cronometro-nro">00:00</span>
+      </div>
+
+      <!-- Contenedor jugadores -->
+      <nav class="lista-jugadores">
+
+        <!-- JUGADOR ACTIVO -->
+        <article class="tarjeta-jugador-activo">
+          <figure class="contenedor-avatar">
+            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 1"
+              class="avatar-img">
+          </figure>
+          <div class="datos-jugador">
+            <h3 class="nombre-jugador">JUGADOR 1</h3>
+
+            <ul class="patrimonio-jugador" id="patrimonio-jugador">
+              <li class="item-estado" title="Dinero disponible">
+                <figure class="contenedor-icono-pesos">
+                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
+                </figure>
+                <data class="dinero-jugador" value="85000">85.000</data>
+              </li>
+              <li class="item-estado" title="Propiedades totales">
+                <figure class="contenedor-casa-icono">
+                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
+                </figure> <data class="propiedades-jugador" value="1">1</data>
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- JUGADOR 2 -->
+        <article class="tarjeta-jugador-2">
+          <figure class="contenedor-avatar">
+            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
+              class="avatar-img">
+          </figure>
+          <div class="datos-jugador">
+            <h3 class="nombre-jugador">JUGADOR 2</h3>
+
+            <ul class="patrimonio-jugador" id="patrimonio-jugador">
+              <li class="item-estado" title="Dinero disponible">
+                <figure class="contenedor-icono-pesos">
+                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
+                </figure>
+                <data class="dinero-jugador" value="85000">85.000</data>
+              </li>
+              <li class="item-estado" title="Propiedades totales">
+                <figure class="contenedor-casa-icono">
+                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
+                </figure> <data class="propiedades-jugador" value="1">1</data>
+              </li>
+            </ul>
+          </div>
+        </article>
+        <!-- JUGADOR 3 -->
+        <article class="tarjeta-jugador-2">
+          <figure class="contenedor-avatar">
+            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
+              class="avatar-img">
+          </figure>
+          <div class="datos-jugador">
+            <h3 class="nombre-jugador">JUGADOR 3</h3>
+
+            <ul class="patrimonio-jugador" id="patrimonio-jugador">
+              <li class="item-estado" title="Dinero disponible">
+                <figure class="contenedor-icono-pesos">
+                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
+                </figure>
+                <data class="dinero-jugador" value="85000">85.000</data>
+              </li>
+              <li class="item-estado" title="Propiedades totales">
+                <figure class="contenedor-casa-icono">
+                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
+                </figure> <data class="propiedades-jugador" value="1">1</data>
+              </li>
+            </ul>
+          </div>
+        </article>
+        <!-- JUGADOR 4 -->
+        <article class="tarjeta-jugador-2">
+          <figure class="contenedor-avatar">
+            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
+              class="avatar-img">
+          </figure>
+          <div class="datos-jugador">
+            <h3 class="nombre-jugador">JUGADOR 4</h3>
+
+            <ul class="patrimonio-jugador" id="patrimonio-jugador">
+              <li class="item-estado" title="Dinero disponible">
+                <figure class="contenedor-icono-pesos">
+                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
+                </figure>
+                <data class="dinero-jugador" value="85000">85.000</data>
+              </li>
+              <li class="item-estado" title="Propiedades totales">
+                <figure class="contenedor-casa-icono">
+                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
+                </figure> <data class="propiedades-jugador" value="1">1</data>
+              </li>
+            </ul>
+          </div>
+        </article>
+      </nav>
+    </section>
+
+    <!---AREA PRINCIPAL (JUEGO + ACCIONES)-->
+    <section class="area-juego">
+
+      <!--Columna Izquierda -->
+      <div class="columna-principal">
+
+        <div class="Contenedor-tablero">
+          <figure class="tablero">
+            <img src="../../../resources/images/" alt="Tablero de juego" class="tablero-img">
+          </figure>
+        </div>
+
+
+        <!-- Controles Inferiores -->
+        <div class="controles-juego">
+
+          <div class="contenedor-dados">
+            <figure class="dados-icono">
+              <img src="../../../resources/images/iconos/dados.svg" alt="Icono dados" class="dados-img">
+            </figure>
+            <button type="button" class="btn-primario" id="btn-primario">Tirar Dados</button>
+          </div>
+
+          <button class="btn-accion" id="btn-abrir-opciones" title="Más opciones">
+            <img src="../../../resources/images/iconos//flecha.svg" alt="Flecha" class="icono-btn">
+          </button>
+
+          <nav class="barra-opciones-extra" id="barra-opciones-extra">
+            <button class="btn-cerrar-opciones" id="btn-cerrar-opciones" title="Cerrar opciones">
+              <img src="../../../resources/images/iconos/flecha.svg" alt="Cerrar" class="icono-btn icono-cerrar">
+            </button>
+            <button class="btn-extra">Opción A</button>
+            <button class="btn-extra">Opción B</button>
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMNA DERECHA: Notificaciones y Celular -->
+
+    <aside class="panel-derecho" id="panel-derecho">
+
+      <!-- Panel de Notificaciones -->
+      <section class="panel-notificaciones">
+        <header class="notificaciones__header">
+          <h2>Notificaciones</h2>
+        </header>
+
+        <ul class="lista-msj" id="lista-msj">
+          <li class="msj-sistema" id="msj-sistema">Esperando tirada...</li>
+        </ul>
+      </section>
+
+      <!-- Celular: acceso a IA y Mercado Pago -->
+      <section class="contenedor-celular">
+        <div class="pantalla-celular">
+          <button class="btn-terciario" id="btn-tertiary">La Ia</button>
+          <button class="btn-terciario" id="btn-tertiary">El Mp</button>
+        </div>
+      </section>
+
+    </aside>
+
+  </main>
+</body>
+
+</html>

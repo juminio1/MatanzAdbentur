@@ -8,305 +8,177 @@
   --font-texto: 'Barlow', sans-serif;
 
   /* Tamaños (desktop) */
-  --fs-h1: 2.4375em;   /* 39px */
-  --fs-h2: 1.9375em;   /* 31px */
-  --fs-h3: 1.5625em;   /* 25px */
-  --fs-h4: 1.25em;     /* 20px */
-  --fs-body: 1em;      /* 16px */
-  --fs-secundario: 0.875em; /* 14px */
-  --fs-boton: 1rem;    /* 16px */
-  --fs-label: 0.875rem;/* 14px */
-  --fs-caption: 0.75rem; /* 12px */
-  --fs-navbar: 1em;    /* 16px */
+  --fs-h1: 2.5rem;
+  /* 39px */
+  --fs-h2: 2rem;
+  /* 31px */
+  --fs-h3: 1.5rem;
+  /* 25px */
+  --fs-h4: 1rem;
+  /* 20px */
+  --fs-body: 1rem;
+  /* 16px */
 
-  /* Pesos: títulos usan semibold/bold/extrabold de Barlow Condensed */
-  --fw-regular: 400;
-  --fw-medium: 500;
-  --fw-semibold: 600;
-  --fw-bold: 700;
-  --fw-extrabold: 800;
-
-  --lh-h1: 1.15;
-  --lh-h2: 1.2;
-  --lh-h3: 1.25;
-  --lh-h4: 1.3;
-  --lh-body: 1.5;
 
   /* Colores principales */
-  --color-crema: #EFEAE2;
-  --color-beige: #C9BDA9;
-  --color-negro: #1E1E1E;
-  --color-azul: #2C3EDB;
-  --color-azul-hover: #2432B0;
-  --color-celeste: #2AA6C4;
+  --color-blanco: #FAFAFA;
+  --color-gris-oscuro: #A1A1A1;
+  --color-negro: #333333;
+  --color-azul: #16446A;
+  --color-azul-hover: #415E75;
+  --color-celeste: #7DBEDC;
 
   /* Colores de acento */
-  --color-dorado: #C99A2E;
-  --color-dorado-hover: #E0B93A;
-  --color-rojo: #E4384D;
-  --color-verde: #1E7A34;
-  --color-amarillo: #F2C94C;
-  --color-amarillo-hover: #E0B93A;
+  --color-dorado: #BDA52F;
+  --color-amarillo: #EBD689;
+  --color-rojo: #E24F4A;
+  --color-ladrillo: #DD805F;
+  --color-ladrillo-oscuro: #AA6B62;
 
-  --color-fondo: #F5F1EA;
-  --color-blanco: #FFFFFF;
 
-  --color-secundario-bg: #C9BDA9;
-  --color-secundario-bg-hover: #B8AB94;
+  --color-fondo1: #FAFAFA;
+  --color-fondo2: var(--color-negro);
 
-  /* Espaciado (múltiplos de 8) */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 40px;
-  --space-2xl: 64px;
-  --space-3xl: 96px;
+  --color-text-main: var(--color-negro);
+  --color-text-inverse: var(--color-blanco);
+  --color-surface: var(--color-blanco);
+  --color-background: var(--color-fondo1);
+  --color-border: var(--color-negro);
 
-  --container-max: 1200px;
-  --margin-desktop: 64px;
-  --margin-tablet: 40px;
-  --margin-mobile: 20px;
 
-  --btn-radius: 999px;
-  --btn-padding-y: 12px;
-  --btn-padding-x: 28px;
-  --btn-min-height: 3em;
-  --btn-min-width: 6.25em;
-  --btn-min-touch: 2.75em;
-  --btn-border-width: 0.125em;
-  --transition-base: 0.2s ease;
-
-  --focus-color: var(--color-celeste);
-  --focus-offset: 2px;
-}
-
-/* ---- Reset básico ---- */
-*, *::before, *::after {
-  box-sizing: border-box;
+  /* ---------- OTROS ---------- */
+  --radius-btn: 999px;
+  --border-btn: 2px solid var(--color-border);
+  --transition-btn: 0.2s ease;
 }
 
 body {
   margin: 0;
-  font-family: var(--font-texto);
+  font-family: var(--font-secundarios);
   font-size: var(--fs-body);
-  font-weight: var(--fw-regular);
-  line-height: var(--lh-body);
-  color: var(--color-negro);
-  background-color: var(--color-fondo);
+  color: var(--color-text-main);
+  background-color: var(--color-background);
 }
 
-img, svg {
-  max-width: 100%;
-  display: block;
+/* TIPOGRAFÍA*/
+span,
+h1,
+.h1,
+h2,
+.h2,
+h3,
+.h3,
+h4,
+.h4 {
+  line-height: 1.15;
+  margin: 0 0 0.5em 0;
+  color: var(--color-text-main);
 }
 
-/* ---- Tipografía ---- */
-h1, .h1 {
+h1,
+.h1 {
+  text-transform: uppercase;
   font-family: var(--font-titulos);
   font-size: var(--fs-h1);
-  font-weight: var(--fw-extrabold);
-  line-height: var(--lh-h1);
-  margin: 0 0 var(--space-md);
+  font-weight: 800;
 }
 
-h2, .h2 {
+h2,
+.h2 {
+  text-transform: uppercase;
   font-family: var(--font-titulos);
   font-size: var(--fs-h2);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-h2);
-  margin: 0 0 var(--space-md);
+  font-weight: 700;
 }
 
-h3, .h3 {
+h3,
+.h3 {
+  text-transform: uppercase;
   font-family: var(--font-titulos);
   font-size: var(--fs-h3);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-h3);
-  margin: 0 0 var(--space-sm);
+  font-weight: 600;
 }
 
-h4, .h4 {
-  font-family: var(--font-titulos);
+h4,
+.h4,
+span {
+  font-family: var(--font-texto);
   font-size: var(--fs-h4);
-  font-weight: var(--fw-semibold);
-  line-height: var(--lh-h4);
-  margin: 0 0 var(--space-sm);
+  font-weight: 400;
 }
 
-p, .texto-body {
+p,
+.body-text {
   font-family: var(--font-texto);
   font-size: var(--fs-body);
-  font-weight: var(--fw-regular);
-  margin: 0 0 var(--space-md);
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0 0 1em 0;
 }
 
-.texto-secundario {
-  font-family: var(--font-texto);
-  font-size: var(--fs-secundario);
-  font-weight: var(--fw-regular);
-  color: var(--color-negro);
-  opacity: 0.75;
-}
 
-.caption {
-  font-family: var(--font-texto);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-regular);
-  opacity: 0.65;
-}
-
-label {
-  font-family: var(--font-texto);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-medium);
-}
-
-.navbar {
-  font-family: var(--font-texto);
-  font-size: var(--fs-navbar);
-  font-weight: var(--fw-medium);
-}
-
-/* ---- Botones ---- */
+/* BOTONES */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
-  font-family: var(--font-texto);
-  font-size: var(--fs-boton);
-  font-weight: var(--fw-semibold);
-  padding: var(--btn-padding-y) var(--btn-padding-x);
-  min-height: var(--btn-min-height);
-  min-width: var(--btn-min-width);
-  border-radius: var(--btn-radius);
-  border: none;
+  gap: 0.5em;
+  border-radius: var(--radius-btn);
+  padding: 0.75em 1.75em;
   cursor: pointer;
-  text-decoration: none;
-  transition: background-color var(--transition-base),
-              color var(--transition-base),
-              box-shadow var(--transition-base),
-              transform var(--transition-base);
+  transition: transform var(--transition-btn), filter var(--transition-btn);
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .btn:active {
   transform: translateY(0);
+  filter: brightness(0.95);
 }
 
-.btn:disabled,
-.btn.is-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--focus-color);
-  outline-offset: var(--focus-offset);
-}
-
-.btn--primario {
+/* Botón principal (azul, con borde) */
+.btn-primario {
   background-color: var(--color-azul);
   color: var(--color-blanco);
-  border: var(--btn-border-width) solid var(--color-negro);
+  border: var(--border-btn);
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-weight: 700;
+  font-size: var(--fs-h3);
+
 }
 
-.btn--primario:hover {
-  background-color: var(--color-azul-hover);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+.btn-primario:hover {
+  background-color: var(--color-celeste);
+  color: var(--color-text-main);
 }
 
-.btn--dorado {
-  background-color: var(--color-amarillo);
+/* Botón segundo (ladrillo oscuro, con borde) */
+.btn-secundario {
+  background-color: var(--color-ladrillo-oscuro);
+  color: var(--color-text-inverse);
+  border: var(--border-btn);
+  font-variant: small-caps;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h4);
+}
+
+.btn-secundario:hover {
+  background-color: var(--color-ladrillo);
+  color: var(--color-text-inverse);
+}
+
+/* Botón tercero (gris, sin borde, más sutil) */
+.btn-terciario {
+  border-radius: 2rem;
+  padding: 0.6rem;
+  box-shadow: 0 2px 4px var(--color-negro);
+  background-color: #B6A8A2;
   color: var(--color-negro);
-  border: var(--btn-border-width) solid var(--color-negro);
+  text-transform: uppercase;
+  font-family: var(--font-titulos);
+  font-size: var(--fs-h3);
 }
-
-.btn--dorado:hover {
-  background-color: var(--color-amarillo-hover);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.btn--secundario {
-  background-color: var(--color-secundario-bg);
-  color: var(--color-negro);
-  border: none;
-}
-
-.btn--secundario:hover {
-  background-color: var(--color-secundario-bg-hover);
-}
-
-.btn--terciario {
-  background-color: var(--color-crema);
-  color: var(--color-azul);
-  border: var(--btn-border-width) solid var(--color-azul);
-}
-
-.btn--terciario:hover {
-  background-color: var(--color-azul);
-  color: var(--color-blanco);
-}
-
-/* ---- Layout / contenedor ---- */
-.container {
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding-left: var(--margin-desktop);
-  padding-right: var(--margin-desktop);
-}
-
-.seccion {
-  padding-top: var(--space-2xl);
-  padding-bottom: var(--space-2xl);
-}
-
-@media (max-width: 1199px) {
-  .container {
-    padding-left: var(--margin-tablet);
-    padding-right: var(--margin-tablet);
-  }
-
-  h1, .h1 { font-size: 2em; }
-  h2, .h2 { font-size: 1.625em; }
-  h3, .h3 { font-size: 1.3125em; }
-  h4, .h4 { font-size: 1.125em; }
-}
-
-@media (max-width: 767px) {
-  .container {
-    padding-left: var(--margin-mobile);
-    padding-right: var(--margin-mobile);
-  }
-
-  .seccion {
-    padding-top: var(--space-xl);
-    padding-bottom: var(--space-xl);
-  }
-
-  h1, .h1 { font-size: 1.625em; }
-  h2, .h2 { font-size: 1.375em; }
-  h3, .h3 { font-size: 1.1875em; }
-  h4, .h4 { font-size: 1.0625em; }
-  p, .texto-body { font-size: 0.9375em; }
-}
-
-/* ---- Utilidades de color ---- */
-.bg-crema { background-color: var(--color-crema); }
-.bg-fondo { background-color: var(--color-fondo); }
-.bg-azul { background-color: var(--color-azul); color: var(--color-blanco); }
-.bg-negro { background-color: var(--color-negro); color: var(--color-blanco); }
-
-.text-azul { color: var(--color-azul); }
-.text-celeste { color: var(--color-celeste); }
-.text-dorado { color: var(--color-dorado); }
-.text-rojo { color: var(--color-rojo); }
-.text-verde { color: var(--color-verde); }
-
-.badge-error { background-color: var(--color-rojo); color: var(--color-blanco); }
-.badge-exito { background-color: var(--color-verde); color: var(--color-blanco); }
-.badge-highlight { background-color: var(--color-amarillo); color: var(--color-negro); }
