@@ -2,30 +2,17 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Monopoly Matanza - Lobby</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background-color: #12141d;
-      color: #f8f9fa;
-      min-height: 100vh;
-    }
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    .lobby-card {
-      background: #1e2230;
-      border-radius: 12px;
-      border: 1px solid #32384e;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    }
+    <title>Taller Web I</title>
 
-    .character-card {
-      cursor: pointer;
-      border: 2px solid #32384e;
-      transition: transform 0.2s, border-color 0.2s;
-      background-color: #161924;
-    }
+    <!-- Boostrap core css -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+    <!-- custom style -->
+    <link rel="stylesheet" th:href="@{/css/home.css}" />
 
     .character-card:hover {
       border-color: #ffc107;
@@ -36,60 +23,39 @@
 
 <body>
 
-  <nav class="navbar navbar-dark bg-dark px-4 border-bottom border-secondary">
-    <div class="container-fluid">
-      <span class="navbar-brand fw-bold text-warning">🎲 MONOPOLY MATANZA</span>
-      <div class="d-flex align-items-center">
-        <span class="me-3 text-light">Jugador: <strong class="text-info"
-            th:text="${nombreJugador}">Brian</strong></span>
-        <a th:href="@{/login}" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
-      </div>
-    </div>
-  </nav>
+    <header>
+ 
+        <img th:src="@{/imagenes/Logo.png}" alt="El Matancero" class="logo-nav-img">
 
-  <div class="container py-5">
-    <div class="row justify-content-center">
-      <div class="col-lg-9">
-        <div class="lobby-card p-4 p-md-5 text-center">
-          <h1 class="display-6 fw-bold mb-2">
-            ¡Bienvenido a La Matanza, <span class="text-warning" th:text="${nombreJugador}">Brian</span>!
-          </h1>
-          <p class="text-muted mb-4">Elegí tu personaje para salir a recorrer los 20 casilleros del partido.</p>
+        <nav>
+            <a href="#">Acerca de</a>
+            <a href="#">¿Cómo se juega?</a>
+            <a href="/login" class="btn-login">Iniciar Sesión</a>
+        </nav>
+    </header>
 
-          <div class="row g-3 mb-5 text-start">
-            <div class="col-md-4">
-              <div class="card character-card text-light p-3 h-100">
-                <h5 class="card-title text-info mb-1">🧢 El Brian</h5>
-                <p class="card-text small text-secondary">Conoce todos los atajos de Laferrere. Los robos de Kevin le
-                  sacan un 20% menos de plata.</p>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="card character-card text-light p-3 h-100">
-                <h5 class="card-title text-success mb-1">👵 La Tía Rosa</h5>
-                <p class="card-text small text-secondary">Jubilada de San Justo. Al pasar por "Arrancaste de abajo"
-                  cobra un bono extra.</p>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="card character-card text-light p-3 h-100">
-                <h5 class="card-title text-warning mb-1">🚐 El Remisero</h5>
-                <p class="card-text small text-secondary">Maneja por toda la Ruta 3. Zafa de los controles policiales y
-                  no paga multas.</p>
-              </div>
-            </div>
-          </div>
+    <main class="hero">
+        <div class="hero-text">
+            <img th:src="@{/imagenes/Logo.png}"
+                alt="El Matancero" class="main-title-img">
+            <h2 class="subtitle">Acá el que se aviva, gana.</h2>
 
-          <div class="d-grid gap-2 col-md-6 mx-auto">
-            <button type="button" class="btn btn-warning btn-lg fw-bold py-3 shadow" disabled>
-              🎲 IR AL TABLERO (En construcción)
-            </button>
-            <small class="text-muted">Tus compañeros están terminando el diseño de los casilleros.</small>
-          </div>
+            <p>Divertite con tus amigos mientras recorrés<br>
+                La Matanza, comprás propiedades y tomá decisiones<br>
+                para llegar al final con el mayor patrimonio.</p>
+
+            <p>Inflación, cortes, oportunidades y alguna que otra<br>sorpresa.<br>
+                Acá puede pasar de todo.</p>
+
+            <a href="/login" class="btn-play">JUGAR AHORA</a>
         </div>
-      </div>
-    </div>
-  </div>
+
+        <div class="hero-image">
+           
+            <img th:src="@{/imagenes/ImagenCiudad.png}"
+                alt="Imagen ciudad">
+        </div>
+    </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -12,3 +12,4 @@ public interface RepositorioUsuario {
   Boolean verificarUsernameExistente(String username);
   Usuario buscarUsuarioPorId(Long id);
 }
+
