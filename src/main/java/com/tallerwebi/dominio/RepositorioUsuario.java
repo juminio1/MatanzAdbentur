@@ -8,5 +8,5 @@ public interface RepositorioUsuario {
   Boolean verificarEmailExistente(String email);
   Boolean verificarUsernameExistente(String username);
 
-  Usuario buscarUsuarioPorId(Integer id);
+  Usuario buscarUsuarioPorId(Long id);
 }

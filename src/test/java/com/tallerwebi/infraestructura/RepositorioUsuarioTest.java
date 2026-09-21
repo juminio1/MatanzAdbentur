@@ -41,7 +41,7 @@ public class RepositorioUsuarioTest {
   public void deberiaGuardarUnNuevoUsuario() {
     String emailNuevoUsuario = "nuevo.usuario@test.com";
     // preparacion
-    Usuario usuario = this.dadoQueTengoUnUsuario(emailNuevoUsuario, "1234", "USER");
+    Usuario usuario = this.dadoQueTengoUnUsuario(emailNuevoUsuario, "juli123", "1234", "USER");
 
     // ejecucion
     this.cuandoGuardoUnUsuario(usuario);
@@ -56,7 +56,7 @@ public class RepositorioUsuarioTest {
   public void deberiaEncontrarUnUsuarioExistenteCuandoBuscoPorEmailYPassword() {
     String email = "test@test.com";
     String password = "123";
-    Usuario usuario = this.dadoQueTengoUnUsuario(email, password, "USER");
+    Usuario usuario = this.dadoQueTengoUnUsuario(email, "juli123", password, "USER");
     this.dadoQueExisteElUsuario(usuario);
 
     Usuario obtenido = this.cuandoBuscoUnUsuario(email);
@@ -76,7 +76,7 @@ public class RepositorioUsuarioTest {
   @Rollback
   public void deberiaEncontrarUnUsuarioExistenteCuandoBuscoPorEmail() {
     String email = "test@test.com";
-    Usuario usuario = this.dadoQueTengoUnUsuario(email, "123", "USER");
+    Usuario usuario = this.dadoQueTengoUnUsuario(email, "juli123", "123", "USER");
     this.dadoQueExisteElUsuario(usuario);
     Usuario obtenido = this.repositorioUsuario.buscarUsuarioPorEmail(email);
 
@@ -88,7 +88,7 @@ public class RepositorioUsuarioTest {
   @Rollback
   public void deberiaModificarUnUsuarioExistente() {
     String email = "test@test.com";
-    Usuario usuario = this.dadoQueTengoUnUsuario(email, "123", "USER");
+    Usuario usuario = this.dadoQueTengoUnUsuario(email, "juli123", "123", "USER");
     this.dadoQueExisteElUsuario(usuario);
 
     usuario.setPassword("4567");
@@ -105,20 +105,129 @@ public class RepositorioUsuarioTest {
   @Transactional
   @Rollback
   public void deberiaLanzarUnaExcepcionAlIntentarModificarUnUsuarioInexistente() {
-    Usuario usuario = this.dadoQueTengoUnUsuario("noexiste@test.com", "123", "USER");
+    Usuario usuario = this.dadoQueTengoUnUsuario("noexiste@test.com", "juli123", "123", "USER");
 
     // Al no tener ID (no estar persistido), buscar por id devuelve null y
     // modificar debe lanzar UsuarioNoEncontrado.
     this.entoncesSeLanzaUnaUsuarioNoEncontrado(usuario);
   }
 
-  private Usuario dadoQueTengoUnUsuario(String email, String password, String rol) {
+  private Usuario dadoQueTengoUnUsuario(String email, String username, String password, String rol) {
     Usuario usuario = new Usuario();
     usuario.setEmail(email);
     usuario.setPassword(password);
     usuario.setRol(rol);
-    usuario.setUsername("usuarioDePrueba");
+    usuario.setUsername(username);
     return usuario;
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroBuscarUnUsuarioPorUsernameExistente() {
+    // Preparación
+    String email = "juli@gmail.com";
+    String username = "juli123";
+    String password = "estaOk123$";
+    String rol = "user";
+    Usuario user = this.dadoQueTengoUnUsuario(email, username, password, rol);
+    this.dadoQueExisteElUsuario(user);
+    // this.cuandoGuardoUnUsuario(user); // El usuario ya esta persistido loquita
+
+    // Ejecución
+    String nickBuscado = "juli123";
+    Usuario userBuscado = this.cuandoBuscoUnUsuarioPorUsername(nickBuscado);
+
+    // Validación
+    assertThat(userBuscado.getUsername(), equalTo(username));
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroVerificarUnUsuarioPorUsernameExistente() {
+    // Preparación
+    String email = "juli@gmail.com";
+    String username = "juli123";
+    String password = "estaOk123$";
+    String rol = "user";
+    Usuario user = this.dadoQueTengoUnUsuario(email, username, password, rol);
+    this.dadoQueExisteElUsuario(user);
+
+    // Ejecución
+    Boolean userVerificado = this.repositorioUsuario.verificarUsernameExistente(username);
+
+    // Validación
+    assertThat(userVerificado, is(true));
+  }
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroVerificarUnUsuarioPorEmailInexistente() {
+    // Preparación
+    String email = "juli123@gmail.com";
+
+    // Ejecución
+    Boolean userVerificado = this.repositorioUsuario.verificarEmailExistente(email);
+
+    // Validación
+    assertThat(userVerificado, is(false));
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroVerificarUnUsuarioPorUsernameInexistente() {
+    // Preparación
+    String username = "juli123";
+
+    // Ejecución
+    Boolean userVerificado = this.repositorioUsuario.verificarUsernameExistente(username);
+
+    // Validación
+    assertThat(userVerificado, is(false));
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroVerificarUnUsuarioPorEmailExistente() {
+    // Preparación
+    String email = "juli@gmail.com";
+    String username = "juli123";
+    String password = "estaOk123$";
+    String rol = "user";
+    Usuario user = this.dadoQueTengoUnUsuario(email, username, password, rol);
+
+    this.dadoQueExisteElUsuario(user);
+
+    // Ejecución
+    Boolean userVerificado = this.repositorioUsuario.verificarEmailExistente(email);
+
+    // Validación
+    assertThat(userVerificado, is(true));
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void quieroBuscarUnUsuarioPorId() {
+    // Preparación
+    String email = "juli@gmail.com";
+    String username = "juli123";
+    String password = "estaOk123$";
+    String rol = "user";
+    Usuario user = this.dadoQueTengoUnUsuario(email, username, password, rol);
+    this.dadoQueExisteElUsuario(user);
+
+    Long idGenerado = user.getId();
+
+    // Ejecución
+    Usuario userBuscado = this.repositorioUsuario.buscarUsuarioPorId(idGenerado);
+
+    // Validación
+    //Long idEsperado = 1L;
+    assertThat(user.getId(), equalTo(userBuscado.getId()));
   }
 
   private void dadoQueExisteElUsuario(Usuario usuario) {
@@ -131,6 +240,10 @@ public class RepositorioUsuarioTest {
 
   private Usuario cuandoBuscoUnUsuario(String email) {
     return repositorioUsuario.buscarUsuarioPorEmail(email);
+  }
+
+  private Usuario cuandoBuscoUnUsuarioPorUsername(String username) {
+    return repositorioUsuario.buscarUsuarioPorUsername(username);
   }
 
   private void cuandoModificoUnUsuario(Usuario usuario) {
@@ -146,10 +259,10 @@ public class RepositorioUsuarioTest {
   }
 
   private void entoncesElUsuarioObtenidoEsCorrecto(
-    Usuario usuarioObtenido,
-    Usuario usuarioEsperado
-  ) {
+      Usuario usuarioObtenido,
+      Usuario usuarioEsperado) {
     assertThat(usuarioObtenido.getEmail(), is(equalTo(usuarioEsperado.getEmail())));
+    assertThat(usuarioObtenido.getUsername(), is(equalTo(usuarioEsperado.getUsername())));
     assertThat(usuarioObtenido.getPassword(), is(equalTo(usuarioEsperado.getPassword())));
     assertThat(usuarioObtenido.getActivo(), is(equalTo(usuarioEsperado.getActivo())));
     assertThat(usuarioObtenido.getRol(), is(equalTo(usuarioEsperado.getRol())));
@@ -161,10 +274,9 @@ public class RepositorioUsuarioTest {
 
   private void entoncesSeLanzaUnaUsuarioNoEncontrado(Usuario usuario) {
     assertThrows(
-      UsuarioNoEncontradoException.class,
-      () -> {
-        this.cuandoModificoUnUsuario(usuario);
-      }
-    );
+        UsuarioNoEncontradoException.class,
+        () -> {
+          this.cuandoModificoUnUsuario(usuario);
+        });
   }
 }
