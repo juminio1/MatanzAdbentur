@@ -1,6 +1,7 @@
 package com.tallerwebi.infraestructura;
 
 import com.tallerwebi.dominio.Partida;
+import jakarta.persistence.NoResultException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -8,7 +9,7 @@ import org.springframework.stereotype.Repository;
 @Repository("repositorioPartida")
 public class RepositorioPartidaImpl implements RepositorioPartida {
 
-  private SessionFactory sessionFactory;
+  private final SessionFactory sessionFactory;
 
   @Autowired
   public RepositorioPartidaImpl(SessionFactory sessionFactory) {
@@ -17,20 +18,34 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
   @Override
   public void guardarPartida(Partida partida) {
-    sessionFactory.getCurrentSession().persist(partida);
+    this.sessionFactory.getCurrentSession().persist(partida);
   }
 
-    @Override
-    public Partida buscarPartidaActiva() {
-        return null;
+  @Override
+  public Partida buscarPartidaActiva() {
+    String hql = "FROM Partida WHERE activa = true";
+    try {
+      return this.sessionFactory
+          .getCurrentSession()
+          .createQuery(hql, Partida.class)
+          .setMaxResults(1)
+          .getSingleResult();
+    } catch (NoResultException e) {
+      return null;
     }
+  }
 
   @Override
   public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-    return sessionFactory
-      .getCurrentSession()
-      .createQuery("from Partida where codigoUnico = :codigoUnico and activa = true", Partida.class)
-      .setParameter("codigoUnico", codigoUnico)
-      .uniqueResult();
+    String hql = "FROM Partida WHERE activa = true AND codigoUnico = :codigo";
+    try {
+      return this.sessionFactory
+          .getCurrentSession()
+          .createQuery(hql, Partida.class)
+          .setParameter("codigo", codigoUnico)
+          .getSingleResult();
+    } catch (NoResultException e) {
+      return null;
+    }
   }
 }

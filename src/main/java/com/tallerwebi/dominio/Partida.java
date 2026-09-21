@@ -11,7 +11,7 @@ public class Partida {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-
+  private String codigoUnico;
   private Instant tiempoInicio;
   @OneToOne(cascade = CascadeType.PERSIST)
   private Tablero tablero;
@@ -74,5 +74,13 @@ public class Partida {
 
   public void finalizar(){
         this.activa = false;
+    }
+
+    public String getCodigoUnico() {
+        return codigoUnico;
+    }
+
+    public void setCodigoUnico(String codigoUnico) {
+        this.codigoUnico = codigoUnico;
     }
 }

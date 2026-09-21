@@ -3,6 +3,9 @@ package com.tallerwebi.dominio;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -10,36 +13,37 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
+  private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  private static final int LONGITUD_CODIGO = 6;
+  private final Random random = new SecureRandom();
+
   private final RepositorioUsuario repositorioUsuario;
   private final RepositorioPartida repositorioPartida;
 
   @Autowired
   public ServicioPartidaImpl(RepositorioUsuario repositorioUsuario, RepositorioPartida repositorioPartida) {
-
     this.repositorioUsuario = repositorioUsuario;
     this.repositorioPartida = repositorioPartida;
   }
 
   @Override
-  public Partida crearPartida(Long id) throws UsuarioNoEncontradoException {
-    Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(id);
+  public Partida crearPartida(Long idUsuario) throws UsuarioNoEncontradoException {
+    Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
     if (usuarioEncontrado == null) {
       throw new UsuarioNoEncontradoException();
     }
 
     String codigoUnico;
-
     do {
       codigoUnico = generarCodigoUnico();
     } while (this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico) != null);
 
-    Tablero tablero = new Tablero();
-
     Partida partida = new Partida();
-    partida.setTablero(tablero);
-    // partida.setTiempoInicio(Instant.now());
-    // partida.agregarUsuario(usuarioEncontrado);
+    partida.setCodigoUnico(codigoUnico);
+    partida.setTablero(new Tablero());
+    partida.setTiempoInicio(Instant.now());
+    partida.agregarUsuario(usuarioEncontrado);
 
     this.repositorioPartida.guardarPartida(partida);
 
@@ -47,15 +51,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
   }
 
   private String generarCodigoUnico() {
-    String caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    StringBuilder codigo = new StringBuilder();
-
-    Integer longitudCodigo = 6;
-    for (int i = 0; i < longitudCodigo; i++) {
-      int posicion = (int) (Math.random() * caracteres.length());
-      codigo.append(caracteres.charAt(posicion));
+    StringBuilder codigo = new StringBuilder(LONGITUD_CODIGO);
+    for (int i = 0; i < LONGITUD_CODIGO; i++) {
+      int posicion = this.random.nextInt(CARACTERES.length());
+      codigo.append(CARACTERES.charAt(posicion));
     }
-
     return codigo.toString();
   }
 }
