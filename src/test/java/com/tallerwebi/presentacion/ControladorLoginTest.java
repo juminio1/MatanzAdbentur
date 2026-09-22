@@ -3,6 +3,8 @@ package com.tallerwebi.presentacion;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.ServicioLogin;
@@ -79,6 +81,70 @@ public class ControladorLoginTest {
     verify(sessionMock, times(1)).setAttribute("NOMBRE", "Dami");
   }
 
+ @Test
+public void loginCorrectoSinRequestPorParametroDeberiaUsarRequestDelControlador()
+    throws CredencialesInvalidasException {
+
+    // preparacion
+    Usuario usuarioEncontradoMock = mock(Usuario.class);
+
+    when(usuarioEncontradoMock.getRol()).thenReturn("ADMIN");
+    when(usuarioEncontradoMock.getUsername()).thenReturn("Dami");
+
+    when(requestMock.getSession()).thenReturn(sessionMock);
+
+    when(
+        servicioLoginMock.autenticar(
+            datosLoginMock.getEmail(),
+            datosLoginMock.getPassword()
+        )
+    ).thenReturn(usuarioEncontradoMock);
+
+    controladorLogin = new ControladorLogin(servicioLoginMock, requestMock);
+
+    // ejecucion
+    ModelAndView modelAndView =
+        controladorLogin.validarLogin(datosLoginMock, null);
+
+    // validacion
+    assertThat(
+        modelAndView.getViewName(),
+        equalToIgnoringCase("redirect:/home")
+    );
+
+    verify(sessionMock).setAttribute("ROL", "ADMIN");
+    verify(sessionMock).setAttribute("NOMBRE", "Dami");
+}
+
+@Test
+public void loginCorrectoConRequestPeroSinSesionDeberiaRedirigirAHome()
+    throws CredencialesInvalidasException {
+
+    // preparacion
+    Usuario usuarioEncontradoMock = mock(Usuario.class);
+
+    when(requestMock.getSession()).thenReturn(null);
+
+    when(
+        servicioLoginMock.autenticar(
+            datosLoginMock.getEmail(),
+            datosLoginMock.getPassword()
+        )
+    ).thenReturn(usuarioEncontradoMock);
+
+    // ejecucion
+    ModelAndView modelAndView =
+        controladorLogin.validarLogin(datosLoginMock, requestMock);
+
+    // validacion
+    assertThat(
+        modelAndView.getViewName(),
+        equalToIgnoringCase("redirect:/home")
+    );
+
+    verify(sessionMock, never()).setAttribute(anyString(), any());
+}
+
   @Test
   public void irALoginDeberiaRetornarVistaLoginConDatosLogin() {
     // ejecucion
@@ -97,6 +163,29 @@ public class ControladorLoginTest {
     // validacion
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("home"));
   }
+
+  @Test
+public void irAHomeConRequestPeroSinSesionDeberiaMostrarNombrePorDefecto() {
+
+    // preparacion
+    when(requestMock.getSession()).thenReturn(null);
+
+    controladorLogin = new ControladorLogin(servicioLoginMock, requestMock);
+
+    // ejecucion
+    ModelAndView modelAndView = controladorLogin.irAHome();
+
+    // validacion
+    assertThat(
+        modelAndView.getViewName(),
+        equalToIgnoringCase("home")
+    );
+
+    assertThat(
+        modelAndView.getModel().get("nombreJugador").toString(),
+        equalToIgnoringCase("Vecino de La Matanza")
+    );
+}
 
   @Test
   public void inicioDeberiaRedirigirALogin() {

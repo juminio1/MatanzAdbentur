@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -21,7 +23,7 @@ public class ServicioLoginImplTest {
 
   @Test
   public void queSePuedaAutenticarUnUsuarioConCredencialesCorrectas()
-    throws CredencialesInvalidasException {
+      throws CredencialesInvalidasException {
     // Preparación
     Usuario usuario = new Usuario();
     usuario.setEmail("juli@gmail.com");
@@ -39,11 +41,26 @@ public class ServicioLoginImplTest {
   }
 
   @Test
+  public void quieroConsultarUnUsuarioPorEmail() {
+
+    // Preparación
+    Usuario usuario = new Usuario();
+    usuario.setEmail("juli@gmail.com");
+
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
+
+    // Ejecución
+    Usuario usuarioBuscado = servicioLogin.consultarUsuario(usuario.getEmail());
+
+    // Validación
+    assertThat(usuarioBuscado.getEmail(), equalTo(usuario.getEmail()));
+  }
+
+  @Test
   public void queNoSePuedaAutenticarUnUsuarioQueNoExiste() {
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", "1234")
-    );
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", "1234"));
   }
 
   @Test
@@ -57,9 +74,8 @@ public class ServicioLoginImplTest {
     when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
 
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", "1235")
-    );
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", "1235"));
   }
 
   @Test
@@ -73,9 +89,8 @@ public class ServicioLoginImplTest {
     when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
 
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("", "1234")
-    );
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("", "1234"));
   }
 
   @Test
@@ -89,9 +104,8 @@ public class ServicioLoginImplTest {
     when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
 
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar(null, "1234")
-    );
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar(null, "1234"));
   }
 
   @Test
@@ -105,9 +119,8 @@ public class ServicioLoginImplTest {
     when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
 
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", null)
-    );
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", null));
   }
 
   @Test
