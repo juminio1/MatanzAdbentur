@@ -60,7 +60,7 @@ public class ServicioRegistroImpl implements ServicioRegistro {
   private String hashearContrasenia(String password) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256"); //Instancia un algoritmo
-      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8)); //El algoritmo codifica en utf_8 
+      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8)); //El algoritmo codifica en utf_8
       StringBuilder hexString = new StringBuilder(2 * encodedhash.length);
       for (byte unByte : encodedhash) {
         String hex = Integer.toHexString(MASK_BYTE & unByte);

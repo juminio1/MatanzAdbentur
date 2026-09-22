@@ -1,14 +1,13 @@
 package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
 import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import com.tallerwebi.infraestructura.RepositorioUsuario;
 
 @Service("servicioLogin")
 @Transactional
