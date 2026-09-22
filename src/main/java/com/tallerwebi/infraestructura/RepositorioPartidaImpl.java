@@ -1,5 +1,6 @@
 package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.EstadoPartida;
 import com.tallerwebi.dominio.Partida;
 import jakarta.persistence.NoResultException;
 import org.hibernate.SessionFactory;
@@ -23,11 +24,12 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
   @Override
   public Partida buscarPartidaActiva() {
-    String hql = "FROM Partida WHERE activa = true";
+    String hql = "FROM Partida WHERE estado != :finalizada";
     try {
       return this.sessionFactory
           .getCurrentSession()
           .createQuery(hql, Partida.class)
+          .setParameter("finalizada", EstadoPartida.FINALIZADA)
           .setMaxResults(1)
           .getSingleResult();
     } catch (NoResultException e) {
@@ -37,12 +39,13 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
   @Override
   public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-    String hql = "FROM Partida WHERE activa = true AND codigoUnico = :codigo";
+    String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
     try {
       return this.sessionFactory
           .getCurrentSession()
           .createQuery(hql, Partida.class)
           .setParameter("codigo", codigoUnico)
+          .setParameter("finalizada", EstadoPartida.FINALIZADA)
           .getSingleResult();
     } catch (NoResultException e) {
       return null;
