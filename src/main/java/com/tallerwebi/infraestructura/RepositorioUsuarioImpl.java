@@ -1,6 +1,5 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.RepositorioUsuario;
 import com.tallerwebi.dominio.Usuario;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import org.hibernate.SessionFactory;
@@ -75,7 +74,7 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
     return existente != null;
   }
 
-  public Usuario buscarUsuarioPorId(Integer id) {
+  public Usuario buscarUsuarioPorId(Long id) {
     return sessionFactory
       .getCurrentSession()
       .createQuery("from Usuario where id = :id", Usuario.class)

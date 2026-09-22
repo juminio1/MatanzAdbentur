@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.RegistroDTO;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -58,8 +59,8 @@ public class ServicioRegistroImpl implements ServicioRegistro {
 
   private String hashearContrasenia(String password) {
     try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+      MessageDigest digest = MessageDigest.getInstance("SHA-256"); //Instancia un algoritmo
+      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8)); //El algoritmo codifica en utf_8 
       StringBuilder hexString = new StringBuilder(2 * encodedhash.length);
       for (byte unByte : encodedhash) {
         String hex = Integer.toHexString(MASK_BYTE & unByte);

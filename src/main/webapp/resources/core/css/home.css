@@ -179,7 +179,8 @@ nav a:hover {
     filter: drop-shadow(-10px 10px 15px rgba(0, 0, 0, 0.1));
 }
 
-/* RESPONSIVE (Para celulares) */
+
+/* RESPONSIVE (Tablets y Celulares) */
 @media (max-width: 900px) {
     .hero {
         flex-direction: column;
@@ -192,16 +193,57 @@ nav a:hover {
         margin-bottom: 40px;
     }
 
+    /* Ajustamos tamaños de fuente para que no se desborden */
     .main-title {
-        font-size: 50px;
+        font-size: 40px; /* Un poco más chico para que entre bien */
     }
 
     .subtitle {
-        font-size: 28px;
+        font-size: 24px;
+    }
+
+    /* Cambiamos el header para que apile el logo y el menú */
+    header {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    /* Hacemos que el menú se envuelva si no hay espacio */
+    nav {
+        display: flex;
+        flex-wrap: wrap; 
+        justify-content: center;
+        gap: 15px;
+    }
+}
+
+/* RESPONSIVE (Celulares pequeños) */
+@media (max-width: 480px) {
+    .main-title-img {
+        max-width: 80%; /* Evita que la imagen del título ocupe los bordes */
+    }
+
+    .subtitle {
+        font-size: 20px;
+    }
+
+    .hero-text p {
+        font-size: 14px; /* Achicamos un poco el texto descriptivo */
+    }
+
+    .btn-play {
+        width: 100%; /* Hacemos que el botón ocupe todo el ancho para facilitar el toque */
+        padding: 12px 0;
     }
 
     nav {
-        display: none;
-        /* Podríamos agregar un menú hamburguesa después */
+        flex-direction: column; /* Apilamos los links del menú hacia abajo */
+        width: 100%;
+    }
+
+    .btn-login {
+        width: 100%;
+        text-align: center;
     }
 }

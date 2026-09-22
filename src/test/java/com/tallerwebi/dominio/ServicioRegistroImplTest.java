@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.RegistroDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

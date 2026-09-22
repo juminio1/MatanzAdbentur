@@ -1,5 +1,8 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.Usuario;
+
+//@SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface RepositorioUsuario {
   Usuario buscarUsuarioPorEmail(String email);
   void guardar(Usuario usuario);
@@ -7,6 +10,5 @@ public interface RepositorioUsuario {
   Usuario buscarUsuarioPorUsername(String nick);
   Boolean verificarEmailExistente(String email);
   Boolean verificarUsernameExistente(String username);
-
-  Usuario buscarUsuarioPorId(Integer id);
+  Usuario buscarUsuarioPorId(Long id);
 }
