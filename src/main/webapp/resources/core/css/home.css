@@ -246,4 +246,142 @@ nav a:hover {
         width: 100%;
         text-align: center;
     }
+
+    .modal-partida {
+    display: none;
+
+    position: fixed;
+    z-index: 1000;
+
+    left: 0;
+    top: 0;
+
+    width: 100%;
+    height: 100%;
+
+    background-color: rgba(0, 0, 0, 0.55);
+
+    justify-content: center;
+    align-items: center;
+}
+
+
+/* Cuando el modal está abierto */
+.modal-partida.activo {
+    display: flex;
+}
+
+
+/* Caja del modal */
+.modal-contenido {
+    position: relative;
+
+    background-color: white;
+
+    width: 90%;
+    max-width: 450px;
+
+    padding: 45px 40px 40px;
+
+    border-radius: 18px;
+
+    text-align: center;
+
+    border: 3px solid #111;
+}
+
+
+/* Título */
+.modal-contenido h2 {
+    font-size: 28px;
+
+    margin-bottom: 10px;
+
+    color: #111;
+}
+
+
+/* Texto */
+.modal-contenido p {
+    font-size: 16px;
+
+    color: #666;
+
+    margin-bottom: 30px;
+}
+
+
+/* Contenedor botones */
+.modal-opciones {
+    display: flex;
+    flex-direction: column;
+
+    gap: 15px;
+}
+
+
+/* Estilo general botones */
+.btn-opcion {
+    display: block;
+
+    padding: 16px 20px;
+
+    border-radius: 10px;
+
+    text-decoration: none;
+
+    font-size: 17px;
+    font-weight: 700;
+
+    color: white;
+
+    border: 2px solid #111;
+
+    transition: 0.2s ease;
+}
+
+
+/* CREAR PARTIDA - Celeste */
+.btn-crear {
+    background-color: #42bff5;
+}
+
+.btn-crear:hover {
+    background-color: #25aeea;
+    transform: translateY(-2px);
+}
+
+
+/* UNIRSE - Azul que combina con el celeste */
+.btn-unirse {
+    background-color: #3976d9;
+}
+
+.btn-unirse:hover {
+    background-color: #2864c2;
+    transform: translateY(-2px);
+}
+
+
+/* Botón X */
+.modal-cerrar {
+    position: absolute;
+
+    top: 12px;
+    right: 16px;
+
+    background: none;
+    border: none;
+
+    font-size: 32px;
+    font-weight: bold;
+
+    cursor: pointer;
+
+    color: #555;
+}
+
+.modal-cerrar:hover {
+    color: #111;
+}
 }

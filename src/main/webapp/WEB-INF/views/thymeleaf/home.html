@@ -14,18 +14,17 @@
     <!-- custom style -->
     <link rel="stylesheet" th:href="@{/css/home.css}" />
 
-  
+
 </head>
 
 <body>
 
-        <div th:replace="~{fragments/header :: header}"></div>
+    <div th:replace="~{fragments/header :: header}"></div>
 
     <main class="hero">
         <div class="hero-text">
             <!-- Si preferís usar la imagen del logo en vez de texto CSS, cambiá este <h1> por un <img> -->
-            <img th:src="@{/imagenes/Logo.png}"
-                alt="El Matancero" class="main-title-img">
+            <img th:src="@{/imagenes/logo/El matancero_4}" alt="El Matancero" class="main-title-img">
             <h2 class="subtitle">Acá el que se aviva, gana.</h2>
 
             <p>Divertite con tus amigos mientras recorrés<br>
@@ -35,17 +34,56 @@
             <p>Inflación, cortes, oportunidades y alguna que otra<br>sorpresa.<br>
                 Acá puede pasar de todo.</p>
 
-            <a th:href="@{/login}" class="btn-play">JUGAR AHORA</a>
+            <button type="button" class="btn-jugar" id="btnJugarAhora">
+                JUGAR AHORA
+            </button>
         </div>
 
         <div class="hero-image">
             <!-- ACÁ VA LA IMAGEN DEL MAPA -->
-            <img th:src="@{/imagenes/ImagenCiudad.png}"
-                alt="Imagen ciudad">
+            <img th:src="@{/imagenes/ImagenCiudad.png}" alt="Imagen ciudad">
         </div>
     </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- MODAL: ELEGIR TIPO DE PARTIDA -->
+<div class="modal-partida" id="modalPartida">
+
+    <div class="modal-contenido">
+
+        <button type="button"
+                class="modal-cerrar"
+                id="cerrarModal">
+            &times;
+        </button>
+
+        <h2>¿Cómo querés jugar?</h2>
+
+        <p>Elegí una opción para comenzar</p>
+
+        <div class="modal-opciones">
+
+            <a th:href="@{/crear-partida}"
+               class="btn-opcion btn-crear">
+
+                Crear partida
+
+            </a>
+
+            <a th:href="@{/unirse-partida}"
+               class="btn-opcion btn-unirse">
+
+                Unirse a una partida
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/resources/core/js/pop-up-jugar-ahora.js}"></script>
 </body>
 
 </html>
