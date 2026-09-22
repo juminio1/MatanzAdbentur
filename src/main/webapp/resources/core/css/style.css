@@ -47,6 +47,7 @@
 
 
   /* ---------- OTROS ---------- */
+  --space-xs:1rem;
   --radius-btn: 999px;
   --border-btn: 2px solid var(--color-border);
   --transition-btn: 0.2s ease;
