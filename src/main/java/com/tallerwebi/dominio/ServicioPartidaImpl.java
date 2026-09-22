@@ -41,6 +41,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     Partida partida = new Partida();
     partida.setCodigoUnico(codigoUnico);
+    partida.setCreador(usuarioEncontrado);
     partida.setTablero(new Tablero());
     partida.setTiempoInicio(Instant.now());
     partida.agregarUsuario(usuarioEncontrado);
