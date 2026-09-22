@@ -1,0 +1,33 @@
+<header xmlns:th="http://www.thymeleaf.org" th:fragment="header">
+
+    <a th:href="@{/home}">
+        <img th:src="@{/imagenes/Logo.png}" alt="El Matancero" class="logo-nav-img">
+    </a>
+
+    <nav>
+
+        <a href="#">Acerca de</a>
+
+        <a href="#">¿Cómo se juega?</a>
+
+
+        <!-- SIN SESIÓN -->
+        <a th:if="${session.NOMBRE == null}" th:href="@{/login}" class="btn-login">
+
+            Iniciar Sesión
+
+        </a>
+        <a th:if="${session.NOMBRE != null}" href="#" class="btn-perfil" th:title="${session.NOMBRE}">
+
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
+
+            </svg>
+
+        </a>
+    </nav>
+
+</header>
