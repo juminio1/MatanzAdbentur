@@ -2,7 +2,9 @@ package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
+import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
+import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.RegistroDTO;
@@ -29,7 +31,7 @@ public class ServicioRegistroImpl implements ServicioRegistro {
 
   @Override
   public void registrar(RegistroDTO datosRegistro)
-    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException, UsernameExistenteException {
     Usuario usuarioExistenteEmail = repositorioUsuario.buscarUsuarioPorEmail(
       datosRegistro.getEmail()
     );
@@ -37,8 +39,11 @@ public class ServicioRegistroImpl implements ServicioRegistro {
       datosRegistro.getUsername()
     );
 
-    if (usuarioExistenteEmail != null || usuarioExistenteUsername != null) {
-      throw new UsuarioExistenteException();
+    if (usuarioExistenteEmail != null) {
+      throw new EmailExistenteException();
+    }
+    if (usuarioExistenteUsername != null) {
+      throw new UsernameExistenteException();
     }
 
     this.validarContrasenia(datosRegistro);
@@ -60,7 +65,7 @@ public class ServicioRegistroImpl implements ServicioRegistro {
   private String hashearContrasenia(String password) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256"); //Instancia un algoritmo
-      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8)); //El algoritmo codifica en utf_8 
+      byte[] encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8)); //El algoritmo codifica en utf_8
       StringBuilder hexString = new StringBuilder(2 * encodedhash.length);
       for (byte unByte : encodedhash) {
         String hex = Integer.toHexString(MASK_BYTE & unByte);

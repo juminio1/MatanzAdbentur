@@ -1,0 +1,400 @@
+/* ============================
+   REGISTRO - EL MATANCERO
+   ============================ */
+
+.registro-main {
+    min-height: calc(100vh - 80px);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 50px 5%;
+}
+
+
+.registro-container {
+    width: 100%;
+    max-width: 1050px;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    background-color: rgba(255, 255, 255, 0.93);
+
+    border: 2px solid #111;
+    border-radius: 20px;
+
+    box-shadow: 7px 7px 0 #111;
+
+    overflow: hidden;
+}
+
+
+/* ============================
+   LADO IZQUIERDO
+   ============================ */
+
+.registro-presentacion {
+    background-color: #2b3990;
+
+    color: white;
+
+    padding: 55px 45px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+
+.registro-logo {
+    width: 100%;
+    max-width: 350px;
+
+    margin-bottom: 30px;
+
+    filter: drop-shadow(
+        3px 4px 2px rgba(0, 0, 0, 0.25)
+    );
+}
+
+
+.registro-presentacion h1 {
+    font-size: 32px;
+    font-weight: 900;
+
+    margin-bottom: 20px;
+}
+
+
+.registro-presentacion p {
+    font-size: 16px;
+    line-height: 1.6;
+
+    font-weight: 500;
+
+    margin-bottom: 30px;
+}
+
+
+.registro-frase {
+    background-color: #ffd24c;
+
+    color: #111;
+
+    border: 2px solid #111;
+
+    border-radius: 10px;
+
+    padding: 14px 18px;
+
+    font-size: 17px;
+    font-weight: 800;
+
+    text-align: center;
+
+    box-shadow: 3px 3px 0 #111;
+}
+
+
+/* ============================
+   FORMULARIO
+   ============================ */
+
+.registro-card {
+    padding: 45px;
+}
+
+
+.registro-card-header {
+    margin-bottom: 30px;
+}
+
+
+.registro-card-header h2 {
+    font-size: 30px;
+    font-weight: 900;
+
+    color: #111;
+
+    margin-bottom: 5px;
+}
+
+
+.registro-card-header p {
+    color: #666;
+
+    font-size: 14px;
+}
+
+
+/* ============================
+   INPUTS
+   ============================ */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+
+.form-group label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #222;
+}
+
+
+.form-group input {
+    width: 100%;
+
+    padding: 12px 14px;
+
+    border: 2px solid #ccc;
+
+    border-radius: 9px;
+
+    font-size: 15px;
+
+    background-color: white;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.form-group input:focus {
+    border-color: #2b3990;
+
+    box-shadow:
+        0 0 0 3px rgba(43, 57, 144, 0.12);
+}
+
+
+/* ============================
+   ERRORES DE VALIDACIÓN
+   ============================ */
+
+.form-group input.input-error {
+    border-color: #d93025;
+
+    background-color: #fff8f8;
+}
+
+
+.form-group input.input-error:focus {
+    border-color: #d93025;
+
+    box-shadow:
+        0 0 0 3px rgba(217, 48, 37, 0.12);
+}
+
+
+.mensaje-error {
+    margin-top: 6px;
+
+    color: #c62828;
+
+    font-size: 12px;
+
+    font-weight: 600;
+}
+
+
+.mensaje-error-general {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    background-color: #ffe6e6;
+
+    border: 1px solid #d93025;
+    border-left: 5px solid #d93025;
+
+    color: #a90000;
+
+    padding: 12px 14px;
+
+    border-radius: 8px;
+
+    margin-bottom: 22px;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+.error-icono {
+    width: 22px;
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background-color: #d93025;
+
+    color: white;
+
+    border-radius: 50%;
+
+    font-weight: 900;
+}
+
+
+.ayuda-password {
+    color: #777;
+
+    font-size: 11px;
+
+    line-height: 1.4;
+
+    margin-top: 5px;
+}
+
+
+/* ============================
+   BOTÓN
+   ============================ */
+
+.btn-registrarse {
+    width: 100%;
+
+    margin-top: 10px;
+
+    padding: 14px;
+
+    background-color: #ffd24c;
+
+    color: #111;
+
+    border: 2px solid #111;
+    border-radius: 10px;
+
+    font-size: 16px;
+    font-weight: 900;
+
+    cursor: pointer;
+
+    box-shadow: 3px 3px 0 #111;
+
+    transition:
+        background-color 0.2s ease,
+        transform 0.1s ease,
+        box-shadow 0.1s ease;
+}
+
+
+.btn-registrarse:hover {
+    background-color: #ffc926;
+}
+
+
+.btn-registrarse:active {
+    transform: translate(3px, 3px);
+
+    box-shadow: none;
+}
+
+
+/* ============================
+   LINK LOGIN
+   ============================ */
+
+.login-link {
+    text-align: center;
+
+    margin-top: 22px;
+
+    font-size: 13px;
+
+    color: #555;
+}
+
+
+.login-link a {
+    color: #2b3990;
+
+    font-weight: 800;
+
+    text-decoration: none;
+}
+
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+
+@media (max-width: 850px) {
+
+    .registro-container {
+        grid-template-columns: 1fr;
+
+        max-width: 600px;
+    }
+
+
+    .registro-presentacion {
+        padding: 35px;
+
+        text-align: center;
+
+        align-items: center;
+    }
+
+
+    .registro-presentacion p {
+        max-width: 450px;
+    }
+
+
+    .registro-card {
+        padding: 35px;
+    }
+}
+
+
+@media (max-width: 480px) {
+
+    .registro-main {
+        padding: 25px 15px;
+    }
+
+
+    .registro-container {
+        box-shadow: 4px 4px 0 #111;
+    }
+
+
+    .registro-presentacion {
+        padding: 30px 20px;
+    }
+
+
+    .registro-presentacion h1 {
+        font-size: 26px;
+    }
+
+
+    .registro-card {
+        padding: 30px 20px;
+    }
+
+
+    .registro-card-header h2 {
+        font-size: 26px;
+    }
+}
