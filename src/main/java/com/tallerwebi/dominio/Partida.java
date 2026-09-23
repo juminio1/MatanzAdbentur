@@ -11,6 +11,7 @@ public class Partida {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
+
   private String codigoUnico;
   private Instant tiempoInicio;
 
@@ -89,9 +90,10 @@ public class Partida {
   }
 
   public Boolean agregarUsuario(Usuario usuario) {
-    if (this.usuarios.size() < 4 && this.estado == EstadoPartida.EN_ESPERA) {
+    Integer tamanioMaximo = 4;
+    if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
       this.usuarios.add(usuario);
-      if (this.usuarios.size() == 4) {
+      if (this.usuarios.size() == tamanioMaximo) {
         this.estado = EstadoPartida.EN_CURSO; // Se llenó el cupo: arranca el juego
       }
       return true;
