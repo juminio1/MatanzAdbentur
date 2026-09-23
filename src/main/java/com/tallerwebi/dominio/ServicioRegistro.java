@@ -10,9 +10,5 @@ import com.tallerwebi.presentacion.RegistroDTO;
 @SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface ServicioRegistro {
   void registrar(RegistroDTO registro)
-<<<<<<< HEAD
-    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException, UsuarioExistenteException, UsernameExistenteException;
-=======
-    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException;
->>>>>>> 86d2d47f8c47869e500e91aa26bd1814ced92204
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException, UsernameExistenteException;
 }
