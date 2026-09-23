@@ -74,6 +74,7 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
     return existente != null;
   }
 
+  @Override
   public Usuario buscarUsuarioPorId(Long id) {
     return sessionFactory
       .getCurrentSession()
