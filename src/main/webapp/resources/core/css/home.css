@@ -1,45 +1,67 @@
+/* RESET BÁSICO */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-}
-
-html,
-body {
-    width: 100%;
-    min-height: 100%;
-}
-
-body {
     font-family: 'Montserrat', sans-serif;
+}
+
+ body {
     background-color: #f7f7f7;
-    background-image: linear-gradient(rgba(247, 247, 247, 0.60),
-            rgba(247, 247, 247, 0.60)),
-    url('../imagenes/FondoLadrillos.jpg');
+
+    background-image:
+        linear-gradient(
+            rgba(247, 247, 247, 0.60),
+            rgba(247, 247, 247, 0.60)
+        ),
+        url('../imagenes/FondoLadrillos.jpg');
+
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-size: cover;
     background-position: center;
+
     color: #111;
     overflow-x: hidden;
 }
+
+/* BARRA DE NAVEGACIÓN (HEADER) */
 
 header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 20px 5%;
-    background-color: #e5e5e5;
-    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Le damos el color gris claro a toda la barra */
+    background-color: #e5e5e5; 
+    
+    /* Esta sombra es la que crea ese efecto de degradado hacia el main */
+    box-shadow: 0px 10px 20px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Agregamos position y z-index para asegurar que el header quede 
+       por encima del contenedor principal y la sombra se proyecte correctamente */
     position: relative;
     z-index: 10;
 }
 
 .logo-nav-img {
-    height: 40px;
-    width: auto;
-    display: block;
-    cursor: pointer;
+    height: 40px; /* Podés agrandar o achicar este número para ajustar el tamaño */
+    width: auto;  /* Esto asegura que la imagen no se estire ni se deforme */
+    cursor: pointer; /* Hace que aparezca la manito al pasar el mouse por encima */
+}
+
+.logo-nav {
+    font-size: 24px;
+    font-weight: 900;
+    color: #2b3990;
+    /* Azul del logo */
+    -webkit-text-stroke: 1px black;
+    /* Borde negro para simular tu logo */
+    text-shadow: 2px 2px 0px #b08d6a;
+    /* Sombra marrón */
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 nav {
@@ -50,142 +72,178 @@ nav {
 
 nav a {
     text-decoration: none;
-    color: #222;
+    color: #333;
     font-weight: 600;
     font-size: 14px;
-    transition: color 0.25s ease, transform 0.25s ease;
+    transition: color 0.3s ease;
 }
 
 nav a:hover {
     color: #2b3990;
-    transform: translateY(-1px);
 }
 
+/* Botón de Iniciar Sesión */
+.btn-login {
+    background-color: #2b3990;
+    color: white !important;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.btn-login:hover {
+    background-color: #1c2665;
+}
+
+/* SECCIÓN PRINCIPAL (HERO) */
 .hero {
-    width: 100%;
-    min-height: calc(100vh - 80px);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 50px;
-    padding: 40px 6% 0;
+    justify-content: space-between;
+    padding: 50px 5%;
+    min-height: 80vh;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
+/* COLUMNA IZQUIERDA: TEXTOS */
 .hero-text {
     flex: 1;
-    max-width: 650px;
+    padding-right: 40px;
+    max-width: 600px;
 }
 
+/* ESTILOS PARA LA IMAGEN DEL TÍTULO */
 .main-title-img {
-    width: min(500px, 100%);
+    width: 100%;
+    max-width: 500px;
+    /* Podés agrandar o achicar este valor según cómo lo veas */
     height: auto;
-    display: block;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    /* Le agregamos un pequeño drop-shadow para que resalte si es necesario */
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.1));
 }
 
 .subtitle {
-    margin-bottom: 20px;
-    font-size: clamp(26px, 3vw, 42px);
+    font-size: 36px;
     font-weight: 800;
+    margin-bottom: 25px;
     color: #111;
 }
 
 .hero-text p {
-    margin-bottom: 18px;
-    font-size: 17px;
-    line-height: 1.7;
-    color: #252525;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #333;
 }
 
+/* Botón Jugar Ahora */
 .btn-play {
     display: inline-block;
-    margin-top: 10px;
-    padding: 14px 30px;
-    background-color: #2b3990;
-    color: #fff;
+    background-color: #ffd24c;
+    color: #111;
     text-decoration: none;
     font-weight: 800;
-    font-size: 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 0 #17205c;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    font-size: 18px;
+    padding: 15px 30px;
+    border: 2px solid #111;
+    border-radius: 12px;
+    margin-top: 20px;
+    box-shadow: 3px 3px 0px #111;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .btn-play:hover {
-    background-color: #3546b7;
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 0 #17205c;
+    background-color: #ffc926;
 }
 
 .btn-play:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #17205c;
+    transform: translate(3px, 3px);
+    box-shadow: 0px 0px 0px #111;
 }
 
+/* COLUMNA DERECHA: IMAGEN */
 .hero-image {
-    flex: 1;
+    flex: 1.2;
     display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    align-self: flex-end;
+    justify-content: flex-end;
 }
 
 .hero-image img {
     width: 100%;
-    max-width: 620px;
+    max-width: 750px;
     height: auto;
-    display: block;
+    /* Si la imagen tiene fondo, podés recortarla en PNG y usar drop-shadow */
+    filter: drop-shadow(-10px 10px 15px rgba(0, 0, 0, 0.1));
 }
 
+
+/* RESPONSIVE (Tablets y Celulares) */
 @media (max-width: 900px) {
     .hero {
         flex-direction: column;
         text-align: center;
-        padding-top: 35px;
+        padding: 30px 5%;
     }
 
     .hero-text {
-        max-width: 700px;
+        padding-right: 0;
+        margin-bottom: 40px;
     }
 
-    .main-title-img {
-        margin-left: auto;
-        margin-right: auto;
+    /* Ajustamos tamaños de fuente para que no se desborden */
+    .main-title {
+        font-size: 40px; /* Un poco más chico para que entre bien */
     }
 
-    .hero-image {
-        width: 100%;
+    .subtitle {
+        font-size: 24px;
     }
 
-    .hero-image img {
-        max-width: 500px;
+    /* Cambiamos el header para que apile el logo y el menú */
+    header {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    /* Hacemos que el menú se envuelva si no hay espacio */
+    nav {
+        display: flex;
+        flex-wrap: wrap; 
+        justify-content: center;
+        gap: 15px;
     }
 }
 
-@media (max-width: 650px) {
-    header {
-        padding: 15px 20px;
+/* RESPONSIVE (Celulares pequeños) */
+@media (max-width: 480px) {
+    .main-title-img {
+        max-width: 80%; /* Evita que la imagen del título ocupe los bordes */
     }
 
-    nav {
-        gap: 15px;
-    }
-
-    nav a {
-        font-size: 12px;
-    }
-
-    .logo-nav-img {
-        height: 32px;
-    }
-
-    .hero {
-        padding-left: 20px;
-        padding-right: 20px;
+    .subtitle {
+        font-size: 20px;
     }
 
     .hero-text p {
-        font-size: 15px;
+        font-size: 14px; /* Achicamos un poco el texto descriptivo */
+    }
+
+    .btn-play {
+        width: 100%; /* Hacemos que el botón ocupe todo el ancho para facilitar el toque */
+        padding: 12px 0;
+    }
+
+    nav {
+        flex-direction: column; /* Apilamos los links del menú hacia abajo */
+        width: 100%;
+    }
+
+    .btn-login {
+        width: 100%;
+        text-align: center;
     }
 }
