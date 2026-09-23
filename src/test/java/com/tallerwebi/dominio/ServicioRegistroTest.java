@@ -17,122 +17,122 @@ import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.RegistroDTO;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 public class ServicioRegistroTest {
 
-    private RepositorioUsuario repositorioUsuarioMock;
-    private ServicioRegistro servicioRegistro;
+  private RepositorioUsuario repositorioUsuarioMock;
+  private ServicioRegistro servicioRegistro;
 
-    private static final String USERNAME_VALIDO = "ElMatancero";
-    private static final String EMAIL_VALIDO = "juli@gmail.com";
-    private static final String PASSWORD_VALIDA = "Matanza1!";
+  private static final String USERNAME_VALIDO = "ElMatancero";
+  private static final String EMAIL_VALIDO = "juli@gmail.com";
+  private static final String PASSWORD_VALIDA = "Matanza1!";
 
-    @BeforeEach
-    public void init() {
-        repositorioUsuarioMock = mock(RepositorioUsuario.class);
-        servicioRegistro = new ServicioRegistroImpl(repositorioUsuarioMock);
-    }
+  @BeforeEach
+  public void init() {
+    repositorioUsuarioMock = mock(RepositorioUsuario.class);
+    servicioRegistro = new ServicioRegistroImpl(repositorioUsuarioMock);
+  }
 
-    @Test
-    public void deberiaRegistrarUnUsuarioConDatosValidos() throws Exception {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaRegistrarUnUsuarioConDatosValidos() throws Exception {
+    RegistroDTO registro = crearRegistroValido();
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
-        when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
-        servicioRegistro.registrar(registro);
+    servicioRegistro.registrar(registro);
 
-        verify(repositorioUsuarioMock, times(1)).guardar(any(Usuario.class));
-    }
+    verify(repositorioUsuarioMock, times(1)).guardar(any(Usuario.class));
+  }
 
-    @Test
-    public void deberiaGuardarLosDatosDelUsuarioCorrectamente() throws Exception {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaGuardarLosDatosDelUsuarioCorrectamente() throws Exception {
+    RegistroDTO registro = crearRegistroValido();
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
-        when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
-        servicioRegistro.registrar(registro);
+    servicioRegistro.registrar(registro);
 
-        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+    ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
 
-        verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
+    verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
 
-        Usuario usuarioGuardado = usuarioCaptor.getValue();
+    Usuario usuarioGuardado = usuarioCaptor.getValue();
 
-        assertThat(usuarioGuardado.getEmail(), equalTo(EMAIL_VALIDO));
-        assertThat(usuarioGuardado.getUsername(), equalTo(USERNAME_VALIDO));
-    }
+    assertThat(usuarioGuardado.getEmail(), equalTo(EMAIL_VALIDO));
+    assertThat(usuarioGuardado.getUsername(), equalTo(USERNAME_VALIDO));
+  }
 
-    @Test
-    public void deberiaGuardarLaContraseniaHasheadaYNoEnTextoPlano() throws Exception {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaGuardarLaContraseniaHasheadaYNoEnTextoPlano() throws Exception {
+    RegistroDTO registro = crearRegistroValido();
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
-        when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
-        servicioRegistro.registrar(registro);
+    servicioRegistro.registrar(registro);
 
-        ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
+    ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
 
-        verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
+    verify(repositorioUsuarioMock).guardar(usuarioCaptor.capture());
 
-        Usuario usuarioGuardado = usuarioCaptor.getValue();
+    Usuario usuarioGuardado = usuarioCaptor.getValue();
 
-        assertThat(usuarioGuardado.getPassword(), notNullValue());
-        assertThat(usuarioGuardado.getPassword(), not(equalTo(PASSWORD_VALIDA)));
-    }
+    assertThat(usuarioGuardado.getPassword(), notNullValue());
+    assertThat(usuarioGuardado.getPassword(), not(equalTo(PASSWORD_VALIDA)));
+  }
 
-    @Test
-    public void deberiaLanzarEmailExistenteExceptionCuandoElEmailYaExiste() {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaLanzarEmailExistenteExceptionCuandoElEmailYaExiste() {
+    RegistroDTO registro = crearRegistroValido();
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(new Usuario());
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(new Usuario());
 
-        assertThrows(EmailExistenteException.class, () -> servicioRegistro.registrar(registro));
+    assertThrows(EmailExistenteException.class, () -> servicioRegistro.registrar(registro));
 
-        verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-    }
+    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
+  }
 
-    @Test
-    public void deberiaLanzarUsernameExistenteExceptionCuandoElUsernameYaExiste() {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaLanzarUsernameExistenteExceptionCuandoElUsernameYaExiste() {
+    RegistroDTO registro = crearRegistroValido();
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
-        when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(new Usuario());
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO))
+      .thenReturn(new Usuario());
 
-        assertThrows(UsernameExistenteException.class, () -> servicioRegistro.registrar(registro));
+    assertThrows(UsernameExistenteException.class, () -> servicioRegistro.registrar(registro));
 
-        verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-    }
+    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
+  }
 
-    @Test
-    public void deberiaLanzarContraseniaInvalidaExceptionCuandoLasContraseniasNoCoinciden() {
-        RegistroDTO registro = crearRegistroValido();
+  @Test
+  public void deberiaLanzarContraseniaInvalidaExceptionCuandoLasContraseniasNoCoinciden() {
+    RegistroDTO registro = crearRegistroValido();
 
-        registro.setPassword("Matanza1!");
-        registro.setPasswordRepetido("OtraPasswordDistinta!");
+    registro.setPassword("Matanza1!");
+    registro.setPasswordRepetido("OtraPasswordDistinta!");
 
-        when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
-        when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(EMAIL_VALIDO)).thenReturn(null);
+    when(repositorioUsuarioMock.buscarUsuarioPorUsername(USERNAME_VALIDO)).thenReturn(null);
 
-        assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
+    assertThrows(ContraseniaInvalidaException.class, () -> servicioRegistro.registrar(registro));
 
-        verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
-    }
+    verify(repositorioUsuarioMock, never()).guardar(any(Usuario.class));
+  }
 
-    private RegistroDTO crearRegistroValido() {
-        RegistroDTO registro = new RegistroDTO();
+  private RegistroDTO crearRegistroValido() {
+    RegistroDTO registro = new RegistroDTO();
 
-        registro.setUsername(USERNAME_VALIDO);
-        registro.setEmail(EMAIL_VALIDO);
-        registro.setPassword(PASSWORD_VALIDA);
-        registro.setPasswordRepetido(PASSWORD_VALIDA);
+    registro.setUsername(USERNAME_VALIDO);
+    registro.setEmail(EMAIL_VALIDO);
+    registro.setPassword(PASSWORD_VALIDA);
+    registro.setPasswordRepetido(PASSWORD_VALIDA);
 
-        return registro;
-    }
+    return registro;
+  }
 }
