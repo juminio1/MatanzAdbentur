@@ -1,0 +1,25 @@
+{
+  "name": "tallerwebi-base-main",
+  "version": "1.0.0",
+  "description": "Proyecto base Taller Web I (Maven and Thymeleaf) ===============================",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juminio1/Grupo-11-Proyecto-TW1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/juminio1/Grupo-11-Proyecto-TW1/issues"
+  },
+  "homepage": "https://github.com/juminio1/Grupo-11-Proyecto-TW1#readme",
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "prettier-plugin-java": "^2.10.4"
+  }
+}
