@@ -41,49 +41,46 @@
 
         <div class="hero-image">
             <!-- ACÁ VA LA IMAGEN DEL MAPA -->
-            <img th:src="@{/imagenes/ImagenCiudad.png}" alt="Imagen ciudad">
+            <img th:src="@{/image/ImagenCiudad.png}" alt="Imagen ciudad">
         </div>
     </main>
 
 
     <!-- MODAL: ELEGIR TIPO DE PARTIDA -->
-<div class="modal-partida" id="modalPartida">
+    <div class="modal-partida" id="modalPartida">
 
-    <div class="modal-contenido">
+        <div class="modal-contenido">
 
-        <button type="button"
-                class="modal-cerrar"
-                id="cerrarModal">
-            &times;
-        </button>
+            <button type="button" class="modal-cerrar" id="cerrarModal">
+                &times;
+            </button>
 
-        <h2>¿Cómo querés jugar?</h2>
+            <h2>¿Cómo querés jugar?</h2>
 
-        <p>Elegí una opción para comenzar</p>
+            <p>Elegí una opción para comenzar</p>
 
-        <div class="modal-opciones">
+            <div class="modal-opciones">
 
-            <a th:href="@{/crear-partida}"
-               class="btn-opcion btn-crear">
+                <a th:href="@{/crear-partida}" class="btn-opcion btn-crear">
 
-                Crear partida
+                    Crear partida
 
-            </a>
+                </a>
 
-            <a th:href="@{/unirse-partida}"
-               class="btn-opcion btn-unirse">
+                <a th:href="@{/unirse-partida}" class="btn-opcion btn-unirse">
 
-                Unirse a una partida
+                    Unirse a una partida
 
-            </a>
+                </a>
+
+            </div>
 
         </div>
 
     </div>
-
-</div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script th:src="@{/resources/core/js/pop-up-jugar-ahora.js}"></script>
+    <script th:src="@{/js/pop-up-jugar-ahora.js}"></script>
+
 </body>
 
 </html>
