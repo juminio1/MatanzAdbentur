@@ -52,8 +52,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void deberiaRegistrarUsuarioConDatosValidosExitosamente()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     RegistroDTO registro = new RegistroDTO();
 
     registro.setUsername("JuliMatanza");
@@ -72,8 +71,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void deberiaRedirigirAlLoginCuandoElRegistroEsExitoso()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     ModelAndView modelAndView = controladorRegistro.registrarme(registroMock, bindingResultMock);
@@ -85,8 +83,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void deberiaVolverAlFormularioCuandoHayErroresDeValidacion()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(true);
 
     ModelAndView modelAndView = controladorRegistro.registrarme(registroMock, bindingResultMock);
@@ -98,8 +95,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void cuandoElEmailYaExisteDebeVolverAlFormularioYAgregarErrorAlEmail()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new EmailExistenteException()).when(servicioRegistroMock).registrar(registroMock);
@@ -109,13 +105,12 @@ public class ControladorRegistroTest {
     assertEquals("nuevo-usuario", resultado.getViewName());
 
     verify(bindingResultMock)
-        .rejectValue("email", "email.existente", "Este email ya se encuentra registrado");
+      .rejectValue("email", "email.existente", "Este email ya se encuentra registrado");
   }
 
   @Test
   public void cuandoElUsernameYaExisteDebeVolverAlFormularioYAgregarErrorAlUsername()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new UsernameExistenteException()).when(servicioRegistroMock).registrar(registroMock);
@@ -125,54 +120,51 @@ public class ControladorRegistroTest {
     assertEquals("nuevo-usuario", resultado.getViewName());
 
     verify(bindingResultMock)
-        .rejectValue("username", "username.existente", "Este apodo ya se encuentra registrado");
+      .rejectValue("username", "username.existente", "Este apodo ya se encuentra registrado");
   }
 
   @Test
   public void cuandoLasContraseniasNoCoincidenDebeAgregarErrorEnPasswordRepetido()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new ContraseniaInvalidaException("Las contraseñas no coinciden"))
-        .when(servicioRegistroMock)
-        .registrar(registroMock);
+      .when(servicioRegistroMock)
+      .registrar(registroMock);
 
     ModelAndView resultado = controladorRegistro.registrarme(registroMock, bindingResultMock);
 
     assertEquals("nuevo-usuario", resultado.getViewName());
 
     verify(bindingResultMock)
-        .rejectValue("passwordRepetido", "password.no.coincide", "Las contraseñas no coinciden");
+      .rejectValue("passwordRepetido", "password.no.coincide", "Las contraseñas no coinciden");
   }
 
   @Test
   public void cuandoElEmailEsInvalidoDebeAgregarErrorAlCampoEmail()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new EmailInvalidoException("El email no tiene un formato válido"))
-        .when(servicioRegistroMock)
-        .registrar(registroMock);
+      .when(servicioRegistroMock)
+      .registrar(registroMock);
 
     ModelAndView resultado = controladorRegistro.registrarme(registroMock, bindingResultMock);
 
     assertEquals("nuevo-usuario", resultado.getViewName());
 
     verify(bindingResultMock)
-        .rejectValue("email", "email.invalido", "El email no tiene un formato válido");
+      .rejectValue("email", "email.invalido", "El email no tiene un formato válido");
   }
 
   @Test
   public void cuandoFaltanCamposObligatoriosDebeVolverAlFormulario()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new CamposObligatoriosException("Todos los campos son obligatorios"))
-        .when(servicioRegistroMock)
-        .registrar(registroMock);
+      .when(servicioRegistroMock)
+      .registrar(registroMock);
 
     ModelAndView resultado = controladorRegistro.registrarme(registroMock, bindingResultMock);
 
@@ -183,13 +175,12 @@ public class ControladorRegistroTest {
 
   @Test
   public void cuandoOcurreUnUsuarioExistenteGeneralDebeVolverAlFormulario()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
     doThrow(new UsuarioExistenteException("El usuario ya existe"))
-        .when(servicioRegistroMock)
-        .registrar(registroMock);
+      .when(servicioRegistroMock)
+      .registrar(registroMock);
 
     ModelAndView resultado = controladorRegistro.registrarme(registroMock, bindingResultMock);
 
@@ -200,11 +191,12 @@ public class ControladorRegistroTest {
 
   @Test
   public void cuandoRegistroUnUsuarioSinCompletarLosCamposObligatoriosDebeLanzarUnaException()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(false);
 
-    doThrow(new CamposObligatoriosException("Los campos deben ser obligatorios")).when(servicioRegistroMock).registrar(registroMock);
+    doThrow(new CamposObligatoriosException("Los campos deben ser obligatorios"))
+      .when(servicioRegistroMock)
+      .registrar(registroMock);
 
     ModelAndView resultado = controladorRegistro.registrarme(registroMock, bindingResultMock);
 

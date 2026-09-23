@@ -23,9 +23,8 @@ public class RegistroDTOTest {
     assertThat(registro.getPasswordRepetido(), is("Matanza1!"));
   }
 
-  @Test 
-  public void quieroMostrarLosDatosDeUnFormulario(){
-
+  @Test
+  public void quieroMostrarLosDatosDeUnFormularioQueNoEstenNulos() {
     RegistroDTO registro = new RegistroDTO();
 
     registro.setUsername("Juli");
@@ -37,6 +36,5 @@ public class RegistroDTOTest {
     assertTrue(registro.getEmail() != null);
     assertTrue(registro.getPassword() != null);
     assertTrue(registro.getPasswordRepetido() != null);
-
   }
 }
