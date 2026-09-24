@@ -1,73 +1,237 @@
-<!DOCTYPE HTML>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!DOCTYPE html>
+
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-  <title>Taller Web I</title>
+    <meta charset="UTF-8">
 
-  <!-- Boostrap core css -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-  <!-- custom style -->
-  <link rel="stylesheet" th:href="@{/css/main.css}" />
+    <title>Registrarse | El Matancero</title>
+
+    <link rel="stylesheet"
+          th:href="@{/css/home.css}">
+
+    <link rel="stylesheet"
+          th:href="@{/css/registro.css}">
 
 </head>
 
 <body>
 
-  <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-    <a class="navbar-brand" href="#">UNLAM</a>
-  </nav>
+<header>
 
-  <main role="main" class="container">
+    <a th:href="@{/home}">
+        <img th:src="@{/imagenes/Logo.png}"
+             alt="El Matancero"
+             class="logo-nav-img">
+    </a>
 
-    <div class="container">
-      <div id="loginbox" style="margin-top:50px;" class="mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
-        <form action="#" th:action="@{/registrarme}" method="POST" th:object="${registro}">
-          <h3 class="form-signin-heading text-center">Registro - Monopoly Matanza</h3>
-          <hr class="colorgraph"><br>
+    <nav>
 
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input th:field="*{username}" id="username" class="form-control" placeholder="Ej: El Brian de Lafe" required />
-          </div>
+        <a href="#">Acerca de</a>
 
-          <div class="mb-3">
-            <label for="email" class="form-label">Correo Electrónico</label>
-            <input th:field="*{email}" type="email" id="email" class="form-control" placeholder="nombre@correo.com"
-              required />
-          </div>
+        <a href="#">¿Cómo se juega?</a>
 
-          <div class="mb-3">
-            <label for="password" class="form-label">Contraseña</label>
-            <input th:field="*{password}" type="password" id="password" class="form-control"
-              placeholder="Contraseña segura" required />
-          </div>
+        <a th:href="@{/login}"
+           class="btn-login">
+            Iniciar Sesión
+        </a>
 
-           <div class="mb-3">
-            <label for="passwordRepetido" class="form-label">Repetir Contraseña</label>
-            <input th:field="*{passwordRepetido}" type="password" id="passwordRepetido" class="form-control"
-              placeholder="passwordRepetido" required />
-          </div>
+    </nav>
 
-          <button id="btn-registrarme" class="btn btn-lg btn-primary w-100 mt-3" type="submit">Registrarme para
-            Jugar</button>
+</header>
 
-          <p th:if="${error != null}" class="alert alert-danger mt-3" th:text="'Error: ' + ${error}"></p>
-        </form>
-      </div>
-    </div>
 
-  </main>
-  <!-- /.container -->
+<main class="registro-main">
 
-  <!-- Boostrap core js -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
-    crossorigin="anonymous"></script>
+    <section class="registro-container">
+
+        <div class="registro-presentacion">
+
+            <img th:src="@{/imagenes/Logo.png}"
+                 alt="El Matancero"
+                 class="registro-logo">
+
+            <h1>Entrá al barrio</h1>
+
+            <p>
+                Creá tu cuenta y preparate para recorrer
+                La Matanza, comprar propiedades y tratar
+                de no fundirte en el intento.
+            </p>
+
+            <div class="registro-frase">
+                Acá el que se aviva, gana.
+            </div>
+
+        </div>
+
+
+        <div class="registro-card">
+
+            <div class="registro-card-header">
+
+                <h2>Crear cuenta</h2>
+
+                <p>
+                    Completá tus datos para empezar a jugar.
+                </p>
+
+            </div>
+
+
+            <form th:action="@{/registrarme}"
+                  th:object="${registro}"
+                  method="POST"
+                  novalidate>
+
+
+                <!-- ERROR GENERAL DEL SERVICIO -->
+
+                <div th:if="${error != null}"
+                     class="mensaje-error-general">
+
+                    <span class="error-icono">!</span>
+
+                    <span th:text="${error}">
+                        Ocurrió un error
+                    </span>
+
+                </div>
+
+
+                <!-- USERNAME -->
+
+                <div class="form-group">
+
+                    <label for="username">
+                        Username
+                    </label>
+
+                    <input
+                        type="text"
+                        id="username"
+                        th:field="*{username}"
+                        th:classappend="${#fields.hasErrors('username')}
+                            ? ' input-error'"
+                        placeholder="Ej: usuario123$">
+
+                    <p class="mensaje-error"
+                       th:if="${#fields.hasErrors('username')}"
+                       th:errors="*{username}">
+                    </p>
+
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="form-group">
+
+                    <label for="email">
+                        Correo electrónico
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        th:field="*{email}"
+                        th:classappend="${#fields.hasErrors('email')}
+                            ? ' input-error'"
+                        placeholder="nombre@correo.com">
+
+                    <p class="mensaje-error"
+                       th:if="${#fields.hasErrors('email')}"
+                       th:errors="*{email}">
+                    </p>
+
+                </div>
+
+
+                <!-- PASSWORD -->
+
+                <div class="form-group">
+
+                    <label for="password">
+                        Contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        th:field="*{password}"
+                        th:classappend="${#fields.hasErrors('password')}
+                            ? ' input-error'"
+                        placeholder="Ingresá una contraseña">
+
+                    <p class="ayuda-password">
+                        Mínimo 8 caracteres, una mayúscula,
+                        una minúscula, un número y un símbolo.
+                    </p>
+
+                    <p class="mensaje-error"
+                       th:if="${#fields.hasErrors('password')}"
+                       th:errors="*{password}">
+                    </p>
+
+                </div>
+
+
+                <!-- REPETIR PASSWORD -->
+
+                <div class="form-group">
+
+                    <label for="passwordRepetido">
+                        Repetir contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        id="passwordRepetido"
+                        th:field="*{passwordRepetido}"
+                        th:classappend="${#fields.hasErrors('passwordRepetido')}
+                            ? ' input-error'"
+                        placeholder="Repetí tu contraseña">
+
+                    <p class="mensaje-error"
+                       th:if="${#fields.hasErrors('passwordRepetido')}"
+                       th:errors="*{passwordRepetido}">
+                    </p>
+
+                </div>
+
+
+                <button
+                    id="btn-registrarme"
+                    class="btn-registrarse"
+                    type="submit">
+
+                    REGISTRARME
+
+                </button>
+
+
+                <p class="login-link">
+
+                    ¿Ya tenés una cuenta?
+
+                    <a th:href="@{/login}">
+                        Iniciá sesión
+                    </a>
+
+                </p>
+
+            </form>
+
+        </div>
+
+    </section>
+
+</main>
 
 </body>
 

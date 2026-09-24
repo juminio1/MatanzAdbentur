@@ -2,6 +2,8 @@ package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
+
 import jakarta.transaction.Transactional;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -28,7 +30,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
   @Override
   public Partida crearPartida(Long idUsuario) throws UsuarioNoEncontradoException {
-    Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario); 
 
     if (usuarioEncontrado == null) {
       throw new UsuarioNoEncontradoException();

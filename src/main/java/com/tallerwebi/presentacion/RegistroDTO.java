@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 public class RegistroDTO {
 
-  @NotBlank(message = "El apodo es obligatorio")
+  @NotBlank(message = "El username es obligatorio")
   @Size(min = 3, max = 20, message = "El username debe tener entre 3 y 20 caracteres")
   @Pattern(
     regexp = "^[\\p{L}\\p{N}_ ]+$",
@@ -16,18 +16,14 @@ public class RegistroDTO {
   private String username;
 
   @NotBlank(message = "El email es obligatorio")
-  @Email
-  @Pattern(
-    regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
-    message = "El email no tiene un formato válido"
-  )
+  @Email(message = "El email no tiene un formato válido")
   private String email;
 
   @NotBlank(message = "La contraseña es obligatoria")
   @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
   @Pattern(
     regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$",
-    message = "La contraseña debe contener una mayúscula, una minúscula, un número y un carácter especial"
+    message = "Debe contener una mayúscula, una minúscula, un número y un carácter especial"
   )
   private String password;
 

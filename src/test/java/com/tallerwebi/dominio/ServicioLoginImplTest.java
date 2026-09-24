@@ -1,10 +1,13 @@
 package com.tallerwebi.dominio;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +39,21 @@ public class ServicioLoginImplTest {
 
     // Verificación
     assertEquals(usuario, usuarioAutenticado);
+  }
+
+  @Test
+  public void quieroConsultarUnUsuarioPorEmail() {
+    // Preparación
+    Usuario usuario = new Usuario();
+    usuario.setEmail("juli@gmail.com");
+
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
+
+    // Ejecución
+    Usuario usuarioBuscado = servicioLogin.consultarUsuario(usuario.getEmail());
+
+    // Validación
+    assertThat(usuarioBuscado.getEmail(), equalTo(usuario.getEmail()));
   }
 
   @Test
