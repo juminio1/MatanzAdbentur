@@ -22,7 +22,7 @@ public class ControladorLoginTest {
   private HttpServletRequest requestMock;
   private HttpSession sessionMock;
   private ServicioLogin servicioLoginMock;
-  
+
   @BeforeEach
   public void init() {
     datosLoginMock = new LoginDTO("dami@unlam.com", "123");
@@ -32,7 +32,6 @@ public class ControladorLoginTest {
     sessionMock = mock(HttpSession.class);
     servicioLoginMock = mock(ServicioLogin.class);
     controladorLogin = new ControladorLogin(servicioLoginMock);
-   
   }
 
   @Test
@@ -142,8 +141,7 @@ public class ControladorLoginTest {
   }
 
   @Test
-public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirAHome() {
-
+  public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirAHome() {
     // preparacion
     when(requestMock.getSession()).thenReturn(sessionMock);
 
@@ -153,9 +151,6 @@ public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirAHome() {
     // validacion
     verify(sessionMock, times(1)).invalidate();
 
-    assertThat(
-        modelAndView.getViewName(),
-        equalToIgnoringCase("redirect:/home")
-    );
-}
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/home"));
+  }
 }

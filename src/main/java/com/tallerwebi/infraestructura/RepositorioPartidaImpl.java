@@ -26,12 +26,11 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
   public Partida buscarPartidaActiva() {
     String hql = "FROM Partida WHERE estado != :finalizada";
     try {
-      return this.sessionFactory
-          .getCurrentSession()
-          .createQuery(hql, Partida.class)
-          .setParameter("finalizada", EstadoPartida.FINALIZADA)
-          .setMaxResults(1)
-          .getSingleResult();
+      return this.sessionFactory.getCurrentSession()
+        .createQuery(hql, Partida.class)
+        .setParameter("finalizada", EstadoPartida.FINALIZADA)
+        .setMaxResults(1)
+        .getSingleResult();
     } catch (NoResultException e) {
       return null;
     }
@@ -41,12 +40,11 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
   public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
     String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
     try {
-      return this.sessionFactory
-          .getCurrentSession()
-          .createQuery(hql, Partida.class)
-          .setParameter("codigo", codigoUnico)
-          .setParameter("finalizada", EstadoPartida.FINALIZADA)
-          .getSingleResult();
+      return this.sessionFactory.getCurrentSession()
+        .createQuery(hql, Partida.class)
+        .setParameter("codigo", codigoUnico)
+        .setParameter("finalizada", EstadoPartida.FINALIZADA)
+        .getSingleResult();
     } catch (NoResultException e) {
       return null;
     }

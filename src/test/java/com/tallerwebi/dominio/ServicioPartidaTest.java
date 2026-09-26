@@ -1,6 +1,9 @@
 package com.tallerwebi.dominio;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
@@ -18,11 +21,12 @@ public class ServicioPartidaTest {
   public void init() {
     this.repositorioUsuarioMock = mock(RepositorioUsuario.class);
     this.repositorioPartidaMock = mock(RepositorioPartida.class);
-    this.servicioPartida = new ServicioPartidaImpl(this.repositorioUsuarioMock, this.repositorioPartidaMock);
+    this.servicioPartida =
+      new ServicioPartidaImpl(this.repositorioUsuarioMock, this.repositorioPartidaMock);
   }
 
   @Test
-  public void crearPartidaConUsuarioExistente() {
+  public void crearPartidaConUsuarioExistente() throws UsuarioNoEncontradoException {
     Usuario usuario = new Usuario();
     usuario.setId(1L);
     usuario.setEmail("jugador@test.com");
@@ -39,6 +43,12 @@ public class ServicioPartidaTest {
 
     assertTrue(partida.getUsuarios().contains(usuario));
 
+    assertTrue(partida.getCreador().equals(usuario));
+
+    assertTrue(partida.getEstado().equals(EstadoPartida.EN_ESPERA));
+
+    assertNotNull(partida.getCodigoUnico());
+
     assertNotNull(partida.getTablero());
 
     assertNotNull(partida.getTiempoInicio());
@@ -49,11 +59,36 @@ public class ServicioPartidaTest {
     when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(null);
 
     assertThrows(
-        UsuarioNoEncontradoException.class,
-        () -> {
-          this.servicioPartida.crearPartida(1L);
-        });
+      UsuarioNoEncontradoException.class,
+      () -> {
+        this.servicioPartida.crearPartida(1L);
+      }
+    );
 
     verify(this.repositorioPartidaMock, never()).guardarPartida(any(Partida.class));
+  }
+
+  @Test
+  public void VerificaQueElCodigoUnicoDePartidaSeaUnico() throws UsuarioNoEncontradoException {
+    Usuario usuario = new Usuario();
+    usuario.setId(1L);
+    usuario.setEmail("jugador@test.com");
+    usuario.setPassword("123");
+    usuario.setRol("USER");
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(anyString()))
+      .thenReturn(new Partida())
+      .thenReturn(null);
+
+    Partida partida = this.servicioPartida.crearPartida(1L);
+
+    assertNotNull(partida);
+    assertEquals(usuario, partida.getCreador());
+    assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
+    assertNotNull(partida.getCodigoUnico());
+
+    verify(this.repositorioPartidaMock, times(2)).buscarPartidaActivaPorCodigoUnico(anyString());
+    verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
   }
 }

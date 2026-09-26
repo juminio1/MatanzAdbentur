@@ -21,7 +21,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
   private final RepositorioPartida repositorioPartida;
 
   @Autowired
-  public ServicioPartidaImpl(RepositorioUsuario repositorioUsuario, RepositorioPartida repositorioPartida) {
+  public ServicioPartidaImpl(
+    RepositorioUsuario repositorioUsuario,
+    RepositorioPartida repositorioPartida
+  ) {
     this.repositorioUsuario = repositorioUsuario;
     this.repositorioPartida = repositorioPartida;
   }
