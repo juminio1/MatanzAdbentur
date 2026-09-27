@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.excepcion.CantidadinsuficienteDeJugadoresException;
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoCreadorException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
@@ -183,5 +184,114 @@ public class ServicioPartidaTest {
       PartidaNoEncontradaException.class,
       () -> this.servicioPartida.iniciarPartida(1L, "INEXISTENTE")
     );
+  }
+
+  @Test
+  public void jugadorSeleccionaUnaFichaDisponible()
+    throws FichaOcupadaException, UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    this.servicioPartida.seleccionarFicha(1L, "ABC123", Ficha.FICHA_AMARILLA);
+
+    assertEquals(Ficha.FICHA_AMARILLA, partida.getFichasPorUsuario().get(creador));
+    verify(this.repositorioPartidaMock).guardarPartida(partida);
+  }
+
+  @Test
+  public void jugadorSeleccionaUnaFichaOcupada()
+    throws FichaOcupadaException, UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Usuario jugador2 = new Usuario();
+    jugador2.setId(2L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+    partida.agregarUsuario(jugador2);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(jugador2);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    this.servicioPartida.seleccionarFicha(1L, "ABC123", Ficha.FICHA_AMARILLA);
+
+    assertThrows(
+      FichaOcupadaException.class,
+      () -> this.servicioPartida.seleccionarFicha(2L, "ABC123", Ficha.FICHA_AMARILLA)
+    );
+  }
+
+  @Test
+  public void jugadorLiberaUnaFicha()
+    throws FichaOcupadaException, UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Usuario jugador2 = new Usuario();
+    jugador2.setId(2L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+    partida.agregarUsuario(jugador2);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(jugador2);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    this.servicioPartida.seleccionarFicha(1L, "ABC123", Ficha.FICHA_AMARILLA);
+    this.servicioPartida.seleccionarFicha(1L, "ABC123", Ficha.FICHA_AZUL); // Libera ficha
+    this.servicioPartida.seleccionarFicha(2L, "ABC123", Ficha.FICHA_AMARILLA); // Selecciona la ficha liberada
+
+    assertEquals(Ficha.FICHA_AZUL, partida.getFichasPorUsuario().get(creador));
+    assertEquals(Ficha.FICHA_AMARILLA, partida.getFichasPorUsuario().get(jugador2));
+    verify(this.repositorioPartidaMock, times(3)).guardarPartida(partida);
+  }
+
+  @Test
+  public void jugadorSeleccionaFichaSinPertenecerALaPartida()
+    throws FichaOcupadaException, UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Usuario jugadorColado = new Usuario();
+    jugadorColado.setId(99L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(99L)).thenReturn(jugadorColado);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    assertThrows(
+      UsuarioNoEncontradoException.class,
+      () -> this.servicioPartida.seleccionarFicha(99L, "ABC123", Ficha.FICHA_AZUL)
+    );
+
+    verify(this.repositorioPartidaMock, never()).guardarPartida(partida);
   }
 }
