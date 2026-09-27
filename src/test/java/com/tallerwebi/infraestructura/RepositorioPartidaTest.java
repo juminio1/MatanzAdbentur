@@ -38,7 +38,6 @@ public class RepositorioPartidaTest {
   @Transactional
   @Rollback
   public void deberiaGuardarUnaPartidaVinculadaAlUsuarioCreador() {
-   
     Usuario creador = new Usuario();
     creador.setEmail("creador@matancero.com");
     creador.setPassword("Clave123!");

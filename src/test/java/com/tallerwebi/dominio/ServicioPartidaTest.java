@@ -1,11 +1,13 @@
 package com.tallerwebi.dominio;
 
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+import com.tallerwebi.dominio.excepcion.CantidadinsuficienteDeJugadoresException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoCreadorException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,7 +71,7 @@ public class ServicioPartidaTest {
   }
 
   @Test
-  public void VerificaQueElCodigoUnicoDePartidaSeaUnico() throws UsuarioNoEncontradoException {
+  public void verificaQueElCodigoUnicoDePartidaSeaUnico() throws UsuarioNoEncontradoException {
     Usuario usuario = new Usuario();
     usuario.setId(1L);
     usuario.setEmail("jugador@test.com");
@@ -90,5 +92,96 @@ public class ServicioPartidaTest {
 
     verify(this.repositorioPartidaMock, times(2)).buscarPartidaActivaPorCodigoUnico(anyString());
     verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
+  }
+
+  @Test
+  public void iniciarPartidaCuandoElUsuarioEsCreadorYTieneJugadoresSuficientes() throws Exception {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Usuario jugador2 = new Usuario();
+    jugador2.setId(2L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+    partida.agregarUsuario(jugador2);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    this.servicioPartida.iniciarPartida(1L, "ABC123");
+
+    assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
+    assertNotNull(partida.getTiempoInicio());
+    verify(this.repositorioPartidaMock).guardarPartida(partida);
+  }
+
+  @Test
+  public void lanzarExcepcionAlIniciarPartidaConUsuarioNoCreador() {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Usuario noCreador = new Usuario();
+    noCreador.setId(2L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador);
+    partida.agregarUsuario(noCreador);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(noCreador);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    assertThrows(
+      UsuarioNoCreadorException.class,
+      () -> this.servicioPartida.iniciarPartida(2L, "ABC123")
+    );
+
+    verify(this.repositorioPartidaMock, never()).guardarPartida(any(Partida.class));
+  }
+
+  @Test
+  public void lanzarExcepcionAlIniciarPartidaConCantidadInsuficienteDeJugadores() {
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setCreador(creador);
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.agregarUsuario(creador); // Solo 1 jugador
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(creador);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123"))
+      .thenReturn(partida);
+
+    assertThrows(
+      CantidadinsuficienteDeJugadoresException.class,
+      () -> this.servicioPartida.iniciarPartida(1L, "ABC123")
+    );
+
+    verify(this.repositorioPartidaMock, never()).guardarPartida(any(Partida.class));
+  }
+
+  @Test
+  public void lanzarExcepcionAlIniciarPartidaSiPartidaNoExiste() {
+    Usuario usuario = new Usuario();
+    usuario.setId(1L);
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+    when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("INEXISTENTE"))
+      .thenReturn(null);
+
+    assertThrows(
+      PartidaNoEncontradaException.class,
+      () -> this.servicioPartida.iniciarPartida(1L, "INEXISTENTE")
+    );
   }
 }

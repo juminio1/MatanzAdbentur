@@ -1,9 +1,15 @@
 package com.tallerwebi.dominio;
 
+import com.tallerwebi.dominio.excepcion.CantidadinsuficienteDeJugadoresException;
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoCreadorException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 public class Partida {
@@ -17,7 +23,9 @@ public class Partida {
 
   @ManyToOne
   @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; //Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
+  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
+
+  // a la vez
 
   @Enumerated(EnumType.STRING)
   private EstadoPartida estado;
@@ -93,9 +101,6 @@ public class Partida {
     Integer tamanioMaximo = 4;
     if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
       this.usuarios.add(usuario);
-      if (this.usuarios.size() == tamanioMaximo) {
-        this.estado = EstadoPartida.EN_CURSO; // Se llenó el cupo: arranca el juego
-      }
       return true;
     }
     return false;
@@ -103,5 +108,53 @@ public class Partida {
 
   public void finalizar() {
     this.estado = EstadoPartida.FINALIZADA;
+  }
+
+  public void iniciar(Usuario usuario)
+    throws UsuarioNoCreadorException, CantidadinsuficienteDeJugadoresException {
+    Integer minimoJugadores = 2;
+    Integer maximoJugadores = 4;
+
+    if (this.usuarios.size() < minimoJugadores || this.usuarios.size() > maximoJugadores) {
+      throw new CantidadinsuficienteDeJugadoresException(
+        "No se puede iniciar la partida con menos de 2 jugadores o más de 4 jugadores."
+      );
+    }
+
+    if (this.creador == null || !this.creador.equals(usuario)) {
+      throw new UsuarioNoCreadorException(
+        "Sólo el creador de la partida puede iniciar la partida."
+      );
+    }
+
+    this.estado = EstadoPartida.EN_CURSO;
+    this.tiempoInicio = Instant.now();
+  }
+
+  @ElementCollection
+  @CollectionTable(name = "partida_fichas", joinColumns = @JoinColumn(name = "partida_id"))
+  @MapKeyJoinColumn(name = "usuario_id")
+  @Enumerated(EnumType.STRING)
+  @Column(name = "ficha")
+  private Map<Usuario, Ficha> fichasPorUsuario = new HashMap<>();
+
+  public Map<Usuario, Ficha> getFichasPorUsuario() {
+    return fichasPorUsuario;
+  }
+
+  public void seleccionarFicha(Usuario usuario, Ficha ficha)
+    throws FichaOcupadaException, UsuarioNoEncontradoException {
+    if (!this.usuarios.contains(usuario)) {
+      throw new UsuarioNoEncontradoException();
+    }
+
+    if (
+      this.fichasPorUsuario.containsValue(ficha) &&
+      !ficha.equals(this.fichasPorUsuario.get(usuario))
+    ) {
+      throw new FichaOcupadaException();
+    }
+
+    this.fichasPorUsuario.put(usuario, ficha);
   }
 }
