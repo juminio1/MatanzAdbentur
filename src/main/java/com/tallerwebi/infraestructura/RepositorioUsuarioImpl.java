@@ -1,6 +1,6 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.Entidades.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +80,15 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
       .getCurrentSession()
       .createQuery("from Usuario where id = :id", Usuario.class)
       .setParameter("id", id)
+      .uniqueResult();
+  }
+
+  @Override
+  public Usuario buscarUsuarioPorCredencial(String credencial) {
+   return sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where credencial = :credencial", Usuario.class)
+      .setParameter("credencial", credencial)
       .uniqueResult();
   }
 }

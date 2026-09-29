@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-import com.tallerwebi.dominio.Entidades.Usuario;
-import com.tallerwebi.dominio.Servicios.ServicioLogin;
-import com.tallerwebi.dominio.Servicios.ServicioLoginImpl;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
+import com.tallerwebi.dominio.servicios.ServicioLoginImpl;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

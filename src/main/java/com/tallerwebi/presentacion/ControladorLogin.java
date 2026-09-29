@@ -1,8 +1,8 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.Entidades.Usuario;
-import com.tallerwebi.dominio.Servicios.ServicioLogin;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,13 +43,10 @@ public class ControladorLogin {
   }
 
   @RequestMapping(path = "validar-login", method = RequestMethod.POST)
-  public ModelAndView validarLogin(
-    @ModelAttribute("datosLogin") LoginDTO datosLogin,
-    HttpServletRequest request
-  ) {
+  public ModelAndView validarLogin(@ModelAttribute("datosLogin") LoginDTO datosLogin, HttpServletRequest request) {
     try {
       Usuario usuarioAutenticado = servicioLogin.autenticar(
-        datosLogin.getEmail(),
+        datosLogin.getCredencial(),
         datosLogin.getPassword()
       );
       HttpServletRequest actualRequest = request != null ? request : this.request;

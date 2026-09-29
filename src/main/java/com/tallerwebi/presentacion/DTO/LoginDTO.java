@@ -2,22 +2,22 @@ package com.tallerwebi.presentacion.DTO;
 
 public class LoginDTO {
 
-  private String email;
+  private String credencial;
   private String password;
 
   public LoginDTO() {}
 
-  public LoginDTO(String email, String password) {
-    this.email = email;
+  public LoginDTO(String credencial, String password) {
+    this.credencial = credencial;
     this.password = password;
   }
 
-  public String getEmail() {
-    return email;
+  public String getCredencial() {
+    return credencial;
   }
 
-  public void setEmail(String email) {
-    this.email = email;
+  public void setCredencial(String credencial) {
+    this.credencial = credencial;
   }
 
   public String getPassword() {

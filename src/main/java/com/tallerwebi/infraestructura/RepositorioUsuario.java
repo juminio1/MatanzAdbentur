@@ -1,6 +1,6 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.Entidades.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
 
 //@SuppressWarnings("PMD.ImplicitFunctionalInterface")
 public interface RepositorioUsuario {
@@ -11,4 +11,6 @@ public interface RepositorioUsuario {
   Boolean verificarEmailExistente(String email);
   Boolean verificarUsernameExistente(String username);
   Usuario buscarUsuarioPorId(Long id);
+  Usuario buscarUsuarioPorCredencial(String credencial);
+
 }
