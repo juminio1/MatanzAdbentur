@@ -1,37 +1,36 @@
 package com.tallerwebi.dominio;
 
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.infraestructura.RepositorioPartida;
-import jakarta.transaction.Transactional;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import jakarta.transaction.Transactional;
 
-@Service("servicioPartida")
+@Service("servicioSalaDeEspera")
 @Transactional
-public class ServicioPartidaImpl implements ServicioPartida {
+public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
   private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   private static final int LONGITUD_CODIGO = 6;
   private final Random random = new SecureRandom();
 
-  private final RepositorioUsuario repositorioUsuario;
-  private final RepositorioPartida repositorioPartida;
+  private RepositorioUsuario repositorioUsuario;
+  private RepositorioPartida repositorioPartida;
 
   @Autowired
-  public ServicioPartidaImpl(
-    RepositorioUsuario repositorioUsuario,
-    RepositorioPartida repositorioPartida
-  ) {
+  public ServicioSalaDeEsperaImpl(
+      RepositorioUsuario repositorioUsuario,
+      RepositorioPartida repositorioPartida) {
     this.repositorioUsuario = repositorioUsuario;
     this.repositorioPartida = repositorioPartida;
   }
 
   @Override
-  public Partida crearPartida(Long idUsuario) throws UsuarioNoEncontradoException {
+  public Partida CrearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
     Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
     if (usuarioEncontrado == null) {
@@ -65,8 +64,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
   }
 
   @Override
-  public Partida unirseAPartida(Long idUsuario, String codigoUnico)
-    throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
-    throw new UnsupportedOperationException("Unimplemented method 'unirseAPartida'");
+  public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
+      throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    throw new UnsupportedOperationException("Unimplemented method 'unirseASalaDeEspera'");
   }
 }
