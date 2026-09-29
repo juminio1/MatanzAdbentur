@@ -1,0 +1,1028 @@
+/* ========================================
+   RESET
+======================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    font-family: 'Montserrat', sans-serif;
+    color: #17202a;
+    overflow-x: hidden;
+
+    background:
+        linear-gradient(
+            rgba(24, 32, 38, 0.18),
+            rgba(39, 28, 21, 0.30)
+        ),
+        linear-gradient(
+            135deg,
+            #a45d43 0%,
+            #c7784e 35%,
+            #cc8c5c 60%,
+            #526a63 100%
+        );
+}
+
+
+/* ========================================
+   LOBBY
+======================================== */
+
+.lobby {
+    position: relative;
+
+    min-height: 100vh;
+
+    padding:
+        35px
+        clamp(25px, 5vw, 90px)
+        55px;
+
+    overflow: hidden;
+}
+
+
+/* Fondo estilo barrio */
+
+.lobby::before {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background-image:
+        linear-gradient(
+            transparent 95%,
+            rgba(0, 0, 0, 0.06) 95%
+        ),
+        linear-gradient(
+            90deg,
+            transparent 95%,
+            rgba(0, 0, 0, 0.04) 95%
+        );
+
+    background-size:
+        70px 45px,
+        90px 60px;
+
+    opacity: 0.15;
+
+    pointer-events: none;
+}
+
+
+/* ========================================
+   DECORACIÓN
+======================================== */
+
+.decoracion-izquierda {
+    position: absolute;
+
+    top: 35px;
+    left: 25px;
+
+    display: flex;
+    flex-direction: column;
+
+    font-size: 24px;
+    font-weight: 800;
+
+    line-height: 1.05;
+
+    transform: rotate(-4deg);
+
+    opacity: 0.8;
+}
+
+
+.cartel-matanza {
+    position: absolute;
+
+    top: 45px;
+    right: 30px;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #315f5e;
+
+    color: white;
+
+    border: 5px solid #d9d0b4;
+    border-radius: 10px;
+
+    padding: 12px 26px;
+
+    transform: rotate(-4deg);
+
+    box-shadow:
+        0 5px 0 rgba(0, 0, 0, 0.25);
+
+    text-align: center;
+}
+
+.cartel-matanza span {
+    font-size: 13px;
+}
+
+.cartel-matanza strong {
+    font-size: 22px;
+}
+
+
+/* ========================================
+   HEADER
+======================================== */
+
+.encabezado-lobby {
+    position: relative;
+    z-index: 2;
+
+    min-height: 200px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-bottom: 5px;
+}
+
+
+.titulo-contenedor {
+    text-align: center;
+}
+
+
+.titulo-juego {
+    display: flex;
+    flex-direction: column;
+
+    padding: 12px 55px;
+
+    background: #473324;
+
+    border:
+        5px solid #2d2119;
+
+    border-radius: 20px;
+
+    transform: rotate(-1deg);
+
+    box-shadow:
+        0 8px 0 rgba(0, 0, 0, 0.18);
+}
+
+
+.titulo-monopoly {
+    color: #f7eedc;
+
+    font-size:
+        clamp(28px, 4vw, 55px);
+
+    font-weight: 800;
+
+    line-height: 0.9;
+
+    text-shadow:
+        3px 3px 0 #1a1714;
+}
+
+
+.titulo-matancero {
+    color: #db4938;
+
+    font-size:
+        clamp(36px, 5vw, 70px);
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    text-shadow:
+        4px 4px 0 #201b17;
+}
+
+
+.titulo-contenedor p {
+    display: inline-block;
+
+    margin-top: 15px;
+
+    padding: 7px 25px;
+
+    color: #faf7ef;
+
+    background: rgba(25, 36, 46, 0.85);
+
+    border-radius: 10px;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    line-height: 1.5;
+}
+
+
+/* ========================================
+   MASCOTA
+======================================== */
+
+.mascota {
+    position: absolute;
+
+    left: 6%;
+    bottom: -15px;
+}
+
+
+.mascota-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 160px;
+    height: 160px;
+
+    font-size: 90px;
+
+    background: #244769;
+
+    border-radius:
+        50% 50% 20px 20px;
+
+    border:
+        5px solid #183149;
+
+    box-shadow:
+        0 8px 15px rgba(0, 0, 0, 0.25);
+}
+
+
+.mascota img {
+    width: 190px;
+
+    display: block;
+
+    object-fit: contain;
+}
+
+
+/* ========================================
+   PANELES
+======================================== */
+
+.paneles {
+    position: relative;
+    z-index: 3;
+
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr
+        1.1fr;
+
+    gap: 18px;
+
+    max-width: 1450px;
+
+    margin: auto;
+}
+
+
+.panel {
+    overflow: hidden;
+
+    background: #f7f0df;
+
+    border:
+        4px solid rgba(28, 28, 25, 0.75);
+
+    border-radius: 24px;
+
+    box-shadow:
+        0 12px 22px
+        rgba(0, 0, 0, 0.22);
+}
+
+
+.panel-header {
+    height: 72px;
+
+    padding: 0 24px;
+
+    display: flex;
+    align-items: center;
+
+    color: white;
+
+    gap: 12px;
+}
+
+
+.panel-header h2 {
+    font-size:
+        clamp(20px, 2vw, 29px);
+
+    font-weight: 800;
+}
+
+
+.icono {
+    font-size: 27px;
+}
+
+
+.header-azul {
+    background: #203f60;
+}
+
+.header-rojo {
+    background: #a74736;
+}
+
+.header-verde {
+    background: #294b48;
+
+    justify-content: space-between;
+}
+
+
+.panel-body {
+    position: relative;
+
+    min-height: 410px;
+
+    padding: 25px;
+}
+
+
+.descripcion {
+    max-width: 310px;
+
+    margin: 0 auto 30px;
+
+    text-align: center;
+
+    line-height: 1.45;
+
+    font-size: 16px;
+    font-weight: 600;
+}
+
+
+/* ========================================
+   CÓDIGO
+======================================== */
+
+.codigo-box {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 15px;
+
+    padding: 25px 15px;
+
+    border:
+        3px dashed #273844;
+
+    border-radius: 20px;
+
+    background:
+        rgba(255, 255, 255, 0.35);
+}
+
+
+.codigo {
+    font-size:
+        clamp(37px, 5vw, 65px);
+
+    font-weight: 800;
+
+    letter-spacing: 3px;
+
+    color: #10253a;
+}
+
+
+.btn-copiar {
+    width: 50px;
+    height: 50px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: white;
+
+    box-shadow:
+        0 3px 7px rgba(0, 0, 0, 0.15);
+
+    font-size: 25px;
+
+    cursor: default;
+}
+
+
+.mensaje-barrio {
+    position: absolute;
+
+    bottom: 35px;
+    left: 35px;
+
+    color: #a64c3e;
+
+    font-weight: 800;
+
+    font-size: 16px;
+
+    transform: rotate(-7deg);
+}
+
+
+.perro {
+    position: absolute;
+
+    right: 35px;
+    bottom: 20px;
+
+    font-size: 75px;
+
+    filter: grayscale(1);
+}
+
+
+/* ========================================
+   FICHAS
+======================================== */
+
+.fichas-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 14px;
+}
+
+
+.ficha-card {
+    min-height: 155px;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 6px;
+
+    border-radius: 18px;
+
+    border:
+        2px solid rgba(255, 255, 255, 0.7);
+}
+
+
+.ficha-card span {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+
+.ficha-roja {
+    background: #f5cbc4;
+}
+
+.ficha-azul {
+    background: #cce0ef;
+}
+
+.ficha-verde {
+    background: #d4e7c8;
+}
+
+.ficha-amarilla {
+    background: #f1dfad;
+}
+
+
+/* FIGURA DE LA FICHA */
+
+.ficha {
+    position: relative;
+
+    width: 85px;
+    height: 90px;
+}
+
+
+.ficha-cabeza {
+    position: absolute;
+
+    top: 5px;
+    left: 27px;
+
+    width: 32px;
+    height: 32px;
+
+    background: currentColor;
+
+    border-radius: 50%;
+
+    box-shadow:
+        inset 7px 5px 6px
+        rgba(255, 255, 255, 0.32);
+}
+
+
+.ficha-cuerpo {
+    position: absolute;
+
+    top: 30px;
+    left: 22px;
+
+    width: 42px;
+    height: 39px;
+
+    background: currentColor;
+
+    clip-path:
+        polygon(
+            35% 0,
+            65% 0,
+            100% 100%,
+            0 100%
+        );
+}
+
+
+.ficha-base {
+    position: absolute;
+
+    bottom: 6px;
+    left: 8px;
+
+    width: 70px;
+    height: 20px;
+
+    background: currentColor;
+
+    border-radius: 50%;
+
+    box-shadow:
+        inset 0 5px 4px
+        rgba(255, 255, 255, 0.25),
+        0 6px 8px
+        rgba(0, 0, 0, 0.23);
+}
+
+
+.ficha-color-rojo {
+    color: #cf2830;
+}
+
+.ficha-color-azul {
+    color: #1763ce;
+}
+
+.ficha-color-verde {
+    color: #159447;
+}
+
+.ficha-color-amarillo {
+    color: #e5a40e;
+}
+
+
+/* ========================================
+   JUGADORES
+======================================== */
+
+.titulo-jugadores {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+}
+
+
+.contador {
+    padding: 7px 13px;
+
+    border-radius: 14px;
+
+    background:
+        rgba(10, 25, 30, 0.35);
+
+    font-weight: 800;
+}
+
+
+.lista-jugadores {
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+
+    min-height: auto;
+}
+
+
+.jugador {
+    display: grid;
+
+    grid-template-columns:
+        50px
+        1fr
+        auto;
+
+    align-items: center;
+
+    gap: 13px;
+
+    padding: 13px;
+
+    background:
+        rgba(255, 255, 255, 0.4);
+
+    border:
+        1px solid rgba(0, 0, 0, 0.07);
+
+    border-radius: 15px;
+}
+
+
+.jugador-info {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+}
+
+
+.jugador-info strong {
+    font-size: 17px;
+}
+
+
+.jugador-info span {
+    font-size: 13px;
+
+    color: #53616c;
+}
+
+
+.jugador-info .estado-listo {
+    color: #22813b;
+    font-weight: 600;
+}
+
+
+.estado {
+    padding: 10px 15px;
+
+    border-radius: 15px;
+
+    white-space: nowrap;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+.estado-verde {
+    color: #24793a;
+
+    background: #d6efcf;
+}
+
+
+.estado-espera {
+    color: #526174;
+
+    background: #e4e8ed;
+}
+
+
+/* MINI FICHAS */
+
+.mini-ficha {
+    width: 29px;
+    height: 39px;
+
+    margin: auto;
+
+    border-radius:
+        50% 50%
+        30% 30%;
+
+    box-shadow:
+        inset 5px 4px 5px
+        rgba(255, 255, 255, 0.3),
+        0 4px 5px
+        rgba(0, 0, 0, 0.2);
+}
+
+
+.mini-roja {
+    background: #ca2834;
+}
+
+.mini-azul {
+    background: #1768d4;
+}
+
+.mini-verde {
+    background: #138c4d;
+}
+
+.mini-amarilla {
+    background: #e0a210;
+}
+
+
+/* ========================================
+   BARRA INFERIOR
+======================================== */
+
+.barra-inferior {
+    position: relative;
+    z-index: 5;
+
+    max-width: 1000px;
+
+    margin: 18px auto 0;
+
+    display: grid;
+
+    grid-template-columns:
+        1.6fr
+        1fr;
+
+    border:
+        4px solid #232529;
+
+    border-radius: 25px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 8px 15px
+        rgba(0, 0, 0, 0.25);
+}
+
+
+.esperando {
+    display: flex;
+
+    align-items: center;
+
+    gap: 20px;
+
+    padding: 19px 28px;
+
+    background: #1f344a;
+
+    color: #f6f2e7;
+
+    font-size: 15px;
+}
+
+
+.reloj {
+    font-size: 30px;
+}
+
+
+.btn-iniciar {
+    position: relative;
+
+    border: none;
+
+    padding: 18px 25px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #d64d3d,
+            #b5342b
+        );
+
+    color: white;
+
+    font-family: inherit;
+
+    font-size: 23px;
+    font-weight: 800;
+
+    cursor: default;
+
+    text-shadow:
+        0 2px 2px rgba(0, 0, 0, 0.2);
+
+    box-shadow:
+        inset 0 4px 0
+        rgba(255, 255, 255, 0.15);
+}
+
+
+.play {
+    margin-right: 12px;
+
+    font-size: 22px;
+}
+
+
+.corona {
+    position: absolute;
+
+    top: 7px;
+    right: 15px;
+
+    transform: rotate(12deg);
+
+    font-size: 22px;
+
+    color: #f5d675;
+}
+
+
+/* ========================================
+   MESA / DETALLES
+======================================== */
+
+.mesa {
+    position: relative;
+
+    z-index: 2;
+
+    height: 90px;
+
+    max-width: 1400px;
+
+    margin: auto;
+}
+
+
+.mate {
+    position: absolute;
+
+    left: 5px;
+    top: 20px;
+
+    width: 100px;
+    height: 80px;
+
+    padding-top: 20px;
+
+    display: flex;
+    flex-direction: column;
+
+    text-align: center;
+
+    background: #42372e;
+
+    border-radius:
+        20px 20px
+        40px 40px;
+
+    color: #eee6d7;
+
+    font-size: 10px;
+
+    font-weight: 700;
+}
+
+
+.dado {
+    position: absolute;
+
+    font-size: 42px;
+
+    color: #eee8da;
+
+    text-shadow:
+        2px 3px 3px
+        rgba(0, 0, 0, 0.4);
+}
+
+
+.dado-1 {
+    left: 130px;
+    top: 30px;
+
+    transform: rotate(15deg);
+}
+
+
+.dado-2 {
+    left: 190px;
+    top: 50px;
+
+    transform: rotate(-10deg);
+}
+
+
+.choripan {
+    position: absolute;
+
+    right: 20px;
+    top: 20px;
+
+    font-size: 75px;
+
+    transform: rotate(-4deg);
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1100px) {
+
+    .paneles {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .panel-jugadores {
+        grid-column:
+            1 / -1;
+    }
+
+    .mascota {
+        display: none;
+    }
+
+}
+
+
+@media (max-width: 750px) {
+
+    .lobby {
+        padding:
+            20px 15px 40px;
+    }
+
+    .decoracion,
+    .cartel-matanza {
+        display: none;
+    }
+
+    .encabezado-lobby {
+        min-height: 170px;
+    }
+
+    .titulo-juego {
+        padding:
+            12px 30px;
+    }
+
+    .paneles {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-jugadores {
+        grid-column: auto;
+    }
+
+    .barra-inferior {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-iniciar {
+        min-height: 75px;
+    }
+
+}
+
+
+@media (max-width: 480px) {
+
+    .fichas-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .jugador {
+        grid-template-columns:
+            35px
+            1fr;
+    }
+
+    .estado {
+        grid-column:
+            1 / -1;
+
+        text-align: center;
+    }
+
+}

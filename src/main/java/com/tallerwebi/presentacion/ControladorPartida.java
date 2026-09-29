@@ -3,7 +3,6 @@ package com.tallerwebi.presentacion;
 import com.tallerwebi.dominio.Partida;
 import com.tallerwebi.dominio.ServicioPartida;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;

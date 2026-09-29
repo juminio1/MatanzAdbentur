@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.ServicioRegistro;
-import com.tallerwebi.dominio.Usuario;
 import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
@@ -53,8 +52,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void deberiaRegistrarUsuarioConDatosValidosExitosamente()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     RegistroDTO registro = new RegistroDTO();
 
     registro.setUsername("JuliMatanza");
@@ -85,8 +83,7 @@ public class ControladorRegistroTest {
 
   @Test
   public void deberiaVolverAlFormularioCuandoHayErroresDeValidacion()
-      throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException,
-      EmailInvalidoException {
+    throws UsuarioExistenteException, ContraseniaInvalidaException, CamposObligatoriosException, EmailInvalidoException {
     when(bindingResultMock.hasErrors()).thenReturn(true);
 
     ModelAndView modelAndView = controladorRegistro.registrarme(registroMock, bindingResultMock);

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 import com.tallerwebi.dominio.Partida;
 import com.tallerwebi.dominio.ServicioPartida;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.ModelAndView;
@@ -21,7 +20,7 @@ public class ControladorPartidaTest {
   @BeforeEach
   void setUp() {
     servicioPartida = mock(ServicioPartida.class);
-    controlador =  mock(ControladorPartida.class);
+    controlador = mock(ControladorPartida.class);
     partida = new Partida();
   }
 

@@ -111,7 +111,12 @@ public class RepositorioUsuarioTest {
     this.entoncesSeLanzaUnaUsuarioNoEncontrado(usuario);
   }
 
-  private Usuario dadoQueTengoUnUsuario(String email, String username, String password, String rol) {
+  private Usuario dadoQueTengoUnUsuario(
+    String email,
+    String username,
+    String password,
+    String rol
+  ) {
     Usuario usuario = new Usuario();
     usuario.setEmail(email);
     usuario.setPassword(password);
@@ -159,6 +164,7 @@ public class RepositorioUsuarioTest {
     // Validación
     assertThat(userVerificado, is(true));
   }
+
   @Test
   @Transactional
   @Rollback
@@ -258,8 +264,9 @@ public class RepositorioUsuarioTest {
   }
 
   private void entoncesElUsuarioObtenidoEsCorrecto(
-      Usuario usuarioObtenido,
-      Usuario usuarioEsperado) {
+    Usuario usuarioObtenido,
+    Usuario usuarioEsperado
+  ) {
     assertThat(usuarioObtenido.getEmail(), is(equalTo(usuarioEsperado.getEmail())));
     assertThat(usuarioObtenido.getUsername(), is(equalTo(usuarioEsperado.getUsername())));
     assertThat(usuarioObtenido.getPassword(), is(equalTo(usuarioEsperado.getPassword())));
@@ -273,9 +280,10 @@ public class RepositorioUsuarioTest {
 
   private void entoncesSeLanzaUnaUsuarioNoEncontrado(Usuario usuario) {
     assertThrows(
-        UsuarioNoEncontradoException.class,
-        () -> {
-          this.cuandoModificoUnUsuario(usuario);
-        });
+      UsuarioNoEncontradoException.class,
+      () -> {
+        this.cuandoModificoUnUsuario(usuario);
+      }
+    );
   }
 }

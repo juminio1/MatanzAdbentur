@@ -1,5 +1,9 @@
 package com.tallerwebi.dominio;
 
+import com.tallerwebi.dominio.excepcion.CantidadinsuficienteDeJugadoresException;
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoCreadorException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
@@ -23,7 +27,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
   private final RepositorioPartida repositorioPartida;
 
   @Autowired
-  public ServicioPartidaImpl(RepositorioUsuario repositorioUsuario, RepositorioPartida repositorioPartida) {
+  public ServicioPartidaImpl(
+    RepositorioUsuario repositorioUsuario,
+    RepositorioPartida repositorioPartida
+  ) {
     this.repositorioUsuario = repositorioUsuario;
     this.repositorioPartida = repositorioPartida;
   }
@@ -60,5 +67,45 @@ public class ServicioPartidaImpl implements ServicioPartida {
       codigo.append(CARACTERES.charAt(posicion));
     }
     return codigo.toString();
+  }
+
+  @Override
+  public Partida unirseAPartida(Long idUsuario, String codigoUnico)
+    throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
+    throw new UnsupportedOperationException("Unimplemented method 'unirseAPartida'");
+  }
+
+  @Override
+  public void iniciarPartida(Long idUsuario, String codigoUnico)
+    throws UsuarioNoCreadorException, CantidadinsuficienteDeJugadoresException, PartidaNoEncontradaException {
+    Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    if (usuario == null) {
+      throw new UsuarioNoEncontradoException();
+    }
+
+    Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    if (partida == null) {
+      throw new PartidaNoEncontradaException("No se encontró una partida con el código solicitado");
+    }
+
+    partida.iniciar(usuario);
+    this.repositorioPartida.guardarPartida(partida);
+  }
+
+  @Override
+  public void seleccionarFicha(Long idUsuario, String codigoUnico, Ficha ficha)
+    throws UsuarioNoEncontradoException, PartidaNoEncontradaException, FichaOcupadaException {
+    Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    if (usuario == null) {
+      throw new UsuarioNoEncontradoException();
+    }
+
+    Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    if (partida == null) {
+      throw new PartidaNoEncontradaException("Partida no encontrada");
+    }
+
+    partida.seleccionarFicha(usuario, ficha);
+    this.repositorioPartida.guardarPartida(partida);
   }
 }

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sala de espera | El Matancero</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" th:href="@{/css/sala-de-espera.css}">
+</head>
+
+<body>
+
+<main class="lobby">
+
+    <!-- DECORACIÓN DEL FONDO -->
+    <div class="decoracion decoracion-izquierda">
+        <span>LA</span>
+        <span>MATANZA</span>
+        <span>NUNCA</span>
+        <span>DUERME</span>
+    </div>
+
+    <div class="cartel-matanza">
+        <span>Bienvenidos a</span>
+        <strong>LA MATANZA</strong>
+    </div>
+
+    <section class="encabezado-lobby">
+
+        <div class="mascota">
+            <!--
+            Cuando tengas la imagen:
+            <img th:src="@{/imagenes/turro.png}" alt="Mascota El Matancero">
+            -->
+
+            <div class="mascota-placeholder">
+                😎
+            </div>
+        </div>
+
+        <div class="titulo-contenedor">
+            <div class="titulo-juego">
+                <span class="titulo-monopoly">MONOPOLY</span>
+                <span class="titulo-matancero">MATANCERO</span>
+            </div>
+
+            <p>
+                Compartí el código con tus amigos
+                <br>
+                para que se unan a la partida.
+            </p>
+        </div>
+
+    </section>
+
+    <section class="paneles">
+
+
+        <!-- CÓDIGO ÚNICO -->
+
+        <article class="panel panel-codigo">
+
+            <header class="panel-header header-azul">
+                <span class="icono">🔗</span>
+                <h2>Código único</h2>
+            </header>
+
+            <div class="panel-body">
+
+                <p class="descripcion">
+                    Comparte este código para que otros jugadores se unan:
+                </p>
+
+                <div class="codigo-box">
+                    <span class="codigo">A7K9P2</span>
+
+                    <button
+                        class="btn-copiar"
+                        type="button"
+                        aria-label="Copiar código"
+                    >
+                        ⧉
+                    </button>
+                </div>
+
+                <div class="mensaje-barrio">
+                    PASALO<br>
+                    AL GRUPO<br>
+                    DEL BARRIO :)
+                </div>
+
+                <div class="perro">
+                    🐶
+                </div>
+
+            </div>
+
+        </article>
+
+
+        <!-- SELECCIÓN DE FICHA -->
+
+        <article class="panel panel-fichas">
+
+            <header class="panel-header header-rojo">
+                <span class="icono">♟</span>
+                <h2>Selecciona tu ficha</h2>
+            </header>
+
+            <div class="panel-body">
+
+                <p class="descripcion">
+                    Elige el color de tu ficha para la partida:
+                </p>
+
+                <div class="fichas-grid">
+
+                    <!-- ROJA -->
+
+                    <div class="ficha-card ficha-roja">
+
+                        <div class="ficha ficha-color-rojo">
+                            <div class="ficha-cabeza"></div>
+                            <div class="ficha-cuerpo"></div>
+                            <div class="ficha-base"></div>
+                        </div>
+
+                        <span>Roja</span>
+
+                    </div>
+
+
+                    <!-- AZUL -->
+
+                    <div class="ficha-card ficha-azul">
+
+                        <div class="ficha ficha-color-azul">
+                            <div class="ficha-cabeza"></div>
+                            <div class="ficha-cuerpo"></div>
+                            <div class="ficha-base"></div>
+                        </div>
+
+                        <span>Azul</span>
+
+                    </div>
+
+
+                    <!-- VERDE -->
+
+                    <div class="ficha-card ficha-verde">
+
+                        <div class="ficha ficha-color-verde">
+                            <div class="ficha-cabeza"></div>
+                            <div class="ficha-cuerpo"></div>
+                            <div class="ficha-base"></div>
+                        </div>
+
+                        <span>Verde</span>
+
+                    </div>
+
+
+                    <!-- AMARILLA -->
+
+                    <div class="ficha-card ficha-amarilla">
+
+                        <div class="ficha ficha-color-amarillo">
+                            <div class="ficha-cabeza"></div>
+                            <div class="ficha-cuerpo"></div>
+                            <div class="ficha-base"></div>
+                        </div>
+
+                        <span>Amarilla</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </article>
+
+
+        <!-- JUGADORES -->
+
+        <article class="panel panel-jugadores">
+
+            <header class="panel-header header-verde">
+
+                <div class="titulo-jugadores">
+                    <span class="icono">👥</span>
+                    <h2>Jugadores en espera</h2>
+                </div>
+
+                <span class="contador">4/4</span>
+
+            </header>
+
+            <div class="panel-body lista-jugadores">
+
+
+                <!-- JUGADOR 1 -->
+
+                <div class="jugador">
+
+                    <div class="mini-ficha mini-roja"></div>
+
+                    <div class="jugador-info">
+                        <strong>Jugador 1</strong>
+                        <span class="estado-listo">
+                            Listo para jugar
+                        </span>
+                    </div>
+
+                    <div class="estado estado-verde">
+                        ✓ Listo
+                    </div>
+
+                </div>
+
+
+                <!-- JUGADOR 2 -->
+
+                <div class="jugador">
+
+                    <div class="mini-ficha mini-azul"></div>
+
+                    <div class="jugador-info">
+                        <strong>Jugador 2</strong>
+                        <span>En espera de confirmar</span>
+                    </div>
+
+                    <div class="estado estado-espera">
+                        ◷ En espera
+                    </div>
+
+                </div>
+
+
+                <!-- JUGADOR 3 -->
+
+                <div class="jugador">
+
+                    <div class="mini-ficha mini-verde"></div>
+
+                    <div class="jugador-info">
+                        <strong>Jugador 3</strong>
+                        <span class="estado-listo">
+                            Listo para jugar
+                        </span>
+                    </div>
+
+                    <div class="estado estado-verde">
+                        ✓ Listo
+                    </div>
+
+                </div>
+
+
+                <!-- JUGADOR 4 -->
+
+                <div class="jugador">
+
+                    <div class="mini-ficha mini-amarilla"></div>
+
+                    <div class="jugador-info">
+                        <strong>Jugador 4</strong>
+                        <span>En espera de confirmar</span>
+                    </div>
+
+                    <div class="estado estado-espera">
+                        ◷ En espera
+                    </div>
+
+                </div>
+
+            </div>
+
+        </article>
+
+    </section>
+
+
+    <!-- ========================================= -->
+    <!-- BARRA INFERIOR -->
+    <!-- ========================================= -->
+
+    <section class="barra-inferior">
+
+        <div class="esperando">
+            <span class="reloj">⌛</span>
+
+            <span>
+                Esperando a que todos los jugadores estén listos...
+            </span>
+        </div>
+
+        <!--
+        Por ahora es solo visual.
+        No tiene onclick, JS ni acción asociada.
+        -->
+
+        <button class="btn-iniciar" type="button">
+
+            <span class="play">
+                ▶
+            </span>
+
+            Iniciar partida
+
+            <span class="corona">
+                ♛
+            </span>
+
+        </button>
+
+    </section>
+
+
+    <!-- DECORACIÓN INFERIOR -->
+
+    <section class="mesa">
+
+        <div class="mate">
+            <span>LA MATANZA</span>
+            <span>ES FAMILIA</span>
+        </div>
+
+        <div class="dado dado-1">
+            ⚄
+        </div>
+
+        <div class="dado dado-2">
+            ⚂
+        </div>
+
+        <div class="choripan">
+            🌭
+        </div>
+
+    </section>
+
+</main>
+
+</body>
+</html>
