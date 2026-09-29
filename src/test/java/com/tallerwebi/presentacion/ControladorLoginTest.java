@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-import com.tallerwebi.dominio.Entidades.Usuario;
-import com.tallerwebi.dominio.Servicios.ServicioLogin;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,7 +42,7 @@ public class ControladorLoginTest {
   public void loginConUsuarioYPasswordIncorrectosDeberiaLlevarALoginNuevamente()
     throws CredencialesInvalidasException {
     // preparacion
-    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+    when(servicioLoginMock.autenticar(datosLoginMock.getCredencial(), datosLoginMock.getPassword()))
       .thenThrow(new CredencialesInvalidasException("Usuario o clave incorrecta"));
 
     // ejecucion
@@ -68,7 +68,7 @@ public class ControladorLoginTest {
 
     when(requestMock.getSession()).thenReturn(sessionMock);
 
-    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+    when(servicioLoginMock.autenticar(datosLoginMock.getCredencial(), datosLoginMock.getPassword()))
       .thenReturn(usuarioEncontradoMock);
 
     // ejecucion
@@ -93,7 +93,7 @@ public class ControladorLoginTest {
 
     when(requestMock.getSession()).thenReturn(sessionMock);
 
-    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+    when(servicioLoginMock.autenticar(datosLoginMock.getCredencial(), datosLoginMock.getPassword()))
       .thenReturn(usuarioEncontradoMock);
 
     controladorLogin = new ControladorLogin(servicioLoginMock, requestMock);
@@ -116,7 +116,7 @@ public class ControladorLoginTest {
 
     when(requestMock.getSession()).thenReturn(null);
 
-    when(servicioLoginMock.autenticar(datosLoginMock.getEmail(), datosLoginMock.getPassword()))
+    when(servicioLoginMock.autenticar(datosLoginMock.getCredencial(), datosLoginMock.getPassword()))
       .thenReturn(usuarioEncontradoMock);
 
     // ejecucion

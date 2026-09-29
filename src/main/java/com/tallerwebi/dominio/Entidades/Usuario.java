@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.Entidades;
+package com.tallerwebi.dominio.entidades;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
