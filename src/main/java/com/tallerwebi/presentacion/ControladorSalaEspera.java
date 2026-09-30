@@ -1,9 +1,6 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.servicios.ServicioLogin;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 
 import jakarta.servlet.http.HttpServletRequest;
