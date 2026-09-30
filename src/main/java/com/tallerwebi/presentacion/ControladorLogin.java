@@ -6,6 +6,8 @@ import com.tallerwebi.dominio.servicios.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
+
 
 @Controller
 public class ControladorLogin {
@@ -46,14 +49,13 @@ public class ControladorLogin {
   public ModelAndView validarLogin(@ModelAttribute("datosLogin") LoginDTO datosLogin, HttpServletRequest request) {
     try {
       Usuario usuarioAutenticado = servicioLogin.autenticar(
-        datosLogin.getCredencial(),
-        datosLogin.getPassword()
-      );
+          datosLogin.getCredencial(),
+          datosLogin.getPassword());
       HttpServletRequest actualRequest = request != null ? request : this.request;
       if (actualRequest != null && actualRequest.getSession() != null) {
         actualRequest.getSession().setAttribute("ROL", usuarioAutenticado.getRol());
         actualRequest.getSession().setAttribute("NOMBRE", usuarioAutenticado.getUsername());
-      } //SESION STORAGE LOQUITA
+      } // SESION STORAGE LOQUITA
       return new ModelAndView("redirect:/home");
     } catch (CredencialesInvalidasException e) {
       Map<String, Object> model = new ModelMap();
@@ -62,14 +64,21 @@ public class ControladorLogin {
     }
   }
 
-  @GetMapping("/home")
+ @GetMapping("/home")
   public ModelAndView irAHome() {
-    Map<String, Object> modelo = new ModelMap();
+    HttpServletRequest actualRequest = this.request;
     String nombre = null;
-    if (this.request != null && this.request.getSession() != null) {
-      nombre = (String) this.request.getSession().getAttribute("NOMBRE");
+
+    if (actualRequest != null && actualRequest.getSession(false) != null) {
+      nombre = (String) actualRequest.getSession(false).getAttribute("NOMBRE");
     }
-    modelo.put("nombreJugador", nombre != null ? nombre : "Vecino de La Matanza");
+
+    if (nombre == null) {
+      return new ModelAndView("redirect:/login");
+    }
+
+    Map<String, Object> modelo = new ModelMap();
+    modelo.put("nombreJugador", nombre);
     return new ModelAndView("home", modelo);
   }
 
@@ -80,8 +89,10 @@ public class ControladorLogin {
 
   @GetMapping("/cerrar-sesion")
   public ModelAndView cerrarSesion(HttpServletRequest request) {
-    request.getSession().invalidate();
-
-    return new ModelAndView("redirect:/home");
+    HttpServletRequest actualRequest = request != null ? request : this.request;
+    if (actualRequest != null && actualRequest.getSession(false) != null) {
+      actualRequest.getSession(false).invalidate();
+    }
+    return new ModelAndView("redirect:/login");
   }
 }

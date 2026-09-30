@@ -19,3 +19,69 @@
 .btn-perfil:hover {
     background-color: rgba(43, 57, 144, 0.08);
 }
+
+/* Estilos para el botón de cerrar sesión */
+/* Contenedor relativo para posicionar el dropdown */
+.user-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Tarjeta flotante desplegable a la derecha */
+.user-dropdown-menu {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    min-width: 190px;
+    background-color: #ffffff;
+    color: #2b2b2b;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    padding: 12px 14px;
+    z-index: 1000;
+    border: 1px solid #e0e0e0;
+}
+
+/* Ocultar el menú */
+.oculto {
+    display: none !important;
+}
+
+.user-dropdown-header .user-name {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #222222;
+}
+
+.user-dropdown-header .user-role {
+    font-size: 0.75rem;
+    color: #f59e0b;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.user-dropdown-divider {
+    border: none;
+    border-top: 1px solid #eeeeee;
+    margin: 8px 0;
+}
+
+/* Botón de cerrar sesión */
+.btn-logout {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background-color: #dc3545;
+    color: #ffffff !important;
+    padding: 6px 0;
+    border-radius: 5px;
+    text-decoration: none !important;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+.btn-logout:hover {
+    background-color: #bd2130;
+}
