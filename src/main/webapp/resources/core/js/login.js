@@ -1,17 +1,15 @@
 import { validarCamposDeLogin } from "./login_funciones.js";
 
 const btnLoginNode = document.getElementById("btn-login");
-const inputEmailNode = document.getElementById("email");
+const inputCredencialNode = document.getElementById("credencial");
 const inputPasswordNode = document.getElementById("password");
 
-inputEmailNode.addEventListener("keyup", (event) => {
-  const inputEmailValue = event.target.value;
-  const inputPasswordValue = inputPasswordNode.value;
-  btnLoginNode.disabled = !validarCamposDeLogin(inputEmailValue, inputPasswordValue);
-});
+function actualizarEstadoBoton() {
+    const inputCredencialValue = inputCredencialNode.value;
+    const inputPasswordValue = inputPasswordNode.value;
 
-inputPasswordNode.addEventListener("keyup", (event) => {
-  const inputEmailValue = inputEmailNode.value;
-  const inputPasswordValue = event.target.value;
-  btnLoginNode.disabled = !validarCamposDeLogin(inputEmailValue, inputPasswordValue);
-});
+    btnLoginNode.disabled = !validarCamposDeLogin(inputCredencialValue,inputPasswordValue);
+}
+
+inputCredencialNode.addEventListener("input", actualizarEstadoBoton);
+inputPasswordNode.addEventListener("input", actualizarEstadoBoton);

@@ -43,9 +43,9 @@ public class ServicioLoginImpl implements ServicioLogin {
         return usuario;
     }
 
-    private void validarParametros(String email, String password)
+    private void validarParametros(String credencial, String password)
         throws CredencialesInvalidasException {
-        if (esInvalido(email) || esInvalido(password)) {
+        if (esInvalido(credencial) || esInvalido(password)) {
             throw new CredencialesInvalidasException(ERROR_CREDENCIALES);
         }
     }

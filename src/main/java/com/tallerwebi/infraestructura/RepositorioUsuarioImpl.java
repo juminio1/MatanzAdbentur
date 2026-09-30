@@ -85,10 +85,11 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
 
   @Override
   public Usuario buscarUsuarioPorCredencial(String credencial) {
-   return sessionFactory
-      .getCurrentSession()
-      .createQuery("from Usuario where credencial = :credencial", Usuario.class)
-      .setParameter("credencial", credencial)
-      .uniqueResult();
-  }
-}
+
+    return sessionFactory
+        .getCurrentSession()
+        .createQuery(
+            "from Usuario where username = :credencial or email = :credencial", Usuario.class) //username e email son atributos de usuario. credencial seria una variable temporal dnd se va a guardar esos datos
+            .setParameter("credencial", credencial).uniqueResult();
+      }
+    }

@@ -53,7 +53,7 @@ public class ControladorLogin {
       if (actualRequest != null && actualRequest.getSession() != null) {
         actualRequest.getSession().setAttribute("ROL", usuarioAutenticado.getRol());
         actualRequest.getSession().setAttribute("NOMBRE", usuarioAutenticado.getUsername());
-      }
+      } //SESION STORAGE LOQUITA
       return new ModelAndView("redirect:/home");
     } catch (CredencialesInvalidasException e) {
       Map<String, Object> model = new ModelMap();
