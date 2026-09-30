@@ -1,7 +1,7 @@
 package com.tallerwebi.dominio;
 
 public enum EstadoPartida {
-  EN_ESPERA,
-  EN_CURSO,
-  FINALIZADA,
+    EN_ESPERA,
+    EN_CURSO,
+    FINALIZADA,
 }
