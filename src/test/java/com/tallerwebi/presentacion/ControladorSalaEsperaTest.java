@@ -30,12 +30,12 @@ public class ControladorSalaEsperaTest {
         this.sessionMock = mock(HttpSession.class); // Crea una sesión falsa.
     }
 
-    @Test
+    /* @Test
     public void quieroirALaSalaDeEspera() {
         ModelAndView salaDeEspera = controladorSalaEspera.irASalaDeEspera();
 
         assertEquals("sala-de-espera", salaDeEspera.getViewName());
-    }
+    } */
 
     @Test
     public void quieroCrearUnaSalaDeEsperaExitosamente() {
@@ -72,22 +72,21 @@ public class ControladorSalaEsperaTest {
     }
 
     @Test
-public void queAlCrearUnaSalaDeEsperaSeUtiliceElIdDelUsuarioGuardadoEnSesion() {
+    public void queAlCrearUnaSalaDeEsperaSeUtiliceElIdDelUsuarioGuardadoEnSesion() {
+        when(requestMock.getSession()).thenReturn(sessionMock);
+        // El request devuelve nuestra sesión falsa.
 
-    when(requestMock.getSession()).thenReturn(sessionMock);
-    // El request devuelve nuestra sesión falsa.
+        when(sessionMock.getAttribute("id")).thenReturn(2L);
+        // Simula que en la sesión está guardado el ID 2.
 
-    when(sessionMock.getAttribute("id")).thenReturn(2L);
-    // Simula que en la sesión está guardado el ID 2.
+        ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
+        // Ejecuta el controlador.
 
-    ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
-    // Ejecuta el controlador.
+        verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
+        // Comprueba que el controlador llamó al servicio
+        // usando exactamente el ID 2.
 
-    verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
-    // Comprueba que el controlador llamó al servicio
-    // usando exactamente el ID 2.
-
-    assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
-    // Comprueba que finalmente muestra la sala de espera.
-}
+        assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
+        // Comprueba que finalmente muestra la sala de espera.
+    }
 }

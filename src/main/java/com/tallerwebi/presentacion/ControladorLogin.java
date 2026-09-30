@@ -54,6 +54,7 @@ public class ControladorLogin {
       if (actualRequest != null && actualRequest.getSession() != null) {
         actualRequest.getSession().setAttribute("ROL", usuarioAutenticado.getRol());
         actualRequest.getSession().setAttribute("NOMBRE", usuarioAutenticado.getUsername());
+        actualRequest.getSession().setAttribute("id", usuarioAutenticado.getId());
       }
       return new ModelAndView("redirect:/home");
     } catch (CredencialesInvalidasException e) {

@@ -33,7 +33,7 @@ public class ServicioLoginImpl implements ServicioLogin {
         validarParametros(credencial, password);
 
         Usuario usuario = repositorioUsuario.buscarUsuarioPorCredencial(credencial);
-
+      
         if (usuario == null) {
             throw new CredencialesInvalidasException(ERROR_CREDENCIALES);
         }
