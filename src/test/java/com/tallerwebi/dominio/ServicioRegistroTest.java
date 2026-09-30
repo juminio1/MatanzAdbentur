@@ -12,11 +12,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
+import com.tallerwebi.dominio.servicios.ServicioRegistro;
+import com.tallerwebi.dominio.servicios.ServicioRegistroImpl;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
-import com.tallerwebi.presentacion.RegistroDTO;
+import com.tallerwebi.presentacion.DTO.RegistroDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

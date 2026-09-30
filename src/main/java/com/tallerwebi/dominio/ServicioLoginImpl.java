@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio;
 
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import jakarta.transaction.Transactional;

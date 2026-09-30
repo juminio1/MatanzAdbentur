@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
+import com.tallerwebi.dominio.servicios.ServicioLoginImpl;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,19 +26,46 @@ public class ServicioLoginImplTest {
   }
 
   @Test
-  public void queSePuedaAutenticarUnUsuarioConCredencialesCorrectas()
-    throws CredencialesInvalidasException {
+  public void queSePuedaAutenticarUnUsuarioConEmailCorrecto()
+      throws CredencialesInvalidasException {
     // Preparación
     Usuario usuario = new Usuario();
     usuario.setEmail("juli@gmail.com");
 
     // En la BD la contraseña estaría hasheada
-    usuario.setPassword("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4");
+    usuario.setPassword(
+        "2286d87dd6a4c52b3fb1d2d27078fcbcd96e07d1c8b087d904080cba700e7132"
+    );
 
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail("juli@gmail.com")).thenReturn(usuario);
+    when(this.repositorioUsuarioMock.buscarUsuarioPorCredencial("juli@gmail.com"))
+        .thenReturn(usuario);
 
     // Ejecución
-    Usuario usuarioAutenticado = servicioLogin.autenticar("juli@gmail.com", "1234");
+    Usuario usuarioAutenticado =
+        servicioLogin.autenticar("juli@gmail.com", "Julieta123$");
+
+    // Verificación
+    assertEquals(usuario, usuarioAutenticado);
+  }
+
+  @Test
+  public void queSePuedaAutenticarUnUsuarioConUsernameCorrecto()
+      throws CredencialesInvalidasException {
+    // Preparación
+    Usuario usuario = new Usuario();
+    usuario.setUsername("juli123");
+
+    // En la BD la contraseña estaría hasheada
+    usuario.setPassword(
+        "2286d87dd6a4c52b3fb1d2d27078fcbcd96e07d1c8b087d904080cba700e7132"
+    );
+
+    when(this.repositorioUsuarioMock.buscarUsuarioPorCredencial("juli123"))
+        .thenReturn(usuario);
+
+    // Ejecución
+    Usuario usuarioAutenticado =
+        servicioLogin.autenticar("juli123", "Julieta123$");
 
     // Verificación
     assertEquals(usuario, usuarioAutenticado);
@@ -47,95 +77,95 @@ public class ServicioLoginImplTest {
     Usuario usuario = new Usuario();
     usuario.setEmail("juli@gmail.com");
 
-    when(repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
+    when(repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail()))
+        .thenReturn(usuario);
 
     // Ejecución
-    Usuario usuarioBuscado = servicioLogin.consultarUsuario(usuario.getEmail());
+    Usuario usuarioBuscado =
+        servicioLogin.consultarUsuario(usuario.getEmail());
 
-    // Validación
-    assertThat(usuarioBuscado.getEmail(), equalTo(usuario.getEmail()));
+    // Verificación
+    assertThat(
+        usuarioBuscado.getEmail(),
+        equalTo(usuario.getEmail())
+    );
   }
 
   @Test
   public void queNoSePuedaAutenticarUnUsuarioQueNoExiste() {
+    // Preparación
+    when(this.repositorioUsuarioMock.buscarUsuarioPorCredencial("noexiste"))
+        .thenReturn(null);
+
+    // Ejecución y verificación
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", "1234")
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("noexiste", "Julieta123$")
     );
   }
 
   @Test
   public void queNoSePuedaAutenticarConUnaContraseniaIncorrecta() {
+    // Preparación
     Usuario usuario = new Usuario();
     usuario.setEmail("juli@gmail.com");
 
-    // Hash SHA-256 de "1234"
-    usuario.setPassword("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4");
+    // Hasheada de 1234
+    usuario.setPassword(
+        "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
+    );
 
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
+    when(this.repositorioUsuarioMock.buscarUsuarioPorCredencial("juli@gmail.com"))
+        .thenReturn(usuario);
 
+    // Ejecución y verificación
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", "1235")
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", "1235")
     );
   }
 
   @Test
-  public void queNoSePuedaAutenticarConEmailVacio() {
-    Usuario usuario = new Usuario();
-    usuario.setEmail("");
-
-    // Hash SHA-256 de "1234"
-    usuario.setPassword("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4");
-
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
-
+  public void queNoSePuedaAutenticarConCredencialVacia() {
+    // Ejecución y verificación
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("", "1234")
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("", "1234")
     );
+
+    verifyNoInteractions(repositorioUsuarioMock);
   }
 
   @Test
-  public void queNoSePuedaAutenticarConEmailNull() {
-    Usuario usuario = new Usuario();
-    usuario.setEmail(null);
-
-    // Hash SHA-256 de "1234"
-    usuario.setPassword("03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4");
-
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
-
+  public void queNoSePuedaAutenticarConCredencialNull() {
+    // Ejecución y verificación
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar(null, "1234")
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar(null, "1234")
     );
+
+    verifyNoInteractions(repositorioUsuarioMock);
+  }
+
+  @Test
+  public void queNoSePuedaAutenticarConContraseniaVacia() {
+    // Ejecución y verificación
+    assertThrows(
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", "")
+    );
+
+    verifyNoInteractions(repositorioUsuarioMock);
   }
 
   @Test
   public void queNoSePuedaAutenticarConContraseniaNull() {
-    Usuario usuario = new Usuario();
-    usuario.setEmail("juli@gmail.com");
-
-    // Hash SHA-256 de "1234"
-    usuario.setPassword(null);
-
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
-
+    // Ejecución y verificación
     assertThrows(
-      CredencialesInvalidasException.class,
-      () -> this.servicioLogin.autenticar("juli@gmail.com", null)
+        CredencialesInvalidasException.class,
+        () -> this.servicioLogin.autenticar("juli@gmail.com", null)
     );
-  }
 
-  @Test
-  public void queSePuedaConsultarUnUsuarioPorEmail() {
-    Usuario usuario = new Usuario();
-    String email = "juli@gmail.com";
-    usuario.setEmail(email);
-
-    when(this.repositorioUsuarioMock.buscarUsuarioPorEmail(usuario.getEmail())).thenReturn(usuario);
-
-    assertEquals(email, usuario.getEmail());
+    verifyNoInteractions(repositorioUsuarioMock);
   }
 }

@@ -1,5 +1,6 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
@@ -7,7 +8,7 @@ import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
-import com.tallerwebi.presentacion.RegistroDTO;
+import com.tallerwebi.presentacion.DTO.RegistroDTO;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

@@ -2,6 +2,8 @@ package com.tallerwebi.dominio;
 
 import java.util.List;
 
+import com.tallerwebi.dominio.entidades.Usuario;
+
 public class SalaDeEspera {
 
 

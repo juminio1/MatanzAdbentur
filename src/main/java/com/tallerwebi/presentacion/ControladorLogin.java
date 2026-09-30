@@ -1,9 +1,11 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.ServicioLogin;
-import com.tallerwebi.dominio.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
+import com.tallerwebi.presentacion.DTO.LoginDTO;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -42,14 +44,12 @@ public class ControladorLogin {
 
   @RequestMapping(path = "validar-login", method = RequestMethod.POST)
   public ModelAndView validarLogin(
-    @ModelAttribute("datosLogin") LoginDTO datosLogin,
-    HttpServletRequest request
-  ) {
+      @ModelAttribute("datosLogin") LoginDTO datosLogin,
+      HttpServletRequest request) {
     try {
       Usuario usuarioAutenticado = servicioLogin.autenticar(
-        datosLogin.getEmail(),
-        datosLogin.getPassword()
-      );
+          datosLogin.getCredencial(),
+          datosLogin.getPassword());
       HttpServletRequest actualRequest = request != null ? request : this.request;
       if (actualRequest != null && actualRequest.getSession() != null) {
         actualRequest.getSession().setAttribute("ROL", usuarioAutenticado.getRol());
@@ -67,9 +67,18 @@ public class ControladorLogin {
   public ModelAndView irAHome() {
     Map<String, Object> modelo = new ModelMap();
     String nombre = null;
-    if (this.request != null && this.request.getSession() != null) {
-      nombre = (String) this.request.getSession().getAttribute("NOMBRE");
+    HttpServletRequest actualRequest = this.request;
+
+    if (actualRequest != null) {
+      HttpSession session = actualRequest.getSession(false);
+      if (session == null) {
+        session = actualRequest.getSession();
+      }
+      if (session != null) {
+        nombre = (String) session.getAttribute("NOMBRE");
+      }
     }
+
     modelo.put("nombreJugador", nombre != null ? nombre : "Vecino de La Matanza");
     return new ModelAndView("home", modelo);
   }
@@ -81,8 +90,10 @@ public class ControladorLogin {
 
   @GetMapping("/cerrar-sesion")
   public ModelAndView cerrarSesion(HttpServletRequest request) {
-    request.getSession().invalidate();
-
-    return new ModelAndView("redirect:/home");
+    HttpServletRequest actualRequest = request != null ? request : this.request;
+    if (actualRequest != null && actualRequest.getSession(false) != null) {
+      actualRequest.getSession(false).invalidate();
+    }
+    return new ModelAndView("redirect:/login");
   }
 }

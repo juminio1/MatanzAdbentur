@@ -1,10 +1,4 @@
-<<<<<<< HEAD
-=======
-/* =========================
-   RESET
-   ========================= */
 
->>>>>>> 86d2d47f8c47869e500e91aa26bd1814ced92204
 * {
     margin: 0;
     padding: 0;
@@ -12,14 +6,6 @@
     font-family: 'Montserrat', sans-serif;
 }
 
-<<<<<<< HEAD
-=======
-
-/* =========================
-   BODY
-   ========================= */
-
->>>>>>> 86d2d47f8c47869e500e91aa26bd1814ced92204
 body {
     min-height: 100vh;
 
@@ -40,77 +26,6 @@ body {
     color: #111;
 
     overflow-x: hidden;
-}
-
-
-/* =========================
-   HEADER
-   ========================= */
-
-header {
-    display: flex;
-
-    justify-content: space-between;
-    align-items: center;
-
-    padding: 20px 5%;
-
-    background-color: #e5e5e5;
-
-    box-shadow:
-        0 10px 20px -5px rgba(0, 0, 0, 0.1);
-
-    position: relative;
-
-    z-index: 10;
-}
-
-
-.logo-nav-img {
-    height: 40px;
-    width: auto;
-}
-
-
-header nav {
-    display: flex;
-
-    align-items: center;
-
-    gap: 30px;
-}
-
-
-header nav a {
-    color: #333;
-
-    font-size: 14px;
-    font-weight: 600;
-
-    text-decoration: none;
-
-    transition: color 0.2s ease;
-}
-
-
-header nav a:hover {
-    color: #2b3990;
-}
-
-
-.btn-volver {
-    padding: 10px 24px;
-
-    background-color: #2b3990;
-
-    color: white !important;
-
-    border-radius: 20px;
-}
-
-
-.btn-volver:hover {
-    background-color: #1c2665;
 }
 
 

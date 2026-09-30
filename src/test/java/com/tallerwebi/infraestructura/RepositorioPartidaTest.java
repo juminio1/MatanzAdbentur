@@ -7,7 +7,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import com.tallerwebi.dominio.EstadoPartida;
 import com.tallerwebi.dominio.Partida;
-import com.tallerwebi.dominio.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
 import jakarta.transaction.Transactional;
 import java.time.Instant;

@@ -1,34 +1,54 @@
+<<<<<<< HEAD
 <header xmlns:th="http://www.thymeleaf.org" th:fragment="header">
 
     <a th:href="@{/home}">
         <img th:src="@{/imagenes/logo/El matancero.svg}" alt="El Matancero" class="logo-nav-img">
+=======
+<header xmlns:th="http://www.thymeleaf.org" th:fragment="header" class="main-header">
+
+    <!-- LOGO A LA IZQUIERDA -->
+    <a th:href="@{/home}" class="brand-link">
+        <img th:src="@{/imagenes/Logo.png}" alt="El Matancero" class="logo-nav-img">
+>>>>>>> b6d0aa3067dca9f4f5ae9f679655307b46ef0a92
     </a>
 
-    <nav>
-
+    <!-- NAVEGACIÓN Y PERFIL A LA DERECHA -->
+    <nav class="nav-links">
         <a href="#">Acerca de</a>
-
         <a href="#">¿Cómo se juega?</a>
 
-
-        <!-- SIN SESIÓN -->
+        <!-- SIN SESIÓN: Botón Iniciar Sesión -->
         <a th:if="${session.NOMBRE == null}" th:href="@{/login}" class="btn-login">
-
             Iniciar Sesión
-
         </a>
-        <a th:if="${session.NOMBRE != null}" href="#" class="btn-perfil" th:title="${session.NOMBRE}">
 
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- CON SESIÓN: Menú desplegable a la derecha -->
+        <div class="user-menu-container" th:if="${session.NOMBRE != null}">
+            <button id="btnUserMenu" class="user-avatar-btn" type="button" aria-expanded="false" title="Mi Cuenta">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
+                </svg>
+            </button>
 
-                <circle cx="12" cy="8" r="4"></circle>
-                <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
-
-            </svg>
-
-        </a>
+            <!-- Menú que se despliega al hacer clic -->
+            <div id="userDropdown" class="user-dropdown-menu oculto">
+                <div class="user-dropdown-header">
+                    <p class="user-name" th:text="${session.NOMBRE}">Usuario</p>
+                    <span class="user-role">USUARIO</span>
+                </div>
+                <hr class="user-dropdown-divider"/>
+                <div class="user-dropdown-actions">
+                    <a th:href="@{/cerrar-sesion}" class="btn-logout">Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>
     </nav>
 
+<<<<<<< HEAD
 </header>
 
+=======
+</header>
+>>>>>>> b6d0aa3067dca9f4f5ae9f679655307b46ef0a92

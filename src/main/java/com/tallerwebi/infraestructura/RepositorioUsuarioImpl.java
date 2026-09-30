@@ -1,6 +1,6 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,32 +54,42 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
 
     @Override
     public Boolean verificarEmailExistente(String email) {
-        Usuario existente = sessionFactory
+         Usuario existente = sessionFactory
             .getCurrentSession()
             .createQuery("from Usuario where email = :email", Usuario.class)
             .setParameter("email", email)
             .uniqueResult();
+            return existente != null;
 
-        return existente != null;
     }
-
     @Override
-    public Boolean verificarUsernameExistente(String username) {
-        Usuario existente = sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where username = :username", Usuario.class)
-            .setParameter("username", username)
-            .uniqueResult();
+  public Boolean verificarUsernameExistente(String username) {
+    Usuario existente = sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where username = :username", Usuario.class)
+      .setParameter("username", username)
+      .uniqueResult();
 
-        return existente != null;
-    }
+    return existente != null;
+  }
 
-    @Override
-    public Usuario buscarUsuarioPorId(Long id) {
-        return sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where id = :id", Usuario.class)
-            .setParameter("id", id)
-            .uniqueResult();
+
+  @Override
+  public Usuario buscarUsuarioPorId(Long id) {
+    return sessionFactory
+      .getCurrentSession()
+      .createQuery("from Usuario where id = :id", Usuario.class)
+      .setParameter("id", id)
+      .uniqueResult();
+  }
+
+  @Override
+  public Usuario buscarUsuarioPorCredencial(String credencial) {
+
+    return sessionFactory
+        .getCurrentSession()
+        .createQuery(
+            "from Usuario where username = :credencial or email = :credencial", Usuario.class) //username e email son atributos de usuario. credencial seria una variable temporal dnd se va a guardar esos datos
+            .setParameter("credencial", credencial).uniqueResult();
+      }
     }
-}

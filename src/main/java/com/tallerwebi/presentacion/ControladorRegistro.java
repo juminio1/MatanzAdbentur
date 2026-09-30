@@ -1,12 +1,14 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.ServicioRegistro;
 import com.tallerwebi.dominio.excepcion.CamposObligatoriosException;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
+import com.tallerwebi.dominio.servicios.ServicioRegistro;
+import com.tallerwebi.presentacion.DTO.RegistroDTO;
+
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,9 +41,7 @@ public class ControladorRegistro {
 
   @RequestMapping(path = "/registrarme", method = RequestMethod.POST)
   public ModelAndView registrarme(
-    @Valid @ModelAttribute("registro") RegistroDTO registro,
-    BindingResult resultado
-  ) {
+    @Valid @ModelAttribute("registro") RegistroDTO registro, BindingResult resultado) {
     if (resultado.hasErrors()) {
       return new ModelAndView(VISTA_NUEVO_USUARIO);
     }
@@ -52,28 +52,20 @@ public class ControladorRegistro {
   private ModelAndView procesarRegistro(RegistroDTO registro, BindingResult resultado) {
     try {
       servicioRegistro.registrar(registro);
+    }catch (CamposObligatoriosException e) {
+      resultado.reject("campos.obligatorios", "Todos los campos son obligatorios");
+      return new ModelAndView(VISTA_NUEVO_USUARIO);
     } catch (EmailExistenteException e) {
       resultado.rejectValue("email", "email.existente", "Este email ya se encuentra registrado");
       return new ModelAndView(VISTA_NUEVO_USUARIO);
     } catch (UsernameExistenteException e) {
-      resultado.rejectValue(
-        "username",
-        "username.existente",
-        "Este apodo ya se encuentra registrado"
-      );
+      resultado.rejectValue("username","username.existente","Este apodo ya se encuentra registrado");
       return new ModelAndView(VISTA_NUEVO_USUARIO);
     } catch (ContraseniaInvalidaException e) {
-      resultado.rejectValue(
-        "passwordRepetido",
-        "password.no.coincide",
-        "Las contraseñas no coinciden"
-      );
+      resultado.rejectValue("passwordRepetido","password.no.coincide","Las contraseñas no coinciden");
       return new ModelAndView(VISTA_NUEVO_USUARIO);
     } catch (EmailInvalidoException e) {
       resultado.rejectValue("email", "email.invalido", "El email no tiene un formato válido");
-      return new ModelAndView(VISTA_NUEVO_USUARIO);
-    } catch (CamposObligatoriosException e) {
-      resultado.reject("campos.obligatorios", "Todos los campos son obligatorios");
       return new ModelAndView(VISTA_NUEVO_USUARIO);
     } catch (UsuarioExistenteException e) {
       resultado.reject("usuario.existente", "El usuario ya se encuentra registrado");
