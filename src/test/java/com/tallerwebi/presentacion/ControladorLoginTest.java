@@ -243,19 +243,28 @@ public class ControladorLoginTest {
   }
 
   @Test
-  public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirAHome() {
+  public void cerrarSesionDeberiaInvalidarLaSesionYRedirigirALogin() {
     // preparacion
-    when(requestMock.getSession()).thenReturn(sessionMock);
+    when(requestMock.getSession(false)).thenReturn(sessionMock);
 
     // ejecucion
-    ModelAndView modelAndView =
-        controladorLogin.cerrarSesion(requestMock);
+    ModelAndView modelAndView = controladorLogin.cerrarSesion(requestMock);
 
     // validacion
     verify(sessionMock, times(1)).invalidate();
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/login"));
+  }
 
-    assertThat(
-        modelAndView.getViewName(),
-        equalToIgnoringCase("redirect:/home"));
+  @Test
+  public void cerrarSesionSinSesionActivaDeberiaRedirigirALoginSinFallar() {
+    // preparacion
+    when(requestMock.getSession(false)).thenReturn(null);
+
+    // ejecucion
+    ModelAndView modelAndView = controladorLogin.cerrarSesion(requestMock);
+
+    // validacion
+    verify(sessionMock, never()).invalidate();
+    assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/login"));
   }
 }
