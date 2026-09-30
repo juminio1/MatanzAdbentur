@@ -1,6 +1,6 @@
 import { validarCamposDeLogin } from "./login_funciones.js";
 
-const btnLoginNode = document.getElementById("btn-login");
+/*const btnLoginNode = document.getElementById("btn-login");
 const inputCredencialNode = document.getElementById("credencial");
 const inputPasswordNode = document.getElementById("password");
 
@@ -12,4 +12,4 @@ function actualizarEstadoBoton() {
 }
 
 inputCredencialNode.addEventListener("input", actualizarEstadoBoton);
-inputPasswordNode.addEventListener("input", actualizarEstadoBoton);
+inputPasswordNode.addEventListener("input", actualizarEstadoBoton);*/
