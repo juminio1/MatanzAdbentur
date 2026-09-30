@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.servicios;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -9,7 +9,7 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
-
+import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Usuario;
 
 import jakarta.transaction.Transactional;
@@ -34,7 +34,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
   }
 
   @Override
-  public Partida CrearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
+  public Partida crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
     Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
     if (usuarioEncontrado == null) {

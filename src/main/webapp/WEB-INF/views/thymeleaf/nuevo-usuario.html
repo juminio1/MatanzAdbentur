@@ -3,7 +3,7 @@
 <html lang="es"
       xmlns:th="http://www.thymeleaf.org">
 
-<head>
+ <head>
 
     <meta charset="UTF-8">
 
@@ -12,38 +12,15 @@
 
     <title>Registrarse | El Matancero</title>
 
-    <link rel="stylesheet"
-          th:href="@{/css/home.css}">
+    <link rel="stylesheet" th:href="@{/css/home.css}">
 
-    <link rel="stylesheet"
-          th:href="@{/css/registro.css}">
+    <link rel="stylesheet" th:href="@{/css/registro.css}">
+
+    <link rel="stylesheet" th:href="@{/css/header.css}">
 
 </head>
 
-<body>
-
-<header>
-
-    <a th:href="@{/home}">
-        <img th:src="@{/imagenes/Logo.png}"
-             alt="El Matancero"
-             class="logo-nav-img">
-    </a>
-
-    <nav>
-
-        <a href="#">Acerca de</a>
-
-        <a href="#">¿Cómo se juega?</a>
-
-        <a th:href="@{/login}"
-           class="btn-login">
-            Iniciar Sesión
-        </a>
-
-    </nav>
-
-</header>
+ <div th:replace="~{fragments/header :: header}"></div>
 
 
 <main class="registro-main">

@@ -1,12 +1,11 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.entidades;
 
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tallerwebi.dominio.entidades.Usuario;
-//import com.tallerwebi.dominio.entidades.Tablero;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 
 @Entity
 public class Partida {
@@ -20,7 +19,9 @@ public class Partida {
 
   @ManyToOne
   @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
+  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
+
+  // a la vez
 
   @Enumerated(EnumType.STRING)
   private EstadoPartida estado;
@@ -75,6 +76,14 @@ public class Partida {
   public void setEstado(EstadoPartida estado) {
     this.estado = estado;
   }
+
+  /*public Tablero getTablero() {
+    return tablero;
+  }
+
+  public void setTablero(Tablero tablero) {
+    this.tablero = tablero;
+  }*/
 
   public List<Usuario> getUsuarios() {
     return usuarios;

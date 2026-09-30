@@ -1,7 +1,8 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.EstadoPartida;
-import com.tallerwebi.dominio.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.entidades.Partida;
+
 import jakarta.persistence.NoResultException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;

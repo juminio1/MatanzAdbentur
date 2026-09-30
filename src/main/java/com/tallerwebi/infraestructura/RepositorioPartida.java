@@ -1,6 +1,6 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.Partida;
+import com.tallerwebi.dominio.entidades.Partida;
 
 public interface RepositorioPartida {
   void guardarPartida(Partida partida);
