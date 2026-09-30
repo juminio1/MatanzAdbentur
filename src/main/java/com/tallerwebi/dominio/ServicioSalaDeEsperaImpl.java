@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
+
 import jakarta.transaction.Transactional;
 
 @Service("servicioSalaDeEspera")
