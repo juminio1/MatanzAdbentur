@@ -1,257 +1,360 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <title>Sala de espera | El Matancero</title>
+<head>
+    <meta charset="UTF-8">
 
-        <link
-            href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
-            rel="stylesheet"
-        />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-        <link rel="stylesheet" th:href="@{/css/sala-de-espera.css}" />
-        <link rel="stylesheet" th:href="@{/css/header.css}" />
-    </head>
+    <title>Sala de espera | El Matancero</title>
 
-    <body>
-        <div th:replace="~{fragments/header :: header}"></div>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+    >
 
-        <main class="sala-de-espera">
-            <!-- DECORACIÓN DEL FONDO -->
-            <div class="decoracion decoracion-izquierda">
-                <span>LA</span>
-                <span>MATANZA</span>
-                <span>NUNCA</span>
-                <span>DUERME</span>
-            </div>
+    <link
+        rel="stylesheet"
+        th:href="@{/css/header.css}"
+    >
 
-            <div class="cartel-matanza">
-                <span>Bienvenidos a</span>
-                <strong>LA MATANZA</strong>
-            </div>
+    <link
+        rel="stylesheet"
+        th:href="@{/css/sala-de-espera.css(v=10)}"
+    >
+</head>
 
-            <section class="encabezado-lobby">
-                <div class="mascota">
-                    <!--
-            Cuando tengas la imagen:
-            <img th:src="@{/imagenes/turro.png}" alt="Mascota El Matancero">
-            -->
+<body>
 
-                <div class="titulo-contenedor">
+<div th:replace="~{fragments/header :: header}"></div>
 
-                    <img th:src="@{/imagenes/logo/El matancero_4.svg}" alt="El Matancero" class="main-title-img">
+<main class="salaEspera">
+
+    <div class="salaEspera__contenedor">
+
+        <section class="salaEspera__encabezado">
+
+            <div class="salaEspera__titulo">
+
+                <div class="salaEspera__dado">
+                    
+                </div>
+
+                <div>
+                    <h1>Sala de espera</h1>
+
                     <p>
-                        Compartí el código con tus amigos
-                        <br />
-                        para que se unan a la partida.
+                        Reuní a tus amigos, elegí tu ficha y preparate
+                        para una partida bien matancera.
                     </p>
                 </div>
-            </section>
 
-            <section class="paneles">
-                <!-- CÓDIGO ÚNICO -->
+            </div>
 
-                <article class="panel panel-codigo">
-                    <header class="panel-header header-azul">
-                        <span class="icono"></span>
-                        <h2>Código único</h2>
-                    </header>
+            <div class="salaEspera__matanza">
+                <span>LA MATANZA</span>
+                <span>TAMBIÉN JUEGA</span>
+            </div>
 
-                    <div class="panel-body">
-                        <p class="descripcion">
-                            Comparte este código para que otros jugadores se unan:
-                        </p>
+        </section>
 
-                        <div class="codigo-box">
-                            <span class="codigo" th:text="${codigoUnico}"> A7K9P2 </span>
 
-                            <button class="btn-copiar" type="button" aria-label="Copiar código">
-                                ⧉
-                            </button>
+        <section class="salaEspera__contenido">
+
+            <div class="salaEspera__izquierda">
+
+                <article class="salaEspera__codigo">
+
+                    <div class="salaEspera__subtitulo">
+
+                        <div class="salaEspera__icono">
+                            
                         </div>
 
-                        <div class="mensaje-barrio">
-                            PASALO<br />
-                            AL GRUPO<br />
-                            DEL BARRIO :
+                        <div>
+                            <h2>Código de sala</h2>
+
+                            <p>
+                                Compartí este código con tus amigos
+                                para que se unan.
+                            </p>
                         </div>
 
-                        <div class="perro"> </div>
                     </div>
+
+                    <div class="salaEspera__codigoFila">
+
+                        <div class="salaEspera__codigoNumero">
+                            <span th:text="${codigoUnico}">
+                                MTZ-4821
+                            </span>
+                        </div>
+
+                        <button
+                            class="salaEspera__copiar"
+                            type="button"
+                        >
+                             Copiar código
+                        </button>
+
+                    </div>
+
                 </article>
 
-                <!-- SELECCIÓN DE FICHA -->
 
-                <article class="panel panel-fichas">
-                    <header class="panel-header header-rojo">
-                        <span class="icono">♟</span>
-                        <h2>Selecciona tu ficha</h2>
-                    </header>
+                <article class="salaEspera__fichas">
 
-                    <div class="panel-body">
-                        <p class="descripcion">Elige el color de tu ficha para la partida:</p>
+                    <div class="salaEspera__subtitulo">
 
-                        <div class="fichas-grid">
-                            <!-- ROJA -->
-
-                            <div class="ficha-card ficha-roja">
-                                <div class="ficha ficha-color-rojo">
-                                    <div class="ficha-cabeza"></div>
-                                    <div class="ficha-cuerpo"></div>
-                                    <div class="ficha-base"></div>
-                                </div>
-
-                                <span>Roja</span>
-                            </div>
-
-                            <!-- AZUL -->
-
-                            <div class="ficha-card ficha-azul">
-                                <div class="ficha ficha-color-azul">
-                                    <div class="ficha-cabeza"></div>
-                                    <div class="ficha-cuerpo"></div>
-                                    <div class="ficha-base"></div>
-                                </div>
-
-                                <span>Azul</span>
-                            </div>
-
-                            <!-- VERDE -->
-
-                            <div class="ficha-card ficha-verde">
-                                <div class="ficha ficha-color-verde">
-                                    <div class="ficha-cabeza"></div>
-                                    <div class="ficha-cuerpo"></div>
-                                    <div class="ficha-base"></div>
-                                </div>
-
-                                <span>Verde</span>
-                            </div>
-
-                            <!-- AMARILLA -->
-
-                            <div class="ficha-card ficha-amarilla">
-                                <div class="ficha ficha-color-amarillo">
-                                    <div class="ficha-cabeza"></div>
-                                    <div class="ficha-cuerpo"></div>
-                                    <div class="ficha-base"></div>
-                                </div>
-
-                                <span>Amarilla</span>
-                            </div>
+                        <div class="salaEspera__icono">
+                            ♟
                         </div>
+
+                        <div>
+                            <h2>Elegí tu ficha</h2>
+
+                            <p>
+                                Seleccioná el color con el que vas a jugar.
+                            </p>
+                        </div>
+
                     </div>
+
+
+                    <div class="salaEspera__fichasGrid">
+
+                        <button
+                            class="salaEspera__ficha salaEspera__ficha--roja"
+                            type="button"
+                        >
+
+                            <div class="peon">
+                                <div class="peon__cabeza"></div>
+                                <div class="peon__cuerpo"></div>
+                                <div class="peon__base"></div>
+                            </div>
+
+                            <span>Roja</span>
+
+                        </button>
+
+
+                        <button
+                            class="salaEspera__ficha salaEspera__ficha--azul salaEspera__ficha--seleccionada"
+                            type="button"
+                        >
+
+                            <div class="salaEspera__check">
+                                ✓
+                            </div>
+
+                            <div class="peon">
+                                <div class="peon__cabeza"></div>
+                                <div class="peon__cuerpo"></div>
+                                <div class="peon__base"></div>
+                            </div>
+
+                            <span>Azul</span>
+
+                        </button>
+
+
+                        <button
+                            class="salaEspera__ficha salaEspera__ficha--verde"
+                            type="button"
+                        >
+
+                            <div class="peon">
+                                <div class="peon__cabeza"></div>
+                                <div class="peon__cuerpo"></div>
+                                <div class="peon__base"></div>
+                            </div>
+
+                            <span>Verde</span>
+
+                        </button>
+
+
+                        <button
+                            class="salaEspera__ficha salaEspera__ficha--amarilla"
+                            type="button"
+                        >
+
+                            <div class="peon">
+                                <div class="peon__cabeza"></div>
+                                <div class="peon__cuerpo"></div>
+                                <div class="peon__base"></div>
+                            </div>
+
+                            <span>Amarilla</span>
+
+                        </button>
+
+                    </div>
+
                 </article>
 
-                <!-- JUGADORES -->
+            </div>
 
-                <article class="panel panel-jugadores">
-                    <header class="panel-header header-verde">
-                        <div class="titulo-jugadores">
-                            <span class="icono"></span>
+
+            <article class="salaEspera__jugadores">
+
+                <div class="salaEspera__jugadoresHeader">
+
+                    <div class="salaEspera__subtitulo">
+
+                        <div class="salaEspera__icono">
+                            
+                        </div>
+
+                        <div>
                             <h2>Jugadores en espera</h2>
+
+                            <p>
+                                Esperando a que todos estén listos...
+                            </p>
                         </div>
 
-                        <span class="contador">4/4</span>
-                    </header>
-
-                    <div class="panel-body lista-jugadores">
-                        <!-- JUGADOR 1 -->
-
-                        <div class="jugador">
-                            <div class="mini-ficha mini-roja"></div>
-
-                            <div class="jugador-info">
-                                <strong>Jugador 1</strong>
-                                <span class="estado-listo"> Listo para jugar </span>
-                            </div>
-
-                            <div class="estado estado-verde">✓ Listo</div>
-                        </div>
-
-                        <!-- JUGADOR 2 -->
-
-                        <div class="jugador">
-                            <div class="mini-ficha mini-azul"></div>
-
-                            <div class="jugador-info">
-                                <strong>Jugador 2</strong>
-                                <span>En espera de confirmar</span>
-                            </div>
-
-                            <div class="estado estado-espera">◷ En espera</div>
-                        </div>
-
-                        <!-- JUGADOR 3 -->
-
-                        <div class="jugador">
-                            <div class="mini-ficha mini-verde"></div>
-
-                            <div class="jugador-info">
-                                <strong>Jugador 3</strong>
-                                <span class="estado-listo"> Listo para jugar </span>
-                            </div>
-
-                            <div class="estado estado-verde">✓ Listo</div>
-                        </div>
-
-                        <!-- JUGADOR 4 -->
-
-                        <div class="jugador">
-                            <div class="mini-ficha mini-amarilla"></div>
-
-                            <div class="jugador-info">
-                                <strong>Jugador 4</strong>
-                                <span>En espera de confirmar</span>
-                            </div>
-
-                            <div class="estado estado-espera">◷ En espera</div>
-                        </div>
                     </div>
-                </article>
-            </section>
 
-            <!-- ========================================= -->
-            <!-- BARRA INFERIOR -->
-            <!-- ========================================= -->
+                    <div class="salaEspera__contador">
+                        <strong>3/4</strong>
+                        <span>jugadores</span>
+                    </div>
 
-            <section class="barra-inferior">
-                <div class="esperando">
-                    <span class="reloj">⌛</span>
-
-                    <span> Esperando a que todos los jugadores estén listos... </span>
                 </div>
 
-                <!--
-        Por ahora es solo visual.
-        No tiene onclick, JS ni acción asociada.
-        -->
 
-                <button class="btn-iniciar" type="button">
-                    <span class="play"> ▶ </span>
+                <div class="salaEspera__lista">
 
-                    Iniciar partida
+                    <div class="salaEspera__jugador">
 
-                    <span class="corona"> ♛ </span>
-                </button>
-            </section>
+                        <div class="avatar avatar--rojo">
+                            J
+                        </div>
 
-            <!-- DECORACIÓN INFERIOR -->
+                        <div class="salaEspera__jugadorInfo">
 
-            <section class="mesa">
-                <div class="mate">
-                    <span>LA MATANZA</span>
-                    <span>ES FAMILIA</span>
+                            <div class="salaEspera__nombre">
+                                <strong>Juli</strong>
+
+                                <span>
+                                    (Anfitrión)
+                                </span>
+
+                                <span class="corona">
+                                    
+                                </span>
+                            </div>
+
+                            <div class="salaEspera__listo">
+                                <span></span>
+                                Listo
+                            </div>
+
+                        </div>
+
+                        <button class="salaEspera__menu">
+                            ⋮
+                        </button>
+
+                    </div>
+
+
+                    <div class="salaEspera__jugador">
+
+                        <div class="avatar avatar--azul">
+                            R
+                        </div>
+
+                        <div class="salaEspera__jugadorInfo">
+                            <strong>Rafa</strong>
+
+                            <div class="salaEspera__listo">
+                                <span></span>
+                                Listo
+                            </div>
+                        </div>
+
+                        <button class="salaEspera__menu">
+                            
+                        </button>
+
+                    </div>
+
+
+                    <div class="salaEspera__jugador">
+
+                        <div class="avatar avatar--verde">
+                            N
+                        </div>
+
+                        <div class="salaEspera__jugadorInfo">
+                            <strong>Nahu</strong>
+
+                            <div class="salaEspera__listo">
+                                <span></span>
+                                Listo
+                            </div>
+                        </div>
+
+                        <button class="salaEspera__menu">
+                            
+                        </button>
+
+                    </div>
+
+
+                    <div class="salaEspera__jugador salaEspera__jugador--vacio">
+
+                        <div class="avatar avatar--vacio">
+                            
+                        </div>
+
+                        <div class="salaEspera__jugadorInfo">
+                            <strong>Esperando jugador...</strong>
+
+                            <small>
+                                Esperando que alguien se una
+                            </small>
+                        </div>
+
+                        <button class="salaEspera__menu">
+                            
+                        </button>
+
+                    </div>
+
                 </div>
 
-                <div class="dado dado-1">⚄</div>
+            </article>
 
-                <div class="dado dado-2">⚂</div>
+        </section>
 
-                <div class="choripan"></div>
-            </section>
-        </main>
-    </body>
+
+        <section class="salaEspera__acciones">
+
+            <button
+                type="button"
+                class="salaEspera__iniciar">
+                Iniciar partida
+            </button>
+
+            <button
+                type="button"
+                class="salaEspera__invitar"
+            >
+                 Invitar
+            </button>
+
+        </section>
+
+    </div>
+
+</main>
+
+</body>
 </html>

@@ -1,556 +1,483 @@
-/* ========================================
-   RESET
-======================================== */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
     min-height: 100vh;
-    font-family: 'Montserrat', sans-serif;
-    color: #17202a;
-    overflow-x: hidden;
+    background: #edf2f7;
+}
+
+
+/* ======================================================
+   PAGINA
+====================================================== */
+
+.salaEspera {
+    min-height: calc(100vh - 77px);
+
+    padding: 35px 5% 55px;
 
     background:
         linear-gradient(
-            rgba(24, 32, 38, 0.18),
-            rgba(39, 28, 21, 0.30)
+            rgba(234, 242, 248, 0.90),
+            rgba(238, 244, 248, 0.94)
         ),
-        linear-gradient(
-            135deg,
-            #a45d43 0%,
-            #c7784e 35%,
-            #cc8c5c 60%,
-            #526a63 100%
-        );
+        url('../imagenes/FondoLadrillos.jpg');
+
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+
+    font-family: 'Montserrat', sans-serif;
+    color: #152238;
 }
 
 
-/* ========================================
-   LOBBY
-======================================== */
+/* ======================================================
+   PANEL PRINCIPAL
+====================================================== */
 
-.lobby {
-    position: relative;
+.salaEspera__contenedor {
+    width: 100%;
+    max-width: 1180px;
 
-    min-height: 100vh;
+    margin: 0 auto;
 
-    padding:
-        35px
-        clamp(25px, 5vw, 90px)
-        55px;
+    padding: 35px;
 
-    overflow: hidden;
-}
+    background: rgba(255, 255, 255, 0.96);
 
+    border: 1px solid #dfe7ee;
 
-/* Fondo estilo barrio */
-
-.lobby::before {
-    content: "";
-
-    position: absolute;
-    inset: 0;
-
-    background-image:
-        linear-gradient(
-            transparent 95%,
-            rgba(0, 0, 0, 0.06) 95%
-        ),
-        linear-gradient(
-            90deg,
-            transparent 95%,
-            rgba(0, 0, 0, 0.04) 95%
-        );
-
-    background-size:
-        70px 45px,
-        90px 60px;
-
-    opacity: 0.15;
-
-    pointer-events: none;
-}
-
-
-/* ========================================
-   DECORACIÓN
-======================================== */
-
-.decoracion-izquierda {
-    position: absolute;
-
-    top: 35px;
-    left: 25px;
-
-    display: flex;
-    flex-direction: column;
-
-    font-size: 24px;
-    font-weight: 800;
-
-    line-height: 1.05;
-
-    transform: rotate(-4deg);
-
-    opacity: 0.8;
-}
-
-
-.cartel-matanza {
-    position: absolute;
-
-    top: 45px;
-    right: 30px;
-
-    display: flex;
-    flex-direction: column;
-
-    background: #315f5e;
-
-    color: white;
-
-    border: 5px solid #d9d0b4;
-    border-radius: 10px;
-
-    padding: 12px 26px;
-
-    transform: rotate(-4deg);
+    border-radius: 26px;
 
     box-shadow:
-        0 5px 0 rgba(0, 0, 0, 0.25);
-
-    text-align: center;
-}
-
-.cartel-matanza span {
-    font-size: 13px;
-}
-
-.cartel-matanza strong {
-    font-size: 22px;
+        0 24px 60px rgba(20, 42, 67, 0.14);
 }
 
 
-/* ========================================
-   HEADER
-======================================== */
+/* ======================================================
+   ENCABEZADO
+====================================================== */
 
-.encabezado-lobby {
-    position: relative;
-    z-index: 2;
-
-    min-height: 200px;
-
+.salaEspera__encabezado {
     display: flex;
-    justify-content: center;
+
+    justify-content: space-between;
     align-items: center;
 
-    margin-bottom: 5px;
+    gap: 30px;
+
+    margin-bottom: 30px;
 }
 
 
-.titulo-contenedor {
-    text-align: center;
-}
-
-
-.titulo-juego {
+.salaEspera__titulo {
     display: flex;
-    flex-direction: column;
 
-    padding: 12px 55px;
+    align-items: center;
 
-    background: #473324;
-
-    border:
-        5px solid #2d2119;
-
-    border-radius: 20px;
-
-    transform: rotate(-1deg);
-
-    box-shadow:
-        0 8px 0 rgba(0, 0, 0, 0.18);
+    gap: 18px;
 }
 
 
-.titulo-monopoly {
-    color: #f7eedc;
+.salaEspera__dado {
+    width: 65px;
+    height: 65px;
 
-    font-size:
-        clamp(28px, 4vw, 55px);
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    color: #10223a;
+
+    font-size: 54px;
+
+    transform: rotate(-8deg);
+}
+
+
+.salaEspera__titulo h1 {
+    margin: 0 0 7px;
+
+    color: #101827;
+
+    font-size: clamp(34px, 4vw, 55px);
 
     font-weight: 800;
 
-    line-height: 0.9;
-
-    text-shadow:
-        3px 3px 0 #1a1714;
+    line-height: 1;
 }
 
 
-.titulo-matancero {
-    color: #db4938;
+.salaEspera__titulo p {
+    margin: 0;
 
-    font-size:
-        clamp(36px, 5vw, 70px);
+    max-width: 600px;
 
-    font-weight: 800;
+    color: #66768a;
 
-    letter-spacing: 1px;
-
-    text-shadow:
-        4px 4px 0 #201b17;
-}
-
-
-.titulo-contenedor p {
-    display: inline-block;
-
-    margin-top: 15px;
-
-    padding: 7px 25px;
-
-    color: #faf7ef;
-
-    background: rgba(25, 36, 46, 0.85);
-
-    border-radius: 10px;
-
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 14px;
 
     line-height: 1.5;
 }
 
 
-/* ========================================
-   MASCOTA
-======================================== */
-
-.mascota {
-    position: absolute;
-
-    left: 6%;
-    bottom: -15px;
-}
-
-
-.mascota-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 160px;
-    height: 160px;
-
-    font-size: 90px;
-
-    background: #244769;
-
-    border-radius:
-        50% 50% 20px 20px;
-
-    border:
-        5px solid #183149;
-
-    box-shadow:
-        0 8px 15px rgba(0, 0, 0, 0.25);
-}
-
-
-.mascota img {
-    width: 190px;
-
-    display: block;
-
-    object-fit: contain;
-}
-
-
-/* ========================================
-   PANELES
-======================================== */
-
-.paneles {
-    position: relative;
-    z-index: 3;
-
-    display: grid;
-
-    grid-template-columns:
-        1fr
-        1fr
-        1.1fr;
-
-    gap: 18px;
-
-    max-width: 1450px;
-
-    margin: auto;
-}
-
-
-.panel {
-    overflow: hidden;
-
-    background: #f7f0df;
-
-    border:
-        4px solid rgba(28, 28, 25, 0.75);
-
-    border-radius: 24px;
-
-    box-shadow:
-        0 12px 22px
-        rgba(0, 0, 0, 0.22);
-}
-
-
-.panel-header {
-    height: 72px;
-
-    padding: 0 24px;
-
-    display: flex;
-    align-items: center;
-
-    color: white;
-
-    gap: 12px;
-}
-
-
-.panel-header h2 {
-    font-size:
-        clamp(20px, 2vw, 29px);
-
-    font-weight: 800;
-}
-
-
-.icono {
-    font-size: 27px;
-}
-
-
-.header-azul {
-    background: #203f60;
-}
-
-.header-rojo {
-    background: #a74736;
-}
-
-.header-verde {
-    background: #294b48;
-
-    justify-content: space-between;
-}
-
-
-.panel-body {
-    position: relative;
-
-    min-height: 410px;
-
-    padding: 25px;
-}
-
-
-.descripcion {
-    max-width: 310px;
-
-    margin: 0 auto 30px;
-
-    text-align: center;
-
-    line-height: 1.45;
-
-    font-size: 16px;
-    font-weight: 600;
-}
-
-
-/* ========================================
-   CÓDIGO
-======================================== */
-
-.codigo-box {
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 15px;
-
-    padding: 25px 15px;
-
-    border:
-        3px dashed #273844;
-
-    border-radius: 20px;
-
-    background:
-        rgba(255, 255, 255, 0.35);
-}
-
-
-.codigo {
-    font-size:
-        clamp(37px, 5vw, 65px);
-
-    font-weight: 800;
-
-    letter-spacing: 3px;
-
-    color: #10253a;
-}
-
-
-.btn-copiar {
-    width: 50px;
-    height: 50px;
-
-    border: none;
-
-    border-radius: 12px;
-
-    background: white;
-
-    box-shadow:
-        0 3px 7px rgba(0, 0, 0, 0.15);
-
-    font-size: 25px;
-
-    cursor: default;
-}
-
-
-.mensaje-barrio {
-    position: absolute;
-
-    bottom: 35px;
-    left: 35px;
-
-    color: #a64c3e;
-
-    font-weight: 800;
-
-    font-size: 16px;
-
-    transform: rotate(-7deg);
-}
-
-
-.perro {
-    position: absolute;
-
-    right: 35px;
-    bottom: 20px;
-
-    font-size: 75px;
-
-    filter: grayscale(1);
-}
-
-
-/* ========================================
-   FICHAS
-======================================== */
-
-.fichas-grid {
-    display: grid;
-
-    grid-template-columns:
-        repeat(2, 1fr);
-
-    gap: 14px;
-}
-
-
-.ficha-card {
-    min-height: 155px;
+.salaEspera__matanza {
+    min-width: 190px;
 
     display: flex;
     flex-direction: column;
 
-    justify-content: center;
-    align-items: center;
+    color: #78b9e8;
 
-    gap: 6px;
+    font-size: 13px;
+    font-weight: 800;
 
-    border-radius: 18px;
+    text-align: center;
 
-    border:
-        2px solid rgba(255, 255, 255, 0.7);
+    opacity: 0.75;
+
+    transform: rotate(-3deg);
 }
 
 
-.ficha-card span {
-    font-size: 18px;
+/* ======================================================
+   CONTENIDO
+====================================================== */
+
+.salaEspera__contenido {
+    display: grid;
+
+    grid-template-columns: minmax(0, 1.15fr) minmax(350px, 0.85fr);
+
+    gap: 22px;
+}
+
+
+.salaEspera__izquierda {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 22px;
+}
+
+
+/* ======================================================
+   CARDS
+====================================================== */
+
+.salaEspera__codigo,
+.salaEspera__fichas,
+.salaEspera__jugadores {
+    padding: 24px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5ebf1;
+
+    border-radius: 19px;
+
+    box-shadow:
+        0 8px 22px rgba(28, 44, 67, 0.06);
+}
+
+
+.salaEspera__codigo {
+    background:
+        linear-gradient(
+            135deg,
+            #eef8ff,
+            #e4f3fc
+        );
+
+    border-color: #d3e8f8;
+}
+
+
+/* ======================================================
+   TITULOS
+====================================================== */
+
+.salaEspera__subtitulo {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 13px;
+}
+
+
+.salaEspera__icono {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    background: #e7f4ff;
+
+    border-radius: 11px;
+
+    color: #0873d1;
+
+    font-size: 21px;
+}
+
+
+.salaEspera__subtitulo h2 {
+    margin: 0 0 4px;
+
+    color: #142238;
+
+    font-size: 20px;
+
     font-weight: 800;
 }
 
 
-.ficha-roja {
-    background: #f5cbc4;
-}
+.salaEspera__subtitulo p {
+    margin: 0;
 
-.ficha-azul {
-    background: #cce0ef;
-}
+    color: #6e7e91;
 
-.ficha-verde {
-    background: #d4e7c8;
-}
+    font-size: 12px;
 
-.ficha-amarilla {
-    background: #f1dfad;
+    line-height: 1.5;
 }
 
 
-/* FIGURA DE LA FICHA */
+/* ======================================================
+   CODIGO
+====================================================== */
 
-.ficha {
+.salaEspera__codigoFila {
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    gap: 16px;
+
+    margin-top: 22px;
+}
+
+
+.salaEspera__codigoNumero {
+    min-height: 75px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 15px;
+
+    background: rgba(255, 255, 255, 0.9);
+
+    border: 1px solid #dce7f0;
+
+    border-radius: 14px;
+}
+
+
+.salaEspera__codigoNumero span {
+    color: #10243b;
+
+    font-size: clamp(27px, 3vw, 39px);
+
+    font-weight: 800;
+
+    letter-spacing: 3px;
+}
+
+
+.salaEspera__copiar {
+    min-width: 180px;
+
+    padding: 0 22px;
+
+    background: rgba(255, 255, 255, 0.6);
+
+    border: 2px solid #1776ca;
+
+    border-radius: 14px;
+
+    color: #0868be;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+
+.salaEspera__copiar:hover {
+    background: #1776ca;
+
+    color: white;
+}
+
+
+/* ======================================================
+   FICHAS
+====================================================== */
+
+.salaEspera__fichasGrid {
+    display: grid;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    gap: 12px;
+
+    margin-top: 22px;
+}
+
+
+.salaEspera__ficha {
     position: relative;
 
-    width: 85px;
-    height: 90px;
+    min-height: 170px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    border: 2px solid transparent;
+
+    border-radius: 16px;
+
+    font-family: inherit;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
 }
 
 
-.ficha-cabeza {
+.salaEspera__ficha:hover {
+    transform: translateY(-3px);
+}
+
+
+.salaEspera__ficha > span {
+    color: #253447;
+
+    font-size: 13px;
+
+    font-weight: 700;
+}
+
+
+.salaEspera__ficha--roja {
+    background: #fff0f1;
+}
+
+
+.salaEspera__ficha--azul {
+    background: #edf7ff;
+}
+
+
+.salaEspera__ficha--verde {
+    background: #edf9f1;
+}
+
+
+.salaEspera__ficha--amarilla {
+    background: #fff8e4;
+}
+
+
+.salaEspera__ficha--seleccionada {
+    border-color: #1386ed;
+
+    box-shadow:
+        0 8px 18px rgba(19, 134, 237, 0.15);
+}
+
+
+.salaEspera__check {
     position: absolute;
 
-    top: 5px;
-    left: 27px;
+    top: 8px;
+    right: 8px;
 
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background: #1386ed;
+
+    border: 3px solid white;
+
+    border-radius: 50%;
+
+    color: white;
+
+    font-size: 13px;
+    font-weight: 800;
+}
+
+
+/* ======================================================
+   PEONES
+====================================================== */
+
+.peon {
+    position: relative;
+
+    width: 78px;
+    height: 95px;
+
+    color: #333;
+}
+
+
+.peon__cabeza {
+    position: absolute;
+
+    top: 7px;
+    left: 25px;
+
+    width: 29px;
+    height: 29px;
 
     background: currentColor;
 
     border-radius: 50%;
 
     box-shadow:
-        inset 7px 5px 6px
-        rgba(255, 255, 255, 0.32);
+        inset 7px 5px 6px rgba(255,255,255,0.32),
+        0 3px 5px rgba(0,0,0,0.2);
+
+    z-index: 2;
 }
 
 
-.ficha-cuerpo {
+.peon__cuerpo {
     position: absolute;
 
-    top: 30px;
-    left: 22px;
+    top: 31px;
+    left: 17px;
 
-    width: 42px;
-    height: 39px;
+    width: 45px;
+    height: 45px;
 
     background: currentColor;
 
@@ -564,465 +491,439 @@ body {
 }
 
 
-.ficha-base {
+.peon__base {
     position: absolute;
 
-    bottom: 6px;
-    left: 8px;
+    left: 4px;
+    bottom: 3px;
 
     width: 70px;
-    height: 20px;
+    height: 19px;
 
     background: currentColor;
 
     border-radius: 50%;
 
     box-shadow:
-        inset 0 5px 4px
-        rgba(255, 255, 255, 0.25),
-        0 6px 8px
-        rgba(0, 0, 0, 0.23);
+        inset 0 4px 4px rgba(255,255,255,0.22),
+        0 5px 7px rgba(0,0,0,0.22);
 }
 
 
-.ficha-color-rojo {
-    color: #cf2830;
-}
-
-.ficha-color-azul {
-    color: #1763ce;
-}
-
-.ficha-color-verde {
-    color: #159447;
-}
-
-.ficha-color-amarillo {
-    color: #e5a40e;
+.salaEspera__ficha--roja .peon {
+    color: #df2f3b;
 }
 
 
-/* ========================================
+.salaEspera__ficha--azul .peon {
+    color: #1476d2;
+}
+
+
+.salaEspera__ficha--verde .peon {
+    color: #15a04f;
+}
+
+
+.salaEspera__ficha--amarilla .peon {
+    color: #e3ae08;
+}
+
+
+/* ======================================================
    JUGADORES
-======================================== */
+====================================================== */
 
-.titulo-jugadores {
+.salaEspera__jugadoresHeader {
     display: flex;
-    align-items: center;
 
-    gap: 10px;
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    gap: 15px;
+
+    margin-bottom: 21px;
 }
 
 
-.contador {
-    padding: 7px 13px;
+.salaEspera__contador {
+    display: flex;
 
-    border-radius: 14px;
+    align-items: baseline;
 
-    background:
-        rgba(10, 25, 30, 0.35);
+    gap: 4px;
+
+    white-space: nowrap;
+}
+
+
+.salaEspera__contador strong {
+    color: #0873d1;
+
+    font-size: 21px;
 
     font-weight: 800;
 }
 
 
-.lista-jugadores {
-    display: flex;
-    flex-direction: column;
+.salaEspera__contador span {
+    color: #748398;
 
-    gap: 12px;
-
-    min-height: auto;
+    font-size: 11px;
 }
 
 
-.jugador {
+.salaEspera__lista {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 11px;
+}
+
+
+.salaEspera__jugador {
+    min-height: 70px;
+
     display: grid;
 
-    grid-template-columns:
-        50px
-        1fr
-        auto;
+    grid-template-columns: 46px minmax(0, 1fr) 28px;
 
     align-items: center;
 
-    gap: 13px;
+    gap: 12px;
 
-    padding: 13px;
+    padding: 11px;
 
-    background:
-        rgba(255, 255, 255, 0.4);
+    background: #f7f9fb;
 
-    border:
-        1px solid rgba(0, 0, 0, 0.07);
+    border: 1px solid #ecf0f4;
 
-    border-radius: 15px;
+    border-radius: 14px;
 }
 
 
-.jugador-info {
+.salaEspera__jugador--vacio {
+    opacity: 0.75;
+
+    border-style: dashed;
+}
+
+
+/* ======================================================
+   AVATAR
+====================================================== */
+
+.avatar {
+    width: 43px;
+    height: 43px;
+
     display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    color: white;
+
+    font-size: 16px;
+
+    font-weight: 800;
+
+    border: 3px solid white;
+
+    box-shadow:
+        0 3px 7px rgba(0,0,0,0.12);
+}
+
+
+.avatar--rojo {
+    background:
+        linear-gradient(
+            135deg,
+            #ee6974,
+            #c83243
+        );
+}
+
+
+.avatar--azul {
+    background:
+        linear-gradient(
+            135deg,
+            #47a9f0,
+            #176fc3
+        );
+}
+
+
+.avatar--verde {
+    background:
+        linear-gradient(
+            135deg,
+            #3fbd77,
+            #16884c
+        );
+}
+
+
+.avatar--vacio {
+    background: #c5cfd8;
+
+    color: #7f8b98;
+}
+
+
+/* ======================================================
+   INFO JUGADOR
+====================================================== */
+
+.salaEspera__jugadorInfo {
+    min-width: 0;
+
+    display: flex;
+
     flex-direction: column;
 
     gap: 5px;
 }
 
 
-.jugador-info strong {
-    font-size: 17px;
-}
-
-
-.jugador-info span {
-    font-size: 13px;
-
-    color: #53616c;
-}
-
-
-.jugador-info .estado-listo {
-    color: #22813b;
-    font-weight: 600;
-}
-
-
-.estado {
-    padding: 10px 15px;
-
-    border-radius: 15px;
-
-    white-space: nowrap;
+.salaEspera__jugadorInfo strong {
+    color: #172437;
 
     font-size: 13px;
+
     font-weight: 700;
 }
 
 
-.estado-verde {
-    color: #24793a;
+.salaEspera__jugadorInfo small {
+    color: #8b96a4;
 
-    background: #d6efcf;
+    font-size: 10px;
 }
 
 
-.estado-espera {
-    color: #526174;
-
-    background: #e4e8ed;
-}
-
-
-/* MINI FICHAS */
-
-.mini-ficha {
-    width: 29px;
-    height: 39px;
-
-    margin: auto;
-
-    border-radius:
-        50% 50%
-        30% 30%;
-
-    box-shadow:
-        inset 5px 4px 5px
-        rgba(255, 255, 255, 0.3),
-        0 4px 5px
-        rgba(0, 0, 0, 0.2);
-}
-
-
-.mini-roja {
-    background: #ca2834;
-}
-
-.mini-azul {
-    background: #1768d4;
-}
-
-.mini-verde {
-    background: #138c4d;
-}
-
-.mini-amarilla {
-    background: #e0a210;
-}
-
-
-/* ========================================
-   BARRA INFERIOR
-======================================== */
-
-.barra-inferior {
-    position: relative;
-    z-index: 5;
-
-    max-width: 1000px;
-
-    margin: 18px auto 0;
-
-    display: grid;
-
-    grid-template-columns:
-        1.6fr
-        1fr;
-
-    border:
-        4px solid #232529;
-
-    border-radius: 25px;
-
-    overflow: hidden;
-
-    box-shadow:
-        0 8px 15px
-        rgba(0, 0, 0, 0.25);
-}
-
-
-.esperando {
+.salaEspera__nombre {
     display: flex;
 
     align-items: center;
 
-    gap: 20px;
+    flex-wrap: wrap;
 
-    padding: 19px 28px;
-
-    background: #1f344a;
-
-    color: #f6f2e7;
-
-    font-size: 15px;
+    gap: 4px;
 }
 
 
-.reloj {
-    font-size: 30px;
+.salaEspera__nombre span {
+    color: #435268;
+
+    font-size: 11px;
+
+    font-weight: 600;
 }
 
 
-.btn-iniciar {
-    position: relative;
+.salaEspera__nombre .corona {
+    color: #e83240;
+
+    font-size: 17px;
+}
+
+
+.salaEspera__listo {
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    color: #279453;
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+
+.salaEspera__listo span {
+    width: 9px;
+    height: 9px;
+
+    background: #28b861;
+
+    border-radius: 50%;
+}
+
+
+.salaEspera__menu {
+    width: 28px;
+    height: 35px;
 
     border: none;
 
-    padding: 18px 25px;
+    background: transparent;
+
+    color: #7f8d9c;
+
+    border-radius: 6px;
+
+    font-size: 21px;
+
+    cursor: pointer;
+}
+
+
+/* ======================================================
+   ACCIONES
+====================================================== */
+
+.salaEspera__acciones {
+    display: grid;
+
+    grid-template-columns: 1.5fr 0.75fr;
+
+    gap: 18px;
+
+    margin-top: 22px;
+}
+
+
+.salaEspera__iniciar,
+.salaEspera__invitar {
+    min-height: 68px;
+
+    border-radius: 14px;
+
+    font-family: inherit;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+
+.salaEspera__iniciar {
+    border: none;
 
     background:
         linear-gradient(
-            180deg,
-            #d64d3d,
-            #b5342b
+            135deg,
+            #ed3340,
+            #d8202d
         );
 
     color: white;
 
-    font-family: inherit;
-
-    font-size: 23px;
-    font-weight: 800;
-
-    cursor: default;
-
-    text-shadow:
-        0 2px 2px rgba(0, 0, 0, 0.2);
+    font-size: 19px;
 
     box-shadow:
-        inset 0 4px 0
-        rgba(255, 255, 255, 0.15);
+        0 9px 20px rgba(220,39,51,0.22);
 }
 
 
-.play {
-    margin-right: 12px;
-
-    font-size: 22px;
+.salaEspera__iniciar:hover {
+    transform: translateY(-2px);
 }
 
 
-.corona {
-    position: absolute;
+.salaEspera__invitar {
+    border: 2px solid #67b3eb;
 
-    top: 7px;
-    right: 15px;
+    background: #eef8ff;
 
-    transform: rotate(12deg);
+    color: #0873d1;
 
-    font-size: 22px;
-
-    color: #f5d675;
+    font-size: 17px;
 }
 
 
-/* ========================================
-   MESA / DETALLES
-======================================== */
+.salaEspera__invitar:hover {
+    background: #0873d1;
 
-.mesa {
-    position: relative;
-
-    z-index: 2;
-
-    height: 90px;
-
-    max-width: 1400px;
-
-    margin: auto;
+    color: white;
 }
 
 
-.mate {
-    position: absolute;
-
-    left: 5px;
-    top: 20px;
-
-    width: 100px;
-    height: 80px;
-
-    padding-top: 20px;
-
-    display: flex;
-    flex-direction: column;
-
-    text-align: center;
-
-    background: #42372e;
-
-    border-radius:
-        20px 20px
-        40px 40px;
-
-    color: #eee6d7;
-
-    font-size: 10px;
-
-    font-weight: 700;
-}
-
-
-.dado {
-    position: absolute;
-
-    font-size: 42px;
-
-    color: #eee8da;
-
-    text-shadow:
-        2px 3px 3px
-        rgba(0, 0, 0, 0.4);
-}
-
-
-.dado-1 {
-    left: 130px;
-    top: 30px;
-
-    transform: rotate(15deg);
-}
-
-
-.dado-2 {
-    left: 190px;
-    top: 50px;
-
-    transform: rotate(-10deg);
-}
-
-
-.choripan {
-    position: absolute;
-
-    right: 20px;
-    top: 20px;
-
-    font-size: 75px;
-
-    transform: rotate(-4deg);
-}
-
-
-/* ========================================
+/* ======================================================
    RESPONSIVE
-======================================== */
+====================================================== */
 
-@media (max-width: 1100px) {
+@media (max-width: 1000px) {
 
-    .paneles {
-        grid-template-columns:
-            repeat(2, 1fr);
+    .salaEspera__contenido {
+        grid-template-columns: 1fr;
     }
 
-    .panel-jugadores {
-        grid-column:
-            1 / -1;
-    }
-
-    .mascota {
+    .salaEspera__matanza {
         display: none;
     }
-
 }
 
 
-@media (max-width: 750px) {
+@media (max-width: 700px) {
 
-    .lobby {
-        padding:
-            20px 15px 40px;
+    .salaEspera {
+        padding: 20px 12px 35px;
     }
 
-    .decoracion,
-    .cartel-matanza {
-        display: none;
+    .salaEspera__contenedor {
+        padding: 20px;
+
+        border-radius: 20px;
     }
 
-    .encabezado-lobby {
-        min-height: 170px;
-    }
-
-    .titulo-juego {
-        padding:
-            12px 30px;
-    }
-
-    .paneles {
+    .salaEspera__codigoFila {
         grid-template-columns: 1fr;
     }
 
-    .panel-jugadores {
-        grid-column: auto;
+    .salaEspera__copiar {
+        min-height: 55px;
     }
 
-    .barra-inferior {
+    .salaEspera__fichasGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .salaEspera__acciones {
         grid-template-columns: 1fr;
     }
-
-    .btn-iniciar {
-        min-height: 75px;
-    }
-
 }
 
 
 @media (max-width: 480px) {
 
-    .fichas-grid {
-        grid-template-columns: 1fr 1fr;
+    .salaEspera__titulo {
+        align-items: flex-start;
     }
 
-    .jugador {
-        grid-template-columns:
-            35px
-            1fr;
+    .salaEspera__dado {
+        width: 42px;
+        height: 42px;
+
+        font-size: 36px;
     }
 
-    .estado {
-        grid-column:
-            1 / -1;
-
-        text-align: center;
+    .salaEspera__titulo h1 {
+        font-size: 29px;
     }
 
+    .salaEspera__titulo p {
+        font-size: 12px;
+    }
+
+    .salaEspera__codigo,
+    .salaEspera__fichas,
+    .salaEspera__jugadores {
+        padding: 17px;
+    }
+
+    .salaEspera__jugadoresHeader {
+        flex-direction: column;
+    }
 }
