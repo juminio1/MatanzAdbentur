@@ -67,7 +67,7 @@ public class ControladorSalaEsperaTest {
         // Ejecuta el controlador.
         // El controlador debería capturar esa excepción.
 
-        assertThat(model.getViewName(), equalToIgnoringCase("login"));
+        assertThat(model.getViewName(), equalToIgnoringCase("/login"));
         // Comprueba que ante ese error vuelva al login.
     }
 
@@ -86,7 +86,7 @@ public class ControladorSalaEsperaTest {
         // Comprueba que el controlador llamó al servicio
         // usando exactamente el ID 2.
 
-        assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
+        assertThat(model.getViewName(), equalToIgnoringCase("/sala-de-espera"));
         // Comprueba que finalmente muestra la sala de espera.
     }
 }

@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -59,5 +60,37 @@ public class RepositorioPartidaTest {
     assertThat(partidaObtenida.getCreador(), is(notNullValue()));
     assertThat(partidaObtenida.getCreador().getId(), is(equalTo(creador.getId())));
     assertThat(partidaObtenida.getCreador().getUsername(), is(equalTo("ElHostMatancero")));
+  }
+  
+  @Test
+  @Transactional
+  public void deberiaRetornarNullSiLaPartidaPorCodigoNoExiste() {
+    Partida partidaObtenida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico("NO_EXISTE");
+
+    assertThat(partidaObtenida, is(nullValue()));
+  }
+
+  @Test
+  @Transactional
+  @Rollback
+  public void noDeberiaEncontrarUnaPartidaSiEstaFinalizada() {
+    Usuario creador = new Usuario();
+    creador.setEmail("finalizada@test.com");
+    creador.setPassword("Clave123!");
+    creador.setUsername("HostFinalizado");
+    creador.setRol("JUGADOR");
+    this.sessionFactory.getCurrentSession().persist(creador);
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("FIN123");
+    partida.setEstado(EstadoPartida.FINALIZADA);
+    partida.setTiempoInicio(Instant.now());
+    partida.setCreador(creador);
+
+    this.repositorioPartida.guardarPartida(partida);
+
+    Partida partidaObtenida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico("FIN123");
+
+    assertThat(partidaObtenida, is(nullValue()));
   }
 }

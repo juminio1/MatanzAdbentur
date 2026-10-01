@@ -12,9 +12,12 @@
         />
 
         <link rel="stylesheet" th:href="@{/css/sala-de-espera.css}" />
+        <link rel="stylesheet" th:href="@{/css/header.css}" />
     </head>
 
     <body>
+        <div th:replace="~{fragments/header :: header}"></div>
+
         <main class="sala-de-espera">
             <!-- DECORACIÓN DEL FONDO -->
             <div class="decoracion decoracion-izquierda">
@@ -36,15 +39,9 @@
             <img th:src="@{/imagenes/turro.png}" alt="Mascota El Matancero">
             -->
 
-                    <div class="mascota-placeholder">😎</div>
-                </div>
-
                 <div class="titulo-contenedor">
-                    <div class="titulo-juego">
-                        <span class="titulo-monopoly">MONOPOLY</span>
-                        <span class="titulo-matancero">MATANCERO</span>
-                    </div>
 
+                    <img th:src="@{/imagenes/logo/El matancero_4.svg}" alt="El Matancero" class="main-title-img">
                     <p>
                         Compartí el código con tus amigos
                         <br />
@@ -58,7 +55,7 @@
 
                 <article class="panel panel-codigo">
                     <header class="panel-header header-azul">
-                        <span class="icono">🔗</span>
+                        <span class="icono"></span>
                         <h2>Código único</h2>
                     </header>
 
@@ -81,7 +78,7 @@
                             DEL BARRIO :
                         </div>
 
-                        <div class="perro">🐶</div>
+                        <div class="perro"> </div>
                     </div>
                 </article>
 
@@ -153,7 +150,7 @@
                 <article class="panel panel-jugadores">
                     <header class="panel-header header-verde">
                         <div class="titulo-jugadores">
-                            <span class="icono">👥</span>
+                            <span class="icono"></span>
                             <h2>Jugadores en espera</h2>
                         </div>
 
@@ -253,7 +250,7 @@
 
                 <div class="dado dado-2">⚂</div>
 
-                <div class="choripan">🌭</div>
+                <div class="choripan"></div>
             </section>
         </main>
     </body>
