@@ -1,0 +1,413 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body,
+html {
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* FONDO */
+.fondo-ladrillos {
+    /* Reemplaza la URL con la ruta correcta a tu textura de ladrillos */
+    background-image: url('../../../resources/images/fondo/Wireframe\ -\ 7.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/*---------- CONTENEDOR PRINCIPAL Y BARRA SUPERIOR---------- */
+.contenedor-partida {
+    width: 100%;
+    padding: 2%;
+}
+
+.barra-superior {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 2%;
+}
+
+/*   CRONÓMETRO */
+.cronometro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    padding: 1% 2%;
+    width: 8%;
+    min-width: 4rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.3);
+}
+
+.contenedor-cronometro-icono {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.relojdearena-img {
+    width: 70%;
+}
+
+.cronometro-nro {
+    font-size: var(--fs-h4);
+    color: var(--negro);
+    margin-top: 5%;
+    padding-top: 0.4rem;
+}
+
+/* LISTA DE JUGADORES */
+.lista-jugadores {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 90%;
+    gap: 1.5%;
+}
+
+/*  TARJETAS DE JUGADOR */
+.tarjeta-jugador-activo,
+.tarjeta-jugador-2,
+.tarjeta-jugador-3,
+.tarjeta-jugador-4 {
+    display: flex;
+    align-items: center;
+    background-color: #1c4b73;
+    border-radius: 3.0rem;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    max-width: 360px;
+}
+
+/* Resaltado del turno actual */
+.tarjeta-jugador-activo {
+    box-shadow: 0 0 2rem #B38D87;
+    outline: 0.2rem solid var(--color-ladrillo-oscuro);
+}
+
+/* --- Avatar --- */
+.contenedor-avatar {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 108px;
+    height: 108px;
+    margin: 0;
+    border-radius: 50%;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 6px #FFFFFF, 0 0 18px 4px rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+    z-index: 2;
+
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.datos-jugador {
+    flex: 1;
+    margin-left: 56px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+.nombre-jugador {
+    margin: 0;
+    padding: 12px 20px 12px 64px;
+    background: var(--azul-jugador);
+    color: #FFFFFF;
+    font-family: var(--font-titulos);
+    font-size: var(--fs-h3);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.patrimonio-jugador {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg, 24px);
+    margin: 0;
+    padding: 10px 20px 10px 64px;
+    list-style: none;
+    background: var(--color-blanco);
+}
+
+.item-estado {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs, 4px);
+    font-family: var(--font-texto);
+    font-weight: 400;
+    font-size: var(--fs-h4);
+    color: var(--negro);
+}
+
+.item-estado figure {
+    display: flex;
+    align-items: center;
+    width: 1rem;
+}
+
+.item-estado img {
+    width: 100%;
+}
+
+/*---------- Tablero + acciones de turno---------- */
+.contenedor-partida {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    width: 100%;
+    padding: 2%;
+    gap: 2% 0;
+
+}
+
+.area-juego {
+    margin-top: 2rem;
+    width: 75%;
+}
+
+/* Panel derecho (Notificaciones y Celular) */
+.panel-derecho {
+    width: 22%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.columna-principal {
+    position: relative;
+    width: 100%;
+}
+
+.Contenedor-tablero {
+    width: 100%;
+    background-color: #d9d9d9;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+.tablero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.area-juego {
+    width: 76%;
+}
+
+/* Panel derecho (Notificaciones y Celular) */
+.panel-derecho {
+    width: 22%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    align-items: center;
+}
+
+.columna-principal {
+    position: relative;
+    width: 100%;
+}
+
+.Contenedor-tablero {
+    width: 100%;
+    background-color: #d9d9d9;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+}
+
+.tablero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* --- Contenedor de la flecha y los dados --- */
+.controles-juego {
+    position: absolute;
+    bottom: 0rem;
+    right: 0rem;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: flex-end;
+    z-index: 10;
+}
+
+/* --- Botón Flecha --- */
+.btn-accion {
+    background-color: #ebebeb;
+    border: 2px solid #333;
+    border-radius: 1rem 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.2);
+    margin-right: -1rem;
+    width: 6rem;
+
+}
+
+.icono-btn {
+    width: 4.5rem;
+}
+
+/* --- Caja de Dados --- */
+.contenedor-dados {
+    background-color: #ebebeb;
+    border-radius: 0.8rem;
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0.4rem 0.8rem rgba(0, 0, 0, 0.3);
+    height: 15rem;
+    width: 15rem;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.dados-icono {
+    width: 7.5rem;
+    margin-bottom: 1.0rem;
+}
+
+.dados-img {
+    width: 100%;
+    display: block;
+}
+
+.btn-primario {
+    border-radius: 1rem;
+    padding: 0.5rem 1.25rem;
+    cursor: pointer;
+}
+
+.btn-accion.oculto {
+    display: none;
+}
+
+.barra-opciones-extra {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--color-blanco);
+    border: 1px solid var(--color-negro);
+    border-radius: 1rem 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.2);
+    height: 5rem;
+    width: 30rem;
+
+}
+
+.barra-opciones-extra.activa {
+    display: flex;
+    justify-content: space-around;
+}
+
+.btn-cerrar-opciones {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.icono-cerrar {
+    transform: scaleX(-1);
+    width: 1.3rem;
+}
+
+.btn-extra {
+    border: 1px;
+    border-radius: 0.6rem;
+    padding: 0.4rem 0.9rem;
+    font-family: var(--font-texto);
+    font-size: var(--fs-h4);
+    cursor: pointer;
+}
+
+
+
+/* --- Panel de Notificaciones (Avisos) --- */
+.panel-notificaciones {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 2px solid #333;
+    width: 23rem;
+}
+
+.notificaciones__header {
+    background-color: #d49a89;
+    color: white;
+    text-align: center;
+    padding: 0.75rem;
+    text-transform: uppercase;
+}
+
+.notificaciones__header h2 {
+    font-size: var(--fs-h2);
+    margin: 0;
+}
+
+.lista-msj {
+    background-color: #b56c5c;
+    color: white;
+    padding: 1.5rem 1.25rem;
+    list-style: none;
+    min-height: 8rem;
+}
+
+.msj-sistema {
+    font-size: var(--fs-body);
+    font-family: var(--font-texto);
+
+}
+
+/* --- Celular --- */
+.contenedor-celular {
+    background-image: url(../../../resources/images/iconos/Celular_bordeBlanco.png);
+    background-size: contain;
+    background-position: center top;
+    background-repeat: no-repeat;
+    aspect-ratio: 1 / 1.7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 15rem;
+}
+
+.pantalla-celular {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 60%;
+}
