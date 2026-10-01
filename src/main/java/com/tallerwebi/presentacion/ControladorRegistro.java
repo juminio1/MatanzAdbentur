@@ -30,7 +30,7 @@ public class ControladorRegistro {
   @Autowired
   public ControladorRegistro(ServicioRegistro servicioRegistro) {
     this.servicioRegistro = servicioRegistro;
-  }
+  } 
 
   @RequestMapping(path = "/nuevo-usuario", method = RequestMethod.GET)
   public ModelAndView nuevoUsuario() {

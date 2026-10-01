@@ -176,20 +176,21 @@
                     Checkstyle -->
                     <printWidth>100</printWidth>
                 </configuration>
-                <executions>
+                <!--<executions>
                     <execution>
                         <id>format-code</id>
-                        <!-- Se ejecuta en la fase 'process-sources' para formatear automáticamente 
-                             el código antes de la compilación y los tests -->
+                         Se ejecuta en la fase 'process-sources' para formatear automáticamente 
+                             el código antes de la compilación y los tests 
                         <phase>process-sources</phase>
                         <goals>
-                            <!-- El objetivo 'write' sobreescribe los archivos con el formato
-                            correcto -->
+                             El objetivo 'write' sobreescribe los archivos con el formato
+                            correcto 
                             <goal>write</goal>
                         </goals>
                     </execution>
-                </executions>
-            </plugin>
+                </executions> -->
+            
+                </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

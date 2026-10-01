@@ -1,4 +1,4 @@
-import { validarCamposDeLogin } from "./login_funciones.js";
+// import { validarCamposDeLogin } from "./login_funciones.js";
 
 /*const btnLoginNode = document.getElementById("btn-login");
 const inputCredencialNode = document.getElementById("credencial");

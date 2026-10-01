@@ -1,0 +1,5 @@
+# Normaliza los finales de línea de todos los archivos de texto del proyecto.
+# Git guardará los archivos usando LF dentro del repositorio,
+# evitando diferencias entre Windows (CRLF) y Linux/macOS (LF)
+# que pueden generar cambios "fantasma" en Git.
+* text=auto eol=lf
