@@ -77,14 +77,6 @@ public class Partida {
     this.estado = estado;
   }
 
-  /*public Tablero getTablero() {
-    return tablero;
-  }
-
-  public void setTablero(Tablero tablero) {
-    this.tablero = tablero;
-  }*/
-
   public List<Usuario> getUsuarios() {
     return usuarios;
   }

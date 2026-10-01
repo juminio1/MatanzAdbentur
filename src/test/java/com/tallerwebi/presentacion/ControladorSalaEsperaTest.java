@@ -3,13 +3,10 @@ package com.tallerwebi.presentacion;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +21,6 @@ public class ControladorSalaEsperaTest {
     private ServicioSalaDeEspera servicioSalaDeEsperaMock;
     private HttpServletRequest requestMock;
     private HttpSession sessionMock;
-    private Usuario usuarioMock;
 
     @BeforeEach //Hace que init() se ejecute antes de cada test.
     public void init() {
@@ -32,7 +28,6 @@ public class ControladorSalaEsperaTest {
         this.controladorSalaEspera = new ControladorSalaEspera(servicioSalaDeEsperaMock); // Crea el controlador real y le pasa el servicio falso.
         this.requestMock = mock(HttpServletRequest.class); // Crea un request falso.
         this.sessionMock = mock(HttpSession.class); // Crea una sesión falsa.
-        this.usuarioMock = mock(Usuario.class); // Crea un usuario falso. Actualmente sobra.
     }
 
     @Test
