@@ -2,7 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
-import com.tallerwebi.dominio.entidades.TipoEvento;
+import com.tallerwebi.dominio.enums.TipoEvento;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 

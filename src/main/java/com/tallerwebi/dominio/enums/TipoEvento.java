@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.entidades;
+package com.tallerwebi.dominio.enums;
 
 public enum TipoEvento {
     SUMA,

@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.TipoEvento;
 import jakarta.persistence.*;
 
 @Entity
