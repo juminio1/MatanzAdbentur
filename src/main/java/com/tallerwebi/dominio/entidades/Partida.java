@@ -32,9 +32,13 @@ public class Partida {
   @ManyToMany
   private List<Usuario> usuarios;
 
+  @OneToMany(mappedBy = "partida", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  private List<Jugador> jugadores;
+
   public Partida() {
     this.usuarios = new ArrayList<>();
     this.estado = EstadoPartida.EN_ESPERA; // Nace en sala de espera / lobby
+    this.jugadores = new ArrayList<>();
   }
 
   public Long getId() {
