@@ -19,6 +19,7 @@ public class Partida {
 
     private String codigoUnico;
     private Instant tiempoInicio;
+    @Transient
     private Map<Usuario, Ficha> fichasSeleccionadas;
 
     @ManyToOne
