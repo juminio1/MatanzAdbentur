@@ -5,12 +5,15 @@ import java.time.Instant;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.Ficha;
 
 import jakarta.transaction.Transactional;
 
@@ -72,4 +75,20 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
       throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
     throw new UnsupportedOperationException("Unimplemented method 'unirseASalaDeEspera'");
   }
+
+  @Override
+  public void seleccionarFicha(String codigoUnico, Long id, Ficha ficha)
+      throws UsuarioNoEncontradoException, PartidaNoEncontradaException, FichaOcupadaException {
+    Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    if (partida == null) {
+      throw new PartidaNoEncontradaException("No se encontró una partida activa con el código: " + codigoUnico);
+    }
+    Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(id);
+    if (usuario == null) {
+      throw new UsuarioNoEncontradoException();
+    }
+    partida.seleccionarFicha(usuario, ficha);
+
+    this.repositorioPartida.guardarPartida(partida);
+  }   
 }

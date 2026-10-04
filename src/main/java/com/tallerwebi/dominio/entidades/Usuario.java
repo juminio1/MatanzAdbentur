@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.Ficha;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,6 +24,8 @@ public class Usuario {
     private String password;
     private String rol;
     private Boolean activo = false;
+
+    private Ficha ficha;
 
     public Long getId() {
         return id;
@@ -73,5 +77,13 @@ public class Usuario {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public Ficha getFicha() {
+        return ficha;
+    }
+
+    public void setFicha(Ficha ficha) {
+        this.ficha = ficha;
     }
 }
