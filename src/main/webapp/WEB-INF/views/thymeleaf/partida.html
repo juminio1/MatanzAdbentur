@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>El Matancero – Partida</title>
+    <script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css">
+    <link rel="stylesheet" th:href="@{/css/partida2.css}" href="../../../resources/core/css/partida.css">
+</head>
+<body class="pagina-partida">
+<div class="partida">
+
+    <!-- Barra superior: contador + jugadores -->
+    <header class="partida__header">
+        <div class="cronometro">
+            <figure class="contenedor-cronometro-icono">
+                <img src="../../../resources/images/iconos/Reloj de arena.svg" alt="Reloj de arena" class="relojdearena-img">
+            </figure>
+            <span class="cronometro-nro" id="cronometro-nro">00:00</span>
+        </div>
+
+        <ol class="jugadores" aria-label="Jugadores">
+            <li>
+                <article class="jugador jugador--activo">
+                    <figure class="jugador__avatar"><img src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg" alt=""></figure>
+                    <div class="jugador__datos">
+                        <h2 class="jugador__nombre">Jugador 1</h2>
+                        <p class="jugador__stats">
+                            <data class="jugador__dinero" value="0">$ 000.000</data>
+                            <data class="jugador__prestigio" value="0" title="Prestigio">★ 0</data>
+                        </p>
+                    </div>
+                    <span class="jugador__turno">Tu turno</span>
+                </article>
+            </li>
+            <li>
+                <article class="jugador">
+                    <figure class="jugador__avatar"><img src="img/avatar-2.png" alt=""></figure>
+                    <div class="jugador__datos">
+                        <h2 class="jugador__nombre">Jugador 2</h2>
+                        <p class="jugador__stats">
+                            <data class="jugador__dinero" value="0">$ 000.000</data>
+                            <data class="jugador__prestigio" value="0" title="Prestigio">★ 0</data>
+                        </p>
+                    </div>
+                </article>
+            </li>
+            <li>
+                <article class="jugador">
+                    <figure class="jugador__avatar"><img src="img/avatar-3.png" alt=""></figure>
+                    <div class="jugador__datos">
+                        <h2 class="jugador__nombre">Jugador 3</h2>
+                        <p class="jugador__stats">
+                            <data class="jugador__dinero" value="0">$ 000.000</data>
+                            <data class="jugador__prestigio" value="0" title="Prestigio">★ 0</data>
+                        </p>
+                    </div>
+                </article>
+            </li>
+            <li>
+                <article class="jugador">
+                    <figure class="jugador__avatar"><img src="img/avatar-4.png" alt=""></figure>
+                    <div class="jugador__datos">
+                        <h2 class="jugador__nombre">Jugador 4</h2>
+                        <p class="jugador__stats">
+                            <data class="jugador__dinero" value="0">$ 000.000</data>
+                            <data class="jugador__prestigio" value="0" title="Prestigio">★ 0</data>
+                        </p>
+                    </div>
+                </article>
+            </li>
+        </ol>
+    </header>
+
+    <!-- Zona principal: tablero + acciones -->
+    <main class="partida__main">
+        <section class="zona-tablero" aria-label="Tablero">
+
+            <div class="tablero-wrap">
+                <!-- Tablero: 12 columnas x 5 filas; solo el borde son casilleros (30) -->
+                <ol class="tablero">
+                    <li class="casillero casillero--esquina" style="--col:12; --fila:5" data-casillero="0"><span class="casillero__nombre">Inicio</span></li>
+                    <li class="casillero" style="--col:11; --fila:5" data-casillero="1"><span class="casillero__nombre">Casillero 1</span></li>
+                    <li class="casillero" style="--col:10; --fila:5" data-casillero="2"><span class="casillero__nombre">Casillero 2</span></li>
+                    <li class="casillero" style="--col:9; --fila:5" data-casillero="3"><span class="casillero__nombre">Casillero 3</span></li>
+                    <li class="casillero" style="--col:8; --fila:5" data-casillero="4"><span class="casillero__nombre">Casillero 4</span></li>
+                    <li class="casillero" style="--col:7; --fila:5" data-casillero="5"><span class="casillero__nombre">Casillero 5</span></li>
+                    <li class="casillero" style="--col:6; --fila:5" data-casillero="6"><span class="casillero__nombre">Casillero 6</span></li>
+                    <li class="casillero" style="--col:5; --fila:5" data-casillero="7"><span class="casillero__nombre">Casillero 7</span></li>
+                    <li class="casillero" style="--col:4; --fila:5" data-casillero="8"><span class="casillero__nombre">Casillero 8</span></li>
+                    <li class="casillero" style="--col:3; --fila:5" data-casillero="9"><span class="casillero__nombre">Casillero 9</span></li>
+                    <li class="casillero" style="--col:2; --fila:5" data-casillero="10"><span class="casillero__nombre">Casillero 10</span></li>
+                    <li class="casillero casillero--esquina" style="--col:1; --fila:5" data-casillero="11"><span class="casillero__nombre">Casillero 11</span></li>
+                    <li class="casillero" style="--col:1; --fila:4" data-casillero="12"><span class="casillero__nombre">Casillero 12</span></li>
+                    <li class="casillero" style="--col:1; --fila:3" data-casillero="13"><span class="casillero__nombre">Casillero 13</span></li>
+                    <li class="casillero" style="--col:1; --fila:2" data-casillero="14"><span class="casillero__nombre">Casillero 14</span></li>
+                    <li class="casillero casillero--esquina" style="--col:1; --fila:1" data-casillero="15"><span class="casillero__nombre">Casillero 15</span></li>
+                    <li class="casillero" style="--col:2; --fila:1" data-casillero="16"><span class="casillero__nombre">Casillero 16</span></li>
+                    <li class="casillero" style="--col:3; --fila:1" data-casillero="17"><span class="casillero__nombre">Casillero 17</span></li>
+                    <li class="casillero" style="--col:4; --fila:1" data-casillero="18"><span class="casillero__nombre">Casillero 18</span></li>
+                    <li class="casillero" style="--col:5; --fila:1" data-casillero="19"><span class="casillero__nombre">Casillero 19</span></li>
+                    <li class="casillero" style="--col:6; --fila:1" data-casillero="20"><span class="casillero__nombre">Casillero 20</span></li>
+                    <li class="casillero" style="--col:7; --fila:1" data-casillero="21"><span class="casillero__nombre">Casillero 21</span></li>
+                    <li class="casillero" style="--col:8; --fila:1" data-casillero="22"><span class="casillero__nombre">Casillero 22</span></li>
+                    <li class="casillero" style="--col:9; --fila:1" data-casillero="23"><span class="casillero__nombre">Casillero 23</span></li>
+                    <li class="casillero" style="--col:10; --fila:1" data-casillero="24"><span class="casillero__nombre">Casillero 24</span></li>
+                    <li class="casillero" style="--col:11; --fila:1" data-casillero="25"><span class="casillero__nombre">Casillero 25</span></li>
+                    <li class="casillero casillero--esquina" style="--col:12; --fila:1" data-casillero="26"><span class="casillero__nombre">Casillero 26</span></li>
+                    <li class="casillero" style="--col:12; --fila:2" data-casillero="27"><span class="casillero__nombre">Casillero 27</span></li>
+                    <li class="casillero" style="--col:12; --fila:3" data-casillero="28"><span class="casillero__nombre">Casillero 28</span></li>
+                    <li class="casillero" style="--col:12; --fila:4" data-casillero="29"><span class="casillero__nombre">Casillero 29</span></li>
+
+                    <!-- Centro del tablero (columnas 2 a 11, filas 2 a 4) -->
+                    <li class="tablero__centro" aria-label="Centro del tablero">
+                        <h1 class="tablero__titulo">El Matancero</h1>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Barra de acciones -->
+            <div class="acciones" role="group" aria-label="Acciones del turno">
+                <div class="acciones__secundarias">
+                    <button type="button" class="btn-accion">Abandonar</button>
+                    <button type="button" class="btn-accion">Vender propiedad</button>
+                    <button type="button" class="btn-accion">Mercado Pago</button>
+                    <button type="button" class="btn-accion">Recomendación</button>
+                </div>
+                <div class="dados" aria-label="Resultado de los dados">
+                    <output class="dado" id="dado-1">1</output>
+                    <output class="dado" id="dado-2">1</output>
+                </div>
+
+                <button type="button" class="btn-tirar" id="btn-tirar">
+                    Tirar dados
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Panel lateral: casillero actual + historial -->
+    <aside class="partida__lateral">
+        <section class="info-casillero" aria-labelledby="info-titulo">
+            <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
+            <header class="info-casillero__cabecera">
+                <div>
+                    <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
+                    <p class="info-casillero__sub">Casillero #0 · Inicio</p>
+                </div>
+                <span class="etiqueta">Evento</span>
+            </header>
+            <dl class="info-casillero__datos">
+                <div><dt>Valor de compra</dt><dd>No disponible</dd></div>
+                <div><dt>Alquiler base</dt><dd class="dato--dinero">$0</dd></div>
+                <div><dt>Estado / dueño</dt><dd>Lugar público</dd></div>
+            </dl>
+            <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
+            <button type="button" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
+        </section>
+
+        <section class="historial" aria-labelledby="historial-titulo">
+            <header class="historial__cabecera">
+                <h2 id="historial-titulo">Historial de partida</h2>
+                <span class="etiqueta etiqueta--vivo">En vivo</span>
+            </header>
+            <ol class="historial__lista" aria-live="polite">
+                <li>El juego se ha reiniciado.</li>
+                <li>Caíste en: <strong>Avenida de Mayo</strong>.</li>
+                <li>Caíste en: <strong>UNLaM</strong>.</li>
+                <li>¡Bienvenido al tablero del Conurbano! Tu ficha roja parte desde la Salida.</li>
+            </ol>
+        </section>
+    </aside>
+
+</div>
+</body>
+</html>
