@@ -55,7 +55,7 @@ private ColorFicha ficha;
 
     }
 
-    public void agregarPropiedad(Propiedad propiedad) {
+   /* public void agregarPropiedad(Propiedad propiedad) {
     }
 
     public void agregarDinero(Integer alquiler) {
@@ -63,5 +63,5 @@ private ColorFicha ficha;
 
     public void quitarDinero(Integer monto) {
 
-    }
+    }*/
 }

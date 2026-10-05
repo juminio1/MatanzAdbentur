@@ -8,8 +8,8 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 
 import java.util.List;
 
-public class ServicioCasilleroImpl implements ServicioCasillero {
-    @Override
+public class ServicioCasilleroImpl  {
+    /*@Override
     public Casillero buscarPorId(Long id) {
         return null;
     }
@@ -25,12 +25,12 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
 @Override
 public boolean aplicarEvento(CasilleroEvento evento, Jugador jugador) {
     if (evento.getTipoEvento() == TipoEvento.SUMA) {
-        jugador.agregarDinero(evento.getMonto());
+       // jugador.agregarDinero(evento.getMonto());
         return true;
     }
 
     if (evento.getTipoEvento() == TipoEvento.RESTA) {
-        jugador.quitarDinero(evento.getMonto());
+        //jugador.quitarDinero(evento.getMonto());
         return true;
     }
 
@@ -49,7 +49,7 @@ public boolean aplicarEvento(CasilleroEvento evento, Jugador jugador) {
 
         jugador.restarDinero(propiedad.getPrecioCompra());
         propiedad.asignarPropietario(jugador);
-        jugador.agregarPropiedad(propiedad);
+        //jugador.agregarPropiedad(propiedad);
         return true;
     }
 
@@ -63,6 +63,8 @@ public boolean aplicarEvento(CasilleroEvento evento, Jugador jugador) {
 
         Integer alquiler = propiedad.getPrecioAlquiler();
         jugador.restarDinero(alquiler);
-        propietario.agregarDinero(alquiler);
+       // propietario.agregarDinero(alquiler);
     }
+
+     */
 }
