@@ -32,9 +32,15 @@ public class Partida {
   @ManyToMany
   private List<Usuario> usuarios;
 
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
+  private List<Jugador> jugadores;
+
+
   public Partida() {
     this.usuarios = new ArrayList<>();
-    this.estado = EstadoPartida.EN_ESPERA; // Nace en sala de espera / lobby
+    this.jugadores= new ArrayList<>();
+    this.estado = EstadoPartida.EN_ESPERA;// Nace en sala de espera / lobby
   }
 
   public Long getId() {
@@ -85,7 +91,15 @@ public class Partida {
     this.usuarios = usuarios;
   }
 
-  public Boolean agregarUsuario(Usuario usuario) {
+    public List<Jugador> getJugadores() {
+        return jugadores;
+    }
+
+    public void setJugadores(List<Jugador> jugadores) {
+        this.jugadores = jugadores;
+    }
+
+    public Boolean agregarUsuario(Usuario usuario) {
     Integer tamanioMaximo = 4;
     if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
       this.usuarios.add(usuario);
