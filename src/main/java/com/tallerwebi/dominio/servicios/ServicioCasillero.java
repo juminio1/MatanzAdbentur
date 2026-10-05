@@ -9,12 +9,11 @@ import java.util.List;
 
 public interface ServicioCasillero {
     //operaciones de admi
-    Casillero buscarPorId(Long id);
-    List<Casillero> buscarTodos();
+    List<Casillero> obtenerTodosLosCasilleros();
+    //Casillero buscarPorId(Long id);
 
     // comportamiento del juego
-    boolean comprarPropiedad(Jugador jugador, Propiedad propiedad);
-    void cobrarAlquiler(Jugador jugador, Propiedad propiedad);
-    boolean aplicarEvento(CasilleroEvento evento, Jugador jugador);
-
+   // boolean comprarPropiedad(Jugador jugador, Propiedad propiedad);
+    //void cobrarAlquiler(Jugador jugador, Propiedad propiedad);
+    //boolean aplicarEvento(CasilleroEvento evento, Jugador jugador);
 }
