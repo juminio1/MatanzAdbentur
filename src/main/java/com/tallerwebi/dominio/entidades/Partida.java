@@ -32,7 +32,8 @@ public class Partida {
   @ManyToMany
   private List<Usuario> usuarios;
 
-  @OneToMany(mappedBy = "partida", cascade = CascadeType.ALL, fetch = FetchType.EAGER)//estos jugadores son de esta partida
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+  @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
   private List<Jugador> jugadores;
 
 
