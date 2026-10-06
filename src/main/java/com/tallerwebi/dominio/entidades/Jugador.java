@@ -43,6 +43,14 @@ private ColorFicha ficha;
         this.dinero = dinero;
     }
 
+    public ColorFicha getFicha() {
+        return ficha;
+    }
+
+    public void setFicha(ColorFicha ficha) {
+        this.ficha = ficha;
+    }
+
     public void setApodo(String apodo) {
         this.apodo = apodo;
     }

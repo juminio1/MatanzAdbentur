@@ -1,22 +1,20 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es">
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>El Matancero - Partida</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>El Matancero – Partida</title>
   <script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
   <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css">
-  <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css">
+  <link rel="stylesheet" th:href="@{/css/partida2.css}" href="../../../resources/core/css/partida.css">
 </head>
 
-<body class="fondo-ladrillos">
+<body class="pagina-partida">
+  <div class="partida">
 
-  <main class="contenedor-partida">
-
-    <section class="barra-superior">
-
-      <!-- Cronometro de turno -->
+    <!-- Barra superior: contador + jugadores -->
+    <header class="partida__header">
       <div class="cronometro">
         <figure class="contenedor-cronometro-icono">
           <img src="../../../resources/images/iconos/Reloj de arena.svg" alt="Reloj de arena" class="relojdearena-img">
@@ -24,117 +22,392 @@
         <span class="cronometro-nro" id="cronometro-nro">00:00</span>
       </div>
 
-      
-      <nav class="lista-jugadores">
+      <ol class="jugadores" aria-label="Jugadores">
+        <!-- Iteramos la lista de jugadores -->
+        <li th:each="jugador : ${partida.jugadores}">
 
-        <!-- Thymeleaf repite este <article> por cada jugador en la partida -->
-        <!-- Le pone la clase 'activo' solo al jugador que tiene el turno -->
-        <article th:each="jugador : ${partida.jugadores}"
-          th:class="${jugador.id == turnoActualId ? 'tarjeta-jugador-activo' : 'tarjeta-jugador-2'}">
+          <!-- Agregamos la clase 'jugador--activo' dinámicamente si es su turno -->
+          <article class="jugador" th:classappend="${jugador.id == turnoActualId ? ' jugador--activo' : ''}">
 
-          <figure class="contenedor-avatar">
-            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar" class="avatar-img">
-          </figure>
-
-          <div class="datos-jugador">
-            <!-- Trae el apodo desde la base de datos -->
-            <h3 class="nombre-jugador" th:text="${jugador.apodo}">JUGADOR</h3>
-
-            <ul class="patrimonio-jugador">
-              <li class="item-estado" title="Dinero disponible">
-                <figure class="contenedor-icono-pesos">
-                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
-                </figure>
-                <!-- Trae el dinero del jugador -->
-                <data class="dinero-jugador" th:text="${jugador.dinero}">0</data>
-              </li>
-              <li class="item-estado" title="Propiedades totales">
-                <figure class="contenedor-casa-icono">
-                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
-                </figure>
-                <data class="propiedades-jugador" value="0">0</data>
-              </li>
-            </ul>
-          </div>
-        </article>
-
-      </nav>
-
-
-    </section>
-
-    <!---AREA PRINCIPAL (JUEGO + ACCIONES)-->
-    <section class="area-juego">
-
-      <!--Columna Izquierda -->
-      <div class="columna-principal">
-
-        <div class="Contenedor-tablero">
-          <figure class="tablero">
-            <img src="../../../resources/images/Tablero/El matancero_tablero.svg" alt="Tablero de juego"
-              class="tablero-img">
-          </figure>
-        </div>
-
-
-        
-        <!-- Controles Inferiores -->
-        <div class="controles-juego">
-
-          <div class="contenedor-dados">
-            <figure class="dados-icono">
-              <img src="../../../resources/images/iconos/dados.svg" alt="Icono dados" class="dados-img">
+            <figure class="jugador__avatar">
+              <!-- Puedes hacer la ruta dinámica luego: th:src="@{${jugador.avatar}}" -->
+              <img src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg" alt="Avatar">
             </figure>
-            <!-- Habilitar dados solo al jugador del turno -->
-            <button type="button" class="btn-primario" id="btn-primario"
-                    th:disabled="${usuarioSesionId != turnoActualId}">
-              Tirar Dados
-            </button>
+
+            <div class="jugador__datos">
+              <!-- Inyectamos apodo y dinero real -->
+              <h2 class="jugador__nombre" th:text="${jugador.apodo}">Jugador</h2>
+              <p class="jugador__stats">
+                <data class="jugador__dinero" th:value="${jugador.dinero}" th:text="'$ ' + ${jugador.dinero}">$
+                  000.000</data>
+                <data class="jugador__prestigio" value="0" title="Prestigio">★ 0</data>
+              </p>
+            </div>
+
+            <!-- Mostramos el indicador visual SÓLO si es su turno -->
+            <span class="jugador__turno" th:if="${jugador.id == turnoActualId}">Tu turno</span>
+
+          </article>
+        </li>
+      </ol>
+    </header>
+
+    <!-- Zona principal: tablero + acciones -->
+    <main class="partida__main">
+      <section class="zona-tablero" aria-label="Tablero">
+
+        <div class="tablero-wrap">
+          <!-- Tablero: 12 columnas x 5 filas; solo el borde son casilleros (30) -->
+          <ol class="tablero">
+            <li class="casillero casillero--esquina" style="--col:12; --fila:5" data-casillero="0"><span
+                class="casillero__nombre">Inicio</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 0}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:11; --fila:5" data-casillero="1"><span
+                class="casillero__nombre">Casillero 1</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 1}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:10; --fila:5" data-casillero="2"><span
+                class="casillero__nombre">Casillero 2</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 2}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:9; --fila:5" data-casillero="3"><span class="casillero__nombre">Casillero
+                3</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 3}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:8; --fila:5" data-casillero="4"><span class="casillero__nombre">Casillero
+                4</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 4}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:7; --fila:5" data-casillero="5"><span class="casillero__nombre">Casillero
+                5</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 5}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:6; --fila:5" data-casillero="6"><span class="casillero__nombre">Casillero
+                6</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 6}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:5; --fila:5" data-casillero="7"><span class="casillero__nombre">Casillero
+                7</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 7}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:4; --fila:5" data-casillero="8"><span class="casillero__nombre">Casillero
+                8</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 8}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:3; --fila:5" data-casillero="9"><span class="casillero__nombre">Casillero
+                9</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 9}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:2; --fila:5" data-casillero="10"><span
+                class="casillero__nombre">Casillero 10</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 10}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero casillero--esquina" style="--col:1; --fila:5" data-casillero="11"><span
+                class="casillero__nombre">Casillero 11</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 11}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:1; --fila:4" data-casillero="12"><span
+                class="casillero__nombre">Casillero 12</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 12}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:1; --fila:3" data-casillero="13"><span
+                class="casillero__nombre">Casillero 13</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 13}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:1; --fila:2" data-casillero="14"><span
+                class="casillero__nombre">Casillero 14</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 14}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero casillero--esquina" style="--col:1; --fila:1" data-casillero="15"><span
+                class="casillero__nombre">Casillero 15</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 15}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:2; --fila:1" data-casillero="16"><span
+                class="casillero__nombre">Casillero 16</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 16}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:3; --fila:1" data-casillero="17"><span
+                class="casillero__nombre">Casillero 17</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 17}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:4; --fila:1" data-casillero="18"><span
+                class="casillero__nombre">Casillero 18</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 18}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:5; --fila:1" data-casillero="19"><span
+                class="casillero__nombre">Casillero 19</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 19}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:6; --fila:1" data-casillero="20"><span
+                class="casillero__nombre">Casillero 20</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 20}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:7; --fila:1" data-casillero="21"><span
+                class="casillero__nombre">Casillero 21</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 21}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:8; --fila:1" data-casillero="22"><span
+                class="casillero__nombre">Casillero 22</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 22}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:9; --fila:1" data-casillero="23"><span
+                class="casillero__nombre">Casillero 23</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 23}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:10; --fila:1" data-casillero="24"><span
+                class="casillero__nombre">Casillero 24</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 24}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:11; --fila:1" data-casillero="25"><span
+                class="casillero__nombre">Casillero 25</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 25}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero casillero--esquina" style="--col:12; --fila:1" data-casillero="26"><span
+                class="casillero__nombre">Casillero 26</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 26}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:12; --fila:2" data-casillero="27"><span
+                class="casillero__nombre">Casillero 27</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 27}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:12; --fila:3" data-casillero="28"><span
+                class="casillero__nombre">Casillero 28</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 28}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+            <li class="casillero" style="--col:12; --fila:4" data-casillero="29"><span
+                class="casillero__nombre">Casillero 29</span>
+              <!-- LÓGICA DE FICHAS: Pega esto dentro de CADA <li> -->
+              <div class="contenedor-fichas">
+                <div th:each="jugador : ${partida.jugadores}" th:if="${jugador.posicionActual == 29}"
+                  th:class="'ficha ficha-' + ${jugador.ficha}">
+                </div>
+              </div>
+            </li>
+
+            <!-- Centro del tablero (columnas 2 a 11, filas 2 a 4) -->
+            <li class="tablero__centro" aria-label="Centro del tablero">
+              <h1 class="tablero__titulo">El Matancero</h1>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Barra de acciones -->
+        <div class="acciones" role="group" aria-label="Acciones del turno">
+          <div class="acciones__secundarias">
+            <!-- Bloqueamos los botones secundarios si no es el turno del usuario actual -->
+            <button type="button" class="btn-accion"
+              th:disabled="${usuarioSesionId != turnoActualId}">Abandonar</button>
+            <button type="button" class="btn-accion" th:disabled="${usuarioSesionId != turnoActualId}">Vender
+              propiedad</button>
+            <button type="button" class="btn-accion" th:disabled="${usuarioSesionId != turnoActualId}">Mercado
+              Pago</button>
+            <button type="button" class="btn-accion"
+              th:disabled="${usuarioSesionId != turnoActualId}">Recomendación</button>
           </div>
 
-          <!-- Bloquear opciones extra a los jugadores fuera de turno -->
-          <button class="btn-accion" id="btn-abrir-opciones" title="Más opciones"
-                  th:disabled="${usuarioSesionId != turnoActualId}">
-            <img src="../../../resources/images/iconos//flecha.svg" alt="Flecha" class="icono-btn">
+          <div class="dados" aria-label="Resultado de los dados">
+            <output class="dado" id="dado-1">1</output>
+            <output class="dado" id="dado-2">1</output>
+          </div>
+
+          <!-- Bloqueamos el botón de tirar dados -->
+          <button type="button" class="btn-tirar" id="btn-tirar" th:disabled="${usuarioSesionId != turnoActualId}">
+            Tirar dados
           </button>
-
-          <nav class="barra-opciones-extra" id="barra-opciones-extra">
-            <button class="btn-cerrar-opciones" id="btn-cerrar-opciones" title="Cerrar opciones">
-              <img src="../../../resources/images/iconos/flecha.svg" alt="Cerrar" class="icono-btn icono-cerrar">
-            </button>
-            <button class="btn-extra">Opción A</button>
-            <button class="btn-extra">Opción B</button>
-          </nav>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <!-- COLUMNA DERECHA: Notificaciones y Celular -->
-
-    <aside class="panel-derecho" id="panel-derecho">
-
-      <!-- Panel de Notificaciones -->
-      <section class="panel-notificaciones">
-        <header class="notificaciones__header">
-          <h2>Notificaciones</h2>
+    <!-- Panel lateral: casillero actual + historial -->
+    <aside class="partida__lateral">
+      <section class="info-casillero" aria-labelledby="info-titulo">
+        <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
+        <header class="info-casillero__cabecera">
+          <div>
+            <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
+            <p class="info-casillero__sub">Casillero #0 · Inicio</p>
+          </div>
+          <span class="etiqueta">Evento</span>
         </header>
-
-        <ul class="lista-msj" id="lista-msj">
-          <li class="msj-sistema" id="msj-sistema">Esperando tirada...</li>
-        </ul>
+        <dl class="info-casillero__datos">
+          <div>
+            <dt>Valor de compra</dt>
+            <dd>No disponible</dd>
+          </div>
+          <div>
+            <dt>Alquiler base</dt>
+            <dd class="dato--dinero">$0</dd>
+          </div>
+          <div>
+            <dt>Estado / dueño</dt>
+            <dd>Lugar público</dd>
+          </div>
+        </dl>
+        <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
+        <button type="button" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
       </section>
 
-      <!-- Celular: acceso a IA y Mercado Pago -->
-      <section class="contenedor-celular">
-        <div class="pantalla-celular">
-          <button class="btn-terciario" id="btn-tertiary">La Ia</button>
-          <button class="btn-terciario" id="btn-tertiary">El Mp</button>
-        </div>
+      <section class="historial" aria-labelledby="historial-titulo">
+        <header class="historial__cabecera">
+          <h2 id="historial-titulo">Historial de partida</h2>
+          <span class="etiqueta etiqueta--vivo">En vivo</span>
+        </header>
+        <ol class="historial__lista" aria-live="polite">
+          <li>El juego se ha reiniciado.</li>
+          <li>Caíste en: <strong>Avenida de Mayo</strong>.</li>
+          <li>Caíste en: <strong>UNLaM</strong>.</li>
+          <li>¡Bienvenido al tablero del Conurbano! Tu ficha roja parte desde la Salida.</li>
+        </ol>
       </section>
-
     </aside>
 
-  </main>
+  </div>
 </body>
 
 </html>
