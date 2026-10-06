@@ -5,21 +5,33 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.enums.TipoEvento;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.infraestructura.RepositorioCasillero;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-public class ServicioCasilleroImpl  {
+@Service("servicioCasillero")
+@Transactional
+public class ServicioCasilleroImpl implements ServicioCasillero {
+
+    private RepositorioCasillero repositorioCasillero;
+
+    @Autowired
+    public ServicioCasilleroImpl(RepositorioCasillero repositorioCasillero) {
+        this.repositorioCasillero = repositorioCasillero;
+    }
+
+    @Override
+    public List<Casillero> obtenerTodosLosCasilleros() {
+        return repositorioCasillero.obtenerTodos();
+    }
+
     /*@Override
     public Casillero buscarPorId(Long id) {
         return null;
     }
-
-    @Override
-    public List<Casillero> buscarTodos() {
-        return List.of();
-    }
-
-
 
     //Metodo para casilleroEvento
 @Override
