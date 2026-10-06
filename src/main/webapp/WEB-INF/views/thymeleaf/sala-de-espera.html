@@ -336,19 +336,18 @@
 
 
         <section class="salaEspera__acciones">
+    <!-- Formulario que avisa al backend que inicie la partida -->
+    <form th:action="@{/partida/iniciar}" method="POST">
+        <input type="hidden" name="codigoSala" th:value="${codigoUnico}" />
+        <button type="submit" class="salaEspera__iniciar">
+            Iniciar partida
+        </button>
+    </form>
 
-            <button
-                type="button"
-                class="salaEspera__iniciar">
-                Iniciar partida
-            </button>
-
-            <button
-                type="button"
-                class="salaEspera__invitar"
-            >
-                 Invitar
-            </button>
+    <button type="button" class="salaEspera__invitar">
+        Invitar
+    </button>
+</section>
 
         </section>
 

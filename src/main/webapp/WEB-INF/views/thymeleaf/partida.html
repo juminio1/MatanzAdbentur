@@ -24,107 +24,43 @@
         <span class="cronometro-nro" id="cronometro-nro">00:00</span>
       </div>
 
-      <!-- Contenedor jugadores -->
+      
       <nav class="lista-jugadores">
 
-        <!-- JUGADOR ACTIVO -->
-        <article class="tarjeta-jugador-activo">
-          <figure class="contenedor-avatar">
-            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 1"
-              class="avatar-img">
-          </figure>
-          <div class="datos-jugador">
-            <h3 class="nombre-jugador">JUGADOR 1</h3>
+        <!-- Thymeleaf repite este <article> por cada jugador en la partida -->
+        <!-- Le pone la clase 'activo' solo al jugador que tiene el turno -->
+        <article th:each="jugador : ${partida.jugadores}"
+          th:class="${jugador.id == turnoActualId ? 'tarjeta-jugador-activo' : 'tarjeta-jugador-2'}">
 
-            <ul class="patrimonio-jugador" id="patrimonio-jugador">
+          <figure class="contenedor-avatar">
+            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar" class="avatar-img">
+          </figure>
+
+          <div class="datos-jugador">
+            <!-- Trae el apodo desde la base de datos -->
+            <h3 class="nombre-jugador" th:text="${jugador.apodo}">JUGADOR</h3>
+
+            <ul class="patrimonio-jugador">
               <li class="item-estado" title="Dinero disponible">
                 <figure class="contenedor-icono-pesos">
                   <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
                 </figure>
-                <data class="dinero-jugador" value="85000">85.000</data>
+                <!-- Trae el dinero del jugador -->
+                <data class="dinero-jugador" th:text="${jugador.dinero}">0</data>
               </li>
               <li class="item-estado" title="Propiedades totales">
                 <figure class="contenedor-casa-icono">
                   <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
-                </figure> <data class="propiedades-jugador" value="1">1</data>
+                </figure>
+                <data class="propiedades-jugador" value="0">0</data>
               </li>
             </ul>
           </div>
         </article>
 
-        <!-- JUGADOR 2 -->
-        <article class="tarjeta-jugador-2">
-          <figure class="contenedor-avatar">
-            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
-              class="avatar-img">
-          </figure>
-          <div class="datos-jugador">
-            <h3 class="nombre-jugador">JUGADOR 2</h3>
-
-            <ul class="patrimonio-jugador" id="patrimonio-jugador">
-              <li class="item-estado" title="Dinero disponible">
-                <figure class="contenedor-icono-pesos">
-                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
-                </figure>
-                <data class="dinero-jugador" value="85000">85.000</data>
-              </li>
-              <li class="item-estado" title="Propiedades totales">
-                <figure class="contenedor-casa-icono">
-                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
-                </figure> <data class="propiedades-jugador" value="1">1</data>
-              </li>
-            </ul>
-          </div>
-        </article>
-        <!-- JUGADOR 3 -->
-        <article class="tarjeta-jugador-2">
-          <figure class="contenedor-avatar">
-            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
-              class="avatar-img">
-          </figure>
-          <div class="datos-jugador">
-            <h3 class="nombre-jugador">JUGADOR 3</h3>
-
-            <ul class="patrimonio-jugador" id="patrimonio-jugador">
-              <li class="item-estado" title="Dinero disponible">
-                <figure class="contenedor-icono-pesos">
-                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
-                </figure>
-                <data class="dinero-jugador" value="85000">85.000</data>
-              </li>
-              <li class="item-estado" title="Propiedades totales">
-                <figure class="contenedor-casa-icono">
-                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
-                </figure> <data class="propiedades-jugador" value="1">1</data>
-              </li>
-            </ul>
-          </div>
-        </article>
-        <!-- JUGADOR 4 -->
-        <article class="tarjeta-jugador-2">
-          <figure class="contenedor-avatar">
-            <img src="../../../resources/images/personajes/TURRO ICON🇦🇷👉.jpg" alt="Avatar del Jugador 2"
-              class="avatar-img">
-          </figure>
-          <div class="datos-jugador">
-            <h3 class="nombre-jugador">JUGADOR 4</h3>
-
-            <ul class="patrimonio-jugador" id="patrimonio-jugador">
-              <li class="item-estado" title="Dinero disponible">
-                <figure class="contenedor-icono-pesos">
-                  <img src="../../../resources/images/iconos/Signo pesos.svg" alt="Signo pesos" class="icono-pesos-img">
-                </figure>
-                <data class="dinero-jugador" value="85000">85.000</data>
-              </li>
-              <li class="item-estado" title="Propiedades totales">
-                <figure class="contenedor-casa-icono">
-                  <img src="../../../resources/images/iconos/casa.svg" alt="icono casa" class="icono-casa-img">
-                </figure> <data class="propiedades-jugador" value="1">1</data>
-              </li>
-            </ul>
-          </div>
-        </article>
       </nav>
+
+
     </section>
 
     <!---AREA PRINCIPAL (JUEGO + ACCIONES)-->
@@ -135,11 +71,13 @@
 
         <div class="Contenedor-tablero">
           <figure class="tablero">
-            <img src="../../../resources/images/Tablero/El matancero_tablero.svg" alt="Tablero de juego" class="tablero-img">
+            <img src="../../../resources/images/Tablero/El matancero_tablero.svg" alt="Tablero de juego"
+              class="tablero-img">
           </figure>
         </div>
 
 
+        
         <!-- Controles Inferiores -->
         <div class="controles-juego">
 
@@ -147,10 +85,16 @@
             <figure class="dados-icono">
               <img src="../../../resources/images/iconos/dados.svg" alt="Icono dados" class="dados-img">
             </figure>
-            <button type="button" class="btn-primario" id="btn-primario">Tirar Dados</button>
+            <!-- Habilitar dados solo al jugador del turno -->
+            <button type="button" class="btn-primario" id="btn-primario"
+                    th:disabled="${usuarioSesionId != turnoActualId}">
+              Tirar Dados
+            </button>
           </div>
 
-          <button class="btn-accion" id="btn-abrir-opciones" title="Más opciones">
+          <!-- Bloquear opciones extra a los jugadores fuera de turno -->
+          <button class="btn-accion" id="btn-abrir-opciones" title="Más opciones"
+                  th:disabled="${usuarioSesionId != turnoActualId}">
             <img src="../../../resources/images/iconos//flecha.svg" alt="Flecha" class="icono-btn">
           </button>
 
