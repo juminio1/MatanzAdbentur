@@ -7,6 +7,7 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 
 import java.util.List;
 
+@FunctionalInterface
 public interface ServicioCasillero {
     //operaciones de admi
     List<Casillero> obtenerTodosLosCasilleros();
