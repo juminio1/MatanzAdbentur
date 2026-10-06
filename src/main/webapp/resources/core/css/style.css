@@ -135,7 +135,7 @@ h4, .h4 {
 }
 
 p, .texto-body {
-  font-family: var(--font-texto);
+  font-family: var(--font-texto), serif;
   font-size: var(--fs-body);
   font-weight: var(--fw-regular);
   margin: 0 0 var(--space-md);
