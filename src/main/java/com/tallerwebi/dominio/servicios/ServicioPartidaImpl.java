@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 public class ServicioPartidaImpl implements ServicioPartida {
 
     private RepositorioPartida repositorioPartida;
+    private final Integer CANTIDAD_ESTABLECIDA_JUGADORES = 4;
 
     @Autowired
     public ServicioPartidaImpl(RepositorioPartida repositorioPartida) {
@@ -52,11 +53,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
         List<Jugador> jugadores = partida.getJugadores();
 
-        if (jugadores.size() < 4) {
+        if (jugadores.size() < this.CANTIDAD_ESTABLECIDA_JUGADORES) {
             throw new CantidadJugadoresInsuficienteException("Cantidad de jugadores insuficientes");
         }
 
-        if (jugadores.size() > 4) {
+        if (jugadores.size() > this.CANTIDAD_ESTABLECIDA_JUGADORES) {
             throw new CantidadMaximaJugadoresSuperadaException("Máxima de jugadores superados");
         }
     }
