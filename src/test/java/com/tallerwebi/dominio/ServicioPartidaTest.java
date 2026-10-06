@@ -14,6 +14,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
@@ -232,5 +233,19 @@ public class ServicioPartidaTest {
         assertEquals(jugadorTres.getDinero(), 10000);
         assertEquals(jugadorDos.getDinero(), 10000);
         assertEquals(jugadorUno.getDinero(), 10000);
+    }
+
+    @Test
+    public void dadoQueLaPartidaEstaEnCursoNoDebeVolverAInicializarse() throws EstadoPartidaInvalidoException, PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
+
+        when(this.repositorioPartidaMock.buscarPartidaActiva()).thenReturn(partida);
+
+        this.servicioPartida.iniciarPartida();
+
+        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
+
+        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
     }
 }

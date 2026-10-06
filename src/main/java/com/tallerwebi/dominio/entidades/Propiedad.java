@@ -19,7 +19,6 @@ public class Propiedad {
         this.propietario = propietario;
     }
 
-
     //Getters y setters
     public Long getId() {
         return id;
