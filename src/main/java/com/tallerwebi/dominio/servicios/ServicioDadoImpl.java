@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.servicios;
 
 import org.springframework.stereotype.Service;
 import java.util.Random;
