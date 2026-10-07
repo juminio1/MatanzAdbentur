@@ -5,9 +5,12 @@ import java.time.Instant;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -68,25 +71,49 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     return codigo.toString();
   }
 
-  @Override
-  public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-      throws UsuarioNoEncontradoException, PartidaNoEncontradaException, SalaDeEsperaLlenaException {
+@Override
+public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
+    throws UsuarioNoEncontradoException, PartidaNoEncontradaException,
+           SalaDeEsperaLlenaException, PartidaIniciadaException,
+           UsuarioYaEstaEnPartidaException {
 
-        Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
-        if (usuarioEncontrado == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+    Usuario usuarioEncontrado = obtenerUsuarioValido(idUsuario);
+    Partida partidaEncontrada = obtenerPartidaValida(codigoUnico);
 
-    Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-    if (partidaEncontrada == null) {
-      throw new PartidaNoEncontradaException();
-    }
+    validarEstadoPartida(partidaEncontrada, usuarioEncontrado);
 
-    if(!partidaEncontrada.agregarUsuario(usuarioEncontrado)){
-      throw new SalaDeEsperaLlenaException();
+    if (!partidaEncontrada.agregarUsuario(usuarioEncontrado)) {
+        throw new SalaDeEsperaLlenaException();
     }
 
     this.repositorioPartida.guardarPartida(partidaEncontrada);
     return partidaEncontrada;
-  }
+}
+
+private Usuario obtenerUsuarioValido(Long idUsuario) throws UsuarioNoEncontradoException {
+    Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    if (usuario == null) {
+        throw new UsuarioNoEncontradoException();
+    }
+    return usuario;
+}
+
+private Partida obtenerPartidaValida(String codigoUnico) throws PartidaNoEncontradaException {
+    Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    if (partida == null) {
+        throw new PartidaNoEncontradaException();
+    }
+    return partida;
+}
+
+private void validarEstadoPartida(Partida partida, Usuario usuario)
+    throws PartidaIniciadaException, UsuarioYaEstaEnPartidaException {
+
+    if (partida.getEstado() == com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO) {
+        throw new PartidaIniciadaException();
+    }
+    if (partida.getUsuarios().contains(usuario)) {
+        throw new UsuarioYaEstaEnPartidaException();
+    }
+}
 }
