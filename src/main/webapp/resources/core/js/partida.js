@@ -23,7 +23,7 @@ const botonTirar = document.getElementById("btn-tirar");
 
 // Une el front con el backend. Conecta con controladorPartida metodo tirar dados.
 async function obtenerResultadoDados() {
-    const respuesta = await fetch("/partida/tirar-dados", {
+    const respuesta = await fetch("http://localhost:8080/spring/partida/tirar-dados", {
         method: "POST",
     });
 
