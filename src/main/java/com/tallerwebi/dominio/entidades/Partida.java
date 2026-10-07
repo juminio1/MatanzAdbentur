@@ -119,6 +119,19 @@ public class Partida {
             this.usuarios.remove(usuario);
             this.fichasSeleccionadas.remove(usuario); // Libera la ficha automáticamente
         }
+    public List<Jugador> getJugadores() {
+        return jugadores;
+    }
+
+    public void setJugadores(List<Jugador> jugadores) {
+        this.jugadores = jugadores;
+    }
+
+    public Boolean agregarUsuario(Usuario usuario) {
+    Integer tamanioMaximo = 4;
+    if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
+      this.usuarios.add(usuario);
+      return true;
     }
 
     public Ficha getFichaSeleccionada(Usuario usuario) {

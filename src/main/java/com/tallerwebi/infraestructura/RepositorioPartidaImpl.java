@@ -37,7 +37,8 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     }
   }
 
-  @Override
+
+    @Override
   public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
     String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
     try {
@@ -50,4 +51,5 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
       return null;
     }
   }
+
 }
