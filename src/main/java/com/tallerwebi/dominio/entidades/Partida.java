@@ -19,6 +19,7 @@ public class Partida {
 
     private String codigoUnico;
     private Instant tiempoInicio;
+
     @Transient
     private Map<Usuario, Ficha> fichasSeleccionadas;
 
@@ -111,6 +112,13 @@ public class Partida {
             );
         }
         this.fichasSeleccionadas.put(usuario, ficha);
+    }
+
+    public void abandonarSala(Usuario usuario) {
+        if (this.usuarios.contains(usuario)) {
+            this.usuarios.remove(usuario);
+            this.fichasSeleccionadas.remove(usuario); // Libera la ficha automáticamente
+        }
     }
 
     public Ficha getFichaSeleccionada(Usuario usuario) {

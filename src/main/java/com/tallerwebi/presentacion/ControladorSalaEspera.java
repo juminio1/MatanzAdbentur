@@ -3,11 +3,10 @@ package com.tallerwebi.presentacion;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
-
 import jakarta.servlet.http.HttpServletRequest;
-
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +24,6 @@ public class ControladorSalaEspera {
     @Autowired
     public ControladorSalaEspera(ServicioSalaDeEspera servicioSalaDeEspera) {
         this.servicioSalaDeEspera = servicioSalaDeEspera;
-  
     }
 
     /* @RequestMapping(path = "/sala-de-espera", method = RequestMethod.GET)
@@ -50,5 +48,15 @@ public class ControladorSalaEspera {
         }
 
         return modelo;
+    }
+
+    @RequestMapping(path = "/sala-de-espera/elegir-ficha", method = RequestMethod.POST)
+    public ResponseEntity<Void> elegirFicha() {
+        return ResponseEntity.ok().build();
+    }
+
+    @RequestMapping(path = "/sala-de-espera", method = RequestMethod.GET)
+    public ModelAndView mostrarSalaDeEspera() {
+        return new ModelAndView(SALA_DE_ESPERA);
     }
 }

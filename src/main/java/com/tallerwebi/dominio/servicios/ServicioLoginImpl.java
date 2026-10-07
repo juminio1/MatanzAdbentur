@@ -29,11 +29,12 @@ public class ServicioLoginImpl implements ServicioLogin {
     }
 
     @Override
-    public Usuario autenticar(String credencial, String password) throws CredencialesInvalidasException {
+    public Usuario autenticar(String credencial, String password)
+        throws CredencialesInvalidasException {
         validarParametros(credencial, password);
 
         Usuario usuario = repositorioUsuario.buscarUsuarioPorCredencial(credencial);
-      
+
         if (usuario == null) {
             throw new CredencialesInvalidasException(ERROR_CREDENCIALES);
         }

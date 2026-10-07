@@ -264,4 +264,35 @@ public class ServicioSalaDeEsperaTest {
         assertNull(partida.getFichaSeleccionada(usuario2));
         verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
     }
+
+    @Test
+    public void usuarioAbandonaLaSalaYLiberaSuFicha()
+        throws UsuarioNoEncontradoException, FichaOcupadaException, PartidaNoEncontradaException {
+        Usuario usuario1 = new Usuario();
+        usuario1.setId(1L);
+        usuario1.setEmail("jugador1@test.com");
+        usuario1.setPassword("123");
+        usuario1.setRol("USER");
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico("ABC123");
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.agregarUsuario(usuario1);
+
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario1);
+        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
+            partida
+        );
+
+        // Selecciona ficha
+        this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, Ficha.ROJA);
+        assertEquals(Ficha.ROJA, partida.getFichaSeleccionada(usuario1));
+
+        // Abandona la sala
+        this.servicioSalaDeEspera.abandonarSala("ABC123", 1L);
+
+        assertFalse(partida.getUsuarios().contains(usuario1));
+        assertNull(partida.getFichaSeleccionada(usuario1));
+        verify(this.repositorioPartidaMock, times(2)).guardarPartida(partida);
+    }
 }

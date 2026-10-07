@@ -108,28 +108,24 @@
                 <article class="salaEspera__fichas">
 
                     <div class="salaEspera__subtitulo">
-
-                        <div class="salaEspera__icono">
-                            ♟
-                        </div>
-
+                        <div class="salaEspera__icono">♟</div>
                         <div>
                             <h2>Elegí tu ficha</h2>
-
-                            <p>
-                                Seleccioná el color con el que vas a jugar.
-                            </p>
+                            <p>Seleccioná el color con el que vas a jugar.</p>
                         </div>
-
                     </div>
 
+                    <!-- GRID DE FICHAS DINÁMICO -->
+                    <div class="salaEspera__fichasGrid" id="fichasGrid">
 
-                    <div class="salaEspera__fichasGrid">
-
+                        <!-- FICHA ROJA -->
                         <button
-                            class="salaEspera__ficha salaEspera__ficha--roja"
-                            type="button"
-                        >
+                                class="salaEspera__ficha salaEspera__ficha--roja"
+                                type="button"
+                                data-ficha="ROJO"
+                                onclick="seleccionarFicha('ROJO')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -138,18 +134,16 @@
                             </div>
 
                             <span>Roja</span>
-
                         </button>
 
-
+                        <!-- FICHA AZUL -->
                         <button
-                            class="salaEspera__ficha salaEspera__ficha--azul salaEspera__ficha--seleccionada"
-                            type="button"
-                        >
+                                class="salaEspera__ficha salaEspera__ficha--azul"
+                                type="button"
+                                data-ficha="AZUL"
+                                onclick="seleccionarFicha('AZUL')">
 
-                            <div class="salaEspera__check">
-                                ✓
-                            </div>
+                            <div class="salaEspera__check d-none">✓</div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -158,14 +152,16 @@
                             </div>
 
                             <span>Azul</span>
-
                         </button>
 
-
+                        <!-- FICHA VERDE -->
                         <button
-                            class="salaEspera__ficha salaEspera__ficha--verde"
-                            type="button"
-                        >
+                                class="salaEspera__ficha salaEspera__ficha--verde"
+                                type="button"
+                                data-ficha="VERDE"
+                                onclick="seleccionarFicha('VERDE')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -174,14 +170,16 @@
                             </div>
 
                             <span>Verde</span>
-
                         </button>
 
-
+                        <!-- FICHA AMARILLA -->
                         <button
-                            class="salaEspera__ficha salaEspera__ficha--amarilla"
-                            type="button"
-                        >
+                                class="salaEspera__ficha salaEspera__ficha--amarilla"
+                                type="button"
+                                data-ficha="AMARILLO"
+                                onclick="seleccionarFicha('AMARILLO')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -190,10 +188,12 @@
                             </div>
 
                             <span>Amarilla</span>
-
                         </button>
 
                     </div>
+
+                    <!-- Mensaje de error o aviso -->
+                    <div id="mensajeFichaError" class="salaEspera__error" hidden></div>
 
                 </article>
 
@@ -355,6 +355,6 @@
     </div>
 
 </main>
-
+    <script th:src="@{/js/sala-de-espera.js}"></script>
 </body>
 </html>

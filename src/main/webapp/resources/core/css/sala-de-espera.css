@@ -326,110 +326,78 @@ body {
 
 
 /* ======================================================
-   FICHAS
+   FICHAS (Actualizado para HU - Elegir Ficha)
 ====================================================== */
 
 .salaEspera__fichasGrid {
     display: grid;
-
     grid-template-columns: repeat(4, minmax(0, 1fr));
-
     gap: 12px;
-
     margin-top: 22px;
 }
 
-
 .salaEspera__ficha {
     position: relative;
-
     min-height: 170px;
-
     display: flex;
-
     flex-direction: column;
-
     align-items: center;
     justify-content: center;
-
     gap: 7px;
-
     border: 2px solid transparent;
-
     border-radius: 16px;
-
     font-family: inherit;
-
     cursor: pointer;
-
-    transition: 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
 }
 
-
-.salaEspera__ficha:hover {
+/* Hover solo si la ficha NO está deshabilitada ni ocupada */
+.salaEspera__ficha:hover:not(:disabled):not(.salaEspera__ficha--ocupada) {
     transform: translateY(-3px);
 }
 
-
 .salaEspera__ficha > span {
     color: #253447;
-
     font-size: 13px;
-
     font-weight: 700;
 }
 
+/* Fondos por color de peón */
+.salaEspera__ficha--roja { background: #fff0f1; }
+.salaEspera__ficha--azul { background: #edf7ff; }
+.salaEspera__ficha--verde { background: #edf9f1; }
+.salaEspera__ficha--amarilla { background: #fff8e4; }
 
-.salaEspera__ficha--roja {
-    background: #fff0f1;
-}
-
-
-.salaEspera__ficha--azul {
-    background: #edf7ff;
-}
-
-
-.salaEspera__ficha--verde {
-    background: #edf9f1;
-}
-
-
-.salaEspera__ficha--amarilla {
-    background: #fff8e4;
-}
-
-
+/* ESTADO: Ficha seleccionada por el jugador actual */
 .salaEspera__ficha--seleccionada {
-    border-color: #1386ed;
-
-    box-shadow:
-        0 8px 18px rgba(19, 134, 237, 0.15);
+    border-color: #1386ed !important;
+    box-shadow: 0 8px 18px rgba(19, 134, 237, 0.25) !important;
 }
 
+/* ESTADO: Ficha ocupada por otro jugador (Deshabilitada) */
+.salaEspera__ficha:disabled,
+.salaEspera__ficha--ocupada {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(85%) !important;
+    pointer-events: none !important;
+    border-color: #d1d5db !important;
+    background: #f3f4f6 !important;
+}
 
 .salaEspera__check {
     position: absolute;
-
     top: 8px;
     right: 8px;
-
     width: 28px;
     height: 28px;
-
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     background: #1386ed;
-
     border: 3px solid white;
-
     border-radius: 50%;
-
     color: white;
-
     font-size: 13px;
     font-weight: 800;
 }
