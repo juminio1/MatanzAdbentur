@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,224 +9,452 @@
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css">
     <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css">
 </head>
-<body class="pagina-partida">
-<!-- Barra superior: contador + jugadores -->
-<header class="barra-superior">
-    <div class="cronometro">
-        <figure class="contenedor-cronometro-icono">
-            <img src="../../../resources/images/iconos/Reloj de arena.svg" alt="Reloj de arena"
-                 class="relojdearena-img">
-        </figure>
-        <span class="cronometro-nro" id="cronometro-nro">00:00</span>
-    </div>
 
-    <!--Lista de jugadores-->
-    <section class="jugadores">
-        <article class="jugador" id="1">
+<body class="pagina-partida">
+    <!-- Barra superior: contador + jugadores -->
+    <header class="barra-superior">
+        <div class="cronometro">
+            <figure class="contenedor-cronometro-icono">
+                <img src="../../../resources/images/iconos/Reloj de arena.svg" alt="Reloj de arena"
+                    class="relojdearena-img">
+            </figure>
+            <span class="cronometro-nro" id="cronometro-nro">00:00</span>
+        </div>
+
+
+        <section class="jugadores">
+            <article class="jugador" th:each="jugador : ${partida.jugadores}" th:id="${jugador.id}">
                 <img class="avatar-jugador" src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg"
-                     alt="Avatar del Jugador">
+                    alt="Avatar del Jugador">
+
                 <div class="contenedor-nombre-jugador">
-                    <h3 class="nombre-jugador">JUGADOR 1</h3>
+
+                    <h3 class="nombre-jugador" th:text="${jugador.apodo}">JUGADOR</h3>
                 </div>
 
                 <div class="datos-jugador">
-                    <span class="dinero">$0</span>
+
+                    <span class="dinero" th:text="${'$' + jugador.dinero}">$0</span>
                     <span class="cantidad-propiedades">0</span>
                 </div>
 
                 <div class="contenedor-turno">
-                    <span class="indicador-turno">Tu turno</span>
+
+                    <span class="indicador-turno" th:if="${jugador.id == turnoActualId}">Tu turno</span>
                 </div>
-        </article>
+            </article>
+        </section>
+    </header>
 
-        <article class="jugador" id="2">
-            <img class="avatar-jugador" src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg"
-                 alt="Avatar del Jugador">
-            <div class="contenedor-nombre-jugador">
-                <h3 class="nombre-jugador">JUGADOR 2</h3>
+    <!-- Zona principal: tablero + acciones -->
+    <main class="partida__main">
+        <section class="zona-tablero" aria-label="Tablero">
+
+            <div class="tablero-wrap">
+                <!-- Tablero: 12 columnas x 5 filas; solo el borde son casilleros (30) -->
+                <ol class="tablero">
+                    <li class="casillero casillero--esquina" style="--col:12; --fila:5" data-casillero="0"><span
+                            class="casillero__nombre">Inicio</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 0}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:11; --fila:5" data-casillero="1"><span
+                            class="casillero__nombre">Casillero 1</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 1}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:10; --fila:5" data-casillero="2"><span
+                            class="casillero__nombre">Casillero 2</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 2}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:9; --fila:5" data-casillero="3"><span
+                            class="casillero__nombre">Casillero 3</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 3}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:8; --fila:5" data-casillero="4"><span
+                            class="casillero__nombre">Casillero 4</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 4}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:7; --fila:5" data-casillero="5"><span
+                            class="casillero__nombre">Casillero 5</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 5}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:6; --fila:5" data-casillero="6"><span
+                            class="casillero__nombre">Casillero 6</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 6}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:5; --fila:5" data-casillero="7"><span
+                            class="casillero__nombre">Casillero 7</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 7}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:4; --fila:5" data-casillero="8"><span
+                            class="casillero__nombre">Casillero 8</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 8}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:3; --fila:5" data-casillero="9"><span
+                            class="casillero__nombre">Casillero 9</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 9}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:2; --fila:5" data-casillero="10"><span
+                            class="casillero__nombre">Casillero 10</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 10}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero casillero--esquina" style="--col:1; --fila:5" data-casillero="11"><span
+                            class="casillero__nombre">Casillero 11</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 11}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:1; --fila:4" data-casillero="12"><span
+                            class="casillero__nombre">Casillero 12</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 12}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:1; --fila:3" data-casillero="13"><span
+                            class="casillero__nombre">Casillero 13</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 13}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:1; --fila:2" data-casillero="14"><span
+                            class="casillero__nombre">Casillero 14</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 14}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero casillero--esquina" style="--col:1; --fila:1" data-casillero="15"><span
+                            class="casillero__nombre">Casillero 15</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 15}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:2; --fila:1" data-casillero="16"><span
+                            class="casillero__nombre">Casillero 16</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 16}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:3; --fila:1" data-casillero="17"><span
+                            class="casillero__nombre">Casillero 17</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 17}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:4; --fila:1" data-casillero="18"><span
+                            class="casillero__nombre">Casillero 18</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 18}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:5; --fila:1" data-casillero="19"><span
+                            class="casillero__nombre">Casillero 19</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 19}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:6; --fila:1" data-casillero="20"><span
+                            class="casillero__nombre">Casillero 20</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 20}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:7; --fila:1" data-casillero="21"><span
+                            class="casillero__nombre">Casillero 21</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 21}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:8; --fila:1" data-casillero="22"><span
+                            class="casillero__nombre">Casillero 22</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 22}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:9; --fila:1" data-casillero="23"><span
+                            class="casillero__nombre">Casillero 23</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 23}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:10; --fila:1" data-casillero="24"><span
+                            class="casillero__nombre">Casillero 24</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 24}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:11; --fila:1" data-casillero="25"><span
+                            class="casillero__nombre">Casillero 25</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 25}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero casillero--esquina" style="--col:12; --fila:1" data-casillero="26"><span
+                            class="casillero__nombre">Casillero 26</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 26}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:12; --fila:2" data-casillero="27"><span
+                            class="casillero__nombre">Casillero 27</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 27}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:12; --fila:3" data-casillero="28"><span
+                            class="casillero__nombre">Casillero 28</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 28}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+                    <li class="casillero" style="--col:12; --fila:4" data-casillero="29"><span
+                            class="casillero__nombre">Casillero 29</span>
+                        <div class="fichas-en-casillero">
+                            <th:block th:each="jugador : ${partida.jugadores}">
+                                <div th:if="${jugador.posicionActual == 29}" class="ficha"
+                                    th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                    th:title="${jugador.apodo}">
+                                </div>
+                            </th:block>
+                        </div>
+                    </li>
+
+                    <!-- Centro del tablero (columnas 2 a 11, filas 2 a 4) -->
+                    <li class="tablero__centro" aria-label="Centro del tablero">
+                        <h1 class="tablero__titulo">El Matancero</h1>
+                    </li>
+                </ol>
             </div>
 
-            <div class="datos-jugador">
-                <span class="dinero">$0</span>
-                <span class="cantidad-propiedades">0</span>
-            </div>
+            <!-- Barra de acciones -->
+            <div class="acciones" role="group" aria-label="Acciones del turno">
+                <div class="acciones__secundarias">
+                    <button type="button" class="btn-accion">Abandonar</button>
+                    <button type="button" class="btn-accion">Vender propiedad</button>
+                    <button type="button" class="btn-accion">Mercado Pago</button>
+                    <button type="button" class="btn-accion">Recomendación</button>
+                </div>
+                <div class="dados" aria-label="Resultado de los dados">
+                    <output class="dado" id="dado-1">1</output>
+                    <output class="dado" id="dado-2">1</output>
+                </div>
 
-            <div class="contenedor-turno">
-                <span class="indicador-turno">Tu turno</span>
+                <button type="button" class="btn-tirar" id="btn-tirar"
+                    th:disabled="${usuarioSesionId != turnoActualId}">
+                    Tirar dados
+                </button>
             </div>
-        </article>
-        <article class="jugador" id="3">
-            <img class="avatar-jugador" src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg"
-                 alt="Avatar del Jugador">
-            <div class="contenedor-nombre-jugador">
-                <h3 class="nombre-jugador">JUGADOR 3</h3>
-            </div>
+        </section>
+    </main>
 
-            <div class="datos-jugador">
-                <span class="dinero">$0</span>
-                <span class="cantidad-propiedades">0</span>
-            </div>
+    <!-- Panel lateral: casillero actual + historial -->
+    <aside class="partida__lateral">
+        <section class="info-casillero" aria-labelledby="info-titulo">
+            <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
+            <header class="info-casillero__cabecera">
+                <div>
+                    <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
+                    <p class="info-casillero__sub">Casillero #0 · Inicio</p>
+                </div>
+                <span class="etiqueta">Evento</span>
+            </header>
+            <dl class="info-casillero__datos">
+                <div>
+                    <dt>Valor de compra</dt>
+                    <dd>No disponible</dd>
+                </div>
+                <div>
+                    <dt>Alquiler base</dt>
+                    <dd class="dato--dinero">$0</dd>
+                </div>
+                <div>
+                    <dt>Estado / dueño</dt>
+                    <dd>Lugar público</dd>
+                </div>
+            </dl>
+            <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
+            <button type="button" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
+        </section>
 
-            <div class="contenedor-turno">
-                <span class="indicador-turno">Tu turno</span>
-            </div>
-        </article>
-        <article class="jugador" id="4">
-            <img class="avatar-jugador" src="../../../resources/images/personajes/TURRO%20ICON🇦🇷👉.jpg"
-                 alt="Avatar del Jugador">
-            <div class="contenedor-nombre-jugador">
-                <h3 class="nombre-jugador">JUGADOR 4</h3>
-            </div>
-
-            <div class="datos-jugador">
-                <span class="dinero">$0</span>
-                <span class="cantidad-propiedades">0</span>
-            </div>
-
-            <div class="contenedor-turno">
-                <span class="indicador-turno">Tu turno</span>
-            </div>
-        </article>
-    </section>
-</header>
-
-<!-- Zona principal: tablero + acciones -->
-<main class="partida__main">
-    <section class="zona-tablero" aria-label="Tablero">
-
-        <div class="tablero-wrap">
-            <!-- Tablero: 12 columnas x 5 filas; solo el borde son casilleros (30) -->
-            <ol class="tablero">
-                <li class="casillero casillero--esquina" style="--col:12; --fila:5" data-casillero="0"><span
-                        class="casillero__nombre">Inicio</span></li>
-                <li class="casillero" style="--col:11; --fila:5" data-casillero="1"><span class="casillero__nombre">Casillero 1</span>
-                </li>
-                <li class="casillero" style="--col:10; --fila:5" data-casillero="2"><span class="casillero__nombre">Casillero 2</span>
-                </li>
-                <li class="casillero" style="--col:9; --fila:5" data-casillero="3"><span class="casillero__nombre">Casillero 3</span>
-                </li>
-                <li class="casillero" style="--col:8; --fila:5" data-casillero="4"><span class="casillero__nombre">Casillero 4</span>
-                </li>
-                <li class="casillero" style="--col:7; --fila:5" data-casillero="5"><span class="casillero__nombre">Casillero 5</span>
-                </li>
-                <li class="casillero" style="--col:6; --fila:5" data-casillero="6"><span class="casillero__nombre">Casillero 6</span>
-                </li>
-                <li class="casillero" style="--col:5; --fila:5" data-casillero="7"><span class="casillero__nombre">Casillero 7</span>
-                </li>
-                <li class="casillero" style="--col:4; --fila:5" data-casillero="8"><span class="casillero__nombre">Casillero 8</span>
-                </li>
-                <li class="casillero" style="--col:3; --fila:5" data-casillero="9"><span class="casillero__nombre">Casillero 9</span>
-                </li>
-                <li class="casillero" style="--col:2; --fila:5" data-casillero="10"><span class="casillero__nombre">Casillero 10</span>
-                </li>
-                <li class="casillero casillero--esquina" style="--col:1; --fila:5" data-casillero="11"><span
-                        class="casillero__nombre">Casillero 11</span></li>
-                <li class="casillero" style="--col:1; --fila:4" data-casillero="12"><span class="casillero__nombre">Casillero 12</span>
-                </li>
-                <li class="casillero" style="--col:1; --fila:3" data-casillero="13"><span class="casillero__nombre">Casillero 13</span>
-                </li>
-                <li class="casillero" style="--col:1; --fila:2" data-casillero="14"><span class="casillero__nombre">Casillero 14</span>
-                </li>
-                <li class="casillero casillero--esquina" style="--col:1; --fila:1" data-casillero="15"><span
-                        class="casillero__nombre">Casillero 15</span></li>
-                <li class="casillero" style="--col:2; --fila:1" data-casillero="16"><span class="casillero__nombre">Casillero 16</span>
-                </li>
-                <li class="casillero" style="--col:3; --fila:1" data-casillero="17"><span class="casillero__nombre">Casillero 17</span>
-                </li>
-                <li class="casillero" style="--col:4; --fila:1" data-casillero="18"><span class="casillero__nombre">Casillero 18</span>
-                </li>
-                <li class="casillero" style="--col:5; --fila:1" data-casillero="19"><span class="casillero__nombre">Casillero 19</span>
-                </li>
-                <li class="casillero" style="--col:6; --fila:1" data-casillero="20"><span class="casillero__nombre">Casillero 20</span>
-                </li>
-                <li class="casillero" style="--col:7; --fila:1" data-casillero="21"><span class="casillero__nombre">Casillero 21</span>
-                </li>
-                <li class="casillero" style="--col:8; --fila:1" data-casillero="22"><span class="casillero__nombre">Casillero 22</span>
-                </li>
-                <li class="casillero" style="--col:9; --fila:1" data-casillero="23"><span class="casillero__nombre">Casillero 23</span>
-                </li>
-                <li class="casillero" style="--col:10; --fila:1" data-casillero="24"><span
-                        class="casillero__nombre">Casillero 24</span></li>
-                <li class="casillero" style="--col:11; --fila:1" data-casillero="25"><span
-                        class="casillero__nombre">Casillero 25</span></li>
-                <li class="casillero casillero--esquina" style="--col:12; --fila:1" data-casillero="26"><span
-                        class="casillero__nombre">Casillero 26</span></li>
-                <li class="casillero" style="--col:12; --fila:2" data-casillero="27"><span
-                        class="casillero__nombre">Casillero 27</span></li>
-                <li class="casillero" style="--col:12; --fila:3" data-casillero="28"><span
-                        class="casillero__nombre">Casillero 28</span></li>
-                <li class="casillero" style="--col:12; --fila:4" data-casillero="29"><span
-                        class="casillero__nombre">Casillero 29</span></li>
-
-                <!-- Centro del tablero (columnas 2 a 11, filas 2 a 4) -->
-                <li class="tablero__centro" aria-label="Centro del tablero">
-                    <h1 class="tablero__titulo">El Matancero</h1>
-                </li>
+        <section class="historial" aria-labelledby="historial-titulo">
+            <header class="historial__cabecera">
+                <h2 id="historial-titulo">Historial de partida</h2>
+                <span class="etiqueta etiqueta--vivo">En vivo</span>
+            </header>
+            <ol class="historial__lista" aria-live="polite">
+                <li>El juego se ha reiniciado.</li>
+                <li>Caíste en: <strong>Avenida de Mayo</strong>.</li>
+                <li>Caíste en: <strong>UNLaM</strong>.</li>
+                <li>¡Bienvenido al tablero del Conurbano! Tu ficha roja parte desde la Salida.</li>
             </ol>
-        </div>
-
-        <!-- Barra de acciones -->
-        <div class="acciones" role="group" aria-label="Acciones del turno">
-            <div class="acciones__secundarias">
-                <button type="button" class="btn-accion">Abandonar</button>
-                <button type="button" class="btn-accion">Vender propiedad</button>
-                <button type="button" class="btn-accion">Mercado Pago</button>
-                <button type="button" class="btn-accion">Recomendación</button>
-            </div>
-            <div class="dados" aria-label="Resultado de los dados">
-                <output class="dado" id="dado-1">1</output>
-                <output class="dado" id="dado-2">1</output>
-            </div>
-
-            <button type="button" class="btn-tirar" id="btn-tirar">
-                Tirar dados
-            </button>
-        </div>
-    </section>
-</main>
-
-<!-- Panel lateral: casillero actual + historial -->
-<aside class="partida__lateral">
-    <section class="info-casillero" aria-labelledby="info-titulo">
-        <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
-        <header class="info-casillero__cabecera">
-            <div>
-                <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
-                <p class="info-casillero__sub">Casillero #0 · Inicio</p>
-            </div>
-            <span class="etiqueta">Evento</span>
-        </header>
-        <dl class="info-casillero__datos">
-            <div>
-                <dt>Valor de compra</dt>
-                <dd>No disponible</dd>
-            </div>
-            <div>
-                <dt>Alquiler base</dt>
-                <dd class="dato--dinero">$0</dd>
-            </div>
-            <div>
-                <dt>Estado / dueño</dt>
-                <dd>Lugar público</dd>
-            </div>
-        </dl>
-        <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
-        <button type="button" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
-    </section>
-
-    <section class="historial" aria-labelledby="historial-titulo">
-        <header class="historial__cabecera">
-            <h2 id="historial-titulo">Historial de partida</h2>
-            <span class="etiqueta etiqueta--vivo">En vivo</span>
-        </header>
-        <ol class="historial__lista" aria-live="polite">
-            <li>El juego se ha reiniciado.</li>
-            <li>Caíste en: <strong>Avenida de Mayo</strong>.</li>
-            <li>Caíste en: <strong>UNLaM</strong>.</li>
-            <li>¡Bienvenido al tablero del Conurbano! Tu ficha roja parte desde la Salida.</li>
-        </ol>
-    </section>
-</aside>
+        </section>
+    </aside>
 
 </body>
+
 </html>
