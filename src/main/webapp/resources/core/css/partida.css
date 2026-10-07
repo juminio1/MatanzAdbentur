@@ -36,11 +36,39 @@
     margin: 0;
     padding: 0;
 }
+.pagina-partida {
+    --p-fondo: #131B22;
+    --p-superficie: #1B2733;
+    --p-superficie-2: #243445;
+    --p-borde: #34495E;
+    --p-texto: #F5F5F2;
+    --p-texto-suave: #9FB2C4;
+    --p-gris: #A3A3A3;
+    --p-claro: #DDDDDD;
+    --p-azul: #1B4468;
+    --p-azul-hover: #245781;
+    --p-celeste: #7BBFE0;
+    --p-dorado: #C4A62F;
+    --p-rojo: #E4584D;
+    --p-verde: #12B981;
+    --p-crema: #EFEAE2;
+    --p-beige: #C9BDA9;
+
+
+    --p-radio: 10px;
+    --p-gap: 16px;
+
+    margin: 0;
+    background: var(--p-fondo);
+    color: var(--p-texto);
+    font-family: var(--font-texto), sans-serif;
+    font-size: 14px;
+    overflow: hidden; /* la partida debe verse completa, sin scroll */
+}
 
 /* ---------- Estructura general ---------- */
-.pagina-partida ol { list-style: none; }
 
-.partida {
+.pagina-partida {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
     grid-template-rows: auto minmax(0, 1fr);
@@ -50,117 +78,139 @@
     box-sizing: border-box;
 }
 
-.partida__header { grid-column: 1 / -1; }
+
+.barra-superior { grid-column: 1 / -1; }
 .partida__main { min-height: 0; }
 .partida__lateral { min-height: 0; }
 
 /* ---------- Header: contador + jugadores ---------- */
-.partida__header {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: var(--p-gap);
+
+.barra-superior {
+    display: flex;
+    flex-direction: row;
+    gap: 3rem;
+    justify-content: flex-start;
+
 }
 
 .cronometro {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: 8px 12px;
-    background: var(--p-crema);
-    color: var(--p-fondo);
-    border-radius: var(--p-radio);
+
+    justify-content: center;
+    padding: 0.5rem;
+    width: 5rem;
+    max-width: 10rem;
+    min-height: 5rem;
+    height: 100%;
+    background-color: white;
+    border-radius: 0.3rem;
+    box-shadow: 0 0.25rem 0.5rem #000000;
+    flex-wrap: nowrap;
+
 }
 .contenedor-cronometro-icono { width: 32px; height: 32px; color: var(--p-dorado); }
 .cronometro-nro { font-size: 12px; }
 
+
+.contenedor-cronometro-icono{
+    width:2rem;
+    height: 100%;
+}
+
+.cronometro-nro {
+    color: #131B22;
+    font-size: var(--fs-h4);
+}
+
 .jugadores {
     display: flex;
-    align-items: center;
-    width: 95%;
-    height: 100%;
-    gap: 1.5%;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
 .jugador {
-    display: flex;
-    align-items: center;
-    height: 80%;
-    background-color: var(--color-azul);
-    border-radius: 2.5rem;
-    width: 13rem;
+
     position: relative;
-    box-shadow: 0 0.25rem 0.5rem var(--color-negro);
-    overflow: hidden;
+    width: 18rem;
+    max-width: 20rem;
+    height: 5rem;
+    background-color: #ffffff;
+    border-radius: 3rem 1rem 1rem 3rem;
+
 }
 
-.jugador__avatar {
-    position: relative;
-    z-index: 1;
-    flex: none;
-    width: 52px;
-    height: 52px;
-    margin: 0;
-    border-radius: 50%;
-    overflow: hidden;
-    background: var(--p-claro);
-    border: 2px solid var(--p-texto);
-}
-.jugador__avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block; }
-
-.jugador__datos {
-    flex: 1;
-    height: 100%;
-    margin-left: -20px;
-    overflow: hidden;
-    box-shadow: 0 4px 10px var(--color-negro);
-    display: flex;
-    flex-direction: column;
-}
-.jugador__nombre {
-    flex: 1;
-    margin-left: 20px;
-    display: flex;
-    align-items: center;
-    padding: 0 16px 0 46px;
-    color: var(--color-blanco);
-    font-family: var(--font-titulos);
-    font-weight: 800;
-}
-.jugador__stats {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-    margin-left: 20px;
-    padding: 0 16px 0 46px;
-    list-style: none;
-    color: var(--color-negro);
-    font-family: var(--fs-h4);
-    background: var(--color-blanco);
-}
-
-.jugador--activo .jugador__avatar { border-color: var(--p-dorado); }
-.jugador--activo .jugador__nombre { background: var(--p-azul); }
-
-.jugador__turno {
+.avatar-jugador {
     position: absolute;
-    right: 12px;
-    bottom: -14px;
-    padding: 2px 8px;
-    border-radius: 0 0 6px 6px;
-    background: var(--p-dorado);
-    color: var(--p-fondo);
-    font-size: 11px;
-    font-weight: 600;
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 50%;
 }
+
+.contenedor-nombre-jugador {
+    display: flex;
+    align-items: center;
+    padding-top: 0.3rem;
+    margin-left: 2rem;
+    height: 42px;
+    border-radius: 8px 6px 0 0;
+    background-color: #035D8A;
+}
+
+
+.nombre-jugador {
+    margin-left: 4rem;
+    font-family: var(--font-titulos);
+    font-size: var(--fs-h2);
+
+}
+
+
+.datos-jugador {
+    margin-left: 3rem;
+    min-height: 33px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.dinero,
+.cantidad-propiedades {
+    color: #131B22;
+}
+
+
+.indicador-turno{
+    display:none;
+}
+/*----CUANDO SE HAGA EL JS------
+.contenedor-turno{
+    background-color: #FFB703;
+    width: 5rem;
+    margin-left: 13rem;
+    height: 2rem;
+    margin-top: 0rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+>>>>>>> tablero
+}
+.indicador-turno {
+    display: block;
+    color: #000;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+}*/
+
 
 /* ---------- Zona del tablero ---------- */
+
 .zona-tablero {
     display: flex;
     flex-direction: column;
@@ -227,6 +277,7 @@
 
     display: flex;
     flex-direction: column;
+
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -423,12 +474,5 @@
     background: var(--p-superficie-2);
     border-radius: 6px;
     font-size: 12px;
-}
 
-/* PROBANDO EL BOTON TIRAR DADOS QUE SE APAGUE CUANDO NO ES TURNO PROPIO*/
-.btn-tirar:disabled {
-    background-color: #cccccc;
-    color: #666666;
-    cursor: not-allowed;
-    opacity: 0.6;
 }
