@@ -6,6 +6,7 @@ import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
@@ -69,7 +70,23 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
   @Override
   public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-      throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
-    throw new UnsupportedOperationException("Unimplemented method 'unirseASalaDeEspera'");
+      throws UsuarioNoEncontradoException, PartidaNoEncontradaException, SalaDeEsperaLlenaException {
+
+        Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuarioEncontrado == null) {
+            throw new UsuarioNoEncontradoException();
+        }
+
+    Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    if (partidaEncontrada == null) {
+      throw new PartidaNoEncontradaException();
+    }
+
+    if(!partidaEncontrada.agregarUsuario(usuarioEncontrado)){
+      throw new SalaDeEsperaLlenaException();
+    }
+
+    this.repositorioPartida.guardarPartida(partidaEncontrada);
+    return partidaEncontrada;
   }
 }
