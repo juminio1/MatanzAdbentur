@@ -84,4 +84,39 @@ public class ControladorSalaEsperaTest {
 
         assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
     }
+
+        @Test
+    public void verSalaExistenteMuestraSalaDeEspera() throws Exception {
+        when(requestMock.getSession()).thenReturn(sessionMock);
+        when(sessionMock.getAttribute("id")).thenReturn(1L);
+        when(servicioSalaDeEsperaMock.obtenerSalaPorCodigo("ABC123")).thenReturn(salaMock);
+        when(salaMock.getUsuarios()).thenReturn(new java.util.ArrayList<>());
+
+        ModelAndView model = controladorSalaEspera.verSalaDeEspera("ABC123", requestMock);
+
+        assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
+    }
+
+    @Test
+    public void unirseASalaExitoso() throws Exception {
+        when(requestMock.getSession()).thenReturn(sessionMock);
+        when(sessionMock.getAttribute("id")).thenReturn(2L);
+        when(servicioSalaDeEsperaMock.unirseASalaDeEspera(2L, "ABC123")).thenReturn(salaMock);
+        when(salaMock.getCodigoUnico()).thenReturn("ABC123");
+
+        ModelAndView model = controladorSalaEspera.unirseASala("ABC123", requestMock, mock(org.springframework.web.servlet.mvc.support.RedirectAttributes.class));
+
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
+    }
+
+    @Test
+    public void unirseASalaLlenaVaAHome() throws Exception {
+        when(requestMock.getSession()).thenReturn(sessionMock);
+        when(sessionMock.getAttribute("id")).thenReturn(2L);
+        when(servicioSalaDeEsperaMock.unirseASalaDeEspera(2L, "ABC123")).thenThrow(com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException.class);
+
+        ModelAndView model = controladorSalaEspera.unirseASala("ABC123", requestMock, mock(org.springframework.web.servlet.mvc.support.RedirectAttributes.class));
+
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/home"));
+    }
 }
