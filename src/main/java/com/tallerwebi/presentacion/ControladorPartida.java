@@ -2,12 +2,13 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.servicios.ResultadoTirada;
 import com.tallerwebi.dominio.servicios.ServicioDado;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.ModelAndView;
 
-@RestController
+@Controller
 public class ControladorPartida {
 
     private final ServicioDado servicioDado;
