@@ -50,7 +50,7 @@ public class ControladorSalaEsperaTest {
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
-        assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
 
         verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
     }
@@ -82,6 +82,6 @@ public class ControladorSalaEsperaTest {
 
         verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
 
-        assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
     }
 }
