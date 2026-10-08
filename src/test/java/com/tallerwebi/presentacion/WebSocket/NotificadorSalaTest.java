@@ -1,6 +1,9 @@
 
 package com.tallerwebi.presentacion.WebSocket;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -18,25 +21,32 @@ public class NotificadorSalaTest {
 
     @BeforeEach
     public void init() {
-
-        this.messagingTemplateMock = mock(SimpMessagingTemplate.class);
-
-        this.notificadorSala = new NotificadorSala(
-                messagingTemplateMock
-        );
+        messagingTemplateMock = mock(SimpMessagingTemplate.class);
+        notificadorSala = new NotificadorSala(messagingTemplateMock);
     }
 
     @Test
-    public void notificarActualizacionDeSala() {
+    public void dadoQueExisteUnaSalaDeEsperaCuandoSeActualizaSeDebeNotificar() {
+        SalaActualizadaDTO dto = new SalaActualizadaDTO("ABC123", List.of("Juli", "Kevin"));
 
-        SalaActualizadaDTO sala = new SalaActualizadaDTO(
-                "ABC123",
-                List.of("jugador1", "jugador2")
-        );
+        notificadorSala.notificarSalaActualizada(dto);
 
-        notificadorSala.notificarSalaActualizada(sala);
+        verify(messagingTemplateMock, times(1)).convertAndSend("/topic/sala/ABC123", dto);
+    }
 
-        verify(messagingTemplateMock, times(1))
-                .convertAndSend("/topic/sala/ABC123", sala);
+    @Test
+    public void dadoQueExistenDosSalasDeEsperaCuandoSeNotificanCadaUnaDebeRecibirSuNotificacion() {
+        SalaActualizadaDTO sala1 = new SalaActualizadaDTO("ABC123", List.of("Juli"));
+
+        SalaActualizadaDTO sala2 = new SalaActualizadaDTO("XYZ789", List.of("Kevin"));
+
+        notificadorSala.notificarSalaActualizada(sala1);
+        notificadorSala.notificarSalaActualizada(sala2);
+
+        verify(messagingTemplateMock).convertAndSend("/topic/sala/ABC123", sala1);
+
+        verify(messagingTemplateMock).convertAndSend("/topic/sala/XYZ789", sala2);
+
+        verify(messagingTemplateMock, times(2)).convertAndSend(anyString(), any(Object.class));
     }
 }
