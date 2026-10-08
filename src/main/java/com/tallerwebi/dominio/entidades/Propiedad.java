@@ -18,9 +18,11 @@ public class Propiedad {
     }
 
     //Se crea la propiedad, con
-    public Propiedad(Integer precioCompra, Integer precioAlquiler) {
+    public Propiedad(Long id, Integer precioCompra, Integer precioAlquiler, Jugador propietario) {
+        this.id = id;
         this.precioCompra = precioCompra;
         this.precioAlquiler = precioAlquiler;
+        this.propietario = propietario;
     }
 
     public boolean estaDisponible() {
