@@ -1,19 +1,18 @@
 package com.tallerwebi.dominio;
 
-import com.tallerwebi.dominio.entidades.Jugador;
-import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
-import com.tallerwebi.infraestructura.RepositorioPartida;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import java.util.Arrays;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ServicioPartidaTest {
 
@@ -27,28 +26,33 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void queSeObtenganLasPosicionesYSeMuestrenTodosLosJugadoresPorCodigo() {
+    public void queSeObtenganLosUsuariosPorCodigoDePartida() {
         // partida falsa
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
 
-        Jugador jugador1 = new Jugador();
-        jugador1.setPosicionActual(0); // Casillero inicial
+        Usuario usuario1 = new Usuario();
+        usuario1.setId(1L);
+        usuario1.setEmail("jugador1@test.com");
 
-        Jugador jugador2 = new Jugador();
-        jugador2.setPosicionActual(7); // Casillero avanzado
+        Usuario usuario2 = new Usuario();
+        usuario2.setId(2L);
+        usuario2.setEmail("jugador2@test.com");
 
-        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+        // Usamos la lista de usuarios real de la entidad Partida
+        partidaSimulada.setUsuarios(Arrays.asList(usuario1, usuario2));
 
         // devuelve la partida falsa
-        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+            partidaSimulada
+        );
 
         Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
 
-        // verifica que trae a los jugadores y sus posiciones exactas
+        // verifica que trae a los usuarios correctamente
         assertNotNull(partidaObtenida);
-        assertEquals(2, partidaObtenida.getJugadores().size());
-        assertEquals(0, partidaObtenida.getJugadores().get(0).getPosicionActual());
-        assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
+        assertEquals(2, partidaObtenida.getUsuarios().size());
+        assertEquals(1L, partidaObtenida.getUsuarios().get(0).getId());
+        assertEquals(2L, partidaObtenida.getUsuarios().get(1).getId());
     }
 }

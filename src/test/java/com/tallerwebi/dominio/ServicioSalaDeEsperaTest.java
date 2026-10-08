@@ -106,7 +106,7 @@ public class ServicioSalaDeEsperaTest {
         partida.setCodigoUnico("ABC123");
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setCreador(usuario);
-        partida.agregarUsuario(usuario);
+        partida.getUsuarios().add(usuario);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
         when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
@@ -119,7 +119,7 @@ public class ServicioSalaDeEsperaTest {
             Ficha.AMARILLA
         );
 
-        assertEquals(Ficha.AMARILLA, partida.getFichaSeleccionada(usuario));
+        assertEquals(Ficha.AMARILLA, partida.getFichasSeleccionadas().get(usuario));
         verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
     }
 
@@ -142,8 +142,8 @@ public class ServicioSalaDeEsperaTest {
         partida.setCodigoUnico("ABC123");
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setCreador(usuario1);
-        partida.agregarUsuario(usuario1);
-        partida.agregarUsuario(usuario2);
+        partida.getUsuarios().add(usuario1);
+        partida.getUsuarios().add(usuario2);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario1);
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(usuario2);
@@ -165,7 +165,7 @@ public class ServicioSalaDeEsperaTest {
             );
         });
 
-        assertEquals(Ficha.AMARILLA, partida.getFichaSeleccionada(usuario1));
+        assertEquals(Ficha.AMARILLA, partida.getFichasSeleccionadas().get(usuario1));
         verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
     }
 
@@ -188,8 +188,8 @@ public class ServicioSalaDeEsperaTest {
         partida.setCodigoUnico("ABC123");
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setCreador(usuario1);
-        partida.agregarUsuario(usuario1);
-        partida.agregarUsuario(usuario2);
+        partida.getUsuarios().add(usuario1);
+        partida.getUsuarios().add(usuario2);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario1);
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(usuario2);
@@ -215,8 +215,8 @@ public class ServicioSalaDeEsperaTest {
             Ficha.AMARILLA
         );
 
-        assertEquals(Ficha.AZUL, partida.getFichaSeleccionada(usuario1));
-        assertEquals(Ficha.AMARILLA, partida.getFichaSeleccionada(usuario2));
+        assertEquals(Ficha.AZUL, partida.getFichasSeleccionadas().get(usuario1));
+        assertEquals(Ficha.AMARILLA, partida.getFichasSeleccionadas().get(usuario2));
         verify(this.repositorioPartidaMock, times(3)).guardarPartida(partida);
     }
 
@@ -239,7 +239,7 @@ public class ServicioSalaDeEsperaTest {
         partida.setCodigoUnico("ABC123");
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setCreador(usuario1);
-        partida.agregarUsuario(usuario1);
+        partida.getUsuarios().add(usuario1);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario1);
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(usuario2);
@@ -253,15 +253,15 @@ public class ServicioSalaDeEsperaTest {
             Ficha.AMARILLA
         );
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(UsuarioNoEncontradoException.class, () -> {
             this.servicioSalaDeEspera.seleccionarFicha(
                 partida.getCodigoUnico(),
                 usuario2.getId(),
                 Ficha.AZUL
             );
         });
-        assertEquals(Ficha.AMARILLA, partida.getFichaSeleccionada(usuario1));
-        assertNull(partida.getFichaSeleccionada(usuario2));
+        assertEquals(Ficha.AMARILLA, partida.getFichasSeleccionadas().get(usuario1));
+        assertNull(partida.getFichasSeleccionadas().get(usuario2));
         verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
     }
 
@@ -277,7 +277,7 @@ public class ServicioSalaDeEsperaTest {
         Partida partida = new Partida();
         partida.setCodigoUnico("ABC123");
         partida.setEstado(EstadoPartida.EN_ESPERA);
-        partida.agregarUsuario(usuario1);
+        partida.getUsuarios().add(usuario1);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario1);
         when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
@@ -286,13 +286,13 @@ public class ServicioSalaDeEsperaTest {
 
         // Selecciona ficha
         this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, Ficha.ROJA);
-        assertEquals(Ficha.ROJA, partida.getFichaSeleccionada(usuario1));
+        assertEquals(Ficha.ROJA, partida.getFichasSeleccionadas().get(usuario1));
 
         // Abandona la sala
         this.servicioSalaDeEspera.abandonarSala("ABC123", 1L);
 
         assertFalse(partida.getUsuarios().contains(usuario1));
-        assertNull(partida.getFichaSeleccionada(usuario1));
+        assertNull(partida.getFichasSeleccionadas().get(usuario1));
         verify(this.repositorioPartidaMock, times(2)).guardarPartida(partida);
     }
 }
