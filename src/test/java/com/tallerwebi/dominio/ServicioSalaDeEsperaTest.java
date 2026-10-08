@@ -1,21 +1,24 @@
 package com.tallerwebi.dominio;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
-import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,107 +27,76 @@ public class ServicioSalaDeEsperaTest {
 
     private ServicioSalaDeEspera servicioSalaDeEspera;
     private RepositorioUsuario repositorioUsuarioMock;
-    private RepositorioPartida repositorioPartidaMock;
+    private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
 
     @BeforeEach
     public void init() {
         this.repositorioUsuarioMock = mock(RepositorioUsuario.class);
-        this.repositorioPartidaMock = mock(RepositorioPartida.class);
+        this.repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
         this.servicioSalaDeEspera = new ServicioSalaDeEsperaImpl(
-            this.repositorioUsuarioMock,
-            this.repositorioPartidaMock
+            this.repositorioSalaDeEsperaMock,
+            this.repositorioUsuarioMock
         );
     }
 
-    @Test
-    public void crearPartidaConUsuarioExistente() throws UsuarioNoEncontradoException {
+    private Usuario crearUsuarioEjemplo(Long id, String email) {
         Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
+        usuario.setId(id);
+        usuario.setEmail(email);
         usuario.setPassword("123");
         usuario.setRol("USER");
+        return usuario;
+    }
 
+    // --- Tests de crearSalaDeEspera ---
+
+    @Test
+    public void crearSalaConUsuarioExistente() throws UsuarioNoEncontradoException {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
 
-        Partida partida = this.servicioSalaDeEspera.crearSalaDeEspera(1L);
+        SalaDeEspera sala = this.servicioSalaDeEspera.crearSalaDeEspera(1L);
 
-        assertNotNull(partida);
-        verify(this.repositorioPartidaMock).guardarPartida(partida);
-        assertTrue(partida.getUsuarios().contains(usuario));
-        assertEquals(usuario, partida.getCreador());
-        assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
-        assertNotNull(partida.getCodigoUnico());
-        assertNotNull(partida.getTiempoInicio());
+        assertNotNull(sala);
+        assertNotNull(sala.getCodigoUnico());
+        assertEquals(usuario, sala.getCreador());
+        assertTrue(sala.getUsuarios().contains(usuario));
+        verify(this.repositorioSalaDeEsperaMock).guardar(sala);
     }
 
     @Test
-    public void noCrearPartidaSiUsuarioNoExiste() {
+    public void noCrearSalaSiUsuarioNoExiste() {
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(null);
 
         assertThrows(UsuarioNoEncontradoException.class, () ->
             this.servicioSalaDeEspera.crearSalaDeEspera(1L)
         );
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any(Partida.class));
+        verify(this.repositorioSalaDeEsperaMock, never()).guardar(any(SalaDeEspera.class));
     }
 
-    @Test
-    public void verificaQueElCodigoUnicoDePartidaSeaUnico() throws UsuarioNoEncontradoException {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
-
-        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(anyString()))
-            .thenReturn(new Partida())
-            .thenReturn(null);
-
-        Partida partida = this.servicioSalaDeEspera.crearSalaDeEspera(1L);
-
-        assertNotNull(partida);
-        assertEquals(usuario, partida.getCreador());
-        assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
-        assertNotNull(partida.getCodigoUnico());
-
-        verify(this.repositorioPartidaMock, times(2)).buscarPartidaActivaPorCodigoUnico(
-            anyString()
-        );
-        verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
-    }
+    // --- Tests de unirseASalaDeEspera ---
 
     @Test
     public void usuarioSeUneASalaDeEsperaExistente()
-        throws UsuarioNoEncontradoException, PartidaNoEncontradaException, SalaDeEsperaLlenaException, PartidaIniciadaException, UsuarioYaEstaEnPartidaException {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
 
-        Usuario usuario2 = new Usuario();
-        usuario2.setId(2L);
-        usuario2.setEmail("jugador2@test.com");
-        usuario2.setPassword("123");
-        usuario2.setRol("USER");
+        Usuario creador = crearUsuarioEjemplo(1L, "creador@test.com");
+        Usuario participante = crearUsuarioEjemplo(2L, "participante@test.com");
 
-        Partida partida = new Partida();
-        partida.setCodigoUnico("ABC123");
-        partida.setCreador(usuario);
-        partida.setEstado(EstadoPartida.EN_ESPERA);
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.setCreador(creador);
+        sala.getUsuarios().add(creador);
 
-        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
-        when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(usuario2);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
-            partida
-        );
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(participante);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
 
-        partida = this.servicioSalaDeEspera.unirseASalaDeEspera(2L, "ABC123");
+        SalaDeEspera resultado = this.servicioSalaDeEspera.unirseASalaDeEspera(2L, "ABC123");
 
-        assertNotNull(partida);
-        assertTrue(partida.getUsuarios().contains(usuario2));
-        verify(this.repositorioPartidaMock, times(1)).guardarPartida(partida);
+        assertNotNull(resultado);
+        assertTrue(resultado.getUsuarios().contains(participante));
+        verify(this.repositorioSalaDeEsperaMock).modificar(sala);
     }
 
     @Test
@@ -135,130 +107,148 @@ public class ServicioSalaDeEsperaTest {
             this.servicioSalaDeEspera.unirseASalaDeEspera(1L, "ABC123")
         );
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
     }
 
     @Test
     public void usuarioSeUneASalaDeEsperaInexistente() {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
-
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
-            null
-        );
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(null);
 
-        assertThrows(PartidaNoEncontradaException.class, () ->
+        assertThrows(SalaNoEncontradaException.class, () ->
             this.servicioSalaDeEspera.unirseASalaDeEspera(1L, "ABC123")
         );
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
     }
 
     @Test
     public void usuarioSeUneASalaDeEsperaLlena() {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+        Usuario usuarioExtra = crearUsuarioEjemplo(5L, "extra@test.com");
 
-        Usuario usuario2 = new Usuario();
-        usuario2.setId(2L);
-        usuario2.setEmail("jugador2@test.com");
-        usuario2.setPassword("123");
-        usuario2.setRol("USER");
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(crearUsuarioEjemplo(1L, "u1@test.com"));
+        sala.getUsuarios().add(crearUsuarioEjemplo(2L, "u2@test.com"));
+        sala.getUsuarios().add(crearUsuarioEjemplo(3L, "u3@test.com"));
+        sala.getUsuarios().add(crearUsuarioEjemplo(4L, "u4@test.com"));
 
-        Usuario usuario3 = new Usuario();
-        usuario3.setId(3L);
-        usuario3.setEmail("jugador3@test.com");
-        usuario3.setPassword("123");
-        usuario3.setRol("USER");
-
-        Usuario usuario4 = new Usuario();
-        usuario4.setId(4L);
-        usuario4.setEmail("jugador4@test.com");
-        usuario4.setPassword("123");
-        usuario4.setRol("USER");
-
-        Usuario usuario5 = new Usuario();
-        usuario5.setId(5L);
-        usuario5.setEmail("jugador5@test.com");
-        usuario5.setPassword("123");
-        usuario5.setRol("USER");
-
-        Partida partida = new Partida();
-        partida.setCodigoUnico("ABC123");
-        partida.setCreador(usuario);
-        partida.setEstado(EstadoPartida.EN_ESPERA);
-        partida.agregarUsuario(usuario);
-        partida.agregarUsuario(usuario2);
-        partida.agregarUsuario(usuario3);
-        partida.agregarUsuario(usuario4);
-
-        when(this.repositorioUsuarioMock.buscarUsuarioPorId(5L)).thenReturn(usuario5);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
-            partida
-        );
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(5L)).thenReturn(usuarioExtra);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
 
         assertThrows(SalaDeEsperaLlenaException.class, () ->
             this.servicioSalaDeEspera.unirseASalaDeEspera(5L, "ABC123")
         );
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
     }
 
     @Test
-    public void usuarioIntentaEntrarAPartidaIniciada() {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+    public void verificaQueUsuarioNoSeAgregueDuplicadoSiYaEstaEnSala()
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
 
-        Partida partida = new Partida();
-        partida.setCodigoUnico("ABC123");
-        partida.setCreador(usuario);
-        partida.setEstado(EstadoPartida.EN_CURSO);
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.setCreador(usuario);
+        sala.getUsuarios().add(usuario);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
-            partida
-        );
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
 
-        assertThrows(PartidaIniciadaException.class, () ->
-            this.servicioSalaDeEspera.unirseASalaDeEspera(1L, "ABC123")
-        );
+        SalaDeEspera resultado = this.servicioSalaDeEspera.unirseASalaDeEspera(1L, "ABC123");
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+        assertEquals(1, resultado.getUsuarios().size());
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
     }
-    
+
+    // --- Tests de abandonarSala ---
+
     @Test
-    public void verificaQueUsuarioNoSeUnaDosVecesASalaDeEspera() {
-        Usuario usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setEmail("jugador@test.com");
-        usuario.setPassword("123");
-        usuario.setRol("USER");
+    public void usuarioAbandonaSalaExitosamente()
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException {
 
-        Partida partida = new Partida();
-        partida.setCodigoUnico("ABC123");
-        partida.setCreador(usuario);
-        partida.setEstado(EstadoPartida.EN_ESPERA);
-        partida.agregarUsuario(usuario);
+        Usuario usuario = crearUsuarioEjemplo(2L, "participante@test.com");
 
-        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
-        when(this.repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC123")).thenReturn(
-            partida
-        );
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(usuario);
 
-       assertThrows(UsuarioYaEstaEnPartidaException.class, () ->
-        this.servicioSalaDeEspera.unirseASalaDeEspera(1L, "ABC123")
-        );
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(2L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+        this.servicioSalaDeEspera.abandonarSala(2L, "ABC123");
+
+        assertFalse(sala.getUsuarios().contains(usuario));
+        verify(this.repositorioSalaDeEsperaMock).modificar(sala);
     }
-  }
+
+    @Test
+    public void abandonarSalaLanzaExcepcionSiUsuarioNoExiste() {
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(null);
+
+        assertThrows(UsuarioNoEncontradoException.class, () ->
+            this.servicioSalaDeEspera.abandonarSala(1L, "ABC123")
+        );
+
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
+    }
+
+    @Test
+    public void abandonarSalaLanzaExcepcionSiSalaNoExiste() {
+        Usuario usuario = crearUsuarioEjemplo(1L, "test@test.com");
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(null);
+
+        assertThrows(SalaNoEncontradaException.class, () ->
+            this.servicioSalaDeEspera.abandonarSala(1L, "ABC123")
+        );
+
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
+    }
+
+    @Test
+    public void abandonarSalaNoModificaSiUsuarioNoPerteneciaALaSala()
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException {
+
+        Usuario usuario = crearUsuarioEjemplo(3L, "ajeno@test.com");
+
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(crearUsuarioEjemplo(1L, "u1@test.com"));
+
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(3L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        this.servicioSalaDeEspera.abandonarSala(3L, "ABC123");
+
+        assertEquals(1, sala.getUsuarios().size());
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
+    }
+
+    // --- Tests de obtenerSalaPorCodigo ---
+
+    @Test
+    public void obtenerSalaPorCodigoRetornaSalaSiExiste() throws SalaNoEncontradaException {
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        SalaDeEspera resultado = this.servicioSalaDeEspera.obtenerSalaPorCodigo("ABC123");
+
+        assertNotNull(resultado);
+        assertEquals("ABC123", resultado.getCodigoUnico());
+    }
+
+    @Test
+    public void obtenerSalaPorCodigoLanzaExcepcionSiNoExiste() {
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("INEXISTENTE")).thenReturn(null);
+
+        assertThrows(SalaNoEncontradaException.class, () ->
+            this.servicioSalaDeEspera.obtenerSalaPorCodigo("INEXISTENTE")
+        );
+    }
+}

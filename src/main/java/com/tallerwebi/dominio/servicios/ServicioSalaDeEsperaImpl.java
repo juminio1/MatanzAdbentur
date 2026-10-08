@@ -1,119 +1,107 @@
 package com.tallerwebi.dominio.servicios;
 
-import java.security.SecureRandom;
-import java.time.Instant;
-import java.util.Random;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
+import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.infraestructura.RepositorioUsuario;
+import jakarta.transaction.Transactional;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
-import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
-import com.tallerwebi.infraestructura.RepositorioPartida;
-import com.tallerwebi.infraestructura.RepositorioUsuario;
-import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.Usuario;
-
-import jakarta.transaction.Transactional;
 
 @Service("servicioSalaDeEspera")
 @Transactional
 public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
-  private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  private static final int LONGITUD_CODIGO = 6;
-  private final Random random = new SecureRandom();
+    private static final int LIMITE_JUGADORES = 4;
 
-  private RepositorioUsuario repositorioUsuario;
-  private RepositorioPartida repositorioPartida;
+    private final RepositorioSalaDeEspera repositorioSalaDeEspera;
+    private final RepositorioUsuario repositorioUsuario;
 
-  @Autowired
-  public ServicioSalaDeEsperaImpl(
-      RepositorioUsuario repositorioUsuario,
-      RepositorioPartida repositorioPartida) {
-    this.repositorioUsuario = repositorioUsuario;
-    this.repositorioPartida = repositorioPartida;
-  }
-
-  @Override
-  public Partida crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
-    Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
-
-    if (usuarioEncontrado == null) {
-      throw new UsuarioNoEncontradoException();
+    @Autowired
+    public ServicioSalaDeEsperaImpl(
+        RepositorioSalaDeEspera repositorioSalaDeEspera,
+        RepositorioUsuario repositorioUsuario
+    ) {
+        this.repositorioSalaDeEspera = repositorioSalaDeEspera;
+        this.repositorioUsuario = repositorioUsuario;
     }
 
-    String codigoUnico;
-    do {
-      codigoUnico = generarCodigoUnico();
-    } while (this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico) != null);
+    @Override
+    public SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
+        Usuario creador = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (creador == null) {
+            throw new UsuarioNoEncontradoException();
+        }
 
-    Partida partida = new Partida();
-    partida.setCodigoUnico(codigoUnico);
-    partida.setCreador(usuarioEncontrado);
-   // partida.setTablero(new Tablero());
-    partida.setTiempoInicio(Instant.now());
-    partida.agregarUsuario(usuarioEncontrado);
+        SalaDeEspera nuevaSala = new SalaDeEspera();
+        nuevaSala.setCodigoUnico(generarCodigoUnico());
+        nuevaSala.setCreador(creador);
+        nuevaSala.getUsuarios().add(creador);
 
-    this.repositorioPartida.guardarPartida(partida);
-
-    return partida;
-  }
-
-  private String generarCodigoUnico() {
-    StringBuilder codigo = new StringBuilder(LONGITUD_CODIGO);
-    for (int i = 0; i < LONGITUD_CODIGO; i++) {
-      int posicion = this.random.nextInt(CARACTERES.length());
-      codigo.append(CARACTERES.charAt(posicion));
-    }
-    return codigo.toString();
-  }
-
-@Override
-public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-    throws UsuarioNoEncontradoException, PartidaNoEncontradaException,
-           SalaDeEsperaLlenaException, PartidaIniciadaException,
-           UsuarioYaEstaEnPartidaException {
-
-    Usuario usuarioEncontrado = obtenerUsuarioValido(idUsuario);
-    Partida partidaEncontrada = obtenerPartidaValida(codigoUnico);
-
-    validarEstadoPartida(partidaEncontrada, usuarioEncontrado);
-
-    if (!partidaEncontrada.agregarUsuario(usuarioEncontrado)) {
-        throw new SalaDeEsperaLlenaException();
+        repositorioSalaDeEspera.guardar(nuevaSala);
+        return nuevaSala;
     }
 
-    this.repositorioPartida.guardarPartida(partidaEncontrada);
-    return partidaEncontrada;
-}
+    @Override
+    public SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
 
-private Usuario obtenerUsuarioValido(Long idUsuario) throws UsuarioNoEncontradoException {
-    Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
-    if (usuario == null) {
-        throw new UsuarioNoEncontradoException();
-    }
-    return usuario;
-}
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
-private Partida obtenerPartidaValida(String codigoUnico) throws PartidaNoEncontradaException {
-    Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-    if (partida == null) {
-        throw new PartidaNoEncontradaException();
-    }
-    return partida;
-}
+        if (sala.getUsuarios().size() >= LIMITE_JUGADORES) {
+            throw new SalaDeEsperaLlenaException();
+        }
 
-private void validarEstadoPartida(Partida partida, Usuario usuario)
-    throws PartidaIniciadaException, UsuarioYaEstaEnPartidaException {
+        boolean yaEstaEnSala = sala
+            .getUsuarios()
+            .stream()
+            .anyMatch(u -> u.getId() != null && u.getId().equals(usuario.getId()));
 
-    if (partida.getEstado() == com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO) {
-        throw new PartidaIniciadaException();
+        if (!yaEstaEnSala) {
+            sala.getUsuarios().add(usuario);
+            repositorioSalaDeEspera.modificar(sala);
+        }
+
+        return sala;
     }
-    if (partida.getUsuarios().contains(usuario)) {
-        throw new UsuarioYaEstaEnPartidaException();
+
+    @Override
+    public void abandonarSala(Long idUsuario, String codigoUnico)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
+
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        boolean removido = sala
+            .getUsuarios()
+            .removeIf(u -> u.getId() != null && u.getId().equals(usuario.getId()));
+
+        if (removido) {
+            repositorioSalaDeEspera.modificar(sala);
+        }
     }
-}
+
+    @Override
+    public SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException {
+        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigoUnico);
+        if (sala == null) {
+            throw new SalaNoEncontradaException();
+        }
+        return sala;
+    }
+
+    private String generarCodigoUnico() {
+        return UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT);
+    }
 }

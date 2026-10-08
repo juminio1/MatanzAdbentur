@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +21,7 @@ public class ControladorSalaEsperaTest {
     private ServicioSalaDeEspera servicioSalaDeEsperaMock;
     private HttpServletRequest requestMock;
     private HttpSession sessionMock;
-    private Partida partidaMock;
+    private SalaDeEspera salaMock;
 
     @BeforeEach //Hace que init() se ejecute antes de cada test.
     public void init() {
@@ -29,7 +29,7 @@ public class ControladorSalaEsperaTest {
         this.controladorSalaEspera = new ControladorSalaEspera(servicioSalaDeEsperaMock); // Crea el controlador real y le pasa el servicio falso.
         this.requestMock = mock(HttpServletRequest.class); // Crea un request falso.
         this.sessionMock = mock(HttpSession.class); // Crea una sesión falsa.
-        this.partidaMock = mock(Partida.class);
+        this.salaMock = mock(SalaDeEspera.class);
     }
 
     /* @Test
@@ -44,9 +44,9 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(2L);
 
-        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.partidaMock);
+        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaMock);
 
-        when(this.partidaMock.getCodigoUnico()).thenReturn("ABC123");
+        when(this.salaMock.getCodigoUnico()).thenReturn("ABC123");
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
@@ -74,9 +74,9 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(2L);
 
-        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.partidaMock);
+        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaMock);
 
-        when(this.partidaMock.getCodigoUnico()).thenReturn("ABC123");
+        when(this.salaMock.getCodigoUnico()).thenReturn("ABC123");
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
