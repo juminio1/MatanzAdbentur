@@ -5,7 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
@@ -260,5 +264,39 @@ public class ServicioSalaDeEsperaTest {
         );
 
         verify(this.repositorioPartidaMock, never()).guardarPartida(any());
+    
+
+}
+
+   @Test
+    public void alCrearUnaSalaDeEsperaLaListaDeUsuariosDebeEstarInicializada() {
+
+        SalaDeEspera salaDeEspera = new SalaDeEspera();
+
+        assertNotNull(salaDeEspera.getUsuarios());
+        assertTrue(salaDeEspera.getUsuarios().isEmpty());
     }
-  }
+
+    @Test
+    public void sePuedeAsignarYObtenerUnaListaDeUsuarios() {
+
+        SalaDeEspera salaDeEspera = new SalaDeEspera();
+
+        List<Usuario> usuarios = new ArrayList<>();
+
+        salaDeEspera.setUsuarios(usuarios);
+
+        assertEquals(usuarios, salaDeEspera.getUsuarios());
+    }
+
+    @Test
+    public void sePuedeAsignarYObtenerElCodigoGenerado() {
+
+        SalaDeEspera salaDeEspera = new SalaDeEspera();
+
+        salaDeEspera.setCodigoGenerado("ABC123");
+
+        assertEquals("ABC123", salaDeEspera.getCodigoGenerado());
+    }
+
+}
