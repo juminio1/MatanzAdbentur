@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.List;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,10 @@ import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
+import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
+import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 
 import jakarta.transaction.Transactional;
@@ -26,15 +30,17 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
   private static final int LONGITUD_CODIGO = 6;
   private final Random random = new SecureRandom();
 
-  private RepositorioUsuario repositorioUsuario;
-  private RepositorioPartida repositorioPartida;
+  private final RepositorioUsuario repositorioUsuario;
+  private final RepositorioPartida repositorioPartida;
+  private final NotificadorSala notificadorSala;
 
   @Autowired
   public ServicioSalaDeEsperaImpl(
       RepositorioUsuario repositorioUsuario,
-      RepositorioPartida repositorioPartida) {
+      RepositorioPartida repositorioPartida, NotificadorSala notificadorSala) {
     this.repositorioUsuario = repositorioUsuario;
     this.repositorioPartida = repositorioPartida;
+    this.notificadorSala = notificadorSala;
   }
 
   @Override
@@ -72,7 +78,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
   }
 
 @Override
-public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
+public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico, SalaDeEspera sala)
     throws UsuarioNoEncontradoException, PartidaNoEncontradaException,
            SalaDeEsperaLlenaException, PartidaIniciadaException,
            UsuarioYaEstaEnPartidaException {
@@ -87,6 +93,10 @@ public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
     }
 
     this.repositorioPartida.guardarPartida(partidaEncontrada);
+    SalaActualizadaDTO salaActualizada = obtenerEstadoSala(sala);
+
+    this.notificarSalaActualizada(salaActualizada);
+
     return partidaEncontrada;
 }
 
@@ -115,5 +125,25 @@ private void validarEstadoPartida(Partida partida, Usuario usuario)
     if (partida.getUsuarios().contains(usuario)) {
         throw new UsuarioYaEstaEnPartidaException();
     }
+}
+
+@Override
+public SalaActualizadaDTO obtenerEstadoSala(SalaDeEspera salaDeEspera) {
+  
+for (Usuario usuario : salaDeEspera.getUsuarios()) { // Se busca que los usuarios existan
+    if (usuario == null) { 
+        throw new UsuarioNoEncontradoException(); 
+    }
+}
+
+List<String> usernames = salaDeEspera.getUsuarios().stream().map(Usuario::getUsername).toList(); //Obtengo los usernames
+
+return new SalaActualizadaDTO(salaDeEspera.getCodigoGenerado(),usernames); //Armo el DTO
+}
+
+public void notificarSalaActualizada( SalaActualizadaDTO sala) {
+
+    this.notificadorSala.notificarSalaActualizada(sala);
+
 }
 }
