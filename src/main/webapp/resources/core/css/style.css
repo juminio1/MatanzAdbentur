@@ -36,7 +36,7 @@
   --color-crema: #EFEAE2;
   --color-beige: #C9BDA9;
   --color-negro: #1E1E1E;
-  --color-azul: #2C3EDB;
+  --color-azul: #426C9C;
   --color-azul-hover: #2432B0;
   --color-celeste: #2AA6C4;
 
@@ -135,7 +135,7 @@ h4, .h4 {
 }
 
 p, .texto-body {
-  font-family: var(--font-texto);
+  font-family: var(--font-texto), serif;
   font-size: var(--fs-body);
   font-weight: var(--fw-regular);
   margin: 0 0 var(--space-md);
