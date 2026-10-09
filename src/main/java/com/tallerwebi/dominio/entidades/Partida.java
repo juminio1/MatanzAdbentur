@@ -16,6 +16,7 @@ public class Partida {
 
   private String codigoUnico;
   private Instant tiempoInicio;
+  private Integer indiceTurnoActual;
 
   @ManyToOne
   @JoinColumn(name = "creador_id", nullable = false)
@@ -41,7 +42,16 @@ public class Partida {
     this.usuarios = new ArrayList<>();
     this.jugadores= new ArrayList<>();
     this.estado = EstadoPartida.EN_ESPERA;// Nace en sala de espera / lobby
+    this.indiceTurnoActual = 0;
   }
+
+  public Integer getIndiceTurnoActual() {
+      return indiceTurnoActual;
+    }
+
+  public void setIndiceTurnoActual(Integer indiceTurnoActual) {
+      this.indiceTurnoActual = indiceTurnoActual;
+    }
 
   public Long getId() {
     return id;
