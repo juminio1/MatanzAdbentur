@@ -16,7 +16,7 @@ public class Jugador {
     @Enumerated(EnumType.STRING)
     private ColorFicha ficha;
 
-    private Integer posicionActual = 0;
+    private Integer posicionActual;
 
     public Integer getPosicionActual() {
         return posicionActual;
@@ -61,14 +61,4 @@ public class Jugador {
     }
 
     public void restarDinero(Integer precioCompra) {}
-
-    /* public void agregarPropiedad(Propiedad propiedad) {
-    }
-
-    public void agregarDinero(Integer alquiler) {
-    }
-
-    public void quitarDinero(Integer monto) {
-
-    }*/
 }

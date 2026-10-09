@@ -3,6 +3,7 @@ package com.tallerwebi.dominio;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -229,10 +230,63 @@ public class ServicioPartidaTest {
 
         this.servicioPartida.iniciarPartida();
 
-        assertEquals(jugadorCuatro.getDinero(), 10000);
-        assertEquals(jugadorTres.getDinero(), 10000);
-        assertEquals(jugadorDos.getDinero(), 10000);
-        assertEquals(jugadorUno.getDinero(), 10000);
+        assertEquals(jugadorCuatro.getDinero(), 150000);
+        assertEquals(jugadorTres.getDinero(), 150000);
+        assertEquals(jugadorDos.getDinero(), 150000);
+        assertEquals(jugadorUno.getDinero(), 150000);
+    }
+
+
+
+    @Test 
+    public void dadoQueExisteUnaPartidaConJugadoresDebenPosicionarseInicialmenteEn0Exitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException{
+        Jugador jugadorUno = new Jugador();
+        Jugador jugadorDos = new Jugador();
+        Jugador jugadorTres = new Jugador();
+        Jugador jugadorCuatro = new Jugador();
+
+        jugadorCuatro.setPosicionActual(2);
+        jugadorDos.setPosicionActual(1);
+        jugadorTres.setPosicionActual(3);
+        jugadorUno.setPosicionActual(4);
+
+        Partida partida = new Partida();
+        partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
+
+        when(this.repositorioPartidaMock.buscarPartidaActiva()).thenReturn(partida);
+
+        this.servicioPartida.iniciarPartida();
+
+        assertEquals(jugadorCuatro.getPosicionActual(), 0);
+        assertEquals(jugadorTres.getPosicionActual(), 0);
+        assertEquals(jugadorDos.getPosicionActual(), 0);
+        assertEquals(jugadorUno.getPosicionActual(), 0);
+
+    }
+
+    @Test 
+    public void dadoQueExisteUnaPartidaConJugadoresSeSeleccionaAleatoriamenteElTurnoInicialExitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException{
+        Jugador jugadorUno = new Jugador();
+        Jugador jugadorDos = new Jugador();
+        Jugador jugadorTres = new Jugador();
+        Jugador jugadorCuatro = new Jugador();
+
+        Partida partida = new Partida();
+        partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
+
+        when(this.repositorioPartidaMock.buscarPartidaActiva()).thenReturn(partida);
+        this.servicioPartida.iniciarPartida();
+
+        Integer cantidadJugadoresObtenidos = partida.getJugadores().size();
+        Integer cantidadJugadoresEsperados = 4;
+        assertEquals(cantidadJugadoresObtenidos, cantidadJugadoresEsperados);
+
+        Jugador jugadorSeleccionado = partida.getJugadorTurnoAleatorio();
+
+        assertNotNull(jugadorSeleccionado);
+        assertTrue(partida.getJugadores().contains(jugadorSeleccionado));
+
+
     }
 
     @Test
