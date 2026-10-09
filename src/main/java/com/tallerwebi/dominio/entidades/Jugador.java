@@ -16,9 +16,6 @@ private Integer dinero;
 private ColorFicha ficha;
     public Jugador() {}
 
-    public void restarDinero(Integer precioCompra) {
-        this.dinero -= precioCompra;
-    }
 
     private Integer posicionActual = 0;
     public Integer getPosicionActual() {
@@ -46,13 +43,5 @@ private ColorFicha ficha;
         this.id = id;
     }
 
-   /* public void agregarPropiedad(Propiedad propiedad) {
-    }
 
-    public void agregarDinero(Integer alquiler) {
-    }
-
-    public void quitarDinero(Integer monto) {
-
-    }*/
 }

@@ -32,6 +32,7 @@ public class Propiedad {
     public void asignarPropietario(Jugador jugador) {
         this.propietario = jugador;
     }
+    
 
     //Getters y setters
     public Long getId() {

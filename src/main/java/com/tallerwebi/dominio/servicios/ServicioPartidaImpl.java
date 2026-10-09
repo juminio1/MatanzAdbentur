@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
@@ -20,6 +21,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public Partida obtenerPartida(String codigoUnico) {
         return repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    }
+
+    @Override
+    public void restarDinero(Jugador jugador, Integer monto) {
+        jugador.setDinero(jugador.getDinero() - monto);
+    }
+
+    @Override
+    public void sumarDinero(Jugador jugador, Integer monto) {
+        jugador.setDinero(jugador.getDinero() + monto);
     }
 }
 
