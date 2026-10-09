@@ -8,7 +8,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
+          rel="stylesheet">
 
     <link rel="stylesheet" th:href="@{/css/header.css}">
     <link rel="stylesheet" th:href="@{/css/home.css}">
@@ -22,8 +22,11 @@
     <main class="hero">
 
         <div class="hero-text">
+            <!-- Logo principal desde Cloudflare R2 -->
+            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_4.svg" 
+                 alt="El Matancero" 
+                 class="main-title-img">
             
-            <img th:src="@{/imagenes/logo/El matancero_4.svg}" alt="El Matancero" class="main-title-img">
             <h2 class="subtitle">Acá el que se aviva, gana.</h2>
 
             <p>
@@ -37,19 +40,17 @@
                 Acá puede pasar de todo.
             </p>
 
-            
             <a th:if="${session.NOMBRE == null}" th:href="@{/login}" class="btn-play">JUGAR AHORA</a>
 
-            
             <button th:if="${session.NOMBRE != null}" type="button" class="btn-play" data-bs-toggle="modal"
-                data-bs-target="#modalJugar">
+                    data-bs-target="#modalJugar">
                 JUGAR AHORA
             </button>
-
         </div>
 
         <div class="hero-image">
-            <img th:src="@{/imagenes/ImagenCiudad.png}" alt="Ciudad de La Matanza">
+            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/ImagenCiudad.png" 
+                 alt="Ciudad de La Matanza">
         </div>
 
     </main>
@@ -75,8 +76,9 @@
                             </button>
                         </div>
 
-                        <button type="button" class="btn-cerrar mt-3" data-bs-dismiss="modal">Seguir dentro de la
-                            página</button>
+                        <button type="button" class="btn-cerrar mt-3" data-bs-dismiss="modal">
+                            Seguir dentro de la página
+                        </button>
                     </div>
 
                     <div id="ventanaCodigo" th:style="${errorUnirse != null ? 'display: block;' : 'display: none;'}">
@@ -85,10 +87,10 @@
 
                         <form th:action="@{/unirse-a-partida}" method="post" class="d-grid gap-3">
                             <input type="text" name="codigoUnico" class="form-control text-center"
-                                placeholder="Ej: AB12CD" required />
+                                   placeholder="Ej: AB12CD" required />
 
                             <div th:if="${errorUnirse}" class="text-danger small fw-bold" id="mensajeErrorUnirse"
-                                th:text="${errorUnirse}"></div>
+                                 th:text="${errorUnirse}"></div>
 
                             <button type="submit" class="btn btn-matancero btn-amarillo">
                                 Entrar
@@ -105,19 +107,10 @@
         </div>
     </div>
 
-
-    </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script th:src="@{/js/home.js}"></script>
     <script th:src="@{/js/pop-up-jugar-ahora.js}"></script>
-
-
-
-
-</body>
-
-</html>
+    <script th:src="@{/js/menu-usuario.js}"></script>
 
 </body>
 

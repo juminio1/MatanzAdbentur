@@ -2,10 +2,12 @@
 
     <!-- LOGO A LA IZQUIERDA -->
     <a th:href="@{/home}" class="brand-link">
-        <img th:src="@{/imagenes/Logo.png}" alt="El Matancero" class="logo-nav-img">
+        <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg" 
+             alt="El Matancero" 
+             class="logo-nav-img">
     </a>
 
-    <!-- NAVEGACIÓN Y PERFIL A LA DERECHA -->
+    <!-- Enlaces y Menú de Usuario -->
     <nav class="nav-links">
         <a href="#">Acerca de</a>
         <a href="#">¿Cómo se juega?</a>
@@ -15,25 +17,54 @@
             Iniciar Sesión
         </a>
 
-        <!-- CON SESIÓN: Menú desplegable a la derecha -->
+        <!-- CON SESIÓN: Avatar y Menú Desplegable -->
         <div class="user-menu-container" th:if="${session.NOMBRE != null}">
             <button id="btnUserMenu" class="user-avatar-btn" type="button" aria-expanded="false" title="Mi Cuenta">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="8" r="4"></circle>
-                    <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path>
-                </svg>
+                <img id="userNavAvatar" 
+                     src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png" 
+                     alt="Avatar de usuario" 
+                     class="avatar-nav-img" />
             </button>
 
-            <!-- Menú que se despliega al hacer clic -->
+            <!-- Menú Desplegable Flotante -->
             <div id="userDropdown" class="user-dropdown-menu oculto">
                 <div class="user-dropdown-header">
-                    <p class="user-name" th:text="${session.NOMBRE}">Usuario</p>
-                    <span class="user-role">USUARIO</span>
+                    <img id="dropdownUserAvatar" 
+                         src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png" 
+                         alt="Avatar grande" 
+                         class="avatar-dropdown-img" />
+                    <div class="user-info-text">
+                        <p class="user-name" id="menuUserName" th:text="${session.NOMBRE}">Usuario</p>
+                        <span class="user-role" id="menuUserRole" th:text="${session.ROL != null ? session.ROL : 'USUARIO'}">USUARIO</span>
+                    </div>
                 </div>
+
+                <!-- Selector de Avatares -->
+                <div class="user-avatar-selector">
+                    <p class="selector-title">Elegí tu avatar:</p>
+                    <div class="avatar-options">
+                        <button type="button" class="btn-avatar-choice" data-avatar="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar1.png">
+                            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar1.png" alt="Avatar 1" />
+                        </button>
+                        <button type="button" class="btn-avatar-choice" data-avatar="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar2.png">
+                            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar2.png" alt="Avatar 2" />
+                        </button>
+                        <button type="button" class="btn-avatar-choice" data-avatar="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar3.png">
+                            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar3.png" alt="Avatar 3" />
+                        </button>
+                        <button type="button" class="btn-avatar-choice" data-avatar="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar4.png">
+                            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar4.png" alt="Avatar 4" />
+                        </button>
+                        <button type="button" class="btn-avatar-choice" data-avatar="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar5.png">
+                            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar5.png" alt="Avatar 5" />
+                        </button>
+                    </div>
+                </div>
+
                 <hr class="user-dropdown-divider"/>
+
                 <div class="user-dropdown-actions">
-                    <a th:href="@{/cerrar-sesion}" class="btn-logout">Cerrar Sesión</a>
+                    <a th:href="@{/cerrar-sesion}" id="btnLogout" class="btn-logout">Cerrar Sesión</a>
                 </div>
             </div>
         </div>

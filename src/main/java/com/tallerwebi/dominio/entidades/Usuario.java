@@ -18,7 +18,9 @@ public class Usuario {
 
     @Column(unique = true, nullable = false)
     private String username;
-
+    
+    @Column(name = "avatar")
+    private String avatar = "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png";
     private String password;
     private String rol;
     private Boolean activo = false;
@@ -73,5 +75,13 @@ public class Usuario {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String string) {
+        this.avatar = string;
     }
 }
