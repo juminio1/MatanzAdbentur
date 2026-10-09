@@ -10,7 +10,6 @@ import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Random;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +26,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Autowired
     public ServicioPartidaImpl(RepositorioPartida repositorioPartida) {
         this.repositorioPartida = repositorioPartida;
-        
     }
 
     @Override
@@ -41,17 +39,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActiva();
 
         if (partidaEncontrada == null) {
-            throw new PartidaNoEncontradaException("Partida no encontrada");
+            throw new PartidaNoEncontradaException();
         }
+        // if (partidaEncontrada.getEstado().equals(EstadoPartida.EN_ESPERA)) {
+        validarCantidadDeJugadores(partidaEncontrada);
+        this.inicializarAtributosDeCadaJugador(partidaEncontrada);
 
-        if (partidaEncontrada.getEstado().equals(EstadoPartida.EN_ESPERA)) {
-            validarCantidadDeJugadores(partidaEncontrada);
-            this.inicializarAtributosDeCadaJugador(partidaEncontrada);
-            
-            this.seleccionarAleatoriamenteElPrimerTurnoDelJugador(partidaEncontrada);
-            partidaEncontrada.setEstado(EstadoPartida.EN_CURSO);
-            this.repositorioPartida.guardarPartida(partidaEncontrada);
-        }
+        this.seleccionarAleatoriamenteElPrimerTurnoDelJugador(partidaEncontrada);
+        partidaEncontrada.setEstado(EstadoPartida.EN_CURSO);
+        this.repositorioPartida.guardarPartida(partidaEncontrada);
     }
 
     private void validarCantidadDeJugadores(Partida partida)
@@ -67,14 +63,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
-    private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida){
+    private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida) {
         List<Jugador> jugadores = partida.getJugadores();
         Integer cantidadJugadores = jugadores.size();
         Integer turnoAleatorio = random.nextInt(cantidadJugadores);
         Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
 
         partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
-        
     }
 
     private void inicializarAtributosDeCadaJugador(Partida partida) {
