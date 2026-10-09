@@ -6,6 +6,9 @@ import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.hamcrest.Matchers.is;
 
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
@@ -16,6 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.ModelAndView;
 
 public class ControladorLoginTest {
@@ -319,5 +324,49 @@ public class ControladorLoginTest {
     assertThat(respuesta.getBody().getUsername(), org.hamcrest.Matchers.is("rafaelposs"));
     assertThat(respuesta.getBody().getRol(), org.hamcrest.Matchers.is("USUARIO"));
     assertThat(respuesta.getBody().getAvatar(), org.hamcrest.Matchers.containsString("default.png"));
+  }
+
+@Test
+  public void actualizarAvatar_SinSesionActiva_DebeRetornarUnauthorized() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getSession(false)).thenReturn(null);
+
+    java.util.Map<String, String> payload = new java.util.HashMap<>();
+    payload.put("avatar", "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar1.png");
+
+    ResponseEntity<Void> respuesta = this.controladorLogin.actualizarAvatar(payload, request);
+
+    assertThat(respuesta.getStatusCode(), is(HttpStatus.UNAUTHORIZED));
+  }
+
+  @Test
+  public void actualizarAvatar_ConSesionYAvatarValido_DebeRetornarOk() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpSession session = mock(HttpSession.class);
+    when(request.getSession(false)).thenReturn(session);
+    when(session.getAttribute("id")).thenReturn(1L);
+
+    java.util.Map<String, String> payload = new java.util.HashMap<>();
+    payload.put("avatar", "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar2.png");
+
+    ResponseEntity<Void> respuesta = this.controladorLogin.actualizarAvatar(payload, request);
+
+    assertThat(respuesta.getStatusCode(), is(HttpStatus.OK));
+    verify(this.servicioLoginMock, times(1)).actualizarAvatar(1L, "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/avatar2.png");
+  }
+
+  @Test
+  public void actualizarAvatar_ConAvatarVacio_DebeRetornarBadRequest() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpSession session = mock(HttpSession.class);
+    when(request.getSession(false)).thenReturn(session);
+    when(session.getAttribute("id")).thenReturn(1L);
+
+    java.util.Map<String, String> payload = new java.util.HashMap<>();
+    payload.put("avatar", "");
+
+    ResponseEntity<Void> respuesta = this.controladorLogin.actualizarAvatar(payload, request);
+
+    assertThat(respuesta.getStatusCode(), is(HttpStatus.BAD_REQUEST));
   }
 }
