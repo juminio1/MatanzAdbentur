@@ -267,4 +267,57 @@ public class ControladorLoginTest {
     verify(sessionMock, never()).invalidate();
     assertThat(modelAndView.getViewName(), equalToIgnoringCase("redirect:/login"));
   }
+
+@Test
+  public void obtenerPerfilSinSesionDeberiaRetornarUnauthorized() {
+    // preparacion
+    when(requestMock.getSession(false)).thenReturn(null);
+
+    // ejecucion
+    org.springframework.http.ResponseEntity<com.tallerwebi.presentacion.DTO.UsuarioPerfilDTO> respuesta =
+        controladorLogin.obtenerPerfil(requestMock);
+
+    // validacion
+    assertThat(respuesta.getStatusCode(), org.hamcrest.Matchers.is(org.springframework.http.HttpStatus.UNAUTHORIZED));
+  }
+
+  @Test
+  public void obtenerPerfilConSesionSinIdDeberiaRetornarUnauthorized() {
+    // preparacion
+    when(requestMock.getSession(false)).thenReturn(sessionMock);
+    when(sessionMock.getAttribute("id")).thenReturn(null);
+
+    // ejecucion
+    org.springframework.http.ResponseEntity<com.tallerwebi.presentacion.DTO.UsuarioPerfilDTO> respuesta =
+        controladorLogin.obtenerPerfil(requestMock);
+
+    // validacion
+    assertThat(respuesta.getStatusCode(), org.hamcrest.Matchers.is(org.springframework.http.HttpStatus.UNAUTHORIZED));
+  }
+
+  @Test
+  public void obtenerPerfilConUsuarioLogueadoDeberiaRetornarOkYDatos() {
+    // preparacion
+    Long idUsuario = 10L;
+    Usuario usuarioMock = mock(Usuario.class);
+    when(usuarioMock.getId()).thenReturn(idUsuario);
+    when(usuarioMock.getUsername()).thenReturn("rafaelposs");
+    when(usuarioMock.getRol()).thenReturn("USUARIO");
+    when(usuarioMock.getAvatar()).thenReturn("https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png");
+
+    when(requestMock.getSession(false)).thenReturn(sessionMock);
+    when(sessionMock.getAttribute("id")).thenReturn(idUsuario);
+    when(servicioLoginMock.buscarPorId(idUsuario)).thenReturn(usuarioMock);
+
+    // ejecucion
+    org.springframework.http.ResponseEntity<com.tallerwebi.presentacion.DTO.UsuarioPerfilDTO> respuesta =
+        controladorLogin.obtenerPerfil(requestMock);
+
+    // validacion
+    assertThat(respuesta.getStatusCode(), org.hamcrest.Matchers.is(org.springframework.http.HttpStatus.OK));
+    assertThat(respuesta.getBody(), org.hamcrest.Matchers.notNullValue());
+    assertThat(respuesta.getBody().getUsername(), org.hamcrest.Matchers.is("rafaelposs"));
+    assertThat(respuesta.getBody().getRol(), org.hamcrest.Matchers.is("USUARIO"));
+    assertThat(respuesta.getBody().getAvatar(), org.hamcrest.Matchers.containsString("default.png"));
+  }
 }
