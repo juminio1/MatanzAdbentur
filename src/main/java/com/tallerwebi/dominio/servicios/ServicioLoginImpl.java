@@ -29,11 +29,12 @@ public class ServicioLoginImpl implements ServicioLogin {
     }
 
     @Override
-    public Usuario autenticar(String credencial, String password) throws CredencialesInvalidasException {
+    public Usuario autenticar(String credencial, String password)
+        throws CredencialesInvalidasException {
         validarParametros(credencial, password);
 
         Usuario usuario = repositorioUsuario.buscarUsuarioPorCredencial(credencial);
-      
+
         if (usuario == null) {
             throw new CredencialesInvalidasException(ERROR_CREDENCIALES);
         }
@@ -69,6 +70,20 @@ public class ServicioLoginImpl implements ServicioLogin {
             return java.util.HexFormat.of().formatHex(hashBytes);
         } catch (NoSuchAlgorithmException excepcion) {
             throw new IllegalArgumentException("Algoritmo de hash no soportado", excepcion);
+        }
+    }
+
+    @Override
+    public Usuario buscarPorId(Long id) {
+        return this.repositorioUsuario.buscarUsuarioPorId(id);
+    }
+
+    @Override
+    public void actualizarAvatar(Long idUsuario, String nuevoAvatar) {
+        Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario != null) {
+            usuario.setAvatar(nuevoAvatar);
+            this.repositorioUsuario.modificar(usuario);
         }
     }
 }
