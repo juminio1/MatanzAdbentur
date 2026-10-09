@@ -6,14 +6,15 @@ import jakarta.persistence.*;
 @Entity
 public class Jugador {
 
-@Id
-@GeneratedValue(strategy= GenerationType.IDENTITY)
-private int id;
-private String apodo;
-private Integer dinero;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
 
-@Enumerated(EnumType.STRING)
-private ColorFicha ficha;
+    private String apodo;
+    private Integer dinero;
+
+    @Enumerated(EnumType.STRING)
+    private ColorFicha ficha;
 
     private Integer posicionActual = 0;
 
@@ -59,11 +60,9 @@ private ColorFicha ficha;
         this.id = id;
     }
 
-    public void restarDinero(Integer precioCompra) {
+    public void restarDinero(Integer precioCompra) {}
 
-    }
-
-   /* public void agregarPropiedad(Propiedad propiedad) {
+    /* public void agregarPropiedad(Propiedad propiedad) {
     }
 
     public void agregarDinero(Integer alquiler) {

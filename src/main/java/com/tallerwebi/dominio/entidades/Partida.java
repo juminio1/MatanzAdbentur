@@ -34,11 +34,20 @@ public class Partida {
   @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
   private List<Jugador> jugadores;
 
+  private Jugador jugadorTurnoAleatorio;
 
   public Partida() {
     this.usuarios = new ArrayList<>();
     this.jugadores= new ArrayList<>();
     this.estado = EstadoPartida.EN_ESPERA;// Nace en sala de espera / lobby
+  }
+
+  public Jugador getJugadorTurnoAleatorio() {
+    return jugadorTurnoAleatorio;
+  }
+
+  public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
+    this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
   }
 
   public Long getId() {

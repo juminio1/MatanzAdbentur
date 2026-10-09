@@ -20,18 +20,11 @@ public class ControladorSalaEspera {
     private final ServicioSalaDeEspera servicioSalaDeEspera;
     private final String SALA_DE_ESPERA = "sala-de-espera";
 
-    // private final String LOGIN = "login";
-
     @Autowired
     public ControladorSalaEspera(ServicioSalaDeEspera servicioSalaDeEspera) {
         this.servicioSalaDeEspera = servicioSalaDeEspera;
   
     }
-
-    /* @RequestMapping(path = "/sala-de-espera", method = RequestMethod.GET)
-    public ModelAndView irASalaDeEspera() {
-        return new ModelAndView(SALA_DE_ESPERA);
-    } */
 
     @RequestMapping(path = "/sala-de-espera", method = RequestMethod.POST)
     public ModelAndView crearSalaDeEspera(HttpServletRequest request) {
