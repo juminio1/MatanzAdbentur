@@ -4,7 +4,7 @@ import java.util.List;
 
 public class SalaActualizadaDTO {
 
-    private String codigo;
+   private String codigo;
     private List<String> usernames;
 
     public SalaActualizadaDTO(String codigo, List<String> usernames) {
@@ -20,3 +20,4 @@ public class SalaActualizadaDTO {
         return usernames;
     }
 }
+

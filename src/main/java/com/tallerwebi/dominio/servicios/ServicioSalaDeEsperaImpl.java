@@ -2,6 +2,10 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.Ficha; // <-- Importante
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException; // <-- Importante
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
@@ -126,26 +130,6 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         return sala;
     }
 
-    @Override
-    public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
-        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
-
-        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
-
-        // Validar si la ficha ya está ocupada en la sala
-        if (sala.getFichasOcupadas().contains(ficha)) {
-            throw new FichaOcupadaException("La ficha ya está ocupada");
-        }
-
-        // Agregar la ficha y actualizar
-        sala.getFichasOcupadas().add(ficha);
-        repositorioSalaDeEspera.modificar(sala);
-    }
-
     private SalaActualizadaDTO obtenerEstadoSala(SalaDeEspera sala) {
         List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
 
@@ -155,14 +139,11 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private void notificarCambioDeSala(SalaDeEspera sala) {
         SalaActualizadaDTO estadoActualizado = obtenerEstadoSala(sala);
 
-        if (
-            TransactionSynchronizationManager.isSynchronizationActive() &&
-            TransactionSynchronizationManager.isActualTransactionActive()
-        ) {
-            TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive() && TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+                @Override
+                public void afterCommit() { //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
                         notificadorSala.notificarSalaActualizada(estadoActualizado);
                     }
                 }

@@ -28,18 +28,18 @@ public class RepositorioSalaDeEsperaImpl implements RepositorioSalaDeEspera {
     @Override
     public SalaDeEspera buscarPorCodigo(String codigoUnico) {
         return this.sessionFactory
-            .getCurrentSession()
-            .createQuery("from SalaDeEspera where codigoUnico = :codigoUnico", SalaDeEspera.class)
-            .setParameter("codigoUnico", codigoUnico)
-            .uniqueResult();
+                .getCurrentSession()
+                .createQuery("from SalaDeEspera where codigoUnico = :codigoUnico", SalaDeEspera.class)
+                .setParameter("codigoUnico", codigoUnico)
+                .uniqueResult();
     }
 
     @Override
     public SalaDeEspera buscarPorId(Long id) {
         return this.sessionFactory
-            .getCurrentSession()
-            .createQuery("from SalaDeEspera where id = :id", SalaDeEspera.class)
-            .setParameter("id", id)
-            .uniqueResult();
+                .getCurrentSession()
+                .createQuery("from SalaDeEspera where id = :id", SalaDeEspera.class)
+                .setParameter("id", id)
+                .uniqueResult();
     }
 }

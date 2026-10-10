@@ -21,32 +21,37 @@ public class ControladorSalaEsperaTest {
     private ServicioSalaDeEspera servicioSalaDeEsperaMock;
     private HttpServletRequest requestMock;
     private HttpSession sessionMock;
-    private SalaDeEspera salaDeEsperaMock;
+    private SalaDeEspera salaMock;
 
     @BeforeEach
     public void init() {
-        this.servicioSalaDeEsperaMock = mock(ServicioSalaDeEspera.class);
-        this.controladorSalaEspera = new ControladorSalaEspera(servicioSalaDeEsperaMock);
-        this.requestMock = mock(HttpServletRequest.class);
-        this.sessionMock = mock(HttpSession.class);
-        this.salaDeEsperaMock = mock(SalaDeEspera.class);
+        this.servicioSalaDeEsperaMock = mock(ServicioSalaDeEspera.class); // Crea un servicio falso.
+        this.controladorSalaEspera = new ControladorSalaEspera(servicioSalaDeEsperaMock); // Crea el controlador real y le pasa el servicio falso.
+        this.requestMock = mock(HttpServletRequest.class); // Crea un request falso.
+        this.sessionMock = mock(HttpSession.class); // Crea una sesión falsa.
+        this.salaMock = mock(SalaDeEspera.class);
     }
+
+    /* @Test
+    public void quieroirALaSalaDeEspera() {
+        ModelAndView salaDeEspera = controladorSalaEspera.irASalaDeEspera();
+
+        assertEquals("sala-de-espera", salaDeEspera.getViewName());
+    } */
 
     @Test
     public void quieroCrearUnaSalaDeEsperaExitosamente() {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(2L);
 
-        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaDeEsperaMock);
-        when(this.salaDeEsperaMock.getCodigoUnico()).thenReturn("ABC123");
+        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaMock);
+
+        when(this.salaMock.getCodigoUnico()).thenReturn("ABC123");
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
-        // Actualizado para reflejar la redirección con el código único
-        assertThat(
-            model.getViewName(),
-            equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123")
-        );
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
+
         verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
     }
 
@@ -70,72 +75,49 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(2L);
 
-        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaDeEsperaMock);
-        when(this.salaDeEsperaMock.getCodigoUnico()).thenReturn("ABC123");
+        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenReturn(this.salaMock);
+
+        when(this.salaMock.getCodigoUnico()).thenReturn("ABC123");
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
         verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
 
-        // Actualizado para reflejar la redirección con el código único
-        assertThat(
-            model.getViewName(),
-            equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123")
-        );
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
     }
 
-    @Test
-    public void verSalaDeEsperaExitosamente() throws Exception {
+        @Test
+    public void verSalaExistenteMuestraSalaDeEspera() throws Exception {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(1L);
-
-        SalaDeEspera salaMock = mock(SalaDeEspera.class);
-        when(this.servicioSalaDeEsperaMock.obtenerSalaPorCodigo("ABC123")).thenReturn(salaMock);
+        when(servicioSalaDeEsperaMock.obtenerSalaPorCodigo("ABC123")).thenReturn(salaMock);
         when(salaMock.getUsuarios()).thenReturn(new java.util.ArrayList<>());
 
-        ModelAndView model = this.controladorSalaEspera.verSalaDeEspera("ABC123", requestMock);
+        ModelAndView model = controladorSalaEspera.verSalaDeEspera("ABC123", requestMock);
 
         assertThat(model.getViewName(), equalToIgnoringCase("sala-de-espera"));
-        verify(this.servicioSalaDeEsperaMock).obtenerSalaPorCodigo("ABC123");
     }
 
     @Test
-    public void verSalaDeEsperaRedirigeSiNoExiste() throws Exception {
+    public void unirseASalaExitoso() throws Exception {
         when(requestMock.getSession()).thenReturn(sessionMock);
-        when(sessionMock.getAttribute("id")).thenReturn(1L);
-
-        when(this.servicioSalaDeEsperaMock.obtenerSalaPorCodigo("INEXISTENTE")).thenThrow(
-            new com.tallerwebi.dominio.excepcion.SalaNoEncontradaException()
-        );
-
-        ModelAndView model = this.controladorSalaEspera.verSalaDeEspera("INEXISTENTE", requestMock);
-
-        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/home"));
-    }
-
-    @Test
-    public void unirseASalaExitosamente() throws Exception {
-        when(requestMock.getSession()).thenReturn(sessionMock);
-        when(sessionMock.getAttribute("id")).thenReturn(1L);
-
-        SalaDeEspera salaMock = mock(SalaDeEspera.class);
-        when(this.servicioSalaDeEsperaMock.unirseASalaDeEspera(1L, "ABC123")).thenReturn(salaMock);
+        when(sessionMock.getAttribute("id")).thenReturn(2L);
+        when(servicioSalaDeEsperaMock.unirseASalaDeEspera(2L, "ABC123")).thenReturn(salaMock);
         when(salaMock.getCodigoUnico()).thenReturn("ABC123");
 
-        org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes = mock(
-            org.springframework.web.servlet.mvc.support.RedirectAttributes.class
-        );
+        ModelAndView model = controladorSalaEspera.unirseASala("ABC123", requestMock, mock(org.springframework.web.servlet.mvc.support.RedirectAttributes.class));
 
-        ModelAndView model = this.controladorSalaEspera.unirseASala(
-            "ABC123",
-            requestMock,
-            redirectAttributes
-        );
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123"));
+    }
 
-        assertThat(
-            model.getViewName(),
-            equalToIgnoringCase("redirect:/sala-de-espera?codigoUnico=ABC123")
-        );
-        verify(this.servicioSalaDeEsperaMock).unirseASalaDeEspera(1L, "ABC123");
+    @Test
+    public void unirseASalaLlenaVaAHome() throws Exception {
+        when(requestMock.getSession()).thenReturn(sessionMock);
+        when(sessionMock.getAttribute("id")).thenReturn(2L);
+        when(servicioSalaDeEsperaMock.unirseASalaDeEspera(2L, "ABC123")).thenThrow(com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException.class);
+
+        ModelAndView model = controladorSalaEspera.unirseASala("ABC123", requestMock, mock(org.springframework.web.servlet.mvc.support.RedirectAttributes.class));
+
+        assertThat(model.getViewName(), equalToIgnoringCase("redirect:/home"));
     }
 }

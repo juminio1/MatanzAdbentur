@@ -72,4 +72,18 @@ public class ServicioLoginImpl implements ServicioLogin {
             throw new IllegalArgumentException("Algoritmo de hash no soportado", excepcion);
         }
     }
+
+    @Override
+    public Usuario buscarPorId(Long id) {
+        return this.repositorioUsuario.buscarUsuarioPorId(id);
+    }
+
+    @Override
+    public void actualizarAvatar(Long idUsuario, String nuevoAvatar) {
+        Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario != null) {
+            usuario.setAvatar(nuevoAvatar);
+            this.repositorioUsuario.modificar(usuario);
+        }
+    }
 }

@@ -168,4 +168,18 @@ public class ServicioLoginImplTest {
 
     verifyNoInteractions(repositorioUsuarioMock);
   }
+
+  @Test
+  public void actualizarAvatar_UsuarioExistente_DebeModificarAvatar() {
+    Usuario usuario = new Usuario();
+    usuario.setId(1L);
+    usuario.setAvatar("default.png");
+
+    org.mockito.Mockito.when(repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+
+    this.servicioLogin.actualizarAvatar(1L, "nuevo-avatar.png");
+
+    org.hamcrest.MatcherAssert.assertThat(usuario.getAvatar(), org.hamcrest.Matchers.is("nuevo-avatar.png"));
+    org.mockito.Mockito.verify(repositorioUsuarioMock, org.mockito.Mockito.times(1)).modificar(usuario);
+  }
 }

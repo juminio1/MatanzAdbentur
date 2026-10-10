@@ -4,16 +4,22 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import com.tallerwebi.dominio.servicios.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
+import com.tallerwebi.presentacion.DTO.UsuarioPerfilDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -97,4 +103,53 @@ public class ControladorLogin {
     }
     return new ModelAndView("redirect:/login");
   }
+
+  @GetMapping(value = "/api/usuario/perfil", produces = "application/json")
+  @ResponseBody
+  public ResponseEntity<UsuarioPerfilDTO> obtenerPerfil(HttpServletRequest request) {
+    HttpServletRequest actualRequest = request != null ? request : this.request;
+    if (actualRequest == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    HttpSession session = actualRequest.getSession(false);
+    if (session == null || session.getAttribute("id") == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    Long idUsuario = (Long) session.getAttribute("id");
+    Usuario usuario = this.servicioLogin.buscarPorId(idUsuario);
+
+    if (usuario == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    UsuarioPerfilDTO dto = new UsuarioPerfilDTO(
+        usuario.getUsername(),
+        usuario.getRol(),
+        usuario.getAvatar()
+    );
+
+    return ResponseEntity.ok(dto);
+  }
+
+  @PostMapping("/api/usuario/avatar")
+  @ResponseBody
+  public ResponseEntity<Void> actualizarAvatar(@RequestBody java.util.Map<String, String> payload, HttpServletRequest request) {
+      HttpSession session = request.getSession(false);
+      if (session == null || session.getAttribute("id") == null) {
+          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
+
+      Long idUsuario = (Long) session.getAttribute("id");
+      String nuevoAvatar = payload != null ? payload.get("avatar") : null;
+
+      if (nuevoAvatar == null || nuevoAvatar.isBlank()) {
+          return ResponseEntity.badRequest().build();
+      }
+
+      this.servicioLogin.actualizarAvatar(idUsuario, nuevoAvatar);
+      return ResponseEntity.ok().build();
+  }
+
 }

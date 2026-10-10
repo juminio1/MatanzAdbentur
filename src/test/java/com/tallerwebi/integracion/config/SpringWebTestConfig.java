@@ -69,17 +69,17 @@ public class SpringWebTestConfig implements WebMvcConfigurer {
         return templateEngine;
     }
 
-    // Spring + Thymeleaf
-    // Configure Thymeleaf View Resolver
-    @Bean
-    public ThymeleafViewResolver viewResolver() {
-        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
-        viewResolver.setTemplateEngine(templateEngine());
-        return viewResolver;
-    }
+  // Spring + Thymeleaf
+  // Configure Thymeleaf View Resolver
+  @Bean
+  public ThymeleafViewResolver viewResolver() {
+    ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+    viewResolver.setTemplateEngine(templateEngine());
+    return viewResolver;
+  }
 
-    @Bean
-    public SimpMessagingTemplate simpMessagingTemplate() {
-        return Mockito.mock(SimpMessagingTemplate.class);
-    }
+   @Bean
+  public SimpMessagingTemplate simpMessagingTemplate() {
+    return Mockito.mock(SimpMessagingTemplate.class);
+  }
 }
