@@ -22,7 +22,7 @@ public class Partida {
   @JoinColumn(name = "creador_id", nullable = false)
   private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
 
-  // a la vez
+ 
 
   @Enumerated(EnumType.STRING)
   private EstadoPartida estado;
