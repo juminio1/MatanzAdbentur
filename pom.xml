@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tallerwebi</groupId>
     <artifactId>tallerwebi-base</artifactId>
@@ -31,8 +31,8 @@
             <artifactId>hibernate-validator</artifactId> <!-- validaciones beans-->
             <version>8.0.5.Final</version>
         </dependency>
-        
-           <!-- Soporte para WebSockets en Spring 6 -->
+
+        <!-- Soporte para WebSockets en Spring 6 -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-websocket</artifactId>
@@ -142,28 +142,6 @@
             <version>${playwright.version}</version>
             <scope>test</scope>
         </dependency>
-
-        <!-- Soporte para WebSockets en Spring 6 -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-websocket</artifactId>
-            <version>${spring.version}</version>
-        </dependency>
-
-        <!-- Infraestructura de mensajería (STOMP, MessageBroker) -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-messaging</artifactId>
-            <version>${spring.version}</version>
-        </dependency>
-
-        <!-- Serialización y deserialización automática de JSON para los mensajes STOMP -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.18.2</version>
-        </dependency>
-        
     </dependencies>
 
     <build>
@@ -232,8 +210,8 @@
                         </goals>
                     </execution>
                 </executions> -->
-            
-                </plugin>
+
+            </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
