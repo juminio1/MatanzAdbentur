@@ -93,25 +93,25 @@
 
                     <article class="salaEspera__fichas">
 
-                        <div class="salaEspera__subtitulo">
-
-                            <div class="salaEspera__icono">♟</div>
-
-                            <div>
-                                <h2>Elegí tu ficha</h2>
-
-                                <p>
-                                    Seleccioná el color con el que vas a jugar.
-                                </p>
-                            </div>
-
+                    <div class="salaEspera__subtitulo">
+                        <div class="salaEspera__icono">♟</div>
+                        <div>
+                            <h2>Elegí tu ficha</h2>
+                            <p>Seleccioná el color con el que vas a jugar.</p>
                         </div>
+                    </div>
 
-                        <div class="salaEspera__fichasGrid">
+                    <!-- GRID DE FICHAS DINÁMICO -->
+                    <div class="salaEspera__fichasGrid" id="fichasGrid">
 
-                            <button
+                        <!-- FICHA ROJA -->
+                        <button
                                 class="salaEspera__ficha salaEspera__ficha--roja"
-                                type="button">
+                                type="button"
+                                data-ficha="ROJO"
+                                onclick="seleccionarFicha('ROJO')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                                 <div class="peon">
                                     <div class="peon__cabeza"></div>
@@ -123,11 +123,14 @@
 
                             </button>
 
-                            <button
-                                class="salaEspera__ficha salaEspera__ficha--azul salaEspera__ficha--seleccionada"
-                                type="button">
+                        <!-- FICHA AZUL -->
+                        <button
+                                class="salaEspera__ficha salaEspera__ficha--azul"
+                                type="button"
+                                data-ficha="AZUL"
+                                onclick="seleccionarFicha('AZUL')">
 
-                                <div class="salaEspera__check">✓</div>
+                            <div class="salaEspera__check d-none">✓</div>
 
                                 <div class="peon">
                                     <div class="peon__cabeza"></div>
@@ -139,9 +142,14 @@
 
                             </button>
 
-                            <button
+                        <!-- FICHA VERDE -->
+                        <button
                                 class="salaEspera__ficha salaEspera__ficha--verde"
-                                type="button">
+                                type="button"
+                                data-ficha="VERDE"
+                                onclick="seleccionarFicha('VERDE')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                                 <div class="peon">
                                     <div class="peon__cabeza"></div>
@@ -153,9 +161,14 @@
 
                             </button>
 
-                            <button
+                        <!-- FICHA AMARILLA -->
+                        <button
                                 class="salaEspera__ficha salaEspera__ficha--amarilla"
-                                type="button">
+                                type="button"
+                                data-ficha="AMARILLO"
+                                onclick="seleccionarFicha('AMARILLO')">
+
+                            <div class="salaEspera__check d-none">✓</div>
 
                                 <div class="peon">
                                     <div class="peon__cabeza"></div>
@@ -169,7 +182,10 @@
 
                         </div>
 
-                    </article>
+                    <!-- Mensaje de error o aviso -->
+                    <div id="mensajeFichaError" class="salaEspera__error" hidden></div>
+
+                </article>
 
                 </div>
 

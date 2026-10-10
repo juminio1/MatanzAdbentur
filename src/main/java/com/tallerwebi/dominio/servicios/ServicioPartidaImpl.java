@@ -33,4 +33,3 @@ public class ServicioPartidaImpl implements ServicioPartida {
         jugador.setDinero(jugador.getDinero() + monto);
     }
 }
-

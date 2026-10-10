@@ -9,11 +9,16 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
 import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.excepcion.*;
+import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 
 public interface ServicioSalaDeEspera {
 
+
     SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException;
-    
+
     SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
             throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException;
 
@@ -21,4 +26,7 @@ public interface ServicioSalaDeEspera {
             throws UsuarioNoEncontradoException, SalaNoEncontradaException;
 
     SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException;
+
+    void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException;
 }

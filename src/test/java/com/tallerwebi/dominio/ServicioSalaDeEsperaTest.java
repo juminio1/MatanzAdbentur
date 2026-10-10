@@ -1,4 +1,3 @@
-
 package com.tallerwebi.dominio;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,6 +9,9 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
@@ -17,6 +19,9 @@ import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 
+import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -459,4 +464,61 @@ public class ServicioSalaDeEsperaTest {
 
         verifyNoInteractions(this.notificadorSalaMock);
     }
+
+    @Test
+    public void seleccionarFichaExitosamente() throws Exception {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        this.servicioSalaDeEspera.seleccionarFicha(
+            "ABC123",
+            1L,
+            com.tallerwebi.dominio.enums.Ficha.ROJA
+        );
+
+        assertTrue(sala.getFichasOcupadas().contains(com.tallerwebi.dominio.enums.Ficha.ROJA));
+        verify(this.repositorioSalaDeEsperaMock).modificar(sala);
+    }
+
+    @Test
+    public void seleccionarFichaOcupadaLanzaExcepcion() {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getFichasOcupadas().add(com.tallerwebi.dominio.enums.Ficha.ROJA);
+
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        assertThrows(com.tallerwebi.dominio.excepcion.FichaOcupadaException.class, () ->
+            this.servicioSalaDeEspera.seleccionarFicha(
+                "ABC123",
+                1L,
+                com.tallerwebi.dominio.enums.Ficha.ROJA
+            )
+        );
+
+        verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
+    }
+
+    @Test
+    public void testGettersYSettersDeSalaDeEspera() {
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setId(99L);
+        assertEquals(99L, sala.getId());
+
+        List<Usuario> usuarios = new ArrayList<>();
+        sala.setUsuarios(usuarios);
+        assertEquals(usuarios, sala.getUsuarios());
+
+        List<Ficha> fichas = new ArrayList<>();
+        fichas.add(Ficha.ROJA);
+        sala.setFichasOcupadas(fichas);
+        assertEquals(fichas, sala.getFichasOcupadas());
+    }
 }
+

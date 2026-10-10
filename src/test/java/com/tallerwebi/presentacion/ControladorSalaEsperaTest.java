@@ -23,7 +23,7 @@ public class ControladorSalaEsperaTest {
     private HttpSession sessionMock;
     private SalaDeEspera salaMock;
 
-    @BeforeEach //Hace que init() se ejecute antes de cada test.
+    @BeforeEach
     public void init() {
         this.servicioSalaDeEsperaMock = mock(ServicioSalaDeEspera.class); // Crea un servicio falso.
         this.controladorSalaEspera = new ControladorSalaEspera(servicioSalaDeEsperaMock); // Crea el controlador real y le pasa el servicio falso.
@@ -60,12 +60,13 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(2L);
 
-        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenThrow(UsuarioNoEncontradoException.class);
+        when(this.servicioSalaDeEsperaMock.crearSalaDeEspera(2L)).thenThrow(
+            UsuarioNoEncontradoException.class
+        );
 
         ModelAndView model = this.controladorSalaEspera.crearSalaDeEspera(requestMock);
 
         assertThat(model.getViewName(), equalToIgnoringCase("redirect:/login"));
-
         verify(this.servicioSalaDeEsperaMock).crearSalaDeEspera(2L);
     }
 

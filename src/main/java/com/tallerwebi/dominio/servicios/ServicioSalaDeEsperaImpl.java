@@ -1,8 +1,14 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.Ficha; // <-- Importante
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException; // <-- Importante
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
@@ -133,11 +139,15 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private void notificarCambioDeSala(SalaDeEspera sala) {
         SalaActualizadaDTO estadoActualizado = obtenerEstadoSala(sala);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive() && TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-    
-                @Override
-                public void afterCommit() { //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
+        if (
+            TransactionSynchronizationManager.isSynchronizationActive() &&
+            TransactionSynchronizationManager.isActualTransactionActive()
+        ) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
                         notificadorSala.notificarSalaActualizada(estadoActualizado);
                     }
                 }
@@ -149,5 +159,26 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
     private String generarCodigoUnico() {
         return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
+    }
+
+    @Override
+    public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
+
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        if (sala.getFichasOcupadas().contains(ficha)) {
+            throw new FichaOcupadaException("La ficha ya se encuentra ocupada");
+        }
+
+        usuario.setFicha(ficha);
+        sala.getFichasOcupadas().add(ficha);
+
+        repositorioUsuario.modificar(usuario);
+        repositorioSalaDeEspera.modificar(sala);
     }
 }
