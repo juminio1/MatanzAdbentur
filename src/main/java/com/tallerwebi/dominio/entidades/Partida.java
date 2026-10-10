@@ -16,12 +16,19 @@ public class Partida {
 
   private String codigoUnico;
   private Instant tiempoInicio;
+  private Integer ronda;
+
+  public Integer getRonda() {
+    return ronda;
+  }
+
+  public void setRonda(Integer ronda) {
+    this.ronda = ronda;
+  }
 
   @ManyToOne
   @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
-
-  // a la vez
+  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
 
   @Enumerated(EnumType.STRING)
   private EstadoPartida estado;

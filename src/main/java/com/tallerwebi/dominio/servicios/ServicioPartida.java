@@ -8,5 +8,6 @@ public interface ServicioPartida {
     Partida obtenerPartida(String codigoUnico);//da la info del tablero y sus posiciones
     void restarDinero (Jugador jugador, Integer monto);
     void sumarDinero (Jugador jugador, Integer monto);
+    void incrementarRondas(Partida partida);
 
 }

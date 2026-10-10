@@ -32,5 +32,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void sumarDinero(Jugador jugador, Integer monto) {
         jugador.setDinero(jugador.getDinero() + monto);
     }
+
+    @Override
+    public void incrementarRondas(Partida partida) {
+
+
+        partida.setRonda(+1);
+    }  
 }
 
