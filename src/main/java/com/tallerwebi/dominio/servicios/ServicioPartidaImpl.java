@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
@@ -35,13 +36,17 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida()
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException {
         Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActiva();
 
         if (partidaEncontrada == null) {
             throw new PartidaNoEncontradaException();
         }
-        // if (partidaEncontrada.getEstado().equals(EstadoPartida.EN_ESPERA)) {
+        if (EstadoPartida.EN_CURSO.equals(partidaEncontrada.getEstado())) {
+            throw new PartidaIniciadaException();
+        }
+            
+
         validarCantidadDeJugadores(partidaEncontrada);
         this.inicializarAtributosDeCadaJugador(partidaEncontrada);
 

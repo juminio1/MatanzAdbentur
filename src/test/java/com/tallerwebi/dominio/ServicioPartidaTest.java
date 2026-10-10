@@ -15,6 +15,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
@@ -64,7 +65,7 @@ public class ServicioPartidaTest {
 
     @Test
     public void dadoQueExisteUnaPartidaQuieroIniciarlaExitosamente()
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException {
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -214,7 +215,7 @@ public class ServicioPartidaTest {
 
     @Test
     public void dadoQueExisteUnaPartidaConJugadoresDebenInicializarseCon10000DeDinero()
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException {
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -238,7 +239,7 @@ public class ServicioPartidaTest {
 
 
     @Test 
-    public void dadoQueExisteUnaPartidaConJugadoresDebenPosicionarseInicialmenteEn0Exitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException{
+    public void dadoQueExisteUnaPartidaConJugadoresDebenPosicionarseInicialmenteEn0Exitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException{
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -264,7 +265,7 @@ public class ServicioPartidaTest {
     }
 
     @Test 
-    public void dadoQueExisteUnaPartidaConJugadoresSeSeleccionaAleatoriamenteElTurnoInicialExitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException{
+    public void dadoQueExisteUnaPartidaConJugadoresSeSeleccionaAleatoriamenteElTurnoInicialExitosamente() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException{
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -288,17 +289,26 @@ public class ServicioPartidaTest {
 
     }
 
-    /*@Test
-    public void dadoQueLaPartidaEstaEnCursoNoDebeVolverAInicializarse() throws EstadoPartidaInvalidoException, PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+    @Test
+    public void dadoQueLaPartidaEstaEnCursoNoDebeVolverAInicializarse() throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
+        
+        Jugador jugadorUno = new Jugador();
+        Jugador jugadorDos = new Jugador();
+        Jugador jugadorTres = new Jugador();
+        Jugador jugadorCuatro = new Jugador();
+
         Partida partida = new Partida();
         partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
 
-        when(this.repositorioPartidaMock.buscarPartidaActiva()).thenReturn(partida);
+         when(this.repositorioPartidaMock.buscarPartidaActiva()).thenReturn(partida);
 
-        this.servicioPartida.iniciarPartida();
+        assertThrows(PartidaIniciadaException.class, () ->
+            this.servicioPartida.iniciarPartida()
+        );
 
-        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
+        verify(this.repositorioPartidaMock, never()).guardarPartida(any()); // si la partida no existe, nunca se guarda
 
-        verify(this.repositorioPartidaMock, never()).guardarPartida(any());
-    }*/
+
+    }
 }
