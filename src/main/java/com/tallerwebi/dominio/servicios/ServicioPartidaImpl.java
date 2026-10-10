@@ -35,6 +35,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void restarDinero(Jugador jugador, Integer monto) {
+        jugador.setDinero(jugador.getDinero() - monto);
+    }
+
+    @Override
+    public void sumarDinero(Jugador jugador, Integer monto) {
+        jugador.setDinero(jugador.getDinero() + monto);
+    }
+
+    @Override
     public void iniciarPartida()
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException {
         Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActiva();
@@ -45,8 +55,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (EstadoPartida.EN_CURSO.equals(partidaEncontrada.getEstado())) {
             throw new PartidaIniciadaException();
         }
-            
-
+        
         validarCantidadDeJugadores(partidaEncontrada);
         this.inicializarAtributosDeCadaJugador(partidaEncontrada);
 

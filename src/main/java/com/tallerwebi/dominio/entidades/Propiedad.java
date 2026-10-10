@@ -1,4 +1,5 @@
 package com.tallerwebi.dominio.entidades;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -12,11 +13,24 @@ public class Propiedad {
     @ManyToOne
     private Jugador propietario;
 
+    // tiene q haber un contructor vacio, para el JPA/hibernate, para crear entidades
+    public Propiedad() {
+    }
+
+    //Se crea la propiedad, con
     public Propiedad(Long id, Integer precioCompra, Integer precioAlquiler, Jugador propietario) {
         this.id = id;
         this.precioCompra = precioCompra;
         this.precioAlquiler = precioAlquiler;
         this.propietario = propietario;
+    }
+
+    public boolean estaDisponible() {
+        return propietario == null;
+    }
+
+    public void asignarPropietario(Jugador jugador) {
+        this.propietario = jugador;
     }
 
     //Getters y setters
@@ -52,11 +66,5 @@ public class Propiedad {
         this.propietario = propietario;
     }
 
-    public boolean estaDisponible() {
-        return false;
-    }
 
-    public void asignarPropietario(Jugador jugador) {
-
-    }
 }

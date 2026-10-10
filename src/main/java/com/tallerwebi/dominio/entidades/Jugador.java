@@ -21,25 +21,18 @@ public class Jugador {
     public Integer getPosicionActual() {
         return posicionActual;
     }
-
     public void setPosicionActual(Integer posicionActual) {
         this.posicionActual = posicionActual;
     }
-
-    public Jugador() {}
-
     public int getId() {
         return id;
     }
-
     public String getApodo() {
         return apodo;
     }
-
     public Integer getDinero() {
         return dinero;
     }
-
     public void setDinero(Integer dinero) {
         this.dinero = dinero;
     }
@@ -55,10 +48,8 @@ public class Jugador {
     public void setApodo(String apodo) {
         this.apodo = apodo;
     }
-
     public void setId(int id) {
         this.id = id;
     }
 
-    public void restarDinero(Integer precioCompra) {}
 }
