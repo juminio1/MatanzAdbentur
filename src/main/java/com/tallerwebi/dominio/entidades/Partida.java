@@ -1,13 +1,10 @@
 package com.tallerwebi.dominio.entidades;
 
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Entity
 public class Partida {
@@ -16,25 +13,32 @@ public class Partida {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private final Integer tamanioMaximo = 4;
     private String codigoUnico;
     private Instant tiempoInicio;
 
-    @Transient
-    private Map<Usuario, Ficha> fichasSeleccionadas = new HashMap<>();
-
     @ManyToOne
     @JoinColumn(name = "creador_id", nullable = false)
-    private Usuario creador;
+    private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
+
+    // a la vez
 
     @Enumerated(EnumType.STRING)
     private EstadoPartida estado;
 
+    //@OneToOne(cascade = CascadeType.PERSIST)
+    //private Tablero tablero;
+
     @ManyToMany
-    private List<Usuario> usuarios = new ArrayList<>();
+    private List<Usuario> usuarios;
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
+    private List<Jugador> jugadores;
 
     public Partida() {
-        this.estado = EstadoPartida.EN_ESPERA;
+        this.usuarios = new ArrayList<>();
+        this.jugadores = new ArrayList<>();
+        this.estado = EstadoPartida.EN_ESPERA; // Nace en sala de espera / lobby
     }
 
     public Long getId() {
@@ -85,15 +89,20 @@ public class Partida {
         this.usuarios = usuarios;
     }
 
-    public Map<Usuario, Ficha> getFichasSeleccionadas() {
-        return fichasSeleccionadas;
+    public List<Jugador> getJugadores() {
+        return jugadores;
     }
 
-    public void setFichasSeleccionadas(Map<Usuario, Ficha> fichasSeleccionadas) {
-        this.fichasSeleccionadas = fichasSeleccionadas;
+    public void setJugadores(List<Jugador> jugadores) {
+        this.jugadores = jugadores;
     }
 
-    public Integer getTamanioMaximo() {
-        return tamanioMaximo;
+    public Boolean agregarUsuario(Usuario usuario) {
+        Integer tamanioMaximo = 4;
+        if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
+            this.usuarios.add(usuario);
+            return true;
+        }
+        return false;
     }
 }

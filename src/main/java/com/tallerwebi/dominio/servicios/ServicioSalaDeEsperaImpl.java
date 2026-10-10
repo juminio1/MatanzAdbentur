@@ -1,159 +1,178 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
-import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.enums.Ficha; // <-- Importante
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException; // <-- Importante
+import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
+import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
+import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import jakarta.transaction.Transactional;
-import java.security.SecureRandom;
-import java.time.Instant;
-import java.util.Random;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service("servicioSalaDeEspera")
 @Transactional
 public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
-    private static final String MSG_USUARIO_NO_EXISTE = "El usuario no existe.";
-    private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    private static final int LONGITUD_CODIGO = 6;
-    private final Random random = new SecureRandom();
+    private static final int LIMITE_JUGADORES = 4;
 
-    private RepositorioUsuario repositorioUsuario;
-    private RepositorioPartida repositorioPartida;
+    private final RepositorioSalaDeEspera repositorioSalaDeEspera;
+    private final RepositorioUsuario repositorioUsuario;
+    private final NotificadorSala notificadorSala;
 
     @Autowired
     public ServicioSalaDeEsperaImpl(
+        RepositorioSalaDeEspera repositorioSalaDeEspera,
         RepositorioUsuario repositorioUsuario,
-        RepositorioPartida repositorioPartida
+        NotificadorSala notificadorSala
     ) {
+        this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.repositorioUsuario = repositorioUsuario;
-        this.repositorioPartida = repositorioPartida;
+        this.notificadorSala = notificadorSala;
     }
 
     @Override
-    public Partida crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
-        Usuario usuarioEncontrado = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    public SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
+        Usuario creador = repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
-        if (usuarioEncontrado == null) {
-            throw new UsuarioNoEncontradoException(MSG_USUARIO_NO_EXISTE);
+        if (creador == null) {
+            throw new UsuarioNoEncontradoException();
         }
 
-        String codigoUnico;
-        do {
-            codigoUnico = generarCodigoUnico();
-        } while (this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico) != null);
+        SalaDeEspera nuevaSala = new SalaDeEspera();
 
-        Partida partida = new Partida();
-        partida.setCodigoUnico(codigoUnico);
-        partida.setCreador(usuarioEncontrado);
-        partida.setTiempoInicio(Instant.now());
+        nuevaSala.setCodigoUnico(generarCodigoUnico());
+        nuevaSala.setCreador(creador);
+        nuevaSala.getUsuarios().add(creador);
 
-        // Agregamos al creador a la lista de usuarios
-        partida.getUsuarios().add(usuarioEncontrado);
+        repositorioSalaDeEspera.guardar(nuevaSala);
 
-        this.repositorioPartida.guardarPartida(partida);
-
-        return partida;
-    }
-
-    private String generarCodigoUnico() {
-        StringBuilder codigo = new StringBuilder(LONGITUD_CODIGO);
-        for (int i = 0; i < LONGITUD_CODIGO; i++) {
-            int posicion = this.random.nextInt(CARACTERES.length());
-            codigo.append(CARACTERES.charAt(posicion));
-        }
-        return codigo.toString();
+        return nuevaSala;
     }
 
     @Override
-    public Partida unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-        throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
-        Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+    public SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+
         if (usuario == null) {
-            throw new UsuarioNoEncontradoException(MSG_USUARIO_NO_EXISTE);
+            throw new UsuarioNoEncontradoException();
         }
 
-        Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-        if (partida == null) {
-            throw new PartidaNoEncontradaException(
-                "No se encontró una partida activa con el código: " + codigoUnico
-            );
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        boolean yaEstaEnSala = sala
+            .getUsuarios()
+            .stream()
+            .anyMatch(u -> u.getId() != null && u.getId().equals(usuario.getId()));
+
+        if (yaEstaEnSala) {
+            return sala;
         }
 
-        // Validaciones de negocio en el servicio
-        if (
-            partida.getUsuarios().size() >= partida.getTamanioMaximo() ||
-            partida.getEstado() != EstadoPartida.EN_ESPERA
-        ) {
-            throw new IllegalStateException("La partida está llena o ya ha comenzado.");
+        if (sala.getUsuarios().size() >= LIMITE_JUGADORES) {
+            throw new SalaDeEsperaLlenaException();
         }
 
-        if (!partida.getUsuarios().contains(usuario)) {
-            partida.getUsuarios().add(usuario);
-            this.repositorioPartida.guardarPartida(partida);
+        sala.getUsuarios().add(usuario);
+
+        repositorioSalaDeEspera.modificar(sala);
+
+        notificarCambioDeSala(sala);
+
+        return sala;
+    }
+
+    @Override
+    public void abandonarSala(Long idUsuario, String codigoUnico)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
         }
 
-        return partida;
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        boolean removido = sala
+            .getUsuarios()
+            .removeIf(u -> u.getId() != null && u.getId().equals(usuario.getId()));
+
+        if (removido) {
+            repositorioSalaDeEspera.modificar(sala);
+
+            notificarCambioDeSala(sala);
+        }
+    }
+
+    @Override
+    public SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException {
+        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigoUnico);
+
+        if (sala == null) {
+            throw new SalaNoEncontradaException();
+        }
+
+        return sala;
     }
 
     @Override
     public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
-        throws UsuarioNoEncontradoException, PartidaNoEncontradaException, FichaOcupadaException {
-        Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-        if (partida == null) {
-            throw new PartidaNoEncontradaException(
-                "No se encontró una partida activa con el código: " + codigoUnico
-            );
-        }
-
-        Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
         if (usuario == null) {
-            throw new UsuarioNoEncontradoException(MSG_USUARIO_NO_EXISTE);
+            throw new UsuarioNoEncontradoException();
         }
 
-        // Validaciones de fichas en el servicio
-        if (!partida.getUsuarios().contains(usuario)) {
-            throw new UsuarioNoEncontradoException("El usuario no pertenece a la partida.");
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        // Validar si la ficha ya está ocupada en la sala
+        if (sala.getFichasOcupadas().contains(ficha)) {
+            throw new FichaOcupadaException("La ficha ya está ocupada");
         }
 
-        if (partida.getFichasSeleccionadas().containsValue(ficha)) {
-            throw new FichaOcupadaException(
-                "La ficha " + ficha + " ya está ocupada por otro jugador."
-            );
-        }
-
-        partida.getFichasSeleccionadas().put(usuario, ficha);
-        this.repositorioPartida.guardarPartida(partida);
+        // Agregar la ficha y actualizar
+        sala.getFichasOcupadas().add(ficha);
+        repositorioSalaDeEspera.modificar(sala);
     }
 
-    @Override
-    public void abandonarSala(String codigoUnico, Long idUsuario)
-        throws UsuarioNoEncontradoException, PartidaNoEncontradaException {
-        Partida partida = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-        if (partida == null) {
-            throw new PartidaNoEncontradaException(
-                "No se encontró una partida activa con el código: " + codigoUnico
+    private SalaActualizadaDTO obtenerEstadoSala(SalaDeEspera sala) {
+        List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
+
+        return new SalaActualizadaDTO(sala.getCodigoUnico(), usernames);
+    }
+
+    private void notificarCambioDeSala(SalaDeEspera sala) {
+        SalaActualizadaDTO estadoActualizado = obtenerEstadoSala(sala);
+
+        if (
+            TransactionSynchronizationManager.isSynchronizationActive() &&
+            TransactionSynchronizationManager.isActualTransactionActive()
+        ) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notificadorSala.notificarSalaActualizada(estadoActualizado);
+                    }
+                }
             );
+        } else {
+            notificadorSala.notificarSalaActualizada(estadoActualizado);
         }
+    }
 
-        Usuario usuario = this.repositorioUsuario.buscarUsuarioPorId(idUsuario);
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException(MSG_USUARIO_NO_EXISTE);
-        }
-
-        // Lógica de abandono en el servicio
-        if (partida.getUsuarios().contains(usuario)) {
-            partida.getUsuarios().remove(usuario);
-            partida.getFichasSeleccionadas().remove(usuario);
-        }
-
-        this.repositorioPartida.guardarPartida(partida);
+    private String generarCodigoUnico() {
+        return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
     }
 }
