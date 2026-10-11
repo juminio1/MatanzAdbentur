@@ -5,5 +5,7 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 public interface ServicioPropiedad {
     void comprarPropiedad(Long idPropiedad, Jugador jugador);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador);
+    Propiedad obtenerPropiedadExistente(Long idPropiedad);
+    boolean estaDisponible(Propiedad propiedad);
 
 }

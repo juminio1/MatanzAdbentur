@@ -23,20 +23,39 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     @Override
-    public void comprarPropiedad(Long idPropiedad, Jugador jugador) {
-        Propiedad propiedadEncontrada = repositorioPropiedad.buscarPropiedadPorId(idPropiedad);
-        if (propiedadEncontrada == null) {
+    public Propiedad obtenerPropiedadExistente(Long idPropiedad){
+        Propiedad propiedad=repositorioPropiedad.buscarPropiedadPorId(idPropiedad);
+
+        if(propiedad==null){
             throw new PropiedadNoEncontradaException("No se encontró la propiedad solicitada.");
         }
-        if (!propiedadEncontrada.estaDisponible()) {
-            throw new PropiedadNoDisponibleException("La propiedad no está disponible para la compra.");
+        return propiedad;
+    }
+
+    @Override
+    public boolean estaDisponible(Propiedad propiedad) {
+        return propiedad != null && propiedad.getPropietario() == null;
+    }
+
+    @Override
+    public void comprarPropiedad(Long idPropiedad, Jugador jugador) {
+        if(jugador==null){
+            throw new IllegalArgumentException("El jugador no puede ser null");
         }
+
+        Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
+        if (!estaDisponible(propiedadEncontrada)) {
+            throw new PropiedadNoDisponibleException("La propiedad no está disponible.");
+        }
+
         if (jugador.getDinero() < propiedadEncontrada.getPrecioCompra()) {
             throw new DineroInsuficienteException("El jugador no tiene dinero suficiente para realizar la operación.");
         }
+
         servicioPartida.restarDinero(jugador, propiedadEncontrada.getPrecioCompra());
-        propiedadEncontrada.asignarPropietario(jugador);
+        propiedadEncontrada.setPropietario(jugador);
         repositorioPropiedad.guardarPropiedad(propiedadEncontrada);
+
     }
 
     @Override

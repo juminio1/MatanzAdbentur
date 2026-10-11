@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import jakarta.persistence.*;
 
 @Entity
@@ -13,26 +14,24 @@ public class Propiedad {
     @ManyToOne
     private Jugador propietario;
 
+    @Enumerated(EnumType.STRING)
+    private GrupoPropiedades grupo;
+
     // tiene q haber un contructor vacio, para el JPA/hibernate, para crear entidades
     public Propiedad() {
     }
 
     //Se crea la propiedad, con
-    public Propiedad(Long id, Integer precioCompra, Integer precioAlquiler, Jugador propietario) {
+    public Propiedad(Long id, Integer precioCompra, Integer precioAlquiler, Jugador propietario, GrupoPropiedades grupo) {
         this.id = id;
         this.precioCompra = precioCompra;
         this.precioAlquiler = precioAlquiler;
         this.propietario = propietario;
+        this.grupo = grupo;
     }
 
-    public boolean estaDisponible() {
-        return propietario == null;
-    }
 
-    public void asignarPropietario(Jugador jugador) {
-        this.propietario = jugador;
-    }
-    
+
 
     //Getters y setters
     public Long getId() {

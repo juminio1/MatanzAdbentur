@@ -9,6 +9,7 @@ import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static com.tallerwebi.dominio.enums.GrupoPropiedades.SAN_JUSTO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
@@ -31,7 +32,7 @@ public class ServicioPropiedadTest {
         Long idPropiedad = 1L;
         Jugador jugador = new Jugador();
         jugador.setDinero(1000);
-        Propiedad propiedad = new Propiedad(1L, 500, 100, null);
+        Propiedad propiedad = new Propiedad(1L, 500, 100, null, SAN_JUSTO);
         when(repositorioPropiedadMock.buscarPropiedadPorId(idPropiedad)).thenReturn(propiedad);
         // Simula el descuento del dinero al comprar.
         org.mockito.Mockito.doAnswer(invocacion -> {
@@ -41,7 +42,7 @@ public class ServicioPropiedadTest {
             return null;
         }).when(servicioPartidaMock).restarDinero(jugador, 500);
         servicioPropiedad.comprarPropiedad(idPropiedad, jugador);
-        assertFalse(propiedad.estaDisponible());
+        assertFalse(servicioPropiedad.estaDisponible(propiedad));
         assertEquals(jugador, propiedad.getPropietario());
         assertEquals(500, jugador.getDinero());
     }
@@ -54,7 +55,7 @@ public class ServicioPropiedadTest {
         Jugador propietario = new Jugador();
         propietario.setId(2);
         propietario.setDinero(500);
-        Propiedad propiedad = new Propiedad(1L, 500, 100, propietario);
+        Propiedad propiedad = new Propiedad(1L, 500, 100, propietario,  SAN_JUSTO);
         // Simula el descuento al visitante.
         org.mockito.Mockito.doAnswer(invocacion -> {
             Jugador jugadorQuePaga = invocacion.getArgument(0);
@@ -79,7 +80,7 @@ public class ServicioPropiedadTest {
         Jugador propietario = new Jugador();
         propietario.setId(1);
         propietario.setDinero(1000);
-        Propiedad propiedad = new Propiedad(1L, 500, 100, propietario);
+        Propiedad propiedad = new Propiedad(1L, 500, 100, propietario,  SAN_JUSTO);
         servicioPropiedad.pagarAlquiler(propiedad, propietario);
         assertEquals(1000, propietario.getDinero());
     }
