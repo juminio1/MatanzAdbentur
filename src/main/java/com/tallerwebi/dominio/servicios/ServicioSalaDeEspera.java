@@ -6,14 +6,15 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 
 public interface ServicioSalaDeEspera {
-
     SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException;
-    
+
     SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-            throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException;
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException;
 
     void abandonarSala(Long idUsuario, String codigoUnico)
-            throws UsuarioNoEncontradoException, SalaNoEncontradaException;
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException;
 
     SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException;
+
+    // void prepararEIniciarPartida(Long idSala) throws Exception;
 }

@@ -1,46 +1,60 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.enums.ColorFicha;
+import com.tallerwebi.dominio.servicios.ServicioPartida;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Controller
 public class ControladorPartida {
 
     private static final String VISTA_PARTIDA = "partida";
+    private final ServicioPartida servicioPartida;
 
-   @GetMapping("/partida")
-    public ModelAndView verTableroMock() {
+    @Autowired
+    public ControladorPartida(ServicioPartida servicioPartida) {
+        this.servicioPartida = servicioPartida;
+    }
+
+    @GetMapping("/partida")
+    public ModelAndView verTablero(
+        @RequestParam(value = "codigo", required = false) String codigoUnico,
+        HttpServletRequest request
+    ) {
         Map<String, Object> model = new HashMap<>();
 
-        Partida partidaMock = new Partida();
-        
-        Jugador j1 = new Jugador();
-        j1.setId(1);
-        j1.setApodo("El Turro");
-        j1.setDinero(1500);
-        j1.setPosicionActual(0); 
-        j1.setFicha(ColorFicha.ROJO); 
+        String codigoFinal = codigoUnico;
 
-        Jugador j2 = new Jugador();
-        j2.setId(2);
-        j2.setApodo("La Mishi");
-        j2.setDinero(1200);
-        j2.setPosicionActual(5); 
-        j2.setFicha(ColorFicha.AZUL); 
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            codigoFinal = (String) request.getSession().getAttribute("codigoSala");
+        }
 
-        partidaMock.setJugadores(List.of(j1, j2));
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
 
-        model.put("partida", partidaMock);
-        model.put("usuarioSesionId", 1L);
-        model.put("turnoActualId", 1L);
+        Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+
+        if (partidaReal == null) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
+
+        Long usuarioSesionId = (Long) request.getSession().getAttribute("IDUSUARIO");
+
+        Long turnoActualId = null;
+        if (partidaReal.getJugadorTurnoAleatorio() != null) {
+            turnoActualId = (long) partidaReal.getJugadorTurnoAleatorio().getId();
+        }
+
+        model.put("partida", partidaReal);
+        model.put("usuarioSesionId", usuarioSesionId);
+        model.put("turnoActualId", turnoActualId);
 
         return new ModelAndView(VISTA_PARTIDA, model);
     }

@@ -1,15 +1,20 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -26,16 +31,22 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final RepositorioUsuario repositorioUsuario;
+    private final RepositorioPartida repositorioPartida;
+    private final ServicioPartida servicioPartida;
     private final NotificadorSala notificadorSala;
 
     @Autowired
     public ServicioSalaDeEsperaImpl(
         RepositorioSalaDeEspera repositorioSalaDeEspera,
         RepositorioUsuario repositorioUsuario,
+        RepositorioPartida repositorioPartida,
+        ServicioPartida servicioPartida,
         NotificadorSala notificadorSala
     ) {
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.repositorioUsuario = repositorioUsuario;
+        this.repositorioPartida = repositorioPartida;
+        this.servicioPartida = servicioPartida;
         this.notificadorSala = notificadorSala;
     }
 
@@ -133,11 +144,14 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private void notificarCambioDeSala(SalaDeEspera sala) {
         SalaActualizadaDTO estadoActualizado = obtenerEstadoSala(sala);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive() && TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-    
-                @Override
-                public void afterCommit() { //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
+        if (
+            TransactionSynchronizationManager.isSynchronizationActive() &&
+            TransactionSynchronizationManager.isActualTransactionActive()
+        ) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
                         notificadorSala.notificarSalaActualizada(estadoActualizado);
                     }
                 }
@@ -151,6 +165,30 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
     }
 
-    
+    /*@Override
+    public void prepararEIniciarPartida(Long idSala) throws Exception {
+        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorId(idSala);
+        if (sala == null) {
+            throw new RuntimeException("La sala de espera no existe");
+        }
 
+        Partida nuevaPartida = new Partida();
+        nuevaPartida.setCodigoUnico(sala.getCodigoUnico());
+        nuevaPartida.setCreador(sala.getCreador());
+        nuevaPartida.setTiempoInicio(Instant.now());
+
+        nuevaPartida.setEstado(EstadoPartida.EN_ESPERA);
+
+        for (Usuario usuario : sala.getUsuarios()) {
+            Jugador jugador = new Jugador();
+            jugador.setApodo(usuario.getUsername());
+
+            jugador.setPartida(nuevaPartida);
+
+            nuevaPartida.getJugadores().add(jugador);
+        }
+        repositorioPartida.guardarPartida(nuevaPartida);
+
+        servicioPartida.iniciarPartida();
+    }*/
 }
