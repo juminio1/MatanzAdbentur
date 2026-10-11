@@ -150,4 +150,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private String generarCodigoUnico() {
         return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
     }
+
+    
+
 }

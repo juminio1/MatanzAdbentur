@@ -2,12 +2,16 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Random;
@@ -18,15 +22,17 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
-    private RepositorioPartida repositorioPartida;
+    private final RepositorioPartida repositorioPartida;
+    private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final Integer CANTIDAD_ESTABLECIDA_JUGADORES = 4;
     private final Integer CANTIDAD_INICIAL_DINERO = 150000;
     private final Integer POSICION_INICIAL = 0;
     private final Random random = new Random();
 
     @Autowired
-    public ServicioPartidaImpl(RepositorioPartida repositorioPartida) {
+    public ServicioPartidaImpl(RepositorioPartida repositorioPartida, RepositorioSalaDeEspera repositorioSalaDeEspera) {
         this.repositorioPartida = repositorioPartida;
+        this.repositorioSalaDeEspera = repositorioSalaDeEspera;
     }
 
     @Override
@@ -45,9 +51,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    public void iniciarPartida()
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException {
-        Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActiva();
+    public void iniciarPartida(String codigo)
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException {
+        Partida partidaEncontrada = this.repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+        SalaDeEspera salaEncontrada = this.repositorioSalaDeEspera.buscarPorCodigo(codigo);
+
+        if(salaEncontrada == null){
+            throw new SalaNoEncontradaException("La sala no existe");
+        }
 
         if (partidaEncontrada == null) {
             throw new PartidaNoEncontradaException();

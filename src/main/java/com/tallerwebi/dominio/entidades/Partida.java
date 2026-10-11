@@ -1,89 +1,90 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tallerwebi.dominio.enums.EstadoPartida;
-
 @Entity
 public class Partida {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private String codigoUnico;
-  private Instant tiempoInicio;
+    private String codigoUnico;
+    private Instant tiempoInicio;
 
-  @ManyToOne
-  @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
+    @ManyToOne
+    @JoinColumn(name = "creador_id", nullable = false)
+    private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
 
-  @Enumerated(EnumType.STRING)
-  private EstadoPartida estado;
+    @Enumerated(EnumType.STRING)
+    private EstadoPartida estado;
 
-  //@OneToOne(cascade = CascadeType.PERSIST)
-  //private Tablero tablero;
+    //@OneToOne(cascade = CascadeType.PERSIST)
+    //private Tablero tablero;
 
-  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
-  private List<Jugador> jugadores;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
+    private List<Jugador> jugadores;
 
-  private Jugador jugadorTurnoAleatorio;
+    @ManyToOne
+    @JoinColumn(name = "jugador_turno_id")
+    private Jugador jugadorTurnoAleatorio;
 
-  public Partida() {
-    this.jugadores= new ArrayList<>();
-  }
+    public Partida() {
+        this.jugadores = new ArrayList<>();
+    }
 
-  public Jugador getJugadorTurnoAleatorio() {
-    return jugadorTurnoAleatorio;
-  }
+    public Jugador getJugadorTurnoAleatorio() {
+        return jugadorTurnoAleatorio;
+    }
 
-  public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
-    this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
-  }
+    public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
+        this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public void setId(Long id) {
-    this.id = id;
-  }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-  public String getCodigoUnico() {
-    return codigoUnico;
-  }
+    public String getCodigoUnico() {
+        return codigoUnico;
+    }
 
-  public void setCodigoUnico(String codigoUnico) {
-    this.codigoUnico = codigoUnico;
-  }
+    public void setCodigoUnico(String codigoUnico) {
+        this.codigoUnico = codigoUnico;
+    }
 
-  public Instant getTiempoInicio() {
-    return tiempoInicio;
-  }
+    public Instant getTiempoInicio() {
+        return tiempoInicio;
+    }
 
-  public void setTiempoInicio(Instant tiempoInicio) {
-    this.tiempoInicio = tiempoInicio;
-  }
+    public void setTiempoInicio(Instant tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
 
-  public Usuario getCreador() {
-    return creador;
-  }
+    public Usuario getCreador() {
+        return creador;
+    }
 
-  public void setCreador(Usuario creador) {
-    this.creador = creador;
-  }
+    public void setCreador(Usuario creador) {
+        this.creador = creador;
+    }
 
-  public EstadoPartida getEstado() {
-    return estado;
-  }
+    public EstadoPartida getEstado() {
+        return estado;
+    }
 
-  public void setEstado(EstadoPartida estado) {
-    this.estado = estado;
-  }
+    public void setEstado(EstadoPartida estado) {
+        this.estado = estado;
+    }
 
     public List<Jugador> getJugadores() {
         return jugadores;
@@ -92,5 +93,4 @@ public class Partida {
     public void setJugadores(List<Jugador> jugadores) {
         this.jugadores = jugadores;
     }
-
 }
