@@ -62,31 +62,42 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void inicializarTurnos(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        if (partida != null && partida.getJugadores() != null) {
+        if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
             int orden = 0;
-
             for (Jugador jugador : partida.getJugadores()) {
                 jugador.setOrden(orden);
                 jugador.setPierdeTurno(false);
                 orden++;
             }
-
-            partida.setIndiceTurnoActual(0);
+            if (partida.getIndiceTurnoActual() == null) {
+                partida.setIndiceTurnoActual(0);
+            }
+            repositorioPartida.guardarPartida(partida);
         }
     }
 
     @Override
     public Jugador obtenerJugadorActual(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+        if (partida == null || partida.getJugadores() == null || partida.getJugadores().isEmpty()) {
+            return null;
+        }
 
-        if (partida != null && partida.getJugadores() != null) {
-            for (Jugador jugador : partida.getJugadores()) {
-                if (jugador.getOrden().equals(partida.getIndiceTurnoActual())) {
-                    return jugador;
-                }
+        if (partida.getJugadores().get(0).getOrden() == null) {
+            inicializarTurnos(codigoUnico);
+        }
+
+        Integer indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+        return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
+    }
+
+    private Jugador buscarJugadorPorTurno(List<Jugador> jugadores, Integer indice) {
+        for (Jugador jugador : jugadores) {
+            if (jugador.getOrden() != null && jugador.getOrden().equals(indice)) {
+                return jugador;
             }
         }
-        return null;
+        return jugadores.get(0);
     }
 
     @Override
@@ -95,14 +106,17 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
             int cantidadJugadores = partida.getJugadores().size();
+            int indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
 
-            int siguienteIndice = (partida.getIndiceTurnoActual() + 1) % cantidadJugadores;
+            int siguienteIndice = (indiceActual + 1) % cantidadJugadores;
             partida.setIndiceTurnoActual(siguienteIndice);
+            repositorioPartida.guardarPartida(partida);
 
             Jugador jugadorSiguiente = obtenerJugadorActual(codigoUnico);
 
             if (jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())) {
                 jugadorSiguiente.setPierdeTurno(false);
+                repositorioPartida.guardarPartida(partida);
                 avanzarTurno(codigoUnico);
             }
         }
@@ -122,11 +136,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
             throw new SalaNoEncontradaException("La sala no existe");
         }
 
-        Partida partida = repositorioPartida
-                .buscarPartidaActivaPorCodigoUnico(codigo);
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
 
-        if (partida != null &&
-                EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
+        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
             throw new PartidaIniciadaException();
         }
 
@@ -137,7 +149,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
 
         validarCantidadDeJugadores(partida);
-
         inicializarAtributosDeCadaJugador(partida);
 
         partida.setEstado(EstadoPartida.EN_CURSO);
@@ -164,9 +175,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
             Partida partida,
             SalaDeEspera sala
     ) throws FichaNoDisponibleException {
-        for (Usuario usuario : sala.getUsuarios()) {
-            Jugador jugador = crearJugador(usuario);
-            partida.getJugadores().add(jugador);
+        if (sala.getUsuarios() != null) {
+            for (Usuario usuario : sala.getUsuarios()) {
+                Jugador jugador = crearJugador(usuario);
+                partida.getJugadores().add(jugador);
+            }
         }
     }
 
@@ -200,7 +213,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         List<Jugador> jugadores = partida.getJugadores();
 
-        if (jugadores.size() < CANTIDAD_ESTABLECIDA_JUGADORES) {
+        if (jugadores == null || jugadores.size() < CANTIDAD_ESTABLECIDA_JUGADORES) {
             throw new CantidadJugadoresInsuficienteException("Cantidad de jugadores insuficientes");
         }
 
@@ -209,22 +222,21 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
-    private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(
-            Partida partida
-    ) {
+    private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida) {
         List<Jugador> jugadores = partida.getJugadores();
-
-        int turnoAleatorio = random.nextInt(jugadores.size());
-
-        Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
-
-        partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
+        if (jugadores != null && !jugadores.isEmpty()) {
+            int turnoAleatorio = random.nextInt(jugadores.size());
+            Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
+            partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
+        }
     }
 
     private void inicializarAtributosDeCadaJugador(Partida partida) {
-        for (Jugador jugador : partida.getJugadores()) {
-            jugador.setDinero(CANTIDAD_INICIAL_DINERO);
-            jugador.setPosicionActual(POSICION_INICIAL);
+        if (partida.getJugadores() != null) {
+            for (Jugador jugador : partida.getJugadores()) {
+                jugador.setDinero(CANTIDAD_INICIAL_DINERO);
+                jugador.setPosicionActual(POSICION_INICIAL);
+            }
         }
     }
 }
