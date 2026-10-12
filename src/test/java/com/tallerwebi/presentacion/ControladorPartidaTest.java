@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,8 +16,11 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -94,16 +98,18 @@ public class ControladorPartidaTest {
         Partida partidaMock = new Partida();
         Jugador jugadorMock = new Jugador();
         jugadorMock.setId(1);
+        jugadorMock.setApodo("Messi");
+        partidaMock.setJugadores(List.of(jugadorMock));
         partidaMock.setJugadorTurnoAleatorio(jugadorMock);
 
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugadorMock);
 
         ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
 
         assertEquals("partida", mav.getViewName());
         assertNotNull(mav.getModel().get("partida"));
         assertEquals(partidaMock, mav.getModel().get("partida"));
-        assertEquals(usuarioId, mav.getModel().get("usuarioSesionId"));
         assertEquals(1L, mav.getModel().get("turnoActualId"));
     }
 
@@ -126,24 +132,61 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void alAvanzarTurnoDeberiaLlamarAlServicioYNotificarPorWebSocket() {
+    public void dadoQueUnUsuarioSinSesionIntentaAvanzarTurnoDebeRetornarUnauthorized() {
         String codigoPartida = "PARTIDA123";
+
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
+        verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
+    }
+
+    @Test
+    public void dadoQueUnUsuarioSinTurnoIntentaAvanzarDebeRetornarForbidden() {
+        String codigoPartida = "PARTIDA123";
+        session.setAttribute("id", 99L);
+        session.setAttribute("NOMBRE", "intruso");
+
+        Jugador jugadorConTurno = new Jugador();
+        jugadorConTurno.setId(1);
+        jugadorConTurno.setApodo("pepito");
+
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorConTurno);
+
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
+    }
+
+    @Test
+    public void alAvanzarTurnoElJugadorActualDeberiaAvanzarYNotificarPorWebSocket() {
+        String codigoPartida = "PARTIDA123";
+        session.setAttribute("id", 1L);
+        session.setAttribute("NOMBRE", "pepito");
+
+        Jugador jugadorActual = new Jugador();
+        jugadorActual.setId(1);
+        jugadorActual.setApodo("pepito");
+        jugadorActual.setOrden(0);
+
         Jugador jugadorSiguiente = new Jugador();
         jugadorSiguiente.setId(2);
         jugadorSiguiente.setApodo("Messi");
         jugadorSiguiente.setOrden(1);
 
-        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorSiguiente);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
+                .thenReturn(jugadorActual)
+                .thenReturn(jugadorSiguiente);
 
-        TurnoDTO resultadoDTO = controladorPartida.avanzarTurno(codigoPartida);
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertNotNull(respuesta.getBody());
+        assertEquals(2, respuesta.getBody().getIdJugadorActual());
+        assertEquals("Messi", respuesta.getBody().getApodoJugadorActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-        verify(servicioPartidaMock, times(1)).obtenerJugadorActual(codigoPartida);
-
-        assertNotNull(resultadoDTO);
-        assertEquals(2, resultadoDTO.getIdJugadorActual());
-        assertEquals("Messi", resultadoDTO.getApodoJugadorActual());
-
         verify(notificadorWebSocketMock, times(1)).convertAndSend(
                 eq("/topic/partida/" + codigoPartida + "/turno"),
                 any(TurnoDTO.class)
