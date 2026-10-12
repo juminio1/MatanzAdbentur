@@ -196,7 +196,10 @@ public class ControladorSalaEsperaTest {
         );
 
         assertEquals("redirect:/partida", mav.getViewName());
-        verify(servicioPartidaMock, times(1)).iniciarPartida(codigo);
+        
+        
+        verify(servicioPartidaMock, times(1)).iniciarPartida(codigo, 1L);
+        
         verify(sessionMock).setAttribute("codigoSala", codigo);
         verify(simpMessagingTemplateMock).convertAndSend(
             "/topic/sala/" + codigo + "/iniciar",
@@ -211,7 +214,7 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(1L);
 
-        doThrow(new SalaNoEncontradaException()).when(servicioPartidaMock).iniciarPartida(codigo);
+        doThrow(new SalaNoEncontradaException()).when(servicioPartidaMock).iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -237,7 +240,7 @@ public class ControladorSalaEsperaTest {
 
         doThrow(new PartidaNoEncontradaException())
             .when(servicioPartidaMock)
-            .iniciarPartida(codigo);
+            .iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -264,7 +267,7 @@ public class ControladorSalaEsperaTest {
 
         doThrow(new CantidadJugadoresInsuficienteException("No hay suficientes jugadores"))
             .when(servicioPartidaMock)
-            .iniciarPartida(codigo);
+            .iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -290,7 +293,7 @@ public class ControladorSalaEsperaTest {
 
         doThrow(new CantidadMaximaJugadoresSuperadaException("El maximo son 4 jugadores"))
             .when(servicioPartidaMock)
-            .iniciarPartida(codigo);
+            .iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -313,7 +316,7 @@ public class ControladorSalaEsperaTest {
         when(requestMock.getSession()).thenReturn(sessionMock);
         when(sessionMock.getAttribute("id")).thenReturn(1L);
 
-        doThrow(new PartidaIniciadaException()).when(servicioPartidaMock).iniciarPartida(codigo);
+        doThrow(new PartidaIniciadaException()).when(servicioPartidaMock).iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -336,7 +339,7 @@ public class ControladorSalaEsperaTest {
 
         doThrow(new RuntimeException("Error inesperado"))
             .when(servicioPartidaMock)
-            .iniciarPartida(codigo);
+            .iniciarPartida(codigo, 1L);
 
         RedirectAttributes redirectAttributesMock = mock(RedirectAttributes.class);
 
@@ -370,6 +373,6 @@ public class ControladorSalaEsperaTest {
         );
 
         assertEquals("redirect:/partida", mav.getViewName());
-        verify(servicioPartidaMock, times(1)).iniciarPartida(codigo);
+        verify(servicioPartidaMock, times(1)).iniciarPartida(codigo, 99L);
     }
 }

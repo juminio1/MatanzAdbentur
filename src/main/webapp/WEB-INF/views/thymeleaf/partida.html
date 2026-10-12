@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>El Matancero – Partida</title>
-    <script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css">
     <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css">
 </head>
@@ -31,8 +30,13 @@
             <div class="datos-jugador">
                 <span class="dinero" th:text="${jugador.dinero != null ? '$' + #numbers.formatInteger(jugador.dinero, 1, 'POINT') : '$0'}">$0</span>
             </div>
+
+            <!-- Contenedor dinámico del estado de turno -->
             <div class="contenedor-turno">
-                <span class="indicador-turno" th:if="${jugador.id == turnoActualId}">Tu turno</span>
+                <span class="indicador-turno" th:if="${jugador.id == turnoActualId}">
+                    <span th:if="${jugador.id == usuarioSesionId}">Tu turno</span>
+                    <span th:unless="${jugador.id == usuarioSesionId}" th:text="'Turno de ' + ${jugador.apodo}">Turno de Jugador</span>
+                </span>
             </div>
         </article>
     </section>
@@ -43,14 +47,13 @@
     <section class="zona-tablero" aria-label="Tablero">
 
         <div class="tablero-wrap">
-            <!-- Tablero: 12 columnas x 5 filas; solo el borde son casilleros (30) -->
             <ol class="tablero">
                 <li class="casillero casillero--esquina" style="--col:12; --fila:5" data-casillero="0"><span
                         class="casillero__nombre">Inicio</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 0}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -61,7 +64,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 1}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -72,7 +75,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 2}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -83,7 +86,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 3}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -94,7 +97,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 4}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -105,7 +108,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 5}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -116,7 +119,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 6}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -127,7 +130,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 7}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -138,7 +141,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 8}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -149,7 +152,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 9}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -160,7 +163,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 10}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -171,7 +174,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 11}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -182,7 +185,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 12}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -193,7 +196,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 13}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -204,7 +207,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 14}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -215,7 +218,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 15}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -226,7 +229,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 16}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -237,7 +240,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 17}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -248,7 +251,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 18}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -259,7 +262,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 19}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -270,7 +273,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 20}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -281,7 +284,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 21}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -292,7 +295,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 22}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -303,7 +306,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 23}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -314,7 +317,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 24}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -325,7 +328,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 25}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -336,7 +339,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 26}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -347,7 +350,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 27}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -358,7 +361,7 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 28}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
@@ -369,14 +372,14 @@
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 29}" class="ficha"
-                                 th:classappend="${'ficha-' + jugador.ficha.name().toLowerCase()}"
+                                 th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
                                  th:title="${jugador.apodo}">
                             </div>
                         </th:block>
                     </div>
                 </li>
 
-                <!-- Centro del tablero (columnas 2 a 11, filas 2 a 4) -->
+                <!-- Centro del tablero -->
                 <li class="tablero__centro" aria-label="Centro del tablero">
                     <h1 class="tablero__titulo">El Matancero</h1>
                 </li>
@@ -396,15 +399,15 @@
                 <output class="dado" id="dado-2">1</output>
             </div>
 
-            <button type="button" class="btn-tirar" id="btn-tirar"
+            <button type="button" class="btn-tirar" id="btn-accion-turno"
                     th:disabled="${usuarioSesionId != turnoActualId}">
-                Tirar dados
+                Acción de Turno
             </button>
         </div>
     </section>
 </main>
 
-<!-- Panel lateral: casillero actual + historial -->
+<!-- Panel lateral -->
 <aside class="partida__lateral">
     <section class="info-casillero" aria-labelledby="info-titulo">
         <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
@@ -446,6 +449,20 @@
         </ol>
     </section>
 </aside>
+
+<!-- Librerías de WebSocket -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<!-- Inyección segura de variables de sesión para el script -->
+<script th:inline="javascript">
+    window.usuarioSesionId = /*[[${usuarioSesionId}]]*/ null;
+    window.turnoActualId = /*[[${turnoActualId}]]*/ null;
+    window.codigoSala = /*[[${partida.codigoUnico}]]*/ "";
+</script>
+
+<!-- Script de cliente -->
+<script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
 </body>
 
 </html>
