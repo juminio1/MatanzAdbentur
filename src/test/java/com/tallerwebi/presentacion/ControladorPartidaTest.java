@@ -1,8 +1,9 @@
 package com.tallerwebi.presentacion;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -13,9 +14,15 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +47,7 @@ public class ControladorPartidaTest {
         servicioPartidaMock = mock(ServicioPartida.class);
         servicioDadoMock = mock(ServicioDado.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
+        servicioPartidaMock = mock(ServicioPartida.class);
 
         controladorPartida = new ControladorPartida(
                 servicioPartidaMock,
@@ -191,5 +199,70 @@ public class ControladorPartidaTest {
                 eq("/topic/partida/" + codigoPartida + "/turno"),
                 any(TurnoDTO.class)
         );
+    }
+
+    @Test
+    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        String codigoPrueba = "MATANZA123";
+        int idJugador = 1;
+
+        Jugador jugador = new Jugador();
+        jugador.setId(idJugador);
+
+        Partida partida = new Partida();
+        partida.setJugadores(Collections.singletonList(jugador));
+
+        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(4, 5); // Suma 9
+
+        when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
+
+        RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador);
+
+        assertThat(resultado, notNullValue());
+        assertThat(resultado.getDado1(), equalTo(4));
+        assertThat(resultado.getDado2(), equalTo(5));
+        assertThat(resultado.getSuma(), equalTo(9));
+
+        verify(servicioDadoMock, times(1)).tirarDados();
+    }
+
+    @Test
+    public void tirarDadosDeberiaActualizarPosicion()throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        String codigoPrueba = "MATANZA123";
+        int idJugador = 1;
+
+        Jugador jugador = new Jugador();
+        jugador.setId(idJugador);
+        jugador.setPosicionActual(10);
+
+        Partida partida = new Partida();
+        partida.setJugadores(Collections.singletonList(jugador));
+
+        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(4, 5); // Suma 9
+
+        when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
+
+        controladorPartida.tirarDados(codigoPrueba, idJugador);
+
+        verify(servicioPartidaMock, times(1)).moverJugador(jugador, 9, 30);
+    }
+
+
+    @Test
+    public void queLanceExcepcionSiElJugadorNoExisteEnLaPartida() {
+        String codigoPrueba = "MATANZA123";
+        int idJugadorInexistente = 99;
+
+        Partida partidaVacia = new Partida();
+        partidaVacia.setJugadores(Collections.emptyList());
+
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 3));
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaVacia);
+
+        assertThrows(JugadorNoEncontradoException.class, () -> {
+            controladorPartida.tirarDados(codigoPrueba, idJugadorInexistente);
+        });
     }
 }

@@ -50,6 +50,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
+        Integer posicionActual = jugador.getPosicionActual();
+        Integer nuevaPosicion = (posicionActual + cantidadAvance) % totalCasilleros;//se calcula la nueva posicion. si supera el total la division se reinicia
+        jugador.setPosicionActual(nuevaPosicion);
+    }
+
+    @Override
     public void restarDinero(Jugador jugador, Integer monto) {
         jugador.setDinero(jugador.getDinero() - monto);
     }

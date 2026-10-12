@@ -312,4 +312,42 @@ public class ServicioPartidaTest {
         assertNotNull(jugadorSeleccionado);
         assertTrue(partida.getJugadores().contains(jugadorSeleccionado));
     }
+
+    @Test
+    public void queElJugadorActualiceSuPosicionAlMoverseUnEspacioValidoDentroDelTablero() {
+
+        Jugador jugador = new Jugador();
+        jugador.setPosicionActual(5);
+        int avanceExacto = 7;
+        int totalCasilleros = 40;
+
+        servicioPartida.moverJugador(jugador, avanceExacto, totalCasilleros);
+
+        assertEquals(12, jugador.getPosicionActual());//verifica el calculo de posicion
+    }
+
+    @Test
+    public void queSiLaFichaSuperaElUltimoCasilleroDelTableroContinueDesdeElComienzo() {
+
+        Jugador jugador = new Jugador();
+        jugador.setPosicionActual(28); //posición cerca del final del tablero
+        int avance = 5;
+        int totalCasilleros = 30;
+
+        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
+
+        assertEquals(3, jugador.getPosicionActual());//verifica que al superar los 3 casilleros, da la vuelta y avanza
+    }
+
+    @Test
+    public void queAlCaerExactamenteEnElUltimoCasilleroElJugadorVuelvaALaPosicionCero() {
+        Jugador jugador = new Jugador();
+        jugador.setPosicionActual(25);
+        int avance = 5;
+        int totalCasilleros = 30;
+
+        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
+
+        assertEquals(0, jugador.getPosicionActual());//valida que si llega a 30 debe reiniciar la posicion a 0
+    }
 }

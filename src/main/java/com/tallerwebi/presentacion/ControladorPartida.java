@@ -2,8 +2,12 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
@@ -13,11 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -153,4 +153,45 @@ public class ControladorPartida {
 
         return ResponseEntity.ok(turnoDTO);
     }
+
+    @PostMapping("/partida/tirar-dados")
+    @ResponseBody
+        public RespuestaMovimientoDTO tirarDados(@RequestParam String codigoUnico, @RequestParam int idJugador) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+
+            ResultadoTiradaDTO resultado = servicioDado.tirarDados();//Llama al servicio para generar la tirada
+
+            Partida partida = servicioPartida.obtenerPartida(codigoUnico);//Se trae la partida
+
+            if (partida == null) {
+                throw new PartidaNoEncontradaException();
+            }
+
+            Jugador jugadorActual = null;
+            for (Jugador j : partida.getJugadores()) {
+                if (j.getId() == idJugador) {
+                    jugadorActual = j;
+                    break;
+                }
+            }//Busca al jugador en la lista que tiro los dados en esa partida
+
+            if (jugadorActual == null) {
+                throw new JugadorNoEncontradoException("No se encontró el jugador en esta partida");
+            }
+
+            servicioPartida.moverJugador(jugadorActual, resultado.sumarDados(), 30);//se mueve ficha
+
+            //se arma el paquete de datos para que el frontend lo dibuje
+            RespuestaMovimientoDTO respuesta = new RespuestaMovimientoDTO();
+            respuesta.setDado1(resultado.getDado1());
+            respuesta.setDado2(resultado.getDado2());
+            respuesta.setSuma(resultado.sumarDados());
+            respuesta.setNuevaPosicion(jugadorActual.getPosicionActual());
+
+            return respuesta;
+        }
+
+        @ExceptionHandler(JugadorNoEncontradoException.class)
+        public ResponseEntity<String> manejarJugadorNoEncontrado(JugadorNoEncontradoException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());//le devuelve al frontend un código 404 de "not found" y el mensaje de la excepción
+        }
 }

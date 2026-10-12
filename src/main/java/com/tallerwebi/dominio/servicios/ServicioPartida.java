@@ -18,5 +18,6 @@ public interface ServicioPartida {
     void inicializarTurnos(String codigoUnico);
     Jugador obtenerJugadorActual(String codigoUnico);
     void avanzarTurno(String codigoUnico);
+    void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros);
 
 }
