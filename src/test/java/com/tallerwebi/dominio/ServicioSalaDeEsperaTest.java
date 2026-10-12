@@ -45,8 +45,6 @@ public class ServicioSalaDeEsperaTest {
         this.servicioSalaDeEspera = new ServicioSalaDeEsperaImpl(
             this.repositorioSalaDeEsperaMock,
             this.repositorioUsuarioMock,
-            this.repositorioPartidaMock,
-            this.servicioPartidaMock,
             this.notificadorSalaMock
         );
     }

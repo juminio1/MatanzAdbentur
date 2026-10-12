@@ -113,56 +113,66 @@ public class ControladorSalaEspera {
         }
     }
 
-    @RequestMapping(path = "/iniciar-partida", method = RequestMethod.POST)
-    public ModelAndView iniciarPartida(
-        @RequestParam(value = CODIGO_UNICO, required = false) String codigoUnico,
-        HttpServletRequest request,
-        RedirectAttributes redirectAttributes
-    ) {
-        Long idUsuario = obtenerIdUsuario(request);
-
-        if (idUsuario == null) {
-            return new ModelAndView(REDIRECT_LOGIN);
-        }
-
-        if (codigoUnico == null || codigoUnico.isBlank()) {
-            return redireccionarConError(REDIRECT_HOME, "El código de la sala es inválido", redirectAttributes);
-        }
-
-        return procesarInicioPartida(codigoUnico, request, redirectAttributes);
-    }
-
-    private Long obtenerIdUsuario(HttpServletRequest request) {
-    Long idUsuario = (Long) request.getSession().getAttribute("IDUSUARIO");
-
-    if (idUsuario == null) {
-        idUsuario = (Long) request.getSession().getAttribute("id");
-    }
-
-    return idUsuario;
-}
-
-private ModelAndView procesarInicioPartida(
-    String codigoUnico,
+   @RequestMapping(path = "/iniciar-partida", method = RequestMethod.POST)
+public ModelAndView iniciarPartida(
+    @RequestParam(value = CODIGO_UNICO, required = false) String codigoUnico,
     HttpServletRequest request,
     RedirectAttributes redirectAttributes
 ) {
+    Long idUsuario = obtenerIdUsuario(request);
+
+    if (idUsuario == null) {
+        return new ModelAndView(REDIRECT_LOGIN);
+    }
+
+    if (codigoUnico == null || codigoUnico.isBlank()) {
+        return redireccionarConError(
+            REDIRECT_HOME,
+            "El código de la sala es inválido",
+            redirectAttributes
+        );
+    }
+
+    return procesarInicioPartida(codigoUnico, request, redirectAttributes);
+}
+
+private ModelAndView procesarInicioPartida(String codigoUnico, HttpServletRequest request, RedirectAttributes redirectAttributes) {
     try {
         servicioPartida.iniciarPartida(codigoUnico);
 
-        return iniciarPartidaExitosamente(codigoUnico, request, redirectAttributes);
+        return iniciarPartidaExitosamente(
+            codigoUnico,
+            request,
+            redirectAttributes
+        );
 
     } catch (SalaNoEncontradaException exception) {
-        return redireccionarConError(REDIRECT_HOME, "La sala de espera no existe", redirectAttributes);
+        return redireccionarConError(
+            REDIRECT_HOME,
+            "La sala de espera no existe",
+            redirectAttributes
+        );
 
     } catch (PartidaNoEncontradaException exception) {
-        return redireccionarASalaConError(codigoUnico, "No se encontró una partida para esta sala", redirectAttributes);
+        return redireccionarASalaConError(
+            codigoUnico,
+            "No se encontró una partida para esta sala",
+            redirectAttributes
+        );
 
     } catch (CantidadJugadoresInsuficienteException exception) {
-        return redireccionarASalaConError(codigoUnico, "No hay suficientes jugadores para iniciar la partida", redirectAttributes);
+        return redireccionarASalaConError(
+            codigoUnico,
+            "No hay suficientes jugadores para iniciar la partida",
+            redirectAttributes
+        );
 
     } catch (CantidadMaximaJugadoresSuperadaException exception) {
-        return redireccionarASalaConError(codigoUnico, "Se superó la cantidad máxima de jugadores", redirectAttributes);
+        return redireccionarASalaConError(
+            codigoUnico,
+            "Se superó la cantidad máxima de jugadores",
+            redirectAttributes
+        );
 
     } catch (PartidaIniciadaException exception) {
         request.getSession().setAttribute("codigoSala", codigoUnico);
@@ -171,14 +181,21 @@ private ModelAndView procesarInicioPartida(
         return new ModelAndView(REDIRECT_PARTIDA);
 
     } catch (Exception exception) {
-        LOGGER.error("Error al iniciar la partida con código {}", codigoUnico, exception);
+        LOGGER.error("Error al iniciar la partida {}", codigoUnico, exception);
 
-        return redireccionarConError(REDIRECT_HOME, "Ocurrió un error al iniciar la partida", redirectAttributes);
+        return redireccionarASalaConError(
+            codigoUnico,
+            "Ocurrió un error al iniciar la partida",
+            redirectAttributes
+        );
     }
 }
 
-    private ModelAndView iniciarPartidaExitosamente(String codigoUnico, HttpServletRequest request, RedirectAttributes redirectAttributes) {
-
+    private ModelAndView iniciarPartidaExitosamente(
+    String codigoUnico,
+    HttpServletRequest request,
+    RedirectAttributes redirectAttributes
+) {
     request.getSession().setAttribute("codigoSala", codigoUnico);
 
     messagingTemplate.convertAndSend(
@@ -189,7 +206,6 @@ private ModelAndView procesarInicioPartida(
     redirectAttributes.addAttribute("codigo", codigoUnico);
 
     return new ModelAndView(REDIRECT_PARTIDA);
-
 }
 
 private ModelAndView redireccionarASalaConError(String codigoUnico, String mensaje, RedirectAttributes redirectAttributes) {
@@ -203,5 +219,15 @@ private ModelAndView redireccionarConError(String destino, String mensaje, Redir
     redirectAttributes.addFlashAttribute("errorIniciarPartida", mensaje);
 
     return new ModelAndView(destino);
+}
+
+private Long obtenerIdUsuario(HttpServletRequest request) {
+    Long idUsuario = (Long) request.getSession().getAttribute("id");
+
+    if (idUsuario == null) {
+        idUsuario = (Long) request.getSession().getAttribute("IDUSUARIO");
+    }
+
+    return idUsuario;
 }
 }

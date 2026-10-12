@@ -22,7 +22,7 @@ public class ControladorPartida {
         this.servicioPartida = servicioPartida;
     }
 
-    @GetMapping("/partida")
+    /*@GetMapping("/partida")
     public ModelAndView verTablero(
         @RequestParam(value = "codigo", required = false) String codigoUnico,
         HttpServletRequest request
@@ -57,5 +57,56 @@ public class ControladorPartida {
         model.put("turnoActualId", turnoActualId);
 
         return new ModelAndView(VISTA_PARTIDA, model);
+    }*/
+
+        @GetMapping("/partida")
+public ModelAndView verTablero(
+    @RequestParam(value = "codigo", required = false) String codigoUnico,
+    HttpServletRequest request
+) {
+    Map<String, Object> model = new HashMap<>();
+
+    String codigoFinal = codigoUnico;
+
+    if (codigoFinal == null || codigoFinal.isBlank()) {
+        codigoFinal = (String) request.getSession().getAttribute("codigoSala");
     }
+
+    if (codigoFinal == null || codigoFinal.isBlank()) {
+        return new ModelAndView("redirect:/home");
+    }
+
+    Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+
+    if (partidaReal == null) {
+        return new ModelAndView(
+            "redirect:/sala-de-espera?codigoUnico=" + codigoFinal
+        );
+    }
+
+    Long usuarioSesionId =
+        (Long) request.getSession().getAttribute("id");
+
+    if (usuarioSesionId == null) {
+        usuarioSesionId =
+            (Long) request.getSession().getAttribute("IDUSUARIO");
+    }
+
+    if (usuarioSesionId == null) {
+        return new ModelAndView("redirect:/login");
+    }
+
+    Long turnoActualId = null;
+
+    if (partidaReal.getJugadorTurnoAleatorio() != null) {
+        turnoActualId =
+            (long) partidaReal.getJugadorTurnoAleatorio().getId();
+    }
+
+    model.put("partida", partidaReal);
+    model.put("usuarioSesionId", usuarioSesionId);
+    model.put("turnoActualId", turnoActualId);
+
+    return new ModelAndView(VISTA_PARTIDA, model);
+}
 }
