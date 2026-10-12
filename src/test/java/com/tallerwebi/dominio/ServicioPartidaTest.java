@@ -51,4 +51,24 @@ public class ServicioPartidaTest {
         assertEquals(0, partidaObtenida.getJugadores().get(0).getPosicionActual());
         assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
     }
+
+    @Test
+    public void queSePuedaSumarDineroAlJugador() {
+        Jugador jugador = new Jugador();
+        jugador.setDinero(1000);
+
+        servicioPartida.sumarDinero(jugador, 500);
+
+        assertEquals(1500, jugador.getDinero());
+    }
+
+    @Test
+    public void queSePuedaRestarDineroAlJugador() {
+        Jugador jugador = new Jugador();
+        jugador.setDinero(1000);
+
+        servicioPartida.restarDinero(jugador, 300);
+
+        assertEquals(700, jugador.getDinero());
+    }
 }

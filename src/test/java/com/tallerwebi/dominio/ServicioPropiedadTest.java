@@ -12,8 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static com.tallerwebi.dominio.enums.GrupoPropiedades.SAN_JUSTO;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +88,6 @@ public class ServicioPropiedadTest {
         assertEquals(1000, propietario.getDinero());
     }
 
-
     @Test
     public void jugadorDeberiaMejorarPropiedadSiEsDuenioDeTodoElGrupo() {
         Jugador jugador = new Jugador();
@@ -109,4 +107,22 @@ public class ServicioPropiedadTest {
         assertEquals(1, propiedad1.getNivelMejora());
     }
 
+    @Test
+    public void propiedadSinDuenioDeberiaEstarDisponible() {
+        Propiedad propiedad = new Propiedad( 1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
+        assertTrue(servicioPropiedad.estaDisponible(propiedad));
+    }
+
+    @Test
+    public void alquilerDeberiaAumentarSegunElNivelDeMejoras() {
+        Propiedad propiedad = new Propiedad(1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
+        propiedad.setNivelMejora(2);
+        assertEquals(200, servicioPropiedad.calcularAlquiler(propiedad));
+    }
+
+    @Test
+    public void alquilerSinMejorasDeberiaMantenerElPrecioBase() {
+        Propiedad propiedad = new Propiedad(1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
+        assertEquals(100, servicioPropiedad.calcularAlquiler(propiedad));
+    }
 }
