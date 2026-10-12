@@ -15,7 +15,6 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.Ficha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
@@ -183,6 +182,10 @@ public class ServicioPartidaTest {
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
 
+        
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -190,6 +193,8 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
+        
+        sala.setCreador(creador); 
 
         Partida partida = new Partida();
         partida.setCodigoUnico(sala.getCodigoUnico());
@@ -201,7 +206,8 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
 
-        servicioPartida.iniciarPartida(sala.getCodigoUnico());
+        
+        servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
         for (Jugador jugador : partida.getJugadores()) {
@@ -216,14 +222,21 @@ public class ServicioPartidaTest {
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList());
 
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
+        
+        sala.setCreador(creador);
+        
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
 
         assertThrows(CantidadJugadoresInsuficienteException.class,
-                () -> servicioPartida.iniciarPartida(sala.getCodigoUnico()));
+                () -> servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L));
+                
         assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
         verify(repositorioPartidaMock, never()).guardarPartida(any());
     }
@@ -236,6 +249,7 @@ public class ServicioPartidaTest {
 
         Usuario usuarioUno = new Usuario();
         usuarioUno.setUsername("usuario1");
+        usuarioUno.setId(1L);
 
         Usuario usuarioDos = new Usuario();
         usuarioDos.setUsername("usuario2");
@@ -248,7 +262,7 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
-        sala.setCreador(usuarioUno);
+        sala.setCreador(usuarioUno); // Acá ya estaba asignado el creador
         sala.setUsuarios(Arrays.asList(
                 usuarioUno, usuarioDos, usuarioTres, usuarioCuatro
         ));
@@ -259,7 +273,8 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(null);
 
-        servicioPartida.iniciarPartida(sala.getCodigoUnico());
+        
+        servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         verify(repositorioPartidaMock).guardarPartida(any(Partida.class));
     }
@@ -269,6 +284,7 @@ public class ServicioPartidaTest {
             throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
+            
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -278,13 +294,18 @@ public class ServicioPartidaTest {
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
 
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
+        sala.setCreador(creador);
+        
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
 
-        servicioPartida.iniciarPartida(sala.getCodigoUnico());
+        servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         assertEquals(4, partida.getJugadores().size());
         Jugador jugadorSeleccionado = partida.getJugadorTurnoAleatorio();
