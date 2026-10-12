@@ -1,168 +1,229 @@
+
 let stompClient = null;
 
 function conectarWebSocket(codigoSala, urlWebSocket) {
+
     const socket = new SockJS(urlWebSocket);
 
     stompClient = Stomp.over(socket);
 
-    stompClient.connect(
-        {},
-        function () {
-            console.log("Conectado al WebSocket");
+    stompClient.connect({}, function () {
 
-            // 1. Suscripción para actualizar la lista de jugadores
-            stompClient.subscribe("/topic/sala/" + codigoSala, function (mensaje) {
+        console.log("Conectado al WebSocket");
+
+        // Actualización de los jugadores de la sala
+        stompClient.subscribe(
+            "/topic/sala/" + codigoSala,
+            function (mensaje) {
+
                 const salaActualizada = JSON.parse(mensaje.body);
 
                 console.log("Sala actualizada:", salaActualizada);
 
                 actualizarJugadores(salaActualizada);
-            });
+            }
+        );
 
-            // 2. Suscripción para escuchar cuando se inicia la partida y redirigir
-            stompClient.subscribe("/topic/sala/" + codigoSala + "/iniciar", function (mensaje) {
-                if (mensaje.body === "INICIAR") {
-                    console.log("¡La partida ha comenzado! Redirigiendo al tablero...");
-                    window.location.href = window.location.origin + "/spring/partida";
+        // Notificación de ficha seleccionada
+        stompClient.subscribe(
+            "/topic/partida/" + codigoSala,
+            function (mensaje) {
+
+                const seleccion = JSON.parse(mensaje.body);
+
+                console.log("Ficha seleccionada:", seleccion);
+
+                const datosSala = document.getElementById("datos-sala");
+                const idUsuario = datosSala.dataset.usuarioId;
+
+                if (String(seleccion.idUsuario) === idUsuario) {
+                    actualizarSeleccionVisual(seleccion.fichaSeleccionada);
                 }
-            });
-        },
-        function (error) {
-            console.error("Error al conectar con WebSocket:", error);
-        },
-    );
+            }
+        );
+
+        // Errores al seleccionar ficha
+        stompClient.subscribe(
+            "/topic/partida/" + codigoSala + "/errores",
+            function (mensaje) {
+
+                const errorContainer =
+                    document.getElementById("mensajeFichaError");
+
+                if (errorContainer) {
+                    errorContainer.textContent = mensaje.body;
+                    errorContainer.hidden = false;
+                }
+            }
+        );
+
+    }, function (error) {
+
+        console.error("Error al conectar con WebSocket:", error);
+
+    });
 }
 
 function actualizarJugadores(salaActualizada) {
-    const lista = document.getElementById("lista-jugadores");
 
-    const contador = document.getElementById("contador-jugadores");
+  const lista = document.getElementById("lista-jugadores");
 
-    if (!lista || !contador) {
-        return;
-    }
+  const contador = document.getElementById("contador-jugadores");
 
-    const usuarios = salaActualizada.usernames;
+  if (!lista || !contador) {
+    return;
+  }
 
-    contador.textContent = usuarios.length + "/4";
+  const usuarios = salaActualizada.usernames;
 
-    lista.replaceChildren();
+  contador.textContent = usuarios.length + "/4";
 
-    usuarios.forEach(function (username) {
-        const jugador = document.createElement("div");
-        jugador.className = "salaEspera__jugador";
+  lista.replaceChildren();
 
-        const avatar = document.createElement("div");
-        avatar.className = "avatar avatar--azul";
+  usuarios.forEach(function (username) {
 
-        avatar.textContent = username.charAt(0).toUpperCase();
+    const jugador = document.createElement("div");
+    jugador.className = "salaEspera__jugador";
 
-        const info = document.createElement("div");
-        info.className = "salaEspera__jugadorInfo";
+    const avatar = document.createElement("div");
+    avatar.className = "avatar avatar--azul";
 
-        const nombre = document.createElement("strong");
-        nombre.textContent = username;
+    avatar.textContent = username.charAt(0).toUpperCase();
 
-        const listo = document.createElement("div");
-        listo.className = "salaEspera__listo";
+    const info = document.createElement("div");
+    info.className = "salaEspera__jugadorInfo";
 
-        const punto = document.createElement("span");
+    const nombre = document.createElement("strong");
+    nombre.textContent = username;
 
-        listo.appendChild(punto);
-        listo.appendChild(document.createTextNode("Listo"));
+    const listo = document.createElement("div");
+    listo.className = "salaEspera__listo";
 
-        info.appendChild(nombre);
-        info.appendChild(listo);
+    const punto = document.createElement("span");
 
-        const menu = document.createElement("button");
-        menu.className = "salaEspera__menu";
-        menu.type = "button";
-        menu.textContent = "⋮";
+    listo.appendChild(punto);
+    listo.appendChild(document.createTextNode("Listo"));
 
-        jugador.appendChild(avatar);
-        jugador.appendChild(info);
-        jugador.appendChild(menu);
+    info.appendChild(nombre);
+    info.appendChild(listo);
 
-        lista.appendChild(jugador);
-    });
+    const menu = document.createElement("button");
+    menu.className = "salaEspera__menu";
+    menu.type = "button";
+    menu.textContent = "⋮";
 
-    for (let i = usuarios.length; i < 4; i++) {
-        const vacio = document.createElement("div");
-        vacio.className = "salaEspera__jugador salaEspera__jugador--vacio";
+    jugador.appendChild(avatar);
+    jugador.appendChild(info);
+    jugador.appendChild(menu);
 
-        const avatar = document.createElement("div");
-        avatar.className = "avatar avatar--vacio";
+    lista.appendChild(jugador);
+  });
 
-        const info = document.createElement("div");
-        info.className = "salaEspera__jugadorInfo";
+  for (let i = usuarios.length; i < 4; i++) {
 
-        const texto = document.createElement("strong");
-        texto.textContent = "Esperando jugador...";
+    const vacio = document.createElement("div");
+    vacio.className =
+      "salaEspera__jugador salaEspera__jugador--vacio";
 
-        const detalle = document.createElement("small");
-        detalle.textContent = "Esperando que alguien se una";
+    const avatar = document.createElement("div");
+    avatar.className = "avatar avatar--vacio";
 
-        info.appendChild(texto);
-        info.appendChild(detalle);
+    const info = document.createElement("div");
+    info.className = "salaEspera__jugadorInfo";
 
-        const menu = document.createElement("button");
-        menu.className = "salaEspera__menu";
-        menu.type = "button";
+    const texto = document.createElement("strong");
+    texto.textContent = "Esperando jugador...";
 
-        vacio.appendChild(avatar);
-        vacio.appendChild(info);
-        vacio.appendChild(menu);
+    const detalle = document.createElement("small");
+    detalle.textContent = "Esperando que alguien se una";
 
-        lista.appendChild(vacio);
-    }
+    info.appendChild(texto);
+    info.appendChild(detalle);
+
+    const menu = document.createElement("button");
+    menu.className = "salaEspera__menu";
+    menu.type = "button";
+
+    vacio.appendChild(avatar);
+    vacio.appendChild(info);
+    vacio.appendChild(menu);
+
+    lista.appendChild(vacio);
+  }
 }
 
-// Único bloque DOMContentLoaded unificado y optimizado
 document.addEventListener("DOMContentLoaded", function () {
+
+  const datosSala = document.getElementById("datos-sala");
+
+  if (!datosSala) {
+    console.error("No se encontraron los datos de la sala");
+    return;
+  }
+
+  const codigoSala = datosSala.dataset.codigo;
+  const urlWebSocket = datosSala.dataset.wsUrl;
+
+  if (!codigoSala || !urlWebSocket) {
+    console.error("Falta el código o la URL del WebSocket");
+    return;
+  }
+
+  conectarWebSocket(codigoSala, urlWebSocket);
+});
+
+function seleccionarFicha(colorFicha) {
+
+    const errorContainer = document.getElementById("mensajeFichaError");
+
+    if (errorContainer) {
+        errorContainer.hidden = true;
+        errorContainer.textContent = "";
+    }
+
+    if (!stompClient || !stompClient.connected) {
+        if (errorContainer) {
+            errorContainer.textContent = "No hay conexión con el servidor.";
+            errorContainer.hidden = false;
+        }
+        return;
+    }
+
     const datosSala = document.getElementById("datos-sala");
 
-    if (!datosSala) {
-        console.error("No se encontraron los datos de la sala");
-        return;
-    }
-
     const codigoSala = datosSala.dataset.codigo;
-    const urlWebSocket = datosSala.dataset.wsUrl;
+    const idUsuario = datosSala.dataset.usuarioId;
 
-    if (!codigoSala || !urlWebSocket) {
-        console.error("Falta el código o la URL del WebSocket");
-        return;
-    }
+    const seleccion = {
+        codigoUnicoPartida: codigoSala,
+        idUsuario: Number(idUsuario),
+        fichaSeleccionada: colorFicha
+    };
 
-    // 1. Conectamos una sola vez al WebSocket
-    conectarWebSocket(codigoSala, urlWebSocket);
+    stompClient.send(
+        "/app/seleccionar-ficha",
+        { "content-type": "application/json" },
+        JSON.stringify(seleccion)
+    );
+}
 
-    // 2. Interceptamos el formulario de inicio para evitar la recarga de página por POST tradicional
-    const formIniciar = document.getElementById("form-iniciar");
-    if (formIniciar) {
-        formIniciar.addEventListener("submit", function (e) {
-            e.preventDefault();
+// Función auxiliar para actualizar las clases visuales de la ficha activa
+function actualizarSeleccionVisual(colorFicha) {
+    const botones = document.querySelectorAll(".salaEspera__ficha");
 
-            const codigoUnicoInput = document.getElementById("codigo-unico-input");
-            const codigoUnico = codigoUnicoInput ? codigoUnicoInput.value : codigoSala;
+    botones.forEach((btn) => {
+        const check = btn.querySelector(".salaEspera__check");
+        btn.classList.remove("salaEspera__ficha--seleccionada");
 
-            fetch(formIniciar.action, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: "codigoUnico=" + encodeURIComponent(codigoUnico),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        console.error("Error al iniciar la partida");
-                    } else {
-                        console.log("Petición de inicio enviada con éxito. Esperando WebSocket...");
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error en la petición:", error);
-                });
-        });
-    }
-});
+        if (check) {
+            check.style.display = "none";
+        }
+
+        if (btn.getAttribute("data-ficha") === colorFicha) {
+            btn.classList.add("salaEspera__ficha--seleccionada");
+            if (check) {
+                check.style.display = "flex";
+            }
+        }
+    });
+}

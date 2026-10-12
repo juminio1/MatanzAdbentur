@@ -64,6 +64,7 @@ public class ControladorSalaEspera {
             modelo.addObject(CODIGO_UNICO, codigoUnico);
             modelo.addObject("usuarios", sala.getUsuarios());
             modelo.addObject("cantidadUsuarios", sala.getUsuarios().size());
+            modelo.addObject("idUsuario", idUsuario);
             return modelo;
         } catch (SalaNoEncontradaException e) {
             return new ModelAndView(REDIRECT_HOME);

@@ -54,8 +54,10 @@ public class ServicioPartidaTest {
         jugador2.setPosicionActual(7);
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
-        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba))
-            .thenReturn(partidaSimulada);
+        // devuelve la partida falsa
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+            partidaSimulada
+        );
 
         Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
 

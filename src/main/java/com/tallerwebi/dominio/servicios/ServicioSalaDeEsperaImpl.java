@@ -1,10 +1,9 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.Jugador;
-import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.Ficha; 
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException; 
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
@@ -14,7 +13,6 @@ import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -31,8 +29,6 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final RepositorioUsuario repositorioUsuario;
-    private final RepositorioPartida repositorioPartida;
-    private final ServicioPartida servicioPartida;
     private final NotificadorSala notificadorSala;
 
     @Autowired
@@ -45,8 +41,6 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     ) {
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.repositorioUsuario = repositorioUsuario;
-        this.repositorioPartida = repositorioPartida;
-        this.servicioPartida = servicioPartida;
         this.notificadorSala = notificadorSala;
     }
 
@@ -152,6 +146,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
+                        //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
                         notificadorSala.notificarSalaActualizada(estadoActualizado);
                     }
                 }
@@ -165,30 +160,42 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
     }
 
-    /*@Override
-    public void prepararEIniciarPartida(Long idSala) throws Exception {
-        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorId(idSala);
-        if (sala == null) {
-            throw new RuntimeException("La sala de espera no existe");
-        }
+    @Override
+public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+    throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
 
-        Partida nuevaPartida = new Partida();
-        nuevaPartida.setCodigoUnico(sala.getCodigoUnico());
-        nuevaPartida.setCreador(sala.getCreador());
-        nuevaPartida.setTiempoInicio(Instant.now());
+    Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
-        nuevaPartida.setEstado(EstadoPartida.EN_ESPERA);
+    if (usuario == null) {
+        throw new UsuarioNoEncontradoException();
+    }
 
-        for (Usuario usuario : sala.getUsuarios()) {
-            Jugador jugador = new Jugador();
-            jugador.setApodo(usuario.getUsername());
+    SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
-            jugador.setPartida(nuevaPartida);
+    Ficha fichaAnterior = usuario.getFicha();
 
-            nuevaPartida.getJugadores().add(jugador);
-        }
-        repositorioPartida.guardarPartida(nuevaPartida);
+    // Si vuelve a elegir su misma ficha, no hacemos nada
+    if (ficha == fichaAnterior) {
+        return;
+    }
 
-        servicioPartida.iniciarPartida();
-    }*/
+    // Verificamos que la nueva ficha esté disponible
+    if (sala.getFichasOcupadas().contains(ficha)) {
+        throw new FichaOcupadaException(
+            "La ficha ya se encuentra ocupada"
+        );
+    }
+
+    // Liberamos la ficha anterior si estaba ocupada en esta sala
+    if (fichaAnterior != null) {
+        sala.getFichasOcupadas().remove(fichaAnterior);
+    }
+
+    // Guardamos la nueva selección
+    usuario.setFicha(ficha);
+    sala.getFichasOcupadas().add(ficha);
+
+    repositorioUsuario.modificar(usuario);
+    repositorioSalaDeEspera.modificar(sala);
+}
 }

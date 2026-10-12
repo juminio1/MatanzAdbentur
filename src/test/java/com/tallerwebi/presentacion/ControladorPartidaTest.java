@@ -8,6 +8,8 @@ import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.servicios.ResultadoTirada;
+import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -19,6 +21,7 @@ public class ControladorPartidaTest {
 
     private ControladorPartida controladorPartida;
     private ServicioPartida servicioPartidaMock;
+    private ServicioDado servicioDadoMock;
     private HttpServletRequest requestMock;
     private HttpSession sessionMock;
 
@@ -27,6 +30,7 @@ public class ControladorPartidaTest {
         servicioPartidaMock = mock(ServicioPartida.class);
         requestMock = mock(HttpServletRequest.class);
         sessionMock = mock(HttpSession.class);
+        servicioDadoMock = mock(ServicioDado.class);
 
         when(requestMock.getSession()).thenReturn(sessionMock);
 
@@ -92,4 +96,5 @@ public class ControladorPartidaTest {
         assertNotNull(modelAndView);
         assertEquals("redirect:/sala-espera", modelAndView.getViewName());
     }
+
 }
