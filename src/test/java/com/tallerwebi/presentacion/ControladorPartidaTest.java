@@ -1,100 +1,113 @@
 package com.tallerwebi.presentacion;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.servicios.ResultadoTirada;
-import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.web.servlet.ModelAndView;
 
 public class ControladorPartidaTest {
 
-    private ControladorPartida controladorPartida;
     private ServicioPartida servicioPartidaMock;
-    private ServicioDado servicioDadoMock;
-    private HttpServletRequest requestMock;
-    private HttpSession sessionMock;
+    private ControladorPartida controladorPartida;
+    private MockHttpServletRequest request;
+    private MockHttpSession session;
 
     @BeforeEach
-    public void setUp() {
+    public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
-        requestMock = mock(HttpServletRequest.class);
-        sessionMock = mock(HttpSession.class);
-        servicioDadoMock = mock(ServicioDado.class);
-
-        when(requestMock.getSession()).thenReturn(sessionMock);
-
         controladorPartida = new ControladorPartida(servicioPartidaMock);
+        request = new MockHttpServletRequest();
+        session = new MockHttpSession();
+        request.setSession(session);
     }
 
     @Test
-    public void queSePuedaVerElTableroDeUnaPartidaExistentePorCodigo() {
-        // Dado
-        String codigoSala = "ABC123";
-        Long usuarioId = 1L;
+    public void dadoQueNoHayCodigoEnParametroNiEnSesionDebeRedirigirAHome() {
+        ModelAndView mav = controladorPartida.verTablero(null, request);
+
+        assertEquals("redirect:/home", mav.getViewName());
+    }
+
+    @Test
+    public void dadoQueElCodigoEsVacioOSoloEspaciosDebeRedirigirAHome() {
+        ModelAndView mav = controladorPartida.verTablero("   ", request);
+
+        assertEquals("redirect:/home", mav.getViewName());
+    }
+
+    @Test
+    public void dadoQueExisteCodigoPeroLaPartidaNoExisteDebeRedirigirASalaDeEsperaConCodigo() {
+        String codigoPrueba = "MATANZA123";
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(null);
+
+        ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
+
+        assertEquals("redirect:/sala-de-espera?codigoUnico=" + codigoPrueba, mav.getViewName());
+        verify(servicioPartidaMock, times(1)).obtenerPartida(codigoPrueba);
+    }
+
+    @Test
+    public void dadoQueExistePartidaPeroElUsuarioNoEstaEnSesionDebeRedirigirALogin() {
+        String codigoPrueba = "MATANZA123";
+        Partida partidaMock = new Partida();
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
+
+        ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
+
+        assertEquals("redirect:/login", mav.getViewName());
+    }
+
+    @Test
+    public void dadoQueExistePartidaYUsuarioTieneAtributoIdEnSesionDebeMostrarPantallaPartidaExitosamente() {
+        String codigoPrueba = "MATANZA123";
+        Long usuarioId = 10L;
+
+        session.setAttribute("id", usuarioId);
 
         Partida partidaMock = new Partida();
-        Jugador jugadorTurno = new Jugador();
-        jugadorTurno.setId(10);
-        partidaMock.setJugadorTurnoAleatorio(jugadorTurno);
+        Jugador jugadorMock = new Jugador();
+        jugadorMock.setId(1);
+        partidaMock.setJugadorTurnoAleatorio(jugadorMock);
 
-        when(servicioPartidaMock.obtenerPartida(codigoSala)).thenReturn(partidaMock);
-        when(sessionMock.getAttribute("IDUSUARIO")).thenReturn(usuarioId);
+        when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
 
-        // Cuando
-        ModelAndView modelAndView = controladorPartida.verTablero(codigoSala, requestMock);
+        ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
 
-        // Entonces
-        assertNotNull(modelAndView);
-        assertThat(modelAndView.getViewName(), equalToIgnoringCase("partida"));
-        assertEquals(partidaMock, modelAndView.getModel().get("partida"));
-        assertEquals(usuarioId, modelAndView.getModel().get("usuarioSesionId"));
-        assertEquals(10L, modelAndView.getModel().get("turnoActualId"));
-        verify(servicioPartidaMock, times(1)).obtenerPartida(codigoSala);
+        assertEquals("partida", mav.getViewName());
+        assertNotNull(mav.getModel().get("partida"));
+        assertEquals(partidaMock, mav.getModel().get("partida"));
+        assertEquals(usuarioId, mav.getModel().get("usuarioSesionId"));
+        assertEquals(1L, mav.getModel().get("turnoActualId"));
     }
 
     @Test
-    public void queObtengaElCodigoDeLaSesionSiNoVieneEnLaURL() {
-        // Dado
-        String codigoSalaSesion = "XYZ987";
-        Long usuarioId = 2L;
+    public void dadoQueElCodigoEstaEnSesionYUsuarioSoloTieneIDUSUARIOEnSesionDebeAccederExitosamente() {
+        String codigoEnSesion = "MATANZA999";
+        Long usuarioIdFallback = 25L;
+
+        session.setAttribute("codigoSala", codigoEnSesion);
+        session.setAttribute("IDUSUARIO", usuarioIdFallback);
 
         Partida partidaMock = new Partida();
-        when(sessionMock.getAttribute("codigoSala")).thenReturn(codigoSalaSesion);
-        when(sessionMock.getAttribute("IDUSUARIO")).thenReturn(usuarioId);
-        when(servicioPartidaMock.obtenerPartida(codigoSalaSesion)).thenReturn(partidaMock);
+        // Sin jugador de turno configurado para probar el caso de turnoActualId = null
+        when(servicioPartidaMock.obtenerPartida(codigoEnSesion)).thenReturn(partidaMock);
 
-        // Cuando (se pasa parámetro nulo)
-        ModelAndView modelAndView = controladorPartida.verTablero(null, requestMock);
+        ModelAndView mav = controladorPartida.verTablero(null, request);
 
-        // Entonces
-        assertNotNull(modelAndView);
-        assertThat(modelAndView.getViewName(), equalToIgnoringCase("partida"));
-        assertEquals(partidaMock, modelAndView.getModel().get("partida"));
-        verify(servicioPartidaMock, times(1)).obtenerPartida(codigoSalaSesion);
+        assertEquals("partida", mav.getViewName());
+        assertEquals(usuarioIdFallback, mav.getModel().get("usuarioSesionId"));
+        assertNull(mav.getModel().get("turnoActualId"));
     }
-
-    @Test
-    public void queRedirijaASalaDeEsperaSiNoExistePartidaONoHayCodigo() {
-        // Dado
-        when(requestMock.getSession().getAttribute("codigoSala")).thenReturn(null);
-
-        // Cuando
-        ModelAndView modelAndView = controladorPartida.verTablero(null, requestMock);
-
-        // Entonces
-        assertNotNull(modelAndView);
-        assertEquals("redirect:/sala-espera", modelAndView.getViewName());
-    }
-
 }
