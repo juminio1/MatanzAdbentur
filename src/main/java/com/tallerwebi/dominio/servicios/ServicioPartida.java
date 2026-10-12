@@ -12,10 +12,13 @@ import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 
 public interface ServicioPartida {
     Partida obtenerPartida(String codigoUnico); //da la info del tablero y sus posiciones
-    void iniciarPartida(String codigo)
+    void iniciarPartida(String codigo, Long idUsuario)
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException;
     void restarDinero (Jugador jugador, Integer monto);
     void sumarDinero (Jugador jugador, Integer monto);
+    void inicializarTurnos(String codigoUnico);
+    Jugador obtenerJugadorActual(String codigoUnico);
+    void avanzarTurno(String codigoUnico);
     ResultadoTiradaDTO tirarDados();
 
 }
