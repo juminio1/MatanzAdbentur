@@ -1,14 +1,10 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
-import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.Ficha; // <-- Importante
-import com.tallerwebi.dominio.excepcion.FichaOcupadaException; // <-- Importante
+import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
-import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
-import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
@@ -35,11 +31,8 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private final NotificadorSala notificadorSala;
 
     @Autowired
-    public ServicioSalaDeEsperaImpl(
-        RepositorioSalaDeEspera repositorioSalaDeEspera,
-        RepositorioUsuario repositorioUsuario,
-        NotificadorSala notificadorSala
-    ) {
+    public ServicioSalaDeEsperaImpl(RepositorioSalaDeEspera repositorioSalaDeEspera, RepositorioUsuario repositorioUsuario, NotificadorSala notificadorSala) {
+
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.repositorioUsuario = repositorioUsuario;
         this.notificadorSala = notificadorSala;
@@ -162,41 +155,38 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     }
 
     @Override
-public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
-    throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
+    public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
-    Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
 
-    if (usuario == null) {
-        throw new UsuarioNoEncontradoException();
+        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        Ficha fichaAnterior = usuario.getFicha();
+
+        // Si vuelve a elegir su misma ficha, no hacemos nada
+        if (ficha == fichaAnterior) {
+            return;
+        }
+
+        // Verificamos que la nueva ficha esté disponible
+        if (sala.getFichasOcupadas().contains(ficha)) {
+            throw new FichaOcupadaException("La ficha ya se encuentra ocupada");
+        }
+
+        // Liberamos la ficha anterior si estaba ocupada en esta sala
+        if (fichaAnterior != null) {
+            sala.getFichasOcupadas().remove(fichaAnterior);
+        }
+
+        // Guardamos la nueva selección
+        usuario.setFicha(ficha);
+        sala.getFichasOcupadas().add(ficha);
+
+        repositorioUsuario.modificar(usuario);
+        repositorioSalaDeEspera.modificar(sala);
     }
-
-    SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
-
-    Ficha fichaAnterior = usuario.getFicha();
-
-    // Si vuelve a elegir su misma ficha, no hacemos nada
-    if (ficha == fichaAnterior) {
-        return;
-    }
-
-    // Verificamos que la nueva ficha esté disponible
-    if (sala.getFichasOcupadas().contains(ficha)) {
-        throw new FichaOcupadaException(
-            "La ficha ya se encuentra ocupada"
-        );
-    }
-
-    // Liberamos la ficha anterior si estaba ocupada en esta sala
-    if (fichaAnterior != null) {
-        sala.getFichasOcupadas().remove(fichaAnterior);
-    }
-
-    // Guardamos la nueva selección
-    usuario.setFicha(ficha);
-    sala.getFichasOcupadas().add(ficha);
-
-    repositorioUsuario.modificar(usuario);
-    repositorioSalaDeEspera.modificar(sala);
-}
 }

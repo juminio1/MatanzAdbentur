@@ -1,6 +1,7 @@
 package com.tallerwebi.infraestructura;
 
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 
 import jakarta.persistence.NoResultException;
@@ -53,3 +54,4 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
   }
 
 }
+ 

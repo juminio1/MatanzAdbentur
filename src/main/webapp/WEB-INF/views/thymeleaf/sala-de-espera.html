@@ -273,9 +273,18 @@
             <!-- BOTONES INFERIORES -->
             <section class="salaEspera__acciones">
 
-                <button type="button" class="salaEspera__iniciar">
-                    Iniciar partida
-                </button>
+                <form th:action="@{/iniciar-partida}" method="post">
+
+                    <input type="hidden" name="codigoUnico" th:value="${codigoUnico}">
+
+                    <button type="submit" class="salaEspera__iniciar">
+                        Iniciar partida
+                    </button>
+
+                </form>
+
+                <div th:if="${errorIniciarPartida}" class="salaEspera__error" th:text="${errorIniciarPartida}">
+                </div>
 
                 <button type="button" class="salaEspera__invitar">
                     Invitar

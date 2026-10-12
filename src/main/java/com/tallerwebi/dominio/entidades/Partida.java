@@ -18,9 +18,7 @@ public class Partida {
 
     @ManyToOne
     @JoinColumn(name = "creador_id", nullable = false)
-    private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
-
-    // a la vez
+    private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
 
     @Enumerated(EnumType.STRING)
     private EstadoPartida estado;
@@ -28,17 +26,24 @@ public class Partida {
     //@OneToOne(cascade = CascadeType.PERSIST)
     //private Tablero tablero;
 
-    @ManyToMany
-    private List<Usuario> usuarios;
-
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
     private List<Jugador> jugadores;
 
+    @ManyToOne
+    @JoinColumn(name = "jugador_turno_id")
+    private Jugador jugadorTurnoAleatorio;
+
     public Partida() {
-        this.usuarios = new ArrayList<>();
         this.jugadores = new ArrayList<>();
-        this.estado = EstadoPartida.EN_ESPERA; // Nace en sala de espera / lobby
+    }
+
+    public Jugador getJugadorTurnoAleatorio() {
+        return jugadorTurnoAleatorio;
+    }
+
+    public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
+        this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
     }
 
     public Long getId() {
@@ -81,28 +86,11 @@ public class Partida {
         this.estado = estado;
     }
 
-    public List<Usuario> getUsuarios() {
-        return usuarios;
-    }
-
-    public void setUsuarios(List<Usuario> usuarios) {
-        this.usuarios = usuarios;
-    }
-
     public List<Jugador> getJugadores() {
         return jugadores;
     }
 
     public void setJugadores(List<Jugador> jugadores) {
         this.jugadores = jugadores;
-    }
-
-    public Boolean agregarUsuario(Usuario usuario) {
-        Integer tamanioMaximo = 4;
-        if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
-            this.usuarios.add(usuario);
-            return true;
-        }
-        return false;
     }
 }
