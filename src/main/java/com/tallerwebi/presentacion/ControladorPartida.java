@@ -1,6 +1,7 @@
 package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
@@ -8,7 +9,9 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
@@ -18,10 +21,15 @@ public class ControladorPartida {
     private final ServicioPartida servicioPartida;
 
     @Autowired
-    public ControladorPartida(ServicioPartida servicioPartida) {
+    public ControladorPartida( ServicioPartida servicioPartida) {
         this.servicioPartida = servicioPartida;
     }
 
+    @PostMapping("/partida/tirar-dados")
+    @ResponseBody
+    public ResultadoTiradaDTO tirarDados() {
+        return servicioPartida.tirarDados();
+    }
     /*@GetMapping("/partida")
     public ModelAndView verTablero(
         @RequestParam(value = "codigo", required = false) String codigoUnico,

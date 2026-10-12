@@ -15,6 +15,7 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -34,14 +35,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final RepositorioPartida repositorioPartida;
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final Random random = new Random();
+    private final ServicioDado servicioDado;
 
     @Autowired
     public ServicioPartidaImpl(
         RepositorioPartida repositorioPartida,
-        RepositorioSalaDeEspera repositorioSalaDeEspera
-    ) {
+        RepositorioSalaDeEspera repositorioSalaDeEspera,
+        ServicioDado servicioDado) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
+        this.servicioDado = servicioDado;
     }
 
     @Override
@@ -57,6 +60,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void sumarDinero(Jugador jugador, Integer monto) {
         jugador.setDinero(jugador.getDinero() + monto);
+    }
+
+    @Override
+    public ResultadoTiradaDTO tirarDados() {
+        return servicioDado.tirarDados();
     }
 
     @Override
