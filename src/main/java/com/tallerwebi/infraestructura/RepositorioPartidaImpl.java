@@ -2,6 +2,7 @@ package com.tallerwebi.infraestructura;
 
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
@@ -57,3 +58,4 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
 
 }
+ 

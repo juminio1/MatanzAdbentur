@@ -33,9 +33,6 @@ public class Propiedad {
         this.grupo = grupo;
     }
 
-
-
-
     //Getters y setters
     public Long getId() {
         return id;

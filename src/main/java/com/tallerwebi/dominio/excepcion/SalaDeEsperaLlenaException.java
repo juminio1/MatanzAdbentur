@@ -7,5 +7,5 @@ public class SalaDeEsperaLlenaException extends Exception {
   public SalaDeEsperaLlenaException() {
     super("La sala de espera está llena. No se pueden agregar más usuarios.");
   }
-    
+
 }

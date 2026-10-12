@@ -1,7 +1,11 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.Ficha;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,8 +41,13 @@ public class SalaDeEspera {
     )
     private List<Usuario> usuarios;
 
+    @ElementCollection
+    @Enumerated(EnumType.STRING)
+    private List<Ficha> fichasOcupadas;
+
     public SalaDeEspera() {
         this.usuarios = new ArrayList<>();
+        this.fichasOcupadas = new ArrayList<>(); // Inicializamos la lista aquí también
     }
 
     // --- Getters y Setters ---
@@ -73,5 +82,13 @@ public class SalaDeEspera {
 
     public void setUsuarios(List<Usuario> usuarios) {
         this.usuarios = usuarios;
+    }
+
+    public List<Ficha> getFichasOcupadas() {
+        return fichasOcupadas;
+    }
+
+    public void setFichasOcupadas(List<Ficha> fichasOcupadas) {
+        this.fichasOcupadas = fichasOcupadas;
     }
 }

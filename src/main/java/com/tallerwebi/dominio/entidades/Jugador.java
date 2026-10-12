@@ -36,6 +36,15 @@ private ColorFicha ficha;
     public void setDinero(Integer dinero) {
         this.dinero = dinero;
     }
+
+    public ColorFicha getFicha() {
+        return ficha;
+    }
+
+    public void setFicha(ColorFicha ficha) {
+        this.ficha = ficha;
+    }
+
     public void setApodo(String apodo) {
         this.apodo = apodo;
     }
@@ -43,5 +52,5 @@ private ColorFicha ficha;
         this.id = id;
     }
 
-
+    public void setPartida(Partida nuevaPartida) {}
 }
