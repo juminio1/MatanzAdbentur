@@ -26,7 +26,8 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
-    private static final int CANTIDAD_ESTABLECIDA_JUGADORES = 4;
+    private static final int CANTIDAD_MAXIMA_DE_JUGADORES = 4;
+    private static final int CANTIDAD_MINIMA_DE_JUGADORES = 2;
     private static final int CANTIDAD_INICIAL_DINERO = 150000;
     private static final int POSICION_INICIAL = 0;
 
@@ -143,36 +144,52 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    public void iniciarPartida(String codigo)
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
-        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
+    public void iniciarPartida(String codigo, Long idUsuario)
+        throws PartidaNoEncontradaException,
+        CantidadJugadoresInsuficienteException,
+        CantidadMaximaJugadoresSuperadaException,
+        PartidaIniciadaException,
+        SalaNoEncontradaException, FichaNoDisponibleException {
 
-        if (sala == null) {
-            throw new SalaNoEncontradaException("La sala no existe");
-        }
+    SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
+    validarSalaYPermisos(sala, idUsuario);
 
-        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+    
+    Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+    validarQueNoEsteEnCurso(partida);
 
-        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
-            throw new PartidaIniciadaException();
-        }
-
-        if (partida == null) {
-            partida = crearPartidaDesdeSala(sala);
-        } else if (partida.getJugadores().isEmpty()) {
-            agregarJugadoresDesdeSala(partida, sala);
-        }
-
-        validarCantidadDeJugadores(partida);
-        inicializarAtributosDeCadaJugador(partida);
-
-        partida.setEstado(EstadoPartida.EN_CURSO);
-        partida.setTiempoInicio(Instant.now());
-
-        repositorioPartida.guardarPartida(partida);
-
-        seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
+    
+    if (partida == null) {
+        partida = crearPartidaDesdeSala(sala);
+    } else if (partida.getJugadores().isEmpty()) {
+        agregarJugadoresDesdeSala(partida, sala);
     }
+
+    validarCantidadDeJugadores(partida);
+    inicializarAtributosDeCadaJugador(partida);
+
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setTiempoInicio(Instant.now());
+
+    repositorioPartida.guardarPartida(partida);
+    seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
+}
+
+
+    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario) throws SalaNoEncontradaException {
+    if (sala == null) {
+        throw new SalaNoEncontradaException("La sala no existe");
+    }
+    if (!sala.getCreador().getId().equals(idUsuario)) {
+        throw new IllegalArgumentException("Solo el creador de la sala puede iniciar la partida");
+    }
+}
+
+    private void validarQueNoEsteEnCurso(Partida partida) throws PartidaIniciadaException {
+    if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
+        throw new PartidaIniciadaException();
+    }
+}
 
     private Partida crearPartidaDesdeSala(SalaDeEspera sala) throws FichaNoDisponibleException {
         Partida partida = new Partida();
@@ -222,11 +239,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
         List<Jugador> jugadores = partida.getJugadores();
 
-        if (jugadores == null || jugadores.size() < CANTIDAD_ESTABLECIDA_JUGADORES) {
+        if (jugadores.size() < CANTIDAD_MINIMA_DE_JUGADORES) {
             throw new CantidadJugadoresInsuficienteException("Cantidad de jugadores insuficientes");
         }
 
-        if (jugadores.size() > CANTIDAD_ESTABLECIDA_JUGADORES) {
+        if (jugadores.size() > CANTIDAD_MAXIMA_DE_JUGADORES) {
             throw new CantidadMaximaJugadoresSuperadaException("Máxima de jugadores superados");
         }
     }

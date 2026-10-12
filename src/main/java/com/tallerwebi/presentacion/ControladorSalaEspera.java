@@ -133,16 +133,23 @@ public ModelAndView iniciarPartida(
         );
     }
 
-    return procesarInicioPartida(codigoUnico, request, redirectAttributes);
+    return procesarInicioPartida(codigoUnico, idUsuario, request, redirectAttributes);
 }
 
-private ModelAndView procesarInicioPartida(String codigoUnico, HttpServletRequest request, RedirectAttributes redirectAttributes) {
+private ModelAndView procesarInicioPartida(String codigoUnico, Long idUsuario, HttpServletRequest request, RedirectAttributes redirectAttributes) {
     try {
-        servicioPartida.iniciarPartida(codigoUnico);
+        servicioPartida.iniciarPartida(codigoUnico, idUsuario); 
 
         return iniciarPartidaExitosamente(
             codigoUnico,
             request,
+            redirectAttributes
+        );
+
+    } catch (IllegalArgumentException exception) {
+        return redireccionarASalaConError(
+            codigoUnico,
+            "Solo el creador de la sala puede iniciar la partida",
             redirectAttributes
         );
 
