@@ -1,102 +1,109 @@
 package com.tallerwebi.dominio.entidades;
 
-import jakarta.persistence.*;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tallerwebi.dominio.enums.EstadoPartida;
-
 @Entity
 public class Partida {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private String codigoUnico;
-  private Instant tiempoInicio;
-  private Integer ronda;
+    private Integer indiceTurnoActual;
+    private String codigoUnico;
+    private Instant tiempoInicio;
+    private Integer cantidadRondas;
 
-  public Integer getRonda() {
-    return ronda;
-  }
+    @ManyToOne
+    @JoinColumn(name = "creador_id", nullable = false)
+    private Usuario creador;
 
-  public void setRonda(Integer ronda) {
-    this.ronda = ronda;
-  }
+    @Enumerated(EnumType.STRING)
+    private EstadoPartida estado;
 
-  @ManyToOne
-  @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "partida_id")
+    private List<Jugador> jugadores;
 
-  @Enumerated(EnumType.STRING)
-  private EstadoPartida estado;
+    @ManyToOne
+    @JoinColumn(name = "jugador_turno_id")
+    private Jugador jugadorTurnoAleatorio;
 
-  //@OneToOne(cascade = CascadeType.PERSIST)
-  //private Tablero tablero;
+    public Partida() {
+        this.jugadores = new ArrayList<>();
+        this.estado = EstadoPartida.EN_ESPERA;
+        this.indiceTurnoActual = 0;
+    }
 
-  @ManyToMany
-  private List<Usuario> usuarios;
+    public Jugador getJugadorTurnoAleatorio() {
+        return jugadorTurnoAleatorio;
+    }
 
-  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
-  private List<Jugador> jugadores;
+    public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
+        this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
+    }
 
+    public Integer getRondas() {
+        return this.cantidadRondas;
+    }
 
-  public Partida() {
-    this.usuarios = new ArrayList<>();
-    this.jugadores= new ArrayList<>();
-    this.estado = EstadoPartida.EN_ESPERA;// Nace en sala de espera / lobby
-  }
+    public void setRondas(Integer cantidadRondas) {
+        this.cantidadRondas = cantidadRondas;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public void setId(Long id) {
-    this.id = id;
-  }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-  public String getCodigoUnico() {
-    return codigoUnico;
-  }
+    public String getCodigoUnico() {
+        return codigoUnico;
+    }
 
-  public void setCodigoUnico(String codigoUnico) {
-    this.codigoUnico = codigoUnico;
-  }
+    public void setCodigoUnico(String codigoUnico) {
+        this.codigoUnico = codigoUnico;
+    }
 
-  public Instant getTiempoInicio() {
-    return tiempoInicio;
-  }
+    public Instant getTiempoInicio() {
+        return tiempoInicio;
+    }
 
-  public void setTiempoInicio(Instant tiempoInicio) {
-    this.tiempoInicio = tiempoInicio;
-  }
+    public void setTiempoInicio(Instant tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
 
-  public Usuario getCreador() {
-    return creador;
-  }
+    public Usuario getCreador() {
+        return creador;
+    }
 
-  public void setCreador(Usuario creador) {
-    this.creador = creador;
-  }
+    public void setCreador(Usuario creador) {
+        this.creador = creador;
+    }
 
-  public EstadoPartida getEstado() {
-    return estado;
-  }
+    public EstadoPartida getEstado() {
+        return estado;
+    }
 
-  public void setEstado(EstadoPartida estado) {
-    this.estado = estado;
-  }
-
-  public List<Usuario> getUsuarios() {
-    return usuarios;
-  }
-
-  public void setUsuarios(List<Usuario> usuarios) {
-    this.usuarios = usuarios;
-  }
+    public void setEstado(EstadoPartida estado) {
+        this.estado = estado;
+    }
 
     public List<Jugador> getJugadores() {
         return jugadores;
@@ -106,13 +113,11 @@ public class Partida {
         this.jugadores = jugadores;
     }
 
-    public Boolean agregarUsuario(Usuario usuario) {
-    Integer tamanioMaximo = 4;
-    if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
-      this.usuarios.add(usuario);
-      return true;
+    public Integer getIndiceTurnoActual() {
+        return indiceTurnoActual;
     }
-    return false;
-  }
 
+    public void setIndiceTurnoActual(Integer indiceTurnoActual) {
+        this.indiceTurnoActual = indiceTurnoActual;
+    }
 }

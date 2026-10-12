@@ -45,7 +45,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             return;
         }
         Jugador propietario = propiedad.getPropietario();
-        if (propietario == null || propietario.getId() == jugador.getId()) {
+        if (propietario == null || propietario.getId().equals(jugador.getId())) {
             return;
         }
         Integer alquiler = propiedad.getPrecioAlquiler();
