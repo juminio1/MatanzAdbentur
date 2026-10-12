@@ -162,23 +162,41 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     }
 
     @Override
-    public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
-        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+    throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
 
-        SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+    Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
-        if (sala.getFichasOcupadas().contains(ficha)) {
-            throw new FichaOcupadaException("La ficha ya se encuentra ocupada");
-        }
-
-        usuario.setFicha(ficha);
-        sala.getFichasOcupadas().add(ficha);
-
-        repositorioUsuario.modificar(usuario);
-        repositorioSalaDeEspera.modificar(sala);
+    if (usuario == null) {
+        throw new UsuarioNoEncontradoException();
     }
+
+    SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+    Ficha fichaAnterior = usuario.getFicha();
+
+    // Si vuelve a elegir su misma ficha, no hacemos nada
+    if (ficha == fichaAnterior) {
+        return;
+    }
+
+    // Verificamos que la nueva ficha esté disponible
+    if (sala.getFichasOcupadas().contains(ficha)) {
+        throw new FichaOcupadaException(
+            "La ficha ya se encuentra ocupada"
+        );
+    }
+
+    // Liberamos la ficha anterior si estaba ocupada en esta sala
+    if (fichaAnterior != null) {
+        sala.getFichasOcupadas().remove(fichaAnterior);
+    }
+
+    // Guardamos la nueva selección
+    usuario.setFicha(ficha);
+    sala.getFichasOcupadas().add(ficha);
+
+    repositorioUsuario.modificar(usuario);
+    repositorioSalaDeEspera.modificar(sala);
+}
 }

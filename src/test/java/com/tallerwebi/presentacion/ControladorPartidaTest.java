@@ -27,17 +27,14 @@ public class ControladorPartidaTest {
         // preparacion
         ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5);
 
-        when(servicioDadoMock.tirarDados())
-                .thenReturn(resultadoEsperado);
+        when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
 
         // ejecucion
-        ResultadoTirada resultado =
-                controladorPartida.tirarDados();
+        ResultadoTirada resultado = controladorPartida.tirarDados();
 
         // validacion
         assertThat(resultado, equalTo(resultadoEsperado));
 
-        verify(servicioDadoMock, times(1))
-                .tirarDados();
+        verify(servicioDadoMock, times(1)).tirarDados();
     }
 }

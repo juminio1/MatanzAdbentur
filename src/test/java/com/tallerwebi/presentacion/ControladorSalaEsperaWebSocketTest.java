@@ -1,8 +1,10 @@
 package com.tallerwebi.presentacion;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.tallerwebi.dominio.enums.Ficha;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
@@ -61,4 +63,63 @@ public class ControladorSalaEsperaWebSocketTest {
             "La ficha ya se encuentra seleccionada"
         );
     }
+
+    
+@Test
+public void SeleccionarFichaExitosaSinMessagingTemplate() throws Exception {
+    ControladorSalaEsperaWebSocket controladorSinMessaging =
+        new ControladorSalaEsperaWebSocket(
+            servicioSalaDeEsperaMock,
+            null
+        );
+
+    SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
+    seleccion.setCodigoUnicoPartida("ABC123");
+    seleccion.setIdUsuario(1L);
+    seleccion.setFichaSeleccionada(Ficha.ROJA);
+
+    assertDoesNotThrow(() ->
+        controladorSinMessaging.seleccionarFicha(seleccion)
+    );
+
+    verify(servicioSalaDeEsperaMock).seleccionarFicha(
+        "ABC123",
+        1L,
+        Ficha.ROJA
+    );
+
+    verifyNoInteractions(messagingTemplateMock);
+}
+
+@Test
+public void SeleccionarFichaOcupadaSinMessagingTemplate() throws Exception {
+    ControladorSalaEsperaWebSocket controladorSinMessaging =
+        new ControladorSalaEsperaWebSocket(
+            servicioSalaDeEsperaMock,
+            null
+        );
+
+    SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
+    seleccion.setCodigoUnicoPartida("ABC123");
+    seleccion.setIdUsuario(2L);
+    seleccion.setFichaSeleccionada(Ficha.ROJA);
+
+    doThrow(new FichaOcupadaException("La ficha ya se encuentra seleccionada"))
+        .when(servicioSalaDeEsperaMock)
+        .seleccionarFicha("ABC123", 2L, Ficha.ROJA);
+
+    assertDoesNotThrow(() ->
+        controladorSinMessaging.seleccionarFicha(seleccion)
+    );
+
+    verify(servicioSalaDeEsperaMock).seleccionarFicha(
+        "ABC123",
+        2L,
+        Ficha.ROJA
+    );
+
+    verifyNoInteractions(messagingTemplateMock);
+}
+
+
 }

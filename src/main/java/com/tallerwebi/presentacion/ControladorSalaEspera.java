@@ -21,14 +21,16 @@ public class ControladorSalaEspera {
     private final String SALA_DE_ESPERA = "sala-de-espera";
     private static final String REDIRECT_LOGIN = "redirect:/login";
 
-
     @Autowired
     public ControladorSalaEspera(ServicioSalaDeEspera servicioSalaDeEspera) {
         this.servicioSalaDeEspera = servicioSalaDeEspera;
     }
 
     @RequestMapping(path = "/sala-de-espera", method = RequestMethod.GET)
-    public ModelAndView verSalaDeEspera(@RequestParam("codigoUnico") String codigoUnico, HttpServletRequest request) {
+    public ModelAndView verSalaDeEspera(
+        @RequestParam("codigoUnico") String codigoUnico,
+        HttpServletRequest request
+    ) {
         Long idUsuario = (Long) request.getSession().getAttribute("id");
         if (idUsuario == null) return new ModelAndView(REDIRECT_LOGIN);
 
@@ -39,8 +41,8 @@ public class ControladorSalaEspera {
             modelo.addObject("codigoUnico", codigoUnico);
             modelo.addObject("usuarios", sala.getUsuarios());
             modelo.addObject("cantidadUsuarios", sala.getUsuarios().size());
+            modelo.addObject("idUsuario", idUsuario);
             return modelo;
-
         } catch (SalaNoEncontradaException e) {
             return new ModelAndView("redirect:/home");
         }
@@ -53,7 +55,9 @@ public class ControladorSalaEspera {
 
         try {
             SalaDeEspera sala = this.servicioSalaDeEspera.crearSalaDeEspera(idUsuario);
-            return new ModelAndView("redirect:/sala-de-espera?codigoUnico=" + sala.getCodigoUnico());
+            return new ModelAndView(
+                "redirect:/sala-de-espera?codigoUnico=" + sala.getCodigoUnico()
+            );
         } catch (UsuarioNoEncontradoException e) {
             return new ModelAndView(REDIRECT_LOGIN);
         }
@@ -69,17 +73,18 @@ public class ControladorSalaEspera {
         if (idUsuario == null) return new ModelAndView(REDIRECT_LOGIN);
 
         try {
-            SalaDeEspera sala = this.servicioSalaDeEspera.unirseASalaDeEspera(idUsuario, codigoUnico);
-            return new ModelAndView("redirect:/sala-de-espera?codigoUnico=" + sala.getCodigoUnico());
-
+            SalaDeEspera sala = this.servicioSalaDeEspera.unirseASalaDeEspera(
+                idUsuario,
+                codigoUnico
+            );
+            return new ModelAndView(
+                "redirect:/sala-de-espera?codigoUnico=" + sala.getCodigoUnico()
+            );
         } catch (UsuarioNoEncontradoException e) {
             return new ModelAndView(REDIRECT_LOGIN);
-
         } catch (SalaNoEncontradaException | SalaDeEsperaLlenaException e) {
             redirectAttributes.addFlashAttribute("errorUnirse", "Código incorrecto o sala llena.");
             return new ModelAndView("redirect:/home");
         }
     }
-
-
 }

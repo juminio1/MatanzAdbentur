@@ -3,31 +3,65 @@ let stompClient = null;
 
 function conectarWebSocket(codigoSala, urlWebSocket) {
 
-  const socket = new SockJS(urlWebSocket);
+    const socket = new SockJS(urlWebSocket);
 
-  stompClient = Stomp.over(socket);
+    stompClient = Stomp.over(socket);
 
-  stompClient.connect({}, function () {
+    stompClient.connect({}, function () {
 
-    console.log("Conectado al WebSocket");
+        console.log("Conectado al WebSocket");
 
-    stompClient.subscribe(
-      "/topic/sala/" + codigoSala,
-      function (mensaje) {
+        // Actualización de los jugadores de la sala
+        stompClient.subscribe(
+            "/topic/sala/" + codigoSala,
+            function (mensaje) {
 
-        const salaActualizada = JSON.parse(mensaje.body);
+                const salaActualizada = JSON.parse(mensaje.body);
 
-        console.log("Sala actualizada:", salaActualizada);
+                console.log("Sala actualizada:", salaActualizada);
 
-        actualizarJugadores(salaActualizada);
-      }
-    );
+                actualizarJugadores(salaActualizada);
+            }
+        );
 
-  }, function (error) {
+        // Notificación de ficha seleccionada
+        stompClient.subscribe(
+            "/topic/partida/" + codigoSala,
+            function (mensaje) {
 
-    console.error("Error al conectar con WebSocket:", error);
+                const seleccion = JSON.parse(mensaje.body);
 
-  });
+                console.log("Ficha seleccionada:", seleccion);
+
+                const datosSala = document.getElementById("datos-sala");
+                const idUsuario = datosSala.dataset.usuarioId;
+
+                if (String(seleccion.idUsuario) === idUsuario) {
+                    actualizarSeleccionVisual(seleccion.fichaSeleccionada);
+                }
+            }
+        );
+
+        // Errores al seleccionar ficha
+        stompClient.subscribe(
+            "/topic/partida/" + codigoSala + "/errores",
+            function (mensaje) {
+
+                const errorContainer =
+                    document.getElementById("mensajeFichaError");
+
+                if (errorContainer) {
+                    errorContainer.textContent = mensaje.body;
+                    errorContainer.hidden = false;
+                }
+            }
+        );
+
+    }, function (error) {
+
+        console.error("Error al conectar con WebSocket:", error);
+
+    });
 }
 
 function actualizarJugadores(salaActualizada) {
@@ -138,46 +172,39 @@ document.addEventListener("DOMContentLoaded", function () {
   conectarWebSocket(codigoSala, urlWebSocket);
 });
 
-// Función para enviar la selección de ficha al servidor (Spring MVC)
 function seleccionarFicha(colorFicha) {
+
     const errorContainer = document.getElementById("mensajeFichaError");
 
-    // Ocultar mensaje de error previo
     if (errorContainer) {
-        errorContainer.setAttribute("hidden", "true");
-        errorContainer.innerText = "";
+        errorContainer.hidden = true;
+        errorContainer.textContent = "";
     }
 
-    // Petición al endpoint del Controlador de Spring
-    fetch("/spring/sala-de-espera/elegir-ficha", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-            ficha: colorFicha,
-        }),
-    })
-        .then((response) => {
-            if (!response.ok) {
-                return response.text().then((text) => {
-                    throw new Error(text || "La ficha seleccionada no está disponible.");
-                });
-            }
-            // En lugar de response.json(), leemos como texto o vacío ya que el backend responde OK
-            return response.text();
-        })
-        .then((data) => {
-            // Si el backend responde bien, actualizamos la ficha seleccionada en la vista
-            actualizarSeleccionVisual(colorFicha);
-        })
-        .catch((error) => {
-            // Mostrar cartel de error usando el atributo hidden
-            if (errorContainer) {
-                errorContainer.innerText = error.message;
-                errorContainer.removeAttribute("hidden");
-            }
-        });
+    if (!stompClient || !stompClient.connected) {
+        if (errorContainer) {
+            errorContainer.textContent = "No hay conexión con el servidor.";
+            errorContainer.hidden = false;
+        }
+        return;
+    }
+
+    const datosSala = document.getElementById("datos-sala");
+
+    const codigoSala = datosSala.dataset.codigo;
+    const idUsuario = datosSala.dataset.usuarioId;
+
+    const seleccion = {
+        codigoUnicoPartida: codigoSala,
+        idUsuario: Number(idUsuario),
+        fichaSeleccionada: colorFicha
+    };
+
+    stompClient.send(
+        "/app/seleccionar-ficha",
+        { "content-type": "application/json" },
+        JSON.stringify(seleccion)
+    );
 }
 
 // Función auxiliar para actualizar las clases visuales de la ficha activa
