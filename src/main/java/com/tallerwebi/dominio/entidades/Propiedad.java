@@ -10,6 +10,8 @@ public class Propiedad {
     private Long id;
     private Integer precioCompra;
     private Integer precioAlquiler;
+    private Integer nivelMejora = 0;
+    private String nombre;
 
     @ManyToOne
     private Jugador propietario;
@@ -22,8 +24,9 @@ public class Propiedad {
     }
 
     //Se crea la propiedad, con
-    public Propiedad(Long id, Integer precioCompra, Integer precioAlquiler, Jugador propietario, GrupoPropiedades grupo) {
+    public Propiedad(Long id, String nombre, Integer precioCompra, Integer precioAlquiler, Jugador propietario, GrupoPropiedades grupo) {
         this.id = id;
+        this.nombre = nombre;
         this.precioCompra = precioCompra;
         this.precioAlquiler = precioAlquiler;
         this.propietario = propietario;
@@ -40,6 +43,14 @@ public class Propiedad {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
     public Integer getPrecioCompra() {
@@ -65,6 +76,14 @@ public class Propiedad {
     public void setPropietario(Jugador propietario) {
         this.propietario = propietario;
     }
-
+    public void setNivelMejora(Integer nivelMejora) {
+        this.nivelMejora = nivelMejora;
+    }
+    public Integer getNivelMejora() {
+        return nivelMejora;
+    }
+    public GrupoPropiedades getGrupo() {
+        return grupo;
+    }
 
 }

@@ -11,9 +11,12 @@ public class CasilleroPropiedad extends Casillero {
     @OneToOne(cascade = CascadeType.PERSIST)
     private Propiedad propiedad;
 
+    public CasilleroPropiedad() {
+    }
+
     public CasilleroPropiedad(Long id, Integer posicion, String nombre, String descripcion, Propiedad propiedad) {
-    super(id, posicion, nombre, descripcion);
-    this.propiedad = propiedad;
+        super(id, posicion, nombre, descripcion);
+        this.propiedad = propiedad;
     }
 
     public Propiedad getPropiedad() {
@@ -23,8 +26,6 @@ public class CasilleroPropiedad extends Casillero {
     public void getPropiedad(Propiedad propiedad) {
         this.propiedad = propiedad;
     }
-
-
 
 
 }

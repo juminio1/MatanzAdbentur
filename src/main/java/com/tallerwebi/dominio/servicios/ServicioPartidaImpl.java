@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,5 +33,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void sumarDinero(Jugador jugador, Integer monto) {
         jugador.setDinero(jugador.getDinero() + monto);
     }
+
+
 }
 

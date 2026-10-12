@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.tallerwebi.dominio.enums.GrupoPropiedades.*;
 import static com.tallerwebi.dominio.enums.TipoEvento.RESTA;
 import static com.tallerwebi.dominio.enums.TipoEvento.SUMA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,11 +78,11 @@ public class ServicioCasilleroTest {
     @Test
     public void usarGettersYSetterDePropiedad(){
         Jugador si = new Jugador();
-        si.setId(1);
-        Propiedad propiedad = new Propiedad(1L,12,23,si, GrupoPropiedades.SAN_JUSTO);
+        si.setId(1L);
+        Propiedad propiedad = new Propiedad(1L,"UNLAM", 12,23,si, SAN_JUSTO);
 
         Jugador no = new Jugador();
-        no.setId(2);
+        no.setId(2L);
 
         propiedad.setId(1L);
         propiedad.setPrecioCompra(123);

@@ -1,12 +1,16 @@
 package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Partida;
 
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import jakarta.persistence.NoResultException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository("repositorioPartida")
 public class RepositorioPartidaImpl implements RepositorioPartida {
@@ -36,8 +40,6 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
       return null;
     }
   }
-
-
     @Override
   public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
     String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
@@ -51,5 +53,7 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
       return null;
     }
   }
+
+
 
 }

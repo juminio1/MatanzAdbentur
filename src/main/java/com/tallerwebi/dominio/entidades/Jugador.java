@@ -8,7 +8,7 @@ public class Jugador {
 
 @Id
 @GeneratedValue(strategy= GenerationType.IDENTITY)
-private int id;
+private Long id;
 private String apodo;
 private Integer dinero;
 
@@ -24,7 +24,7 @@ private ColorFicha ficha;
     public void setPosicionActual(Integer posicionActual) {
         this.posicionActual = posicionActual;
     }
-    public int getId() {
+    public Long getId() {
         return id;
     }
     public String getApodo() {
@@ -39,7 +39,7 @@ private ColorFicha ficha;
     public void setApodo(String apodo) {
         this.apodo = apodo;
     }
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

@@ -1,10 +1,13 @@
 package com.tallerwebi.infraestructura;
 
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import jakarta.persistence.NoResultException;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository("repositorioPropiedad")
 public class RepositorioPropiedadImpl implements RepositorioPropiedad {
@@ -36,6 +39,18 @@ private final SessionFactory sessionFactory;
 
 }
 
+    //Obtiene todas las propiedades de una localidad
+    @Override
+    public List<Propiedad> buscarPropiedadesPorGrupo(GrupoPropiedades grupo) {
 
+        //Consulta las entidades propiedad.
+        String hql = "FROM Propiedad WHERE grupo = :grupo";
+
+
+        return sessionFactory.getCurrentSession()
+                .createQuery(hql, Propiedad.class)
+                .setParameter("grupo", grupo) //asigna el grupo recibido a la consulta
+                .getResultList();//devuelve la lista con las propiedades encontradas.
+    }
 
 }

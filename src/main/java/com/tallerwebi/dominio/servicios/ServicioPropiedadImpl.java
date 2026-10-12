@@ -2,19 +2,21 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
-import com.tallerwebi.dominio.excepcion.PropiedadNoDisponibleException;
-import com.tallerwebi.dominio.excepcion.PropiedadNoEncontradaException;
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service("servicioPropiedad")
 @Transactional
 public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final RepositorioPropiedad repositorioPropiedad;
     private final ServicioPartida servicioPartida;
+    private static final int NIVEL_MAXIMO_MEJORA = 3;
 
     @Autowired
     public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida) {
@@ -23,10 +25,10 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     @Override
-    public Propiedad obtenerPropiedadExistente(Long idPropiedad){
-        Propiedad propiedad=repositorioPropiedad.buscarPropiedadPorId(idPropiedad);
+    public Propiedad obtenerPropiedadExistente(Long idPropiedad) {
+        Propiedad propiedad = repositorioPropiedad.buscarPropiedadPorId(idPropiedad);
 
-        if(propiedad==null){
+        if (propiedad == null) {
             throw new PropiedadNoEncontradaException("No se encontró la propiedad solicitada.");
         }
         return propiedad;
@@ -39,9 +41,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     @Override
     public void comprarPropiedad(Long idPropiedad, Jugador jugador) {
-        if(jugador==null){
-            throw new IllegalArgumentException("El jugador no puede ser null");
-        }
+        validarJugador(jugador);
+
 
         Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
         if (!estaDisponible(propiedadEncontrada)) {
@@ -60,18 +61,111 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     @Override
     public void pagarAlquiler(Propiedad propiedad, Jugador jugador) {
-        if (propiedad == null || jugador == null) {
-            return;
-        }
+        validarPropiedad(propiedad);
+        validarJugador(jugador);
         Jugador propietario = propiedad.getPropietario();
-        if (propietario == null || propietario.getId() == jugador.getId()) {
+        if (propietario == null || propietario.getId().equals(jugador.getId())) {
             return;
         }
         Integer alquiler = propiedad.getPrecioAlquiler();
         if (alquiler == null || jugador.getDinero() < alquiler) {
-            return;
+            throw new DineroInsuficienteException("El jugador no tiene dinero suficiente para pagar el alquiler.");
         }
         servicioPartida.restarDinero(jugador, alquiler);
         servicioPartida.sumarDinero(propietario, alquiler);
     }
+
+    @Override
+    public Integer calcularAlquiler(Propiedad propiedad) {
+        validarPropiedad(propiedad);
+
+        Integer alquilerBase = propiedad.getPrecioAlquiler();
+        Integer nivelMejora = propiedad.getNivelMejora();
+        if (alquilerBase == null || alquilerBase < 0) {
+            throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
+        }
+
+        if (nivelMejora == null || nivelMejora < 0) {
+            throw new PropiedadInvalidaException("El nivel de mejora no es válido.");
+        }
+
+        //Calcula el aumento del 50 % por cada mejora.
+        double multiplicador = 1 + (0.5 * nivelMejora);
+
+        //Devuelve el alquiler actualizado, redondeado hacia abajo al convertirlo a
+        return (int) (alquilerBase * multiplicador);
+    }
+
+    @Override
+    public void mejorarPropiedad(Long idPropiedad, Jugador jugador) {
+        validarJugador(jugador);
+
+        Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
+
+        validarPropietario(propiedad, jugador);
+        validarGrupoCompleto(propiedad, jugador);
+        validarNivelMejora(propiedad);
+
+        //Aumenta el nivel de mejora en uno.
+        propiedad.setNivelMejora(propiedad.getNivelMejora() + 1);
+    }
+
+    //Limita el nivel de mejoras hasta 3
+    private void validarNivelMejora(Propiedad propiedad) {
+        Integer nivelMejora = propiedad.getNivelMejora();
+
+        if (nivelMejora == null ||
+                nivelMejora < 0 ||
+                nivelMejora >= NIVEL_MAXIMO_MEJORA) {
+            throw new PropiedadNoMejorableException("El nivel de mejora no es válido o alcanzó el máximo.");
+        }
+    }
+
+    private void validarJugador(Jugador jugador) {
+        if (jugador == null) {
+            throw new JugadorInvalidoException("El jugador no puede ser nulo.");
+        }
+    }
+
+    private void validarPropiedad(Propiedad propiedad) {
+        if (propiedad == null) {
+            throw new PropiedadInvalidaException("No se puede calcular el alquiler de una propiedad inexistente.");
+        }
+    }
+
+    private void validarPropietario(Propiedad propiedad, Jugador jugador) {
+        Jugador propietario = propiedad.getPropietario();
+
+        if (propietario == null ||
+                !propietario.getId().equals(jugador.getId())) {
+            throw new PropiedadNoMejorableException("Solo puedes mejorar tus propias propiedades.");
+        }
+    }
+
+    private void validarGrupoCompleto(Propiedad propiedad, Jugador jugador) {
+        GrupoPropiedades grupo = propiedad.getGrupo();
+
+        if (!esDuenioDeTodoElGrupo(grupo, jugador)) {
+            throw new PropiedadNoMejorableException("Debes ser dueño de todas las propiedades de la localidad para mejorarlas.");
+        }
+    }
+
+    //Busca la propiepiedad que pertenecen a esa localidad.
+    private boolean esDuenioDeTodoElGrupo(GrupoPropiedades grupo, Jugador jugador) {
+        List<Propiedad> propiedades = repositorioPropiedad.buscarPropiedadesPorGrupo(grupo);
+
+        if (propiedades.isEmpty()) {
+            return false;
+        }
+
+        for (Propiedad propiedad : propiedades) {
+            //verifica q todas tengan al jugador como propietario
+            if (propiedad.getPropietario() == null || !propiedad.getPropietario().getId().equals(jugador.getId())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
 }
