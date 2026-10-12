@@ -16,25 +16,29 @@ private Integer dinero;
 private ColorFicha ficha;
     public Jugador() {}
 
-
     private Integer posicionActual = 0;
-    public Integer getPosicionActual() {
-        return posicionActual;
-    }
-    public void setPosicionActual(Integer posicionActual) {
-        this.posicionActual = posicionActual;
+
+    private Integer orden;
+    private Boolean pierdeTurno;
+    public Jugador() {
+        this.dinero = 0;
+        this.posicionActual = 0;
+        this.pierdeTurno = false;
     }
     public Long getId() {
         return id;
     }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getApodo() {
         return apodo;
     }
-    public Integer getDinero() {
-        return dinero;
-    }
-    public void setDinero(Integer dinero) {
-        this.dinero = dinero;
+
+    public void setApodo(String apodo) {
+        this.apodo = apodo;
     }
 
     public ColorFicha getFicha() {
@@ -45,12 +49,36 @@ private ColorFicha ficha;
         this.ficha = ficha;
     }
 
-    public void setApodo(String apodo) {
-        this.apodo = apodo;
-    }
-    public void setId(Long id) {
-        this.id = id;
+
+    public Integer getDinero() {
+        return dinero;
     }
 
-    public void setPartida(Partida nuevaPartida) {}
+    public void setDinero(Integer dinero) {
+        this.dinero = dinero;
+    }
+
+    public Integer getPosicionActual() {
+        return posicionActual;
+    }
+
+    public void setPosicionActual(Integer posicionActual) {
+        this.posicionActual = posicionActual;
+}
+
+    public Integer getOrden() {
+        return orden;
+        }
+
+    public void setOrden(Integer orden) {
+        this.orden = orden;
+    }
+
+    public Boolean getPierdeTurno() {
+        return pierdeTurno;
+    }
+
+    public void setPierdeTurno(Boolean pierdeTurno) {
+        this.pierdeTurno = pierdeTurno;
+    }
 }
