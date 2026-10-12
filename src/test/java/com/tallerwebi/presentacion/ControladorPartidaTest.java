@@ -78,7 +78,7 @@ public class ControladorPartidaTest {
 
         Partida partidaMock = new Partida();
         Jugador jugadorMock = new Jugador();
-        jugadorMock.setId(1);
+        jugadorMock.setId(1L);
         partidaMock.setJugadorTurnoAleatorio(jugadorMock);
 
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
