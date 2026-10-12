@@ -28,11 +28,6 @@ body {
     overflow-x: hidden;
 }
 
-
-/* =========================
-   CONTENEDOR LOGIN
-   ========================= */
-
 .login-container {
     min-height: calc(100vh - 80px);
 
@@ -43,11 +38,6 @@ body {
 
     padding: 50px 5%;
 }
-
-
-/* =========================
-   CARD PRINCIPAL
-   ========================= */
 
 .login-card {
     width: 100%;
@@ -72,11 +62,6 @@ body {
         9px 9px 0 #111;
 }
 
-
-/* =========================
-   PANEL IZQUIERDO
-   ========================= */
-
 .login-info {
     position: relative;
 
@@ -95,9 +80,6 @@ body {
 
     overflow: hidden;
 }
-
-
-/* Forma decorativa */
 
 .login-info::before {
     content: "";
@@ -187,11 +169,6 @@ body {
     line-height: 1.6;
 }
 
-
-/* =========================
-   CASILLEROS DECORATIVOS
-   ========================= */
-
 .casilleros {
     display: flex;
 
@@ -251,11 +228,6 @@ body {
     color: white;
 }
 
-
-/* =========================
-   FORMULARIO
-   ========================= */
-
 .login-form-section {
     display: flex;
 
@@ -265,9 +237,6 @@ body {
 
     padding: 55px 65px;
 }
-
-
-/* Título formulario */
 
 .login-form-title {
     margin-bottom: 32px;
@@ -307,11 +276,6 @@ body {
 
     font-weight: 500;
 }
-
-
-/* =========================
-   INPUTS
-   ========================= */
 
 .form-group {
     display: flex;
@@ -373,11 +337,6 @@ body {
         0 0 0 3px rgba(43, 57, 144, 0.12);
 }
 
-
-/* =========================
-   ERROR
-   ========================= */
-
 .login-error {
     display: flex;
 
@@ -420,11 +379,6 @@ body {
 
     font-weight: 900;
 }
-
-
-/* =========================
-   BOTÓN LOGIN
-   ========================= */
 
 .btn-ingresar {
     width: 100%;
@@ -487,11 +441,6 @@ body {
         2px 2px 0 #777;
 }
 
-
-/* =========================
-   REGISTRO
-   ========================= */
-
 .register-section {
     display: flex;
 
@@ -524,11 +473,6 @@ body {
 .register-section a:hover {
     text-decoration: underline;
 }
-
-
-/* =========================
-   RESPONSIVE
-   ========================= */
 
 @media (max-width: 900px) {
 

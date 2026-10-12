@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.enums.Ficha;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,12 +20,14 @@ public class Usuario {
 
     @Column(unique = true, nullable = false)
     private String username;
-    
+
     @Column(name = "avatar")
     private String avatar = "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png";
     private String password;
     private String rol;
     private Boolean activo = false;
+
+    private Ficha ficha;
 
     public Long getId() {
         return id;
@@ -83,5 +87,13 @@ public class Usuario {
 
     public void setAvatar(String string) {
         this.avatar = string;
+    }
+
+    public Ficha getFicha() {
+        return ficha;
+    }
+
+    public void setFicha(Ficha ficha) {
+        this.ficha = ficha;
     }
 }

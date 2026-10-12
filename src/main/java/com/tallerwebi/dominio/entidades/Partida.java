@@ -1,105 +1,100 @@
 package com.tallerwebi.dominio.entidades;
 
-import jakarta.persistence.*;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.tallerwebi.dominio.enums.EstadoPartida;
-
 @Entity
 public class Partida {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private String codigoUnico;
-  private Instant tiempoInicio;
-  private Integer indiceTurnoActual;
+    private Integer indiceTurnoActual;
+    private String codigoUnico;
+    private Instant tiempoInicio;
 
-  @ManyToOne
-  @JoinColumn(name = "creador_id", nullable = false)
-  private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa
+    @ManyToOne
+    @JoinColumn(name = "creador_id", nullable = false)
+    private Usuario creador;
 
- 
+    @Enumerated(EnumType.STRING)
+    private EstadoPartida estado;
 
-  @Enumerated(EnumType.STRING)
-  private EstadoPartida estado;
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "partida_id")
+    private List<Jugador> jugadores;
 
-  //@OneToOne(cascade = CascadeType.PERSIST)
-  //private Tablero tablero;
+    @ManyToOne
+    @JoinColumn(name = "jugador_turno_id")
+    private Jugador jugadorTurnoAleatorio;
 
-  @ManyToMany
-  private List<Usuario> usuarios;
-
-  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-  @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
-  private List<Jugador> jugadores;
-
-
-  public Partida() {
-    this.usuarios = new ArrayList<>();
-    this.jugadores= new ArrayList<>();
-    this.estado = EstadoPartida.EN_ESPERA;// Nace en sala de espera / lobby
-    this.indiceTurnoActual = 0;
-  }
-
-  public Integer getIndiceTurnoActual() {
-      return indiceTurnoActual;
+    public Partida() {
+        this.jugadores = new ArrayList<>();
+        this.estado = EstadoPartida.EN_ESPERA;
+        this.indiceTurnoActual = 0;
     }
 
-  public void setIndiceTurnoActual(Integer indiceTurnoActual) {
-      this.indiceTurnoActual = indiceTurnoActual;
+    public Jugador getJugadorTurnoAleatorio() {
+        return jugadorTurnoAleatorio;
     }
 
-  public Long getId() {
-    return id;
-  }
+    public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
+        this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
+    }
 
-  public void setId(Long id) {
-    this.id = id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public String getCodigoUnico() {
-    return codigoUnico;
-  }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-  public void setCodigoUnico(String codigoUnico) {
-    this.codigoUnico = codigoUnico;
-  }
+    public String getCodigoUnico() {
+        return codigoUnico;
+    }
 
-  public Instant getTiempoInicio() {
-    return tiempoInicio;
-  }
+    public void setCodigoUnico(String codigoUnico) {
+        this.codigoUnico = codigoUnico;
+    }
 
-  public void setTiempoInicio(Instant tiempoInicio) {
-    this.tiempoInicio = tiempoInicio;
-  }
+    public Instant getTiempoInicio() {
+        return tiempoInicio;
+    }
 
-  public Usuario getCreador() {
-    return creador;
-  }
+    public void setTiempoInicio(Instant tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
 
-  public void setCreador(Usuario creador) {
-    this.creador = creador;
-  }
+    public Usuario getCreador() {
+        return creador;
+    }
 
-  public EstadoPartida getEstado() {
-    return estado;
-  }
+    public void setCreador(Usuario creador) {
+        this.creador = creador;
+    }
 
-  public void setEstado(EstadoPartida estado) {
-    this.estado = estado;
-  }
+    public EstadoPartida getEstado() {
+        return estado;
+    }
 
-  public List<Usuario> getUsuarios() {
-    return usuarios;
-  }
-
-  public void setUsuarios(List<Usuario> usuarios) {
-    this.usuarios = usuarios;
-  }
+    public void setEstado(EstadoPartida estado) {
+        this.estado = estado;
+    }
 
     public List<Jugador> getJugadores() {
         return jugadores;
@@ -109,13 +104,11 @@ public class Partida {
         this.jugadores = jugadores;
     }
 
-    public Boolean agregarUsuario(Usuario usuario) {
-    Integer tamanioMaximo = 4;
-    if (this.usuarios.size() < tamanioMaximo && this.estado == EstadoPartida.EN_ESPERA) {
-      this.usuarios.add(usuario);
-      return true;
+    public Integer getIndiceTurnoActual() {
+        return indiceTurnoActual;
     }
-    return false;
-  }
 
+    public void setIndiceTurnoActual(Integer indiceTurnoActual) {
+        this.indiceTurnoActual = indiceTurnoActual;
+    }
 }
