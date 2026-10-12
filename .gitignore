@@ -24,3 +24,7 @@ hs_err_pid*
 
 # Reportes de codigo limpio y cobertura de pruebas
 .calidad-de-codigo/
+
+# Es la carpeta donde npm guarda todas las dependencias instaladas del proyecto. 
+# Se ignora porque puede llegar a tener muchos archivos y no conviene subirla a Git porq pesa mucho.
+node_modules/

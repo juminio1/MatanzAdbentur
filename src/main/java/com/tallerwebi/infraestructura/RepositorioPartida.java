@@ -1,10 +1,11 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.Partida;
+import com.tallerwebi.dominio.entidades.Partida;
 
 public interface RepositorioPartida {
-
-    public void guardarPartida (Partida partida);
+    void guardarPartida(Partida partida);
 
     Partida buscarPartidaActiva();
+
+    Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico);
 }

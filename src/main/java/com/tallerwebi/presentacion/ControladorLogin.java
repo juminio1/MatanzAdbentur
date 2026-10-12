@@ -1,83 +1,155 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.ServicioLogin;
-import com.tallerwebi.dominio.Usuario;
-import com.tallerwebi.dominio.excepcion.UsuarioExistente;
+import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
+import com.tallerwebi.dominio.servicios.ServicioLogin;
+import com.tallerwebi.presentacion.DTO.LoginDTO;
+import com.tallerwebi.presentacion.DTO.UsuarioPerfilDTO;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 @Controller
 public class ControladorLogin {
 
-  private ServicioLogin servicioLogin;
+  private static final String VISTA_LOGIN = "login";
+  private static final String ERROR_ATTR = "error";
 
-  @Autowired
+  private final ServicioLogin servicioLogin;
+  private HttpServletRequest request;
+
   public ControladorLogin(ServicioLogin servicioLogin) {
     this.servicioLogin = servicioLogin;
+  }
+
+  @Autowired
+  public ControladorLogin(ServicioLogin servicioLogin, HttpServletRequest request) {
+    this.servicioLogin = servicioLogin;
+    this.request = request;
   }
 
   @RequestMapping("/login")
   public ModelAndView irALogin() {
     Map<String, Object> modelo = new ModelMap();
-    modelo.put("datosLogin", new DatosLogin());
-    return new ModelAndView("login", modelo);
+    modelo.put("datosLogin", new LoginDTO());
+    return new ModelAndView(VISTA_LOGIN, modelo);
   }
 
-  @RequestMapping(path = "/validar-login", method = RequestMethod.POST)
+  @RequestMapping(path = "validar-login", method = RequestMethod.POST)
   public ModelAndView validarLogin(
-    @ModelAttribute("datosLogin") DatosLogin datosLogin,
-    HttpServletRequest request
-  ) {
-    Usuario usuarioBuscado = servicioLogin.consultarUsuario(
-      datosLogin.getEmail(),
-      datosLogin.getPassword()
-    );
-    if (usuarioBuscado != null) {
-      request.getSession().setAttribute("ROL", usuarioBuscado.getRol());
-      return new ModelAndView("redirect:/home");
-    } else {
-      Map<String, Object> model = new ModelMap();
-      model.put("error", "Usuario o clave incorrecta");
-      return new ModelAndView("login", model);
-    }
-  }
-
-  @RequestMapping(path = "/registrarme", method = RequestMethod.POST)
-  public ModelAndView registrarme(@ModelAttribute("usuario") Usuario usuario) {
-    Map<String, Object> model = new ModelMap();
+      @ModelAttribute("datosLogin") LoginDTO datosLogin,
+      HttpServletRequest request) {
     try {
-      servicioLogin.registrar(usuario);
-    } catch (UsuarioExistente e) {
-      model.put("error", "El usuario ya existe");
-      return new ModelAndView("nuevo-usuario", model);
-    } catch (Exception e) {
-      model.put("error", "Error al registrar el nuevo usuario");
-      return new ModelAndView("nuevo-usuario", model);
+      Usuario usuarioAutenticado = servicioLogin.autenticar(
+          datosLogin.getCredencial(),
+          datosLogin.getPassword());
+      HttpServletRequest actualRequest = request != null ? request : this.request;
+      if (actualRequest != null && actualRequest.getSession() != null) {
+        actualRequest.getSession().setAttribute("ROL", usuarioAutenticado.getRol());
+        actualRequest.getSession().setAttribute("NOMBRE", usuarioAutenticado.getUsername());
+        actualRequest.getSession().setAttribute("id", usuarioAutenticado.getId());
+      }
+      return new ModelAndView("redirect:/home");
+    } catch (CredencialesInvalidasException e) {
+      Map<String, Object> model = new ModelMap();
+      model.put(ERROR_ATTR, e.getMessage());
+      return new ModelAndView(VISTA_LOGIN, model);
     }
-    return new ModelAndView("redirect:/login");
   }
 
-  @RequestMapping(path = "/nuevo-usuario", method = RequestMethod.GET)
-  public ModelAndView nuevoUsuario() {
-    Map<String, Object> model = new ModelMap();
-    model.put("usuario", new Usuario());
-    return new ModelAndView("nuevo-usuario", model);
-  }
-
-  @RequestMapping(path = "/home", method = RequestMethod.GET)
+  @GetMapping("/home")
   public ModelAndView irAHome() {
-    return new ModelAndView("home");
+    Map<String, Object> modelo = new ModelMap();
+    String nombre = null;
+    HttpServletRequest actualRequest = this.request;
+
+    if (actualRequest != null) {
+      HttpSession session = actualRequest.getSession(false);
+      if (session == null) {
+        session = actualRequest.getSession();
+      }
+      if (session != null) {
+        nombre = (String) session.getAttribute("NOMBRE");
+      }
+    }
+
+    modelo.put("nombreJugador", nombre != null ? nombre : "Vecino de La Matanza");
+    return new ModelAndView("home", modelo);
   }
 
-  @RequestMapping(path = "/", method = RequestMethod.GET)
+  @GetMapping("/")
   public ModelAndView inicio() {
     return new ModelAndView("redirect:/login");
   }
+
+  @GetMapping("/cerrar-sesion")
+  public ModelAndView cerrarSesion(HttpServletRequest request) {
+    HttpServletRequest actualRequest = request != null ? request : this.request;
+    if (actualRequest != null && actualRequest.getSession(false) != null) {
+      actualRequest.getSession(false).invalidate();
+    }
+    return new ModelAndView("redirect:/login");
+  }
+
+  @GetMapping(value = "/api/usuario/perfil", produces = "application/json")
+  @ResponseBody
+  public ResponseEntity<UsuarioPerfilDTO> obtenerPerfil(HttpServletRequest request) {
+    HttpServletRequest actualRequest = request != null ? request : this.request;
+    if (actualRequest == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    HttpSession session = actualRequest.getSession(false);
+    if (session == null || session.getAttribute("id") == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    Long idUsuario = (Long) session.getAttribute("id");
+    Usuario usuario = this.servicioLogin.buscarPorId(idUsuario);
+
+    if (usuario == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    UsuarioPerfilDTO dto = new UsuarioPerfilDTO(
+        usuario.getUsername(),
+        usuario.getRol(),
+        usuario.getAvatar()
+    );
+
+    return ResponseEntity.ok(dto);
+  }
+
+  @PostMapping("/api/usuario/avatar")
+  @ResponseBody
+  public ResponseEntity<Void> actualizarAvatar(@RequestBody java.util.Map<String, String> payload, HttpServletRequest request) {
+      HttpSession session = request.getSession(false);
+      if (session == null || session.getAttribute("id") == null) {
+          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
+
+      Long idUsuario = (Long) session.getAttribute("id");
+      String nuevoAvatar = payload != null ? payload.get("avatar") : null;
+
+      if (nuevoAvatar == null || nuevoAvatar.isBlank()) {
+          return ResponseEntity.badRequest().build();
+      }
+
+      this.servicioLogin.actualizarAvatar(idUsuario, nuevoAvatar);
+      return ResponseEntity.ok().build();
+  }
+
 }

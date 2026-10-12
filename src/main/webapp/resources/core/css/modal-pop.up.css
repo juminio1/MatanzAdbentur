@@ -1,0 +1,65 @@
+/* Fondo que deja ver TODO el home */
+.modal-backdrop.show {
+    background-color: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(3px);
+}
+
+/* LA CAJITA TRANSPARENTE DE VERDAD */
+.modal-content.modal-matancero {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.modal-matancero .modal-body {
+    background: transparent !important;
+}
+
+.modal-matancero h3 {
+    font-weight: 800;
+    color: #111;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+}
+
+/* Botones con tus colores */
+.btn-matancero {
+    font-weight: 700;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.btn-azul {
+    background: #2E4A8A;
+    color: white;
+}
+.btn-azul:hover {
+    background: #1f345f;
+    color: white;
+    transform: scale(1.02);
+}
+
+.btn-amarillo {
+    background: #E8B400;
+    color: #1a1a1a;
+}
+.btn-amarillo:hover {
+    background: #c99b00;
+    color: #1a1a1a;
+    transform: scale(1.02);
+}
+
+.btn-cerrar {
+    background: none;
+    border: none;
+    color: #222;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: underline;
+}
