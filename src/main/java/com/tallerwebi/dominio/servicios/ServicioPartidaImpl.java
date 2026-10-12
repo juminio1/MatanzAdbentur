@@ -36,8 +36,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Autowired
     public ServicioPartidaImpl(
-            RepositorioPartida repositorioPartida,
-            RepositorioSalaDeEspera repositorioSalaDeEspera
+        RepositorioPartida repositorioPartida,
+        RepositorioSalaDeEspera repositorioSalaDeEspera
     ) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
@@ -60,15 +60,23 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void incrementarRondas(Partida partida) {
+        Integer turnosFinalizado = partida.getTurnosFinalizadosEnRonda() + 1;
 
+        partida.setTurnosFinalizadosEnRonda(turnosFinalizado);
 
-        partida.setRondas(+1);
-    } 
+        if (turnosFinalizado == partida.getJugadores().size()) {
+            partida.setRondaActual(partida.getRondaActual() + 1);
+            partida.setTurnosFinalizadosEnRonda(0);
+        }
+    }
+
     @Override
     public void inicializarTurnos(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
+        if (
+            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
+        ) {
             int orden = 0;
             for (Jugador jugador : partida.getJugadores()) {
                 jugador.setOrden(orden);
@@ -93,7 +101,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
             inicializarTurnos(codigoUnico);
         }
 
-        Integer indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+        Integer indiceActual =
+            partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
         return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
     }
 
@@ -110,9 +119,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void avanzarTurno(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
+        if (
+            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
+        ) {
             int cantidadJugadores = partida.getJugadores().size();
-            int indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+            int indiceActual =
+                partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
 
             int siguienteIndice = (indiceActual + 1) % cantidadJugadores;
             partida.setIndiceTurnoActual(siguienteIndice);
@@ -120,7 +132,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             Jugador jugadorSiguiente = obtenerJugadorActual(codigoUnico);
 
-            if (jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())) {
+            if (
+                jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())
+            ) {
                 jugadorSiguiente.setPierdeTurno(false);
                 repositorioPartida.guardarPartida(partida);
                 avanzarTurno(codigoUnico);
@@ -130,12 +144,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida(String codigo)
-            throws PartidaNoEncontradaException,
-            CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException,
-            PartidaIniciadaException,
-            SalaNoEncontradaException, FichaNoDisponibleException {
-
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
 
         if (sala == null) {
@@ -177,10 +186,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return partida;
     }
 
-    private void agregarJugadoresDesdeSala(
-            Partida partida,
-            SalaDeEspera sala
-    ) throws FichaNoDisponibleException {
+    private void agregarJugadoresDesdeSala(Partida partida, SalaDeEspera sala)
+        throws FichaNoDisponibleException {
         if (sala.getUsuarios() != null) {
             for (Usuario usuario : sala.getUsuarios()) {
                 Jugador jugador = crearJugador(usuario);
@@ -207,16 +214,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
             case AZUL -> ColorFicha.AZUL;
             case VERDE -> ColorFicha.VERDE;
             case AMARILLA -> ColorFicha.AMARILLO;
-            default -> throw new FichaNoDisponibleException(
-                    "Ficha no disponible para la partida"
-            );
+            default -> throw new FichaNoDisponibleException("Ficha no disponible para la partida");
         };
     }
 
     private void validarCantidadDeJugadores(Partida partida)
-            throws CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException {
-
+        throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
         List<Jugador> jugadores = partida.getJugadores();
 
         if (jugadores == null || jugadores.size() < CANTIDAD_ESTABLECIDA_JUGADORES) {
@@ -230,10 +233,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida) {
         List<Jugador> jugadores = partida.getJugadores();
+
         if (jugadores != null && !jugadores.isEmpty()) {
-            int turnoAleatorio = random.nextInt(jugadores.size());
+            Integer turnoAleatorio = random.nextInt(jugadores.size());
+
             Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
+
             partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
+            partida.setIndiceTurnoActual(turnoAleatorio);
         }
     }
 
