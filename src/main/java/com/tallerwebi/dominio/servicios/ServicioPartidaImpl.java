@@ -61,6 +61,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void incrementarRondas(Partida partida) {
+
+        if (partida.getRondaActual() == null) {
+            partida.setRondaActual(1);
+        }
+
+        if (partida.getTurnosFinalizadosEnRonda() == null) {
+            partida.setTurnosFinalizadosEnRonda(0);
+        }
+
         Integer turnosFinalizado = partida.getTurnosFinalizadosEnRonda() + 1;
 
         partida.setTurnosFinalizadosEnRonda(turnosFinalizado);
@@ -127,6 +136,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
             int indiceActual =
                 partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
 
+            incrementarRondas(partida);
+
             int siguienteIndice = (indiceActual + 1) % cantidadJugadores;
             partida.setIndiceTurnoActual(siguienteIndice);
             repositorioPartida.guardarPartida(partida);
@@ -145,51 +156,47 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-        throws PartidaNoEncontradaException,
-        CantidadJugadoresInsuficienteException,
-        CantidadMaximaJugadoresSuperadaException,
-        PartidaIniciadaException,
-        SalaNoEncontradaException, FichaNoDisponibleException {
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
+        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
+        validarSalaYPermisos(sala, idUsuario);
 
-    SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
-    validarSalaYPermisos(sala, idUsuario);
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+        validarQueNoEsteEnCurso(partida);
 
-    
-    Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
-    validarQueNoEsteEnCurso(partida);
+        if (partida == null) {
+            partida = crearPartidaDesdeSala(sala);
+        } else if (partida.getJugadores().isEmpty()) {
+            agregarJugadoresDesdeSala(partida, sala);
+        }
 
-    
-    if (partida == null) {
-        partida = crearPartidaDesdeSala(sala);
-    } else if (partida.getJugadores().isEmpty()) {
-        agregarJugadoresDesdeSala(partida, sala);
+        validarCantidadDeJugadores(partida);
+        inicializarAtributosDeCadaJugador(partida);
+
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setTiempoInicio(Instant.now());
+
+        repositorioPartida.guardarPartida(partida);
+        seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
+        
     }
 
-    validarCantidadDeJugadores(partida);
-    inicializarAtributosDeCadaJugador(partida);
-
-    partida.setEstado(EstadoPartida.EN_CURSO);
-    partida.setTiempoInicio(Instant.now());
-
-    repositorioPartida.guardarPartida(partida);
-    seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
-}
-
-
-    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario) throws SalaNoEncontradaException {
-    if (sala == null) {
-        throw new SalaNoEncontradaException("La sala no existe");
+    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
+        throws SalaNoEncontradaException {
+        if (sala == null) {
+            throw new SalaNoEncontradaException("La sala no existe");
+        }
+        if (!sala.getCreador().getId().equals(idUsuario)) {
+            throw new IllegalArgumentException(
+                "Solo el creador de la sala puede iniciar la partida"
+            );
+        }
     }
-    if (!sala.getCreador().getId().equals(idUsuario)) {
-        throw new IllegalArgumentException("Solo el creador de la sala puede iniciar la partida");
-    }
-}
 
     private void validarQueNoEsteEnCurso(Partida partida) throws PartidaIniciadaException {
-    if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
-        throw new PartidaIniciadaException();
+        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
+            throw new PartidaIniciadaException();
+        }
     }
-}
 
     private Partida crearPartidaDesdeSala(SalaDeEspera sala) throws FichaNoDisponibleException {
         Partida partida = new Partida();

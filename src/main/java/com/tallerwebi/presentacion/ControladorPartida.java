@@ -26,7 +26,7 @@ public class ControladorPartida {
     private static final String VISTA_PARTIDA = "partida";
 
     private final ServicioPartida servicioPartida;
-    private final ServicioDado servicioDado;
+    //private final ServicioDado servicioDado;
     private final SimpMessagingTemplate notificadorWebSocket;
 
     @Autowired
@@ -36,7 +36,7 @@ public class ControladorPartida {
             SimpMessagingTemplate notificadorWebSocket
     ) {
         this.servicioPartida = servicioPartida;
-        this.servicioDado = servicioDado;
+       // this.servicioDado = servicioDado;
         this.notificadorWebSocket = notificadorWebSocket;
     }
 
@@ -49,6 +49,7 @@ public class ControladorPartida {
         if (codigoFinal == null) {
             return new ModelAndView("redirect:/home");
         }
+
 
         Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
         if (partidaReal == null) {
@@ -116,7 +117,7 @@ public class ControladorPartida {
     @PostMapping("/partida/{codigoPartida}/avanzar-turno")
     @ResponseBody
     public ResponseEntity<TurnoDTO> avanzarTurno(
-            @PathVariable String codigoPartida,
+            @PathVariable("codigoPartida") String codigoPartida,
             HttpServletRequest request
     ) {
         Long usuarioSesionId = resolverUsuarioSesionId(request);
@@ -139,6 +140,9 @@ public class ControladorPartida {
         }
 
         this.servicioPartida.avanzarTurno(codigoPartida);
+
+        Partida partidaActualizada = this.servicioPartida.obtenerPartida(codigoPartida);
+
         Jugador siguienteJugador = this.servicioPartida.obtenerJugadorActual(codigoPartida);
 
         TurnoDTO turnoDTO = new TurnoDTO(
@@ -148,6 +152,7 @@ public class ControladorPartida {
                 siguienteJugador.getOrden(),
                 "Es el turno de " + siguienteJugador.getApodo()
         );
+        turnoDTO.setRondaActual(partidaActualizada.getRondaActual());
 
         this.notificadorWebSocket.convertAndSend("/topic/partida/" + codigoPartida + "/turno", turnoDTO);
 
