@@ -1,5 +1,6 @@
 package com.tallerwebi.presentacion.WebSocket;
 
+import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -17,5 +18,10 @@ public class NotificadorPartida {
 
     public void notificarCambioDeTurno(String codigoPartida, TurnoDTO turno) {
         this.template.convertAndSend("/topic/partida/" + codigoPartida + "/turno", turno);
+    }
+
+    public void notificarMovimiento(String codigoPartida, RespuestaMovimientoDTO movimiento){
+        this.template.convertAndSend("/topic/partida/" + codigoPartida, movimiento);
+
     }
 }

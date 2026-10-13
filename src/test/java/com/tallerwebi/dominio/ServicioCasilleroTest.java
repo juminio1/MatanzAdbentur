@@ -76,11 +76,11 @@ public class ServicioCasilleroTest {
     @Test
     public void usarGettersYSetterDePropiedad(){
         Jugador si = new Jugador();
-        si.setId(1);
+        si.setId(1L);
         Propiedad propiedad = new Propiedad(1L,12,23,si);
 
         Jugador no = new Jugador();
-        no.setId(2);
+        no.setId(2L);
 
         propiedad.setId(1L);
         propiedad.setPrecioCompra(123);

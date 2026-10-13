@@ -8,11 +8,12 @@ import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.HashMap;
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +30,10 @@ public class ControladorPartida {
     private final SimpMessagingTemplate notificadorWebSocket;
 
     @Autowired
-    public ControladorPartida(ServicioPartida servicioPartida ,SimpMessagingTemplate notificadorWebSocket
+    public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket
     ) {
         this.notificadorWebSocket = notificadorWebSocket;
-        this.servicioPartida=servicioPartida;
+        this.servicioPartida = servicioPartida;
     }
 
 
@@ -126,10 +127,10 @@ public class ControladorPartida {
         if (partida != null && partida.getJugadores() != null) {
             for (Jugador j : partida.getJugadores()) {
                 if (nombreSesion != null && nombreSesion.equalsIgnoreCase(j.getApodo())) {
-                    return (long) j.getId();
+                    return j.getId();
                 }
-                if (usuarioSesionId != null && usuarioSesionId.equals(j.getId().longValue())) {
-                    return (long) j.getId();
+                if (usuarioSesionId != null && usuarioSesionId.equals(j.getId())) {
+                    return j.getId();
                 }
             }
         }
@@ -139,10 +140,10 @@ public class ControladorPartida {
     private Long resolverTurnoActualId(Partida partida, String codigo) {
         Jugador jugador = servicioPartida.obtenerJugadorActual(codigo);
         if (jugador != null) {
-            return (long) jugador.getId();
+            return jugador.getId();
         }
         if (partida.getJugadorTurnoAleatorio() != null) {
-            return (long) partida.getJugadorTurnoAleatorio().getId();
+            return partida.getJugadorTurnoAleatorio().getId();
         }
         return null;
     }
@@ -165,7 +166,7 @@ public class ControladorPartida {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        boolean coincideId = usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId().longValue());
+        boolean coincideId = usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId());
         boolean coincideNombre = nombreSesion != null && nombreSesion.equalsIgnoreCase(jugadorActual.getApodo());
 
         if (!coincideId && !coincideNombre) {
@@ -196,7 +197,7 @@ public class ControladorPartida {
     @ResponseBody
     public RespuestaMovimientoDTO tirarDados(
             @RequestParam("codigoUnico") String codigoUnico,
-            @RequestParam("idJugador") int idJugador)
+            @RequestParam("idJugador") Long idJugador)
             throws PartidaNoEncontradaException, JugadorNoEncontradoException {
 
         ResultadoTiradaDTO resultado = servicioPartida.tirarDados();//Llama al servicio para generar la tirada
@@ -208,7 +209,7 @@ public class ControladorPartida {
 
         Jugador jugadorActual = null;
         for (Jugador j : partida.getJugadores()) {
-            if (j.getId() == idJugador) {
+            if (j.getId().equals(idJugador)) {
                 jugadorActual = j;
                 break;
             }
@@ -222,17 +223,20 @@ public class ControladorPartida {
 
         //se arma el paquete de datos para que el frontend lo dibuje
         RespuestaMovimientoDTO respuesta = new RespuestaMovimientoDTO();
+        respuesta.setIdJugador(jugadorActual.getId());//identifica que el jugador se movio
         respuesta.setDado1(resultado.getDado1());
         respuesta.setDado2(resultado.getDado2());
         respuesta.setSuma(resultado.sumarDados());
         respuesta.setNuevaPosicion(jugadorActual.getPosicionActual());
 
+        // Notifica a todos los jugadores la nueva posición.
+        notificadorWebSocket.convertAndSend("/topic/partida/" + codigoUnico, respuesta);
         return respuesta;
     }
 
 
-        @ExceptionHandler(JugadorNoEncontradoException.class)
-        public ResponseEntity<String> manejarJugadorNoEncontrado(JugadorNoEncontradoException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());//le devuelve al frontend un código 404 de "not found" y el mensaje de la excepción
-        }
+    @ExceptionHandler(JugadorNoEncontradoException.class)
+    public ResponseEntity<String> manejarJugadorNoEncontrado(JugadorNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());//le devuelve al frontend un código 404 de "not found" y el mensaje de la excepción
+    }
 }
