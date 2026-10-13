@@ -1,12 +1,12 @@
-//Obtiene los elementos del HTML, lo buscan por id
-const dado1 = document.getElementById("dado-1");
-const dado2 = document.getElementById("dado-2");
-const botonTirar = document.getElementById("btn-tirar");
-
-//determina la ruta base, utiliza el prefijo /spring y construye la URL correcta
+// Determina la ruta base y construye la URL correcta.
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
+
+// Obtiene los elementos del HTML por su ID.
+const dado1 = document.getElementById("dado-1");
+const dado2 = document.getElementById("dado-2");
+const botonTirar = document.getElementById("btn-tirar");
 
 // Evita enviar varias peticiones simultáneas.
 let estaTirando = false;
@@ -14,35 +14,31 @@ let estaTirando = false;
 // Registra si el jugador actual ya tiró en este turno.
 let yaTiroEnEsteTurno = false;
 
-// Une el front con el backend.
+// Une el frontend con el backend de dados.
 async function obtenerResultadoDados() {
-    //Envia la peticion HTTP
     const respuesta = await fetch(`${basePath}/partida/tirar-dados`, { method: "POST" });
 
-    //Comprueba si hubo un error HTTP
     if (!respuesta.ok) {
         throw new Error("No se pudieron tirar los dados");
     }
-    //Convierte la respuesta a JSON
+
     return await respuesta.json();
 }
 
-//Escucha el Click y ejecuta la tirada.
+// Escucha el clic y ejecuta la tirada.
 if (botonTirar) {
     botonTirar.addEventListener("click", async () => {
-        //La tirada no comienza si se cumple alguna de estas condiciones
         if (estaTirando || yaTiroEnEsteTurno || botonTirar.disabled) {
             return;
         }
 
-        //bloquea mientras se procesa
         estaTirando = true;
         botonTirar.disabled = true;
         let tiradaExitosa = false;
 
         try {
             const resultado = await obtenerResultadoDados();
-            //Se actualiza y visualiza el nro de c/dado
+
             if (dado1) dado1.textContent = resultado.dado1;
             if (dado2) dado2.textContent = resultado.dado2;
 
@@ -53,16 +49,18 @@ if (botonTirar) {
             tiradaExitosa = true;
         } catch (error) {
             console.error("Error al tirar los dados:", error);
-            // La tirada falló: permitir reintentar.
             yaTiroEnEsteTurno = false;
         } finally {
             estaTirando = false;
         }
+
         if (!tiradaExitosa) {
             botonTirar.disabled = false;
             return;
         }
-        // ELIMINAR: provisoria para finalizar el turno.
+
+        // TEMPORAL: finalizar el turno al terminar de tirar los dados.
+        // Cuando exista avanzar ficha, esta llamada deberá realizarse después.
         try {
             await finalizarTurno();
         } catch (error) {
@@ -71,7 +69,78 @@ if (botonTirar) {
     });
 }
 
-// ELIMINAR: Finaliza el turno actual y solicita el siguiente.
+// ELIMINAR cuando esté implementada la funcionalidad de fichas.
+const casilleros = document.querySelectorAll(".casillero");
+console.log("Casilleros encontrados:", casilleros.length);
+
+// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
+conectarWebSocketTurnos(basePath, codigoPartida);
+
+function conectarWebSocketTurnos(base, codigo) {
+    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
+        return;
+    }
+
+    const socket = new SockJS(`${base}/ws`);
+    const stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, () => {
+        stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
+            const turnoDTO = JSON.parse(mensaje.body);
+
+            actualizarTurnoEnPantalla(turnoDTO);
+            // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
+            actualizarRondaActual(turnoDTO.rondaActual);
+        });
+    });
+}
+
+function actualizarTurnoEnPantalla(turnoDTO) {
+    const idJugadorActual = String(turnoDTO.idJugadorActual);
+    const usuarioSesionId = String(window.usuarioSesionId);
+
+    // Si cambia el jugador activo, comienza un nuevo turno.
+    if (window.idJugadorTurnoAnterior !== idJugadorActual) {
+        yaTiroEnEsteTurno = false;
+        window.idJugadorTurnoAnterior = idJugadorActual;
+    }
+
+    // Limpiar indicadores de turno previos.
+    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => {
+        contenedor.innerHTML = "";
+    });
+
+    // Mostrar a quién le toca jugar.
+    const cardJugador = document.getElementById(idJugadorActual);
+    if (cardJugador) {
+        const contenedorTurno = cardJugador.querySelector(".contenedor-turno");
+        if (contenedorTurno) {
+            const span = document.createElement("span");
+            span.className = "indicador-turno";
+            span.textContent = idJugadorActual === usuarioSesionId
+                ? "Tu turno"
+                : `Turno de ${turnoDTO.apodoJugadorActual}`;
+            contenedorTurno.appendChild(span);
+        }
+    }
+
+    // Bloquear o habilitar el botón según el jugador actual.
+    if (botonTirar && window.usuarioSesionId !== undefined && window.usuarioSesionId !== null) {
+        botonTirar.disabled = usuarioSesionId !== idJugadorActual;
+    }
+}
+
+// GESTIÓN DE RONDAS: solo se actualiza la visualización.
+function actualizarRondaActual(rondaActual) {
+    const contadorRonda = document.getElementById("ronda-actual");
+
+    if (contadorRonda && rondaActual != null) {
+        contadorRonda.textContent = rondaActual;
+    }
+}
+
+// TEMPORAL: finalizar turno después de tirar dados.
 async function finalizarTurno() {
     console.log("Intentando avanzar el turno...");
 
@@ -91,63 +160,4 @@ async function finalizarTurno() {
     console.log("Ronda actual:", turnoDTO.rondaActual);
 
     return turnoDTO;
-}
-
-//ELIMINAR. CUANDO ESTE HECHO ELEGIR FICHA Y FICHA.
-// Busca todos los elementos del html que tenga la clase casillero
-const casilleros = document.querySelectorAll(".casillero");
-console.log("Casilleros encontrados:", casilleros.length);
-
-// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET
-conectarWebSocketTurnos(basePath, codigoPartida);
-
-function conectarWebSocketTurnos(base, codigo) {
-    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
-        return;
-    }
-
-    const socket = new SockJS(`${base}/ws`);
-    const stompClient = Stomp.over(socket);
-    stompClient.debug = null;
-
-    stompClient.connect({}, () => {
-        stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
-            const turnoDTO = JSON.parse(mensaje.body);
-            actualizarTurnoEnPantalla(turnoDTO);
-        });
-    });
-}
-
-function actualizarTurnoEnPantalla(turnoDTO) {
-    const idJugadorActual = String(turnoDTO.idJugadorActual);
-    const usuarioSesionId = String(window.usuarioSesionId);
-    // Si cambia el jugador activo, comienza un nuevo turno.
-    if (window.idJugadorTurnoAnterior !== idJugadorActual) {
-        yaTiroEnEsteTurno = false;
-        window.idJugadorTurnoAnterior = idJugadorActual;
-    }
-    // Limpiar indicadores de turno previos en las tarjetas
-    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => {
-        contenedor.innerHTML = "";
-    });
-
-    // Insertar cartel en el jugador activo
-    const cardJugador = document.getElementById(idJugadorActual);
-    if (cardJugador) {
-        const contenedorTurno = cardJugador.querySelector(".contenedor-turno");
-        if (contenedorTurno) {
-            const span = document.createElement("span");
-            span.className = "indicador-turno";
-            span.textContent =
-                idJugadorActual === usuarioSesionId
-                    ? "Tu turno"
-                    : `Turno de ${turnoDTO.apodoJugadorActual}`;
-            contenedorTurno.appendChild(span);
-        }
-    }
-
-    // Bloquear o habilitar el botón de dados según si es el turno del cliente actual
-    if (botonTirar && window.usuarioSesionId !== undefined && window.usuarioSesionId !== null) {
-        botonTirar.disabled = usuarioSesionId !== idJugadorActual;
-    }
 }

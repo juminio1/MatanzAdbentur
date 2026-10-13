@@ -87,6 +87,7 @@ public class ControladorPartida {
             return new ModelAndView("redirect:/home");
         }
 
+
         Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
         if (partidaReal == null) {
             return new ModelAndView("redirect:/sala-de-espera?codigoUnico=" + codigoFinal);
@@ -149,15 +150,7 @@ public class ControladorPartida {
         }
         return null;
     }
-
-    //@PostMapping("/partida/{codigoPartida}/avanzar-turno")
-    //    @ResponseBody
-    //    public ResponseEntity<TurnoDTO> avanzarTurno(
-    //            @PathVariable String codigoPartida,
-    //           HttpServletRequest request
-    //    ) {
-
-    //ELIMINAR Y REEMPLAZAR POR EL METODO DE ARRIBA: Endpoint provisorio para finalizar el turno del jugador
+    
     @PostMapping("/partida/{codigoPartida}/avanzar-turno")
     @ResponseBody
     public ResponseEntity<TurnoDTO> avanzarTurno(
@@ -184,6 +177,9 @@ public class ControladorPartida {
         }
 
         this.servicioPartida.avanzarTurno(codigoPartida);
+
+        Partida partidaActualizada = this.servicioPartida.obtenerPartida(codigoPartida);
+
         Jugador siguienteJugador = this.servicioPartida.obtenerJugadorActual(codigoPartida);
 
         TurnoDTO turnoDTO = new TurnoDTO(
@@ -193,6 +189,7 @@ public class ControladorPartida {
                 siguienteJugador.getOrden(),
                 "Es el turno de " + siguienteJugador.getApodo()
         );
+        turnoDTO.setRondaActual(partidaActualizada.getRondaActual());
 
         this.notificadorWebSocket.convertAndSend("/topic/partida/" + codigoPartida + "/turno", turnoDTO);
 

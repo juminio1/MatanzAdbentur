@@ -12,10 +12,8 @@ import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.enums.Ficha;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
-import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
@@ -30,16 +28,12 @@ public class ServicioSalaDeEsperaTest {
     private ServicioSalaDeEspera servicioSalaDeEspera;
     private RepositorioUsuario repositorioUsuarioMock;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
-    private RepositorioPartida repositorioPartidaMock;
-    private ServicioPartida servicioPartidaMock;
     private NotificadorSala notificadorSalaMock;
 
     @BeforeEach
     public void init() {
         this.repositorioUsuarioMock = mock(RepositorioUsuario.class);
         this.repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
-        this.repositorioPartidaMock = mock(RepositorioPartida.class);
-        this.servicioPartidaMock = mock(ServicioPartida.class);
         this.notificadorSalaMock = mock(NotificadorSala.class);
 
         this.servicioSalaDeEspera = new ServicioSalaDeEsperaImpl(
@@ -175,14 +169,6 @@ public class ServicioSalaDeEsperaTest {
         verify(this.repositorioSalaDeEsperaMock, never()).modificar(any());
 
         verifyNoInteractions(this.notificadorSalaMock);
-    }
-
-    @Test
-    public void verificaQueUsuarioNoSeAgregueDuplicadoSiYaEstaEnSala() throws Exception {
-        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
-
-        SalaDeEspera sala = new SalaDeEspera();
-        sala.setCodigoUnico("ABC123");
     }
 
     @Test

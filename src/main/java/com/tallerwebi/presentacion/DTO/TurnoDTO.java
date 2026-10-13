@@ -1,3 +1,4 @@
+
 package com.tallerwebi.presentacion.DTO;
 
 public class TurnoDTO {
@@ -7,11 +8,13 @@ public class TurnoDTO {
     private String apodoJugadorActual;
     private Integer orden;
     private String mensaje;
+    private Integer rondaActual;
 
     public TurnoDTO() {
     }
 
-    public TurnoDTO(String codigoPartida, Integer idJugadorActual, String apodoJugadorActual, Integer orden, String mensaje) {
+    public TurnoDTO(String codigoPartida, Integer idJugadorActual,
+                    String apodoJugadorActual, Integer orden, String mensaje) {
         this.codigoPartida = codigoPartida;
         this.idJugadorActual = idJugadorActual;
         this.apodoJugadorActual = apodoJugadorActual;
@@ -57,5 +60,13 @@ public class TurnoDTO {
 
     public void setMensaje(String mensaje) {
         this.mensaje = mensaje;
+    }
+
+    public Integer getRondaActual() {
+        return rondaActual;
+    }
+
+    public void setRondaActual(Integer rondaActual) {
+        this.rondaActual = rondaActual;
     }
 }

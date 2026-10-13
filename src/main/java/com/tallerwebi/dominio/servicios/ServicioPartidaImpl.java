@@ -16,7 +16,6 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
-
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
@@ -40,9 +39,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Autowired
     public ServicioPartidaImpl(
-            RepositorioPartida repositorioPartida,
-            RepositorioSalaDeEspera repositorioSalaDeEspera,
-            ServicioDado servicioDado) {
+        RepositorioPartida repositorioPartida,
+        RepositorioSalaDeEspera repositorioSalaDeEspera,
+        ServicioDado servicioDado
+    ) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.servicioDado = servicioDado;
@@ -64,6 +64,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void incrementarRondas(Partida partida) {
+        if (partida.getRondaActual() == null) {
+            partida.setRondaActual(1);
+        }
+
+        if (partida.getTurnosFinalizadosEnRonda() == null) {
+            partida.setTurnosFinalizadosEnRonda(0);
+        }
+
+        Integer turnosFinalizado = partida.getTurnosFinalizadosEnRonda() + 1;
+
+        partida.setTurnosFinalizadosEnRonda(turnosFinalizado);
+
+        if (turnosFinalizado == partida.getJugadores().size()) {
+            partida.setRondaActual(partida.getRondaActual() + 1);
+            partida.setTurnosFinalizadosEnRonda(0);
+        }
+    }
+
+    @Override
     public ResultadoTiradaDTO tirarDados() {
         return servicioDado.tirarDados();
     }
@@ -72,7 +92,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void inicializarTurnos(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
+        if (
+            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
+        ) {
             int orden = 0;
             for (Jugador jugador : partida.getJugadores()) {
                 jugador.setOrden(orden);
@@ -97,7 +119,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
             inicializarTurnos(codigoUnico);
         }
 
-        Integer indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+        Integer indiceActual =
+            partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
         return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
     }
 
@@ -114,9 +137,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void avanzarTurno(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
-        if (partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()) {
+        if (
+            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
+        ) {
             int cantidadJugadores = partida.getJugadores().size();
-            int indiceActual = partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+            int indiceActual =
+                partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+
+            incrementarRondas(partida);
 
             int siguienteIndice = (indiceActual + 1) % cantidadJugadores;
             partida.setIndiceTurnoActual(siguienteIndice);
@@ -124,7 +152,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             Jugador jugadorSiguiente = obtenerJugadorActual(codigoUnico);
 
-            if (jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())) {
+            if (
+                jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())
+            ) {
                 jugadorSiguiente.setPierdeTurno(false);
                 repositorioPartida.guardarPartida(partida);
                 avanzarTurno(codigoUnico);
@@ -134,12 +164,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-            throws PartidaNoEncontradaException,
-            CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException,
-            PartidaIniciadaException,
-            SalaNoEncontradaException, FichaNoDisponibleException {
-
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
         validarSalaYPermisos(sala, idUsuario);
 
@@ -154,21 +179,25 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         validarCantidadDeJugadores(partida);
         inicializarAtributosDeCadaJugador(partida);
+        asignarOrdenInicialJugadores(partida);
 
         partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setTiempoInicio(Instant.now());
 
-        repositorioPartida.guardarPartida(partida);
         seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
+        repositorioPartida.guardarPartida(partida);
+        
     }
 
-
-    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario) throws SalaNoEncontradaException {
+    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
+        throws SalaNoEncontradaException {
         if (sala == null) {
             throw new SalaNoEncontradaException("La sala no existe");
         }
         if (!sala.getCreador().getId().equals(idUsuario)) {
-            throw new IllegalArgumentException("Solo el creador de la sala puede iniciar la partida");
+            throw new IllegalArgumentException(
+                "Solo el creador de la sala puede iniciar la partida"
+            );
         }
     }
 
@@ -179,7 +208,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private Partida crearPartidaDesdeSala(SalaDeEspera sala) throws FichaNoDisponibleException {
-
         Partida partida = new Partida();
 
         partida.setCodigoUnico(sala.getCodigoUnico());
@@ -191,10 +219,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return partida;
     }
 
-    private void agregarJugadoresDesdeSala(
-            Partida partida,
-            SalaDeEspera sala
-    ) throws FichaNoDisponibleException {
+    private void agregarJugadoresDesdeSala(Partida partida, SalaDeEspera sala)
+        throws FichaNoDisponibleException {
         if (sala.getUsuarios() != null) {
             for (Usuario usuario : sala.getUsuarios()) {
                 Jugador jugador = crearJugador(usuario);
@@ -204,7 +230,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private Jugador crearJugador(Usuario usuario) throws FichaNoDisponibleException {
-
         Jugador jugador = new Jugador();
 
         jugador.setApodo(usuario.getUsername());
@@ -222,16 +247,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
             case AZUL -> ColorFicha.AZUL;
             case VERDE -> ColorFicha.VERDE;
             case AMARILLA -> ColorFicha.AMARILLO;
-            default -> throw new FichaNoDisponibleException(
-                    "Ficha no disponible para la partida"
-            );
+            default -> throw new FichaNoDisponibleException("Ficha no disponible para la partida");
         };
     }
 
     private void validarCantidadDeJugadores(Partida partida)
-            throws CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException {
-
+        throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
         List<Jugador> jugadores = partida.getJugadores();
 
         if (jugadores.size() < CANTIDAD_MINIMA_DE_JUGADORES) {
@@ -247,8 +268,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
         List<Jugador> jugadores = partida.getJugadores();
 
         if (jugadores != null && !jugadores.isEmpty()) {
-            int turnoAleatorio = random.nextInt(jugadores.size());
+            Integer turnoAleatorio = random.nextInt(jugadores.size());
+
             Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
+
             partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
             partida.setIndiceTurnoActual(jugadorSeleccionado.getOrden());
         }
@@ -263,5 +286,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
+    private void asignarOrdenInicialJugadores(Partida partida) {
+        int orden = 0;
 
+        for (Jugador jugador : partida.getJugadores()) {
+            jugador.setOrden(orden);
+            jugador.setPierdeTurno(false);
+            orden++;
+        }
+    }
 }
