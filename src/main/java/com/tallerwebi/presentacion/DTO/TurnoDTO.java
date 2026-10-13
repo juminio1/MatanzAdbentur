@@ -8,7 +8,7 @@ public class TurnoDTO {
     private Integer orden;
     private String mensaje;
 
-    public TurnoDTO() {
+    public TurnoDTO(String codigoPartida, Long id, String apodo, Integer orden, String mensaje) {
     }
 
     public TurnoDTO(String codigoPartida, Integer idJugadorActual, String apodoJugadorActual, Integer orden, String mensaje) {

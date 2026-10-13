@@ -410,30 +410,30 @@
 <!-- Panel lateral -->
 <aside class="partida__lateral">
     <section class="info-casillero" aria-labelledby="info-titulo">
-        <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
+        <button type="button" class="btn-casillero btn-casillero--principal">Info de Propiedad</button>
         <header class="info-casillero__cabecera">
             <div>
                 <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
-                <p class="info-casillero__sub">Casillero #0 · Inicio</p>
+                <p id="info-sub" class="info-casillero__sub">Casillero #0</p>
             </div>
-            <span class="etiqueta">Evento</span>
+            <span id="info-etiqueta" class="etiqueta">Evento</span>
         </header>
         <dl class="info-casillero__datos">
             <div>
                 <dt>Valor de compra</dt>
-                <dd>No disponible</dd>
+                <dd id="info-precio">No disponible</dd>
             </div>
             <div>
                 <dt>Alquiler base</dt>
-                <dd class="dato--dinero">$0</dd>
+                <dd id="info-alquiler" class="dato--dinero">$0</dd>
             </div>
             <div>
                 <dt>Estado / dueño</dt>
-                <dd>Lugar público</dd>
+                <dd id="info-estado">Lugar público</dd>
             </div>
         </dl>
-        <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
-        <button type="button" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
+        <p id="info-nota" class="info-casillero__nota">Cobrás $200 al pasar.</p>
+        <button type="button" id="btn-comprar" class="btn-casillero btn-casillero--secundario" disabled>No adquirible</button>
     </section>
 
     <section class="historial" aria-labelledby="historial-titulo">

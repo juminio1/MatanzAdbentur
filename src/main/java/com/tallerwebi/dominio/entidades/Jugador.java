@@ -14,17 +14,18 @@ private Integer dinero;
 
 @Enumerated(EnumType.STRING)
 private ColorFicha ficha;
-    public Jugador() {}
 
-    private Integer posicionActual = 0;
+    private Integer posicionActual;
 
     private Integer orden;
     private Boolean pierdeTurno;
+
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
         this.pierdeTurno = false;
     }
+
     public Long getId() {
         return id;
     }
@@ -64,11 +65,11 @@ private ColorFicha ficha;
 
     public void setPosicionActual(Integer posicionActual) {
         this.posicionActual = posicionActual;
-}
+    }
 
     public Integer getOrden() {
         return orden;
-        }
+    }
 
     public void setOrden(Integer orden) {
         this.orden = orden;

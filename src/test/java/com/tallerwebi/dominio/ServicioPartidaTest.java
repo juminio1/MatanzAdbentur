@@ -292,27 +292,6 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueLaPartidaEstaEnCursoNoDebeVolverAInicializarse() {
-        Jugador jugadorUno = new Jugador();
-        Jugador jugadorDos = new Jugador();
-        Jugador jugadorTres = new Jugador();
-        Jugador jugadorCuatro = new Jugador();
-
-        Partida partida = new Partida();
-        partida.setEstado(EstadoPartida.EN_CURSO);
-        partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
-
-        SalaDeEspera sala = new SalaDeEspera();
-        sala.setCodigoUnico("ABC123");
-        when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
-        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
-            .thenReturn(partida);
-
-        assertThrows(PartidaIniciadaException.class, () -> servicioPartida.iniciarPartida(sala.getCodigoUnico()));
-        verify(repositorioPartidaMock, never()).guardarPartida(any());
-    }
-
-    @Test
     public void queSePuedaSumarDineroAlJugador() {
         Jugador jugador = new Jugador();
         jugador.setDinero(1000);

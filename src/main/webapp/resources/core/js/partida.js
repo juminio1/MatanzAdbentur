@@ -93,4 +93,99 @@ document.addEventListener("DOMContentLoaded", () => {
             botonTirar.disabled = (usuarioSesionId !== idJugadorActual);
         }
     }
+    //tarea propiedad
+
+    //elementos del panel lateral
+    const infoTitulo = document.getElementById("info-titulo");
+    const infoPrecio = document.getElementById("info-precio");
+    const infoAlquiler = document.getElementById("info-alquiler");
+    const infoEstado = document.getElementById("info-estado");
+    const btnComprar = document.getElementById("btn-comprar");
+
+    let dineroJugadorActual = 1500; //plata inicial simulada
+    const propiedadesJugador = []; //inventario vacío
+
+    //simulacion de respuesta cuando se cae en una propiedad
+    // Tu variable que ya tenés
+        const propiedadSimulada = {
+            nombre: "Avenida Illia",
+            precio: 300,
+            alquiler: 50,
+            tieneDuenio: false,
+            esPropiedad: true
+        };
+        window.propiedadSimulada = propiedadSimulada; // <--- AGREGÁ ESTA LÍNEA
+
+        //Tu función que ya tenés
+        function mostrarInfoCasillero(casilleroData) {
+           //...(acá adentro está todo tu código que cambia los textos)
+        }
+        window.mostrarInfoCasillero = mostrarInfoCasillero; // <--- AGREGÁ ESTA LÍNEA
+
+    //esta función se llamará cuando la ficha termine de moverse
+    function mostrarInfoCasillero(casilleroData) {
+        infoTitulo.textContent = casilleroData.nombre;
+
+        if (casilleroData.esPropiedad) {
+            infoPrecio.textContent = "$" + casilleroData.precio;
+            infoAlquiler.textContent = "$" + casilleroData.alquiler;
+
+            if (!casilleroData.tieneDuenio) {
+                infoEstado.textContent = "Disponible";
+                btnComprar.textContent = "Comprar por $" + casilleroData.precio;
+
+                //valida si le alcanza la guita
+                if (dineroJugadorActual >= casilleroData.precio) {
+                    btnComprar.disabled = false;
+                } else {
+                    btnComprar.disabled = true;
+                    btnComprar.textContent = "Dinero insuficiente";
+                }
+            } else {
+                infoEstado.textContent = "Tiene dueño";
+                btnComprar.disabled = true;
+                btnComprar.textContent = "Pagar Alquiler";
+            }
+        } else {
+
+            infoPrecio.textContent = "No disponible";
+            infoAlquiler.textContent = "$0";
+            infoEstado.textContent = "Lugar público";
+            btnComprar.disabled = true;
+            btnComprar.textContent = "No adquirible";
+        }
+    }
+
+    //accion para comprar
+    btnComprar.addEventListener("click", () => {
+        //descontar
+        dineroJugadorActual -= propiedadSimulada.precio;
+
+        //busca el span del dinero en el header y lo actualiza visualmente
+        const spanDinero = document.querySelector(".datos-jugador .dinero");
+        spanDinero.textContent = "$" + dineroJugadorActual;
+
+        //cambia el estado de la propiedad
+        propiedadSimulada.tieneDuenio = true;
+        propiedadesJugador.push(propiedadSimulada.nombre);
+
+        //acualiza el panel lateral
+        mostrarInfoCasillero(propiedadSimulada);
+
+        //agregacion de historial
+        const historial = document.querySelector(".historial__lista");
+        const nuevoLi = document.createElement("li");
+        nuevoLi.innerHTML = `Compraste: <strong>${propiedadSimulada.nombre}</strong>`;
+        historial.appendChild(nuevoLi);
+    });
+
+   //conectamos la visualización al botón de tirar dados temporalmente
+       if (botonTirar) {
+           botonTirar.addEventListener("click", async () => {
+               //caudno se tiran los dados aparece la info de la propiedad
+               setTimeout(() => {
+                   mostrarInfoCasillero(propiedadSimulada);
+               }, 1000);
+           });
+       }
 });
