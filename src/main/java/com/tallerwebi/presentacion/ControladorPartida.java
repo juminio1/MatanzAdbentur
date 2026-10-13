@@ -2,7 +2,6 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
@@ -30,7 +28,7 @@ public class ControladorPartida {
     private final SimpMessagingTemplate notificadorWebSocket;
 
     @Autowired
-    public ControladorPartida(ServicioPartida servicioPartida,ServicioDado servicioDado,SimpMessagingTemplate notificadorWebSocket
+    public ControladorPartida(ServicioPartida servicioPartida ,SimpMessagingTemplate notificadorWebSocket
     ) {
         this.notificadorWebSocket = notificadorWebSocket;
         this.servicioPartida=servicioPartida;
@@ -152,10 +150,18 @@ public class ControladorPartida {
         return null;
     }
 
+    //@PostMapping("/partida/{codigoPartida}/avanzar-turno")
+    //    @ResponseBody
+    //    public ResponseEntity<TurnoDTO> avanzarTurno(
+    //            @PathVariable String codigoPartida,
+    //           HttpServletRequest request
+    //    ) {
+
+    //ELIMINAR Y REEMPLAZAR POR EL METODO DE ARRIBA: Endpoint provisorio para finalizar el turno del jugador
     @PostMapping("/partida/{codigoPartida}/avanzar-turno")
     @ResponseBody
     public ResponseEntity<TurnoDTO> avanzarTurno(
-            @PathVariable String codigoPartida,
+            @PathVariable("codigoPartida") String codigoPartida,
             HttpServletRequest request
     ) {
         Long usuarioSesionId = resolverUsuarioSesionId(request);

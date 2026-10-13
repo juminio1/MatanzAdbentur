@@ -3,6 +3,11 @@ const dado1 = document.getElementById("dado-1");
 const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
 
+//determina la ruta base, utiliza el prefijo /spring y construye la URL correcta
+const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
+const urlParams = new URLSearchParams(window.location.search);
+const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
+
 // Evita enviar varias peticiones simultáneas.
 let estaTirando = false;
 
@@ -11,8 +16,6 @@ let yaTiroEnEsteTurno = false;
 
 // Une el front con el backend.
 async function obtenerResultadoDados() {
-    //determina la ruta base, utiliza el prefijo /spring y construye la URL correcta
-    const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
     //Envia la peticion HTTP
     const respuesta = await fetch(`${basePath}/partida/tirar-dados`, { method: "POST" });
 
@@ -35,6 +38,7 @@ if (botonTirar) {
         //bloquea mientras se procesa
         estaTirando = true;
         botonTirar.disabled = true;
+        let tiradaExitosa = false;
 
         try {
             const resultado = await obtenerResultadoDados();
@@ -46,30 +50,55 @@ if (botonTirar) {
 
             // No permitir otra tirada hasta que cambie el turno.
             yaTiroEnEsteTurno = true;
+            tiradaExitosa = true;
         } catch (error) {
             console.error("Error al tirar los dados:", error);
+            // La tirada falló: permitir reintentar.
+            yaTiroEnEsteTurno = false;
         } finally {
             estaTirando = false;
-
-            // Si falló la petición, permitir reintentar,
-            // siempre que el botón no estuviera bloqueado por el turno.
-            if (!yaTiroEnEsteTurno) {
-                botonTirar.disabled = false;
-            }
+        }
+        if (!tiradaExitosa) {
+            botonTirar.disabled = false;
+            return;
+        }
+        // ELIMINAR: provisoria para finalizar el turno.
+        try {
+            await finalizarTurno();
+        } catch (error) {
+            console.error("Falló el cambio de turno:", error);
         }
     });
+}
+
+// ELIMINAR: Finaliza el turno actual y solicita el siguiente.
+async function finalizarTurno() {
+    console.log("Intentando avanzar el turno...");
+
+    const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {
+        method: "POST",
+    });
+
+    console.log("Estado HTTP:", respuesta.status);
+
+    if (!respuesta.ok) {
+        throw new Error("No se pudo avanzar el turno");
+    }
+
+    const turnoDTO = await respuesta.json();
+
+    console.log("Siguiente jugador:", turnoDTO.apodoJugadorActual);
+    console.log("Ronda actual:", turnoDTO.rondaActual);
+
+    return turnoDTO;
 }
 
 //ELIMINAR. CUANDO ESTE HECHO ELEGIR FICHA Y FICHA.
 // Busca todos los elementos del html que tenga la clase casillero
 const casilleros = document.querySelectorAll(".casillero");
 console.log("Casilleros encontrados:", casilleros.length);
-Se;
-// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET
-const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
-const urlParams = new URLSearchParams(window.location.search);
-const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 
+// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET
 conectarWebSocketTurnos(basePath, codigoPartida);
 
 function conectarWebSocketTurnos(base, codigo) {
