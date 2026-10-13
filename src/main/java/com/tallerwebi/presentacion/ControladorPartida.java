@@ -3,6 +3,7 @@ package com.tallerwebi.presentacion;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.servicios.ServicioDado;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
@@ -24,21 +26,58 @@ import org.springframework.web.servlet.ModelAndView;
 public class ControladorPartida {
 
     private static final String VISTA_PARTIDA = "partida";
-
     private final ServicioPartida servicioPartida;
-    private final ServicioDado servicioDado;
     private final SimpMessagingTemplate notificadorWebSocket;
 
     @Autowired
-    public ControladorPartida(
-            ServicioPartida servicioPartida,
-            ServicioDado servicioDado,
-            SimpMessagingTemplate notificadorWebSocket
+    public ControladorPartida(ServicioPartida servicioPartida,ServicioDado servicioDado,SimpMessagingTemplate notificadorWebSocket
     ) {
-        this.servicioPartida = servicioPartida;
-        this.servicioDado = servicioDado;
         this.notificadorWebSocket = notificadorWebSocket;
+        this.servicioPartida=servicioPartida;
     }
+
+    @PostMapping("/partida/tirar-dados")
+    @ResponseBody
+    public ResultadoTiradaDTO tirarDados() {
+        return servicioPartida.tirarDados();
+    }
+
+    /*@GetMapping("/partida")
+    public ModelAndView verTablero(
+        @RequestParam(value = "codigo", required = false) String codigoUnico,
+        HttpServletRequest request
+    ) {
+        Map<String, Object> model = new HashMap<>();
+
+        String codigoFinal = codigoUnico;
+
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            codigoFinal = (String) request.getSession().getAttribute("codigoSala");
+        }
+
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
+
+        Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+
+        if (partidaReal == null) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
+
+        Long usuarioSesionId = (Long) request.getSession().getAttribute("IDUSUARIO");
+
+        Long turnoActualId = null;
+        if (partidaReal.getJugadorTurnoAleatorio() != null) {
+            turnoActualId = (long) partidaReal.getJugadorTurnoAleatorio().getId();
+        }
+
+        model.put("partida", partidaReal);
+        model.put("usuarioSesionId", usuarioSesionId);
+        model.put("turnoActualId", turnoActualId);
+
+        return new ModelAndView(VISTA_PARTIDA, model);
+    }*/
 
     @GetMapping("/partida")
     public ModelAndView verTablero(
