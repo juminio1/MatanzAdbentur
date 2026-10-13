@@ -7,10 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -31,49 +28,31 @@ import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import java.util.Arrays;
+
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ServicioPartidaTest {
 
     private RepositorioPartida repositorioPartidaMock;
-    private ServicioPartida servicioPartida;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
     private ServicioDado servicioDadoMock;
+    private ServicioPartida servicioPartida;
+
+    private static final int TOTAL_CASILLEROS = 30;
 
     @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
         servicioDadoMock = mock(ServicioDado.class);
+
         servicioPartida = new ServicioPartidaImpl(
-            repositorioPartidaMock,
-            repositorioSalaDeEsperaMock,
-            servicioDadoMock
+                repositorioPartidaMock,
+                repositorioSalaDeEsperaMock,
+                servicioDadoMock
         );
-    }
-
-    @Test
-    public void dadoQueHayJugadoresCuandoSeObtieneLaPartidaPorCodigoDaComoResultadoSusPosiciones() {
-        String codigoPrueba = "MATANZA123";
-        Partida partidaSimulada = new Partida();
-
-        Jugador jugador1 = new Jugador();
-        jugador1.setPosicionActual(0);
-        Jugador jugador2 = new Jugador();
-        jugador2.setPosicionActual(7);
-        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
-
-        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
-            partidaSimulada
-        );
-
-        Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
-
-        assertNotNull(partidaObtenida);
-        assertEquals(2, partidaObtenida.getJugadores().size());
-        assertEquals(0, partidaObtenida.getJugadores().get(0).getPosicionActual());
-        assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
     }
 
     @Test
@@ -433,6 +412,42 @@ public class ServicioPartidaTest {
         servicioPartida.moverJugador(jugador, avance, totalCasilleros);
 
         assertEquals(0, jugador.getPosicionActual());//valida que si llega a 30 debe reiniciar la posicion a 0
+    }
+
+    @Test
+    public void dadoQueHayJugadoresCuandoSeObtieneLaPartidaPorCodigoDaComoResultadoSusPosiciones() {
+        String codigoPrueba = "MATANZA123";
+        Partida partidaSimulada = new Partida();
+
+        Jugador jugador1 = new Jugador();
+        jugador1.setPosicionActual(0);
+        Jugador jugador2 = new Jugador();
+        jugador2.setPosicionActual(7);
+        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+                partidaSimulada
+        );
+
+        Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
+
+        assertNotNull(partidaObtenida);
+        assertEquals(2, partidaObtenida.getJugadores().size());
+        assertEquals(0, partidaObtenida.getJugadores().get(0).getPosicionActual());
+        assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
+    }
+
+    @Test
+    public void queElServicioPartidaDevuelvaLaTiradaDeDadosCorrectamente() {
+        ResultadoTiradaDTO resultadoMock = new ResultadoTiradaDTO(4, 3);
+        when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
+
+        ResultadoTiradaDTO resultado = servicioPartida.tirarDados();
+
+        assertEquals(4, resultado.getDado1());
+        assertEquals(3, resultado.getDado2());
+        assertEquals(7, resultado.sumarDados());
+        verify(servicioDadoMock, times(1)).tirarDados();
     }
 
 

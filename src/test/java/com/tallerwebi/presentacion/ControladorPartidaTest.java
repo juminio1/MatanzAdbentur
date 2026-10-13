@@ -40,7 +40,6 @@ import org.springframework.web.servlet.ModelAndView;
 public class ControladorPartidaTest {
 
     private ServicioPartida servicioPartidaMock;
-    private ServicioDado servicioDadoMock;
     private SimpMessagingTemplate notificadorWebSocketMock;
     private ControladorPartida controladorPartida;
     private MockHttpServletRequest request;
@@ -147,8 +146,8 @@ public class ControladorPartidaTest {
         String codigoPartida = "PARTIDA123";
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-            codigoPartida,
-            request
+                codigoPartida,
+                request
         );
 
         assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
@@ -169,8 +168,8 @@ public class ControladorPartidaTest {
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorConTurno);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-            codigoPartida,
-            request
+                codigoPartida,
+                request
         );
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
@@ -198,14 +197,14 @@ public class ControladorPartidaTest {
         partidaActualizada.setRondaActual(2);
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
-            .thenReturn(jugadorActual)
-            .thenReturn(jugadorSiguiente);
+                .thenReturn(jugadorActual)
+                .thenReturn(jugadorSiguiente);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partidaActualizada);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-            codigoPartida,
-            request
+                codigoPartida,
+                request
         );
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
@@ -217,23 +216,9 @@ public class ControladorPartidaTest {
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
 
         verify(notificadorWebSocketMock, times(1)).convertAndSend(
-            "/topic/partida/" + codigoPartida + "/turno",
-            respuesta.getBody()
+                "/topic/partida/" + codigoPartida + "/turno",
+                respuesta.getBody()
         );
-    }
-
-    @Test
-    public void dadoQueElServicioDevuelveDadosCuandoSeTiranDaComoResultadoLosValoresObtenidos() {
-        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(2, 5);
-
-        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
-
-        ResultadoTiradaDTO resultado = controladorPartida.tirarDados();
-
-        assertNotNull(resultado);
-        assertEquals(2, resultado.getDado1());
-        assertEquals(5, resultado.getDado2());
-        verify(servicioPartidaMock, times(1)).tirarDados();
     }
 
     @Test
@@ -311,8 +296,8 @@ public class ControladorPartidaTest {
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(null);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-            codigoPartida,
-            request
+                codigoPartida,
+                request
         );
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
@@ -338,14 +323,14 @@ public class ControladorPartidaTest {
         partida.setRondaActual(1);
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
-            .thenReturn(jugadorActual)
-            .thenReturn(jugadorSiguiente);
+                .thenReturn(jugadorActual)
+                .thenReturn(jugadorSiguiente);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-            codigoPartida,
-            request
+                codigoPartida,
+                request
         );
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
@@ -355,8 +340,8 @@ public class ControladorPartidaTest {
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
         verify(notificadorWebSocketMock, times(1)).convertAndSend(
-            "/topic/partida/" + codigoPartida + "/turno",
-            respuesta.getBody()
+                "/topic/partida/" + codigoPartida + "/turno",
+                respuesta.getBody()
         );
     }
 
@@ -373,7 +358,7 @@ public class ControladorPartidaTest {
 
         ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(4, 5); // Suma 9
 
-        when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
 
         RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador);
@@ -383,11 +368,12 @@ public class ControladorPartidaTest {
         assertThat(resultado.getDado2(), equalTo(5));
         assertThat(resultado.getSuma(), equalTo(9));
 
-        verify(servicioDadoMock, times(1)).tirarDados();
+        // SE VERIFICA SOBRE servicioPartidaMock
+        verify(servicioPartidaMock, times(1)).tirarDados();
     }
 
     @Test
-    public void tirarDadosDeberiaActualizarPosicion()throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         String codigoPrueba = "MATANZA123";
         int idJugador = 1;
 
@@ -400,14 +386,13 @@ public class ControladorPartidaTest {
 
         ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(4, 5); // Suma 9
 
-        when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
 
         controladorPartida.tirarDados(codigoPrueba, idJugador);
 
         verify(servicioPartidaMock, times(1)).moverJugador(jugador, 9, 30);
     }
-
 
     @Test
     public void queLanceExcepcionSiElJugadorNoExisteEnLaPartida() {
@@ -417,7 +402,7 @@ public class ControladorPartidaTest {
         Partida partidaVacia = new Partida();
         partidaVacia.setJugadores(Collections.emptyList());
 
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 3));
+        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 3));
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaVacia);
 
         assertThrows(JugadorNoEncontradoException.class, () -> {
