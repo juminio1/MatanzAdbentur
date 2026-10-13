@@ -191,6 +191,10 @@ public class ServicioPartidaTest {
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
 
+
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -198,6 +202,8 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
+
+        sala.setCreador(creador);
 
         Partida partida = new Partida();
         partida.setCodigoUnico(sala.getCodigoUnico());
@@ -208,6 +214,7 @@ public class ServicioPartidaTest {
                 .thenReturn(sala);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
+
 
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
