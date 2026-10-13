@@ -48,6 +48,7 @@ public class ServicioPartidaTest {
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
+        servicioDadoMock = mock(ServicioDado.class);
         servicioPartida = new ServicioPartidaImpl(
                 repositorioPartidaMock,
                 repositorioSalaDeEsperaMock,
