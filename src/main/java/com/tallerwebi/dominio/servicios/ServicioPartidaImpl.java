@@ -15,13 +15,14 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
-import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service("servicioPartida")
 @Transactional
@@ -49,6 +50,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Partida obtenerPartida(String codigoUnico) {
         return repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
     }
@@ -56,7 +58,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
         Integer posicionActual = jugador.getPosicionActual();
-        Integer nuevaPosicion = (posicionActual + cantidadAvance) % totalCasilleros;//se calcula la nueva posicion. si supera el total la division se reinicia
+        Integer nuevaPosicion = (posicionActual + cantidadAvance) % totalCasilleros;
         jugador.setPosicionActual(nuevaPosicion);
     }
 
@@ -116,6 +118,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Jugador obtenerJugadorActual(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
         if (partida == null || partida.getJugadores() == null || partida.getJugadores().isEmpty()) {
@@ -193,7 +196,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
         repositorioPartida.guardarPartida(partida);
-        
     }
 
     private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
@@ -301,5 +303,32 @@ public class ServicioPartidaImpl implements ServicioPartida {
             jugador.setPierdeTurno(false);
             orden++;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+
+        if (partida == null || partida.getJugadores() == null) {
+            return List.of();
+        }
+
+        return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDTO).toList();
+    }
+
+    private PosicionFichaDTO mapearAJugadorPosicionDTO(Jugador jugador) {
+        String nombreFicha = obtenerNombreFichaSegura(jugador);
+        Integer posicion =
+            jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
+
+        return new PosicionFichaDTO(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
+    }
+
+    private String obtenerNombreFichaSegura(Jugador jugador) {
+        if (jugador.getFicha() != null) {
+            return jugador.getFicha().name();
+        }
+        return "ROJO";
     }
 }

@@ -1,6 +1,5 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import java.util.List;
@@ -33,41 +32,38 @@ public class ControladorPosicionesWebSocket {
 
     @MessageMapping("/partida/{codigo}/solicitar-posiciones")
     public void solicitarPosiciones(@DestinationVariable String codigo) {
-
-        LOGGER.warn("Solicitud de posiciones recibida. Sala: {}", codigo);
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info(
+                "Solicitud de posiciones recibida via WebSocket para la partida: {}",
+                codigo
+            );
+        }
 
         try {
-            Partida partida = servicioPartida.obtenerPartida(codigo);
+            List<PosicionFichaDTO> posiciones = servicioPartida.obtenerPosicionesFichas(codigo);
 
-            if (partida == null) {
-                LOGGER.warn("No se encontró la partida: {}", codigo);
-                return;
+            if (posiciones.isEmpty() && LOGGER.isWarnEnabled()) {
+                LOGGER.warn("No se encontraron jugadores ni ficha para la partida: {}", codigo);
             }
+
+            String destino = "/topic/partida/" + codigo + "/posiciones";
+            messagingTemplate.convertAndSend(destino, posiciones);
 
             if (LOGGER.isInfoEnabled()) {
-                LOGGER.info("Partida encontrada con {} jugadores", partida.getJugadores().size());
+                LOGGER.info(
+                    "Posiciones enviadas exitosamente a {}. Total jugadores: {}",
+                    destino,
+                    posiciones.size()
+                );
             }
-            List<PosicionFichaDTO> posiciones = partida
-                .getJugadores()
-                .stream()
-                .map(jugador ->
-                    new PosicionFichaDTO(
-                        jugador.getId(),
-                        jugador.getApodo(),
-                        jugador.getFicha().name(),
-                        jugador.getPosicionActual()
-                    )
-                )
-                .toList();
-
-            messagingTemplate.convertAndSend(
-                "/topic/partida/" + codigo + "/posiciones",
-                posiciones
-            );
-
-            LOGGER.info("Posiciones enviadas a la partida: {}", codigo);
         } catch (Exception exception) {
-            LOGGER.error("Error al obtener las posiciones de la partida: {}", codigo, exception);
+            if (LOGGER.isErrorEnabled()) {
+                LOGGER.error(
+                    "Error inesperado al responder la solicitud de posiciones para la partida: {}",
+                    codigo,
+                    exception
+                );
+            }
         }
     }
 }
