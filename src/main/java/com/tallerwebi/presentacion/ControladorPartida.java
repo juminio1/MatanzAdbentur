@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioDado;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -24,21 +25,58 @@ import org.springframework.web.servlet.ModelAndView;
 public class ControladorPartida {
 
     private static final String VISTA_PARTIDA = "partida";
-
     private final ServicioPartida servicioPartida;
-    private final ServicioDado servicioDado;
     private final SimpMessagingTemplate notificadorWebSocket;
 
     @Autowired
-    public ControladorPartida(
-            ServicioPartida servicioPartida,
-            ServicioDado servicioDado,
-            SimpMessagingTemplate notificadorWebSocket
+    public ControladorPartida(ServicioPartida servicioPartida ,SimpMessagingTemplate notificadorWebSocket
     ) {
-        this.servicioPartida = servicioPartida;
-        this.servicioDado = servicioDado;
         this.notificadorWebSocket = notificadorWebSocket;
+        this.servicioPartida=servicioPartida;
     }
+
+    @PostMapping("/partida/tirar-dados")
+    @ResponseBody
+    public ResultadoTiradaDTO tirarDados() {
+        return servicioPartida.tirarDados();
+    }
+
+    /*@GetMapping("/partida")
+    public ModelAndView verTablero(
+        @RequestParam(value = "codigo", required = false) String codigoUnico,
+        HttpServletRequest request
+    ) {
+        Map<String, Object> model = new HashMap<>();
+
+        String codigoFinal = codigoUnico;
+
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            codigoFinal = (String) request.getSession().getAttribute("codigoSala");
+        }
+
+        if (codigoFinal == null || codigoFinal.isBlank()) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
+
+        Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+
+        if (partidaReal == null) {
+            return new ModelAndView("redirect:/sala-espera");
+        }
+
+        Long usuarioSesionId = (Long) request.getSession().getAttribute("IDUSUARIO");
+
+        Long turnoActualId = null;
+        if (partidaReal.getJugadorTurnoAleatorio() != null) {
+            turnoActualId = (long) partidaReal.getJugadorTurnoAleatorio().getId();
+        }
+
+        model.put("partida", partidaReal);
+        model.put("usuarioSesionId", usuarioSesionId);
+        model.put("turnoActualId", turnoActualId);
+
+        return new ModelAndView(VISTA_PARTIDA, model);
+    }*/
 
     @GetMapping("/partida")
     public ModelAndView verTablero(
@@ -49,6 +87,7 @@ public class ControladorPartida {
         if (codigoFinal == null) {
             return new ModelAndView("redirect:/home");
         }
+
 
         Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
         if (partidaReal == null) {
@@ -116,7 +155,7 @@ public class ControladorPartida {
     @PostMapping("/partida/{codigoPartida}/avanzar-turno")
     @ResponseBody
     public ResponseEntity<TurnoDTO> avanzarTurno(
-            @PathVariable String codigoPartida,
+            @PathVariable("codigoPartida") String codigoPartida,
             HttpServletRequest request
     ) {
         Long usuarioSesionId = resolverUsuarioSesionId(request);
@@ -139,6 +178,9 @@ public class ControladorPartida {
         }
 
         this.servicioPartida.avanzarTurno(codigoPartida);
+
+        Partida partidaActualizada = this.servicioPartida.obtenerPartida(codigoPartida);
+
         Jugador siguienteJugador = this.servicioPartida.obtenerJugadorActual(codigoPartida);
 
         TurnoDTO turnoDTO = new TurnoDTO(
@@ -148,6 +190,7 @@ public class ControladorPartida {
                 siguienteJugador.getOrden(),
                 "Es el turno de " + siguienteJugador.getApodo()
         );
+        turnoDTO.setRondaActual(partidaActualizada.getRondaActual());
 
         this.notificadorWebSocket.convertAndSend("/topic/partida/" + codigoPartida + "/turno", turnoDTO);
 

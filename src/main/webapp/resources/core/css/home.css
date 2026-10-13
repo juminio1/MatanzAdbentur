@@ -14,7 +14,7 @@
             rgba(247, 247, 247, 0.60),
             rgba(247, 247, 247, 0.60)
         ),
-        url('../imagenes/FondoLadrillos.jpg');
+        url('https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/Wireframe%20-%207.svg');
 
     background-repeat: no-repeat;
     background-attachment: fixed;
@@ -97,17 +97,22 @@
 
 /* COLUMNA DERECHA: IMAGEN */
 .hero-image {
-    flex: 1.2;
+    flex: 1.5; /* Le damos más prioridad de espacio en el flexbox frente al texto */
     display: flex;
     justify-content: flex-end;
+    align-items: flex-end; /* Alinea la imagen hacia abajo */
+    position: relative;
 }
 
 .hero-image img {
     width: 100%;
-    max-width: 750px;
+    max-width: 1100px; /* Aumentamos drásticamente el límite de tamaño */
     height: auto;
-    /* Si la imagen tiene fondo, podés recortarla en PNG y usar drop-shadow */
     filter: drop-shadow(-10px 10px 15px rgba(0, 0, 0, 0.1));
+
+    /* Con transform agrandamos la imagen un 25% más y la empujamos hacia la derecha y abajo */
+    transform: scale(1.25) translate(8%, 5%);
+    transform-origin: bottom right; /* Para que crezca desde la esquina inferior derecha */
 }
 
 
