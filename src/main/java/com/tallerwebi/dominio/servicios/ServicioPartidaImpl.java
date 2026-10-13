@@ -83,6 +83,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
+    @Override
     public ResultadoTiradaDTO tirarDados() {
         return servicioDado.tirarDados();
     }

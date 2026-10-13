@@ -1,4 +1,4 @@
-package com.tallerwebi.presentacion;
+package com.tallerwebi.presentacion.DTO;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;

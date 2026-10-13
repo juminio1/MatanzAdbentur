@@ -1,4 +1,4 @@
-package com.tallerwebi.presentacion;
+package com.tallerwebi.presentacion.WebSocket;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.doThrow;
@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.tallerwebi.dominio.enums.Ficha;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
+import com.tallerwebi.presentacion.ControladorSalaEsperaWebSocket;
 import com.tallerwebi.presentacion.DTO.SeleccionFichaDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
