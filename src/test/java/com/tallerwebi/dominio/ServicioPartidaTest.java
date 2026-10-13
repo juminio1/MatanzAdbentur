@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,7 +16,9 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.Ficha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -390,4 +393,93 @@ public class ServicioPartidaTest {
         assertEquals(0, partida.getTurnosFinalizadosEnRonda());
         assertEquals(2, partida.getIndiceTurnoActual());
     }
+
+    
+@Test
+public void dadoQueHayMasDeCuatroJugadoresCuandoSeIniciaLaPartidaDaComoResultadoCantidadMaximaSuperada() {
+    String codigo = "ABC123";
+
+    Usuario creador = new Usuario();
+    creador.setId(1L);
+
+    SalaDeEspera sala = new SalaDeEspera();
+    sala.setCodigoUnico(codigo);
+    sala.setCreador(creador);
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+    partida.setJugadores(Arrays.asList(
+            new Jugador(),
+            new Jugador(),
+            new Jugador(),
+            new Jugador(),
+            new Jugador()
+    ));
+
+    when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo))
+            .thenReturn(sala);
+
+    when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+    assertThrows(
+            CantidadMaximaJugadoresSuperadaException.class,
+            () -> servicioPartida.iniciarPartida(codigo, 1L)
+    );
+
+    assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
+
+    verify(repositorioPartidaMock, never()).guardarPartida(any());
+}
+
+@Test
+public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDaComoResultadoLasFichasConvertidas() {
+    String codigo = "ABC123";
+
+    Usuario usuarioUno = new Usuario();
+    usuarioUno.setId(1L);
+    usuarioUno.setUsername("JugadorRojo");
+    usuarioUno.setFicha(Ficha.ROJA);
+
+    Usuario usuarioDos = new Usuario();
+    usuarioDos.setUsername("JugadorAzul");
+    usuarioDos.setFicha(Ficha.AZUL);
+
+    Usuario usuarioTres = new Usuario();
+    usuarioTres.setUsername("JugadorVerde");
+    usuarioTres.setFicha(Ficha.VERDE);
+
+    Usuario usuarioCuatro = new Usuario();
+    usuarioCuatro.setUsername("JugadorAmarillo");
+    usuarioCuatro.setFicha(Ficha.AMARILLA);
+
+    SalaDeEspera sala = new SalaDeEspera();
+    sala.setCodigoUnico(codigo);
+    sala.setCreador(usuarioUno);
+    sala.setUsuarios(Arrays.asList(
+            usuarioUno, usuarioDos, usuarioTres, usuarioCuatro
+    ));
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_ESPERA);
+
+    when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo))
+            .thenReturn(sala);
+
+    when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+    assertDoesNotThrow(() -> servicioPartida.iniciarPartida(codigo, 1L));
+
+    assertEquals(4, partida.getJugadores().size());
+
+    assertEquals(ColorFicha.ROJO, partida.getJugadores().get(0).getFicha());
+    assertEquals(ColorFicha.AZUL, partida.getJugadores().get(1).getFicha());
+    assertEquals(ColorFicha.VERDE, partida.getJugadores().get(2).getFicha());
+    assertEquals(ColorFicha.AMARILLO, partida.getJugadores().get(3).getFicha());
+
+    assertEquals("JugadorRojo", partida.getJugadores().get(0).getApodo());
+    assertEquals("JugadorAmarillo", partida.getJugadores().get(3).getApodo());
+}
+
 }
