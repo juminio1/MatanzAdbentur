@@ -112,7 +112,12 @@
 
                             <th:block th:each="jugador : ${partida.jugadores}">
 
-                                <div th:if="${jugador.posicionActual == 0}" class="ficha"
+                                <div th:if="${jugador.posicionActual == 0}" 
+                                    
+                                    class="ficha"
+
+                                    th:attr="data-jugador-id=${jugador.id}" 
+
 
                                     th:classappend="${jugador.ficha != null ? 'ficha-' + jugador.ficha.name().toLowerCase() : ''}"
 
