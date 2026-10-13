@@ -189,6 +189,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         console.log("Siguiente jugador:", turnoDTO.apodoJugadorActual);
         console.log("Ronda actual:", turnoDTO.rondaActual);
+        console.log("ID siguiente jugador:", turnoDTO.idJugadorActual);
+        console.log("Orden siguiente jugador:", turnoDTO.orden);
 
         return turnoDTO;
     }
