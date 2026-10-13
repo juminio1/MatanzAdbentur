@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import java.util.List;
@@ -29,7 +28,6 @@ import org.springframework.web.servlet.ModelAndView;
 public class ControladorPartidaTest {
 
     private ServicioPartida servicioPartidaMock;
-    private ServicioDado servicioDadoMock;
     private SimpMessagingTemplate notificadorWebSocketMock;
     private ControladorPartida controladorPartida;
     private MockHttpServletRequest request;
@@ -38,12 +36,10 @@ public class ControladorPartidaTest {
     @BeforeEach
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
-        servicioDadoMock = mock(ServicioDado.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
 
         controladorPartida = new ControladorPartida(
                 servicioPartidaMock,
-                servicioDadoMock,
                 notificadorWebSocketMock
         );
 
