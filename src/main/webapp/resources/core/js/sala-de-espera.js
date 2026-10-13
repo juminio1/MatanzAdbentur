@@ -296,3 +296,35 @@ function actualizarSeleccionVisual(colorFicha) {
         }
     });
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+    const btnCopiar = document.querySelector(".salaEspera__copiar");
+    const datosSala = document.getElementById("datos-sala");
+
+    if (btnCopiar && datosSala) {
+        btnCopiar.addEventListener("click", function () {
+            // Obtenemos el código directamente del atributo data-codigo
+            const codigo = datosSala.getAttribute("data-codigo");
+
+            if (!codigo) return;
+
+            // Usamos la API del portapapeles
+            navigator.clipboard.writeText(codigo).then(() => {
+                // Feedback visual rápido
+                const textoOriginal = btnCopiar.textContent;
+                btnCopiar.textContent = "Copiado";
+                btnCopiar.style.backgroundColor = "#22c55e"; // Verde éxito
+                btnCopiar.style.color = "#fff";
+
+                // Lo volvemos a la normalidad a los 2 segundos
+                setTimeout(() => {
+                    btnCopiar.textContent = textoOriginal;
+                    btnCopiar.style.backgroundColor = "";
+                    btnCopiar.style.color = "";
+                }, 2000);
+            }).catch(err => {
+                console.error("Error al copiar al portapapeles:", err);
+            });
+        });
+    }
+});

@@ -29,9 +29,9 @@
 
         <div class="registro-presentacion">
 
-            <img th:src="@{/imagenes/Logo.png}"
+            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg"
                  alt="El Matancero"
-                 class="registro-logo">
+                 class="login-logo">
 
             <h1>Entrá al barrio</h1>
 
@@ -130,55 +130,52 @@
 
 
                 <!-- PASSWORD -->
-
                 <div class="form-group">
+                    <label for="password">Contraseña</label>
 
-                    <label for="password">
-                        Contraseña
-                    </label>
+                    <div class="password-wrapper">
+                        <input
+                                type="password"
+                                id="password"
+                                th:field="*{password}"
+                                th:classappend="${#fields.hasErrors('password')} ? ' input-error'"
+                                placeholder="Ingresá una contraseña">
 
-                    <input
-                        type="password"
-                        id="password"
-                        th:field="*{password}"
-                        th:classappend="${#fields.hasErrors('password')}
-                            ? ' input-error'"
-                        placeholder="Ingresá una contraseña">
+                        <button type="button" class="btn-toggle-pass" aria-label="Mostrar u ocultar contraseña" tabindex="-1">
+                            <svg class="svg-ojo" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
 
                     <p class="ayuda-password">
-                        Mínimo 8 caracteres, una mayúscula,
-                        una minúscula, un número y un símbolo.
+                        Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.
                     </p>
-
-                    <p class="mensaje-error"
-                       th:if="${#fields.hasErrors('password')}"
-                       th:errors="*{password}">
-                    </p>
-
+                    <p class="mensaje-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
                 </div>
 
-
                 <!-- REPETIR PASSWORD -->
-
                 <div class="form-group">
+                    <label for="passwordRepetido">Repetir contraseña</label>
 
-                    <label for="passwordRepetido">
-                        Repetir contraseña
-                    </label>
+                    <div class="password-wrapper">
+                        <input
+                                type="password"
+                                id="passwordRepetido"
+                                th:field="*{passwordRepetido}"
+                                th:classappend="${#fields.hasErrors('passwordRepetido')} ? ' input-error'"
+                                placeholder="Repetí tu contraseña">
 
-                    <input
-                        type="password"
-                        id="passwordRepetido"
-                        th:field="*{passwordRepetido}"
-                        th:classappend="${#fields.hasErrors('passwordRepetido')}
-                            ? ' input-error'"
-                        placeholder="Repetí tu contraseña">
+                        <button type="button" class="btn-toggle-pass" aria-label="Mostrar u ocultar contraseña" tabindex="-1">
+                            <svg class="svg-ojo" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
 
-                    <p class="mensaje-error"
-                       th:if="${#fields.hasErrors('passwordRepetido')}"
-                       th:errors="*{passwordRepetido}">
-                    </p>
-
+                    <p class="mensaje-error" th:if="${#fields.hasErrors('passwordRepetido')}" th:errors="*{passwordRepetido}"></p>
                 </div>
 
 
@@ -207,9 +204,7 @@
         </div>
 
     </section>
-
 </main>
-
-</body>
+ <script th:src="@{/js/login_funciones.js}"></script>
 
 </html>
