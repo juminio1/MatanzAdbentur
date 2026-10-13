@@ -312,7 +312,7 @@ document.addEventListener("DOMContentLoaded", function () {
             navigator.clipboard.writeText(codigo).then(() => {
                 // Feedback visual rápido
                 const textoOriginal = btnCopiar.textContent;
-                btnCopiar.textContent = "¡Copiado!";
+                btnCopiar.textContent = "Copiado";
                 btnCopiar.style.backgroundColor = "#22c55e"; // Verde éxito
                 btnCopiar.style.color = "#fff";
 
