@@ -1,7 +1,17 @@
 package com.tallerwebi.dominio.entidades;
 
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,29 +23,43 @@ public class Partida {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Integer indiceTurnoActual;
     private String codigoUnico;
     private Instant tiempoInicio;
 
     @ManyToOne
     @JoinColumn(name = "creador_id", nullable = false)
-    private Usuario creador; // Un creador puede crear varias partidas pero solamente puede tener una activa a la vez
+    private Usuario creador;
 
     @Enumerated(EnumType.STRING)
     private EstadoPartida estado;
 
-    //@OneToOne(cascade = CascadeType.PERSIST)
-    //private Tablero tablero;
-
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "partida_id") // Le dice a la tabla jugador que agregue esta columna
+    @JoinColumn(name = "partida_id")
     private List<Jugador> jugadores;
 
     @ManyToOne
     @JoinColumn(name = "jugador_turno_id")
     private Jugador jugadorTurnoAleatorio;
 
-    public Partida() {
+    private Integer rondaActual;
+    private Integer turnosFinalizadosEnRonda;
+
+
+     public Partida() {
         this.jugadores = new ArrayList<>();
+        this.estado = EstadoPartida.EN_ESPERA;
+        this.indiceTurnoActual = 0;
+        this.rondaActual = 1;
+        this.turnosFinalizadosEnRonda = 0;
+    }
+
+    public Integer getTurnosFinalizadosEnRonda() {
+        return turnosFinalizadosEnRonda;
+    }
+
+    public void setTurnosFinalizadosEnRonda(Integer turnosFinalizadosEnRonda) {
+        this.turnosFinalizadosEnRonda = turnosFinalizadosEnRonda;
     }
 
     public Jugador getJugadorTurnoAleatorio() {
@@ -44,6 +68,14 @@ public class Partida {
 
     public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
         this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
+    }
+
+    public Integer getRondaActual() {
+        return this.rondaActual;
+    }
+
+    public void setRondaActual(Integer rondaActual) {
+        this.rondaActual = rondaActual;
     }
 
     public Long getId() {
@@ -92,5 +124,13 @@ public class Partida {
 
     public void setJugadores(List<Jugador> jugadores) {
         this.jugadores = jugadores;
+    }
+
+    public Integer getIndiceTurnoActual() {
+        return indiceTurnoActual;
+    }
+
+    public void setIndiceTurnoActual(Integer indiceTurnoActual) {
+        this.indiceTurnoActual = indiceTurnoActual;
     }
 }

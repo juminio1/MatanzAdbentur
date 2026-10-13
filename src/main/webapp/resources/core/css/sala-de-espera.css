@@ -1,3 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+
+html, body, main,
+h1, h2, h3, h4, h5, h6,
+p, span, strong, small,
+button, input, select, textarea,
+.salaEspera,
+.salaEspera * {
+    font-family: 'Montserrat', sans-serif !important;
+}
+
 body {
     min-height: 100vh;
     background: #edf2f7;

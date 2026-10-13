@@ -1,19 +1,28 @@
+// Determina la ruta base y construye la URL correcta.
+const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
+const urlParams = new URLSearchParams(window.location.search);
+const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 
-// DADOS
-
+// Obtiene los elementos del HTML por su ID.
 const dado1 = document.getElementById("dado-1");
 const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
 
-console.log("PARTIDA.JS ACTUALIZADO");
+// Evita enviar varias peticiones simultáneas.
+let estaTirando = false;
 
-// Une el front con el backend para tirar dados.
+// Registra si el jugador actual ya tiró en este turno.
+let yaTiroEnEsteTurno = false;
+
+// Une el frontend con el backend de dados.
 async function obtenerResultadoDados() {
+    // Obtenemos el ID del jugador desde la variable global de la sesión
+    const idJugador = window.usuarioSesionId;
 
-    const respuesta = await fetch("http://localhost:8080/spring/partida/tirar-dados", {
-            method: "POST"
-        }
-    );
+    // Agregamos codigoUnico e idJugador a la URL de la petición
+    const respuesta = await fetch(`${basePath}/partida/tirar-dados?codigoUnico=${codigoPartida}&idJugador=${idJugador}`, {
+        method: "POST"
+    });
 
     if (!respuesta.ok) {
         throw new Error("No se pudieron tirar los dados");
@@ -22,144 +31,139 @@ async function obtenerResultadoDados() {
     return await respuesta.json();
 }
 
-botonTirar.addEventListener("click", async () => {
+// Escucha el clic y ejecuta la tirada.
+if (botonTirar) {
+    botonTirar.addEventListener("click", async () => {
+        if (estaTirando || yaTiroEnEsteTurno || botonTirar.disabled) {
+            return;
+        }
 
-    try {
-        const resultado = await obtenerResultadoDados();
+        estaTirando = true;
+        botonTirar.disabled = true;
+        let tiradaExitosa = false;
 
-        console.log("Resultado completo:", resultado);
+        try {
+            const resultado = await obtenerResultadoDados();
 
-        dado1.textContent = resultado.dado1;
-        dado2.textContent = resultado.dado2;
+            if (dado1) dado1.textContent = resultado.dado1;
+            if (dado2) dado2.textContent = resultado.dado2;
 
-    } catch (error) {
-        console.error("Error al tirar los dados:", error);
-    }
-});
+            console.log("Resultado completo:", resultado);
 
+            // No permitir otra tirada hasta que cambie el turno.
+            yaTiroEnEsteTurno = true;
+            tiradaExitosa = true;
+        } catch (error) {
+            console.error("Error al tirar los dados:", error);
+            yaTiroEnEsteTurno = false;
+        } finally {
+            estaTirando = false;
+        }
 
-// CASILLEROS
+        if (!tiradaExitosa) {
+            botonTirar.disabled = false;
+            return;
+        }
 
+        // TEMPORAL: finalizar el turno al terminar de tirar los dados.
+        // Cuando exista avanzar ficha, esta llamada deberá realizarse después.
+        try {
+            await finalizarTurno();
+        } catch (error) {
+            console.error("Falló el cambio de turno:", error);
+        }
+    });
+}
+
+// ELIMINAR cuando esté implementada la funcionalidad de fichas.
 const casilleros = document.querySelectorAll(".casillero");
-
 console.log("Casilleros encontrados:", casilleros.length);
 
+// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
+conectarWebSocketTurnos(basePath, codigoPartida);
 
-// WEBSOCKETS DE PARTIDA
-
-let stompClientPartida = null;
-
-function conectarWebSocketPartida(codigoSala, urlWebSocket) {
-
-    const socket = new SockJS(urlWebSocket);
-
-    stompClientPartida = Stomp.over(socket);
-
-    stompClientPartida.connect({}, function () {
-
-        console.log("Conectado al WebSocket de partida");
-
-        // Escuchamos las posiciones de todas las fichas.
-
-        stompClientPartida.subscribe(
-            "/topic/partida/" + codigoSala + "/posiciones",
-            function (mensaje) {
-
-                const posiciones = JSON.parse(mensaje.body);
-
-                console.log("Posiciones recibidas:", posiciones);
-
-                actualizarPosicionesFichas(posiciones);
-            }
-        );
-
-        // Solicitamos el estado después de suscribirnos.
-        stompClientPartida.send(
-            "/app/partida/" + codigoSala + "/solicitar-posiciones",
-            {},
-            ""
-        );
-
-    }, function (error) {
-
-        console.error(
-            "Error al conectar WebSocket de partida:",
-            error
-        );
-    });
-}
-
-
-// ACTUALIZAR POSICIONES DE LAS FICHAS
-
-function actualizarPosicionesFichas(posiciones) {
-
-    if (!Array.isArray(posiciones)) {
-        console.error("Las posiciones recibidas no son válidas");
+function conectarWebSocketTurnos(base, codigo) {
+    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
         return;
     }
 
-    // Eliminamos las fichas anteriores para evitar duplicados.
-    document.querySelectorAll(".fichas-en-casillero .ficha")
-        .forEach(function (ficha) {
-            ficha.remove();
+    const socket = new SockJS(`${base}/ws`);
+    const stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, () => {
+        stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
+            const turnoDTO = JSON.parse(mensaje.body);
+
+            actualizarTurnoEnPantalla(turnoDTO);
+            // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
+            actualizarRondaActual(turnoDTO.rondaActual);
         });
-
-    posiciones.forEach(function (jugador) {
-
-        const casilleroDestino = document.querySelector(
-            `.casillero[data-casillero="${jugador.posicion}"]`
-        );
-
-        if (!casilleroDestino) {
-            console.error(
-                "No existe el casillero:",
-                jugador.posicion
-            );
-            return;
-        }
-
-        const contenedor = casilleroDestino.querySelector(
-            ".fichas-en-casillero"
-        );
-
-        if (!contenedor) {
-            return;
-        }
-
-        const ficha = document.createElement("div");
-
-        ficha.classList.add(
-            "ficha",
-            "ficha-" + jugador.color.toLowerCase()
-        );
-
-        ficha.dataset.jugadorId = jugador.idJugador;
-        ficha.title = jugador.apodo;
-
-        contenedor.appendChild(ficha);
     });
 }
 
+function actualizarTurnoEnPantalla(turnoDTO) {
+    const idJugadorActual = String(turnoDTO.idJugadorActual);
+    const usuarioSesionId = String(window.usuarioSesionId);
 
-// INICIALIZAR WEBSOCKET
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    const datosPartida = document.getElementById("datos-partida");
-
-    if (!datosPartida) {
-        console.error("No se encontraron los datos de partida");
-        return;
+    // Si cambia el jugador activo, comienza un nuevo turno.
+    if (window.idJugadorTurnoAnterior !== idJugadorActual) {
+        yaTiroEnEsteTurno = false;
+        window.idJugadorTurnoAnterior = idJugadorActual;
     }
 
-    const codigoSala = datosPartida.dataset.codigo;
-    const urlWebSocket = datosPartida.dataset.wsUrl;
+    // Limpiar indicadores de turno previos.
+    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => {
+        contenedor.innerHTML = "";
+    });
 
-    if (!codigoSala || !urlWebSocket) {
-        console.error("Falta el código o la URL del WebSocket");
-        return;
+    // Mostrar a quién le toca jugar.
+    const cardJugador = document.getElementById(idJugadorActual);
+    if (cardJugador) {
+        const contenedorTurno = cardJugador.querySelector(".contenedor-turno");
+        if (contenedorTurno) {
+            const span = document.createElement("span");
+            span.className = "indicador-turno";
+            span.textContent = idJugadorActual === usuarioSesionId
+                ? "Tu turno"
+                : `Turno de ${turnoDTO.apodoJugadorActual}`;
+            contenedorTurno.appendChild(span);
+        }
     }
 
-    conectarWebSocketPartida(codigoSala, urlWebSocket);
-});
+    // Bloquear o habilitar el botón según el jugador actual.
+    if (botonTirar && window.usuarioSesionId !== undefined && window.usuarioSesionId !== null) {
+        botonTirar.disabled = usuarioSesionId !== idJugadorActual;
+    }
+}
+
+// GESTIÓN DE RONDAS: solo se actualiza la visualización.
+function actualizarRondaActual(rondaActual) {
+    const contadorRonda = document.getElementById("ronda-actual");
+
+    if (contadorRonda && rondaActual != null) {
+        contadorRonda.textContent = rondaActual;
+    }
+}
+
+// TEMPORAL: finalizar turno después de tirar dados.
+async function finalizarTurno() {
+    console.log("Intentando avanzar el turno...");
+
+    const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {
+        method: "POST",
+    });
+
+    console.log("Estado HTTP:", respuesta.status);
+
+    if (!respuesta.ok) {
+        throw new Error("No se pudo avanzar el turno");
+    }
+
+    const turnoDTO = await respuesta.json();
+
+    console.log("Siguiente jugador:", turnoDTO.apodoJugadorActual);
+    console.log("Ronda actual:", turnoDTO.rondaActual);
+
+    return turnoDTO;
+}

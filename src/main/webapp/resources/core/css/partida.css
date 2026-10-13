@@ -508,3 +508,25 @@
     font-size: 12px;
 
 }
+.contenedor-ronda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.ronda-titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333333;
+}
+
+#ronda-actual {
+    font-size: 18px;
+    font-weight: 700;
+    color: #d97706;
+}
