@@ -15,6 +15,8 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.List;
@@ -34,14 +36,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final RepositorioPartida repositorioPartida;
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final Random random = new Random();
+    private final ServicioDado servicioDado;
 
     @Autowired
     public ServicioPartidaImpl(
-        RepositorioPartida repositorioPartida,
-        RepositorioSalaDeEspera repositorioSalaDeEspera
-    ) {
+            RepositorioPartida repositorioPartida,
+            RepositorioSalaDeEspera repositorioSalaDeEspera,
+            ServicioDado servicioDado) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
+        this.servicioDado = servicioDado;
     }
 
     @Override
@@ -78,6 +82,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
             partida.setRondaActual(partida.getRondaActual() + 1);
             partida.setTurnosFinalizadosEnRonda(0);
         }
+    }
+    public ResultadoTiradaDTO tirarDados() {
+        return servicioDado.tirarDados();
     }
 
     @Override
@@ -156,7 +163,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
+            throws PartidaNoEncontradaException,
+            CantidadJugadoresInsuficienteException,
+            CantidadMaximaJugadoresSuperadaException,
+            PartidaIniciadaException,
+            SalaNoEncontradaException, FichaNoDisponibleException {
+
         SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
         validarSalaYPermisos(sala, idUsuario);
 
@@ -177,18 +189,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         repositorioPartida.guardarPartida(partida);
         seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
-        
     }
 
-    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
-        throws SalaNoEncontradaException {
+
+    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario) throws SalaNoEncontradaException {
         if (sala == null) {
             throw new SalaNoEncontradaException("La sala no existe");
         }
         if (!sala.getCreador().getId().equals(idUsuario)) {
-            throw new IllegalArgumentException(
-                "Solo el creador de la sala puede iniciar la partida"
-            );
+            throw new IllegalArgumentException("Solo el creador de la sala puede iniciar la partida");
         }
     }
 
@@ -199,6 +208,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private Partida crearPartidaDesdeSala(SalaDeEspera sala) throws FichaNoDisponibleException {
+
         Partida partida = new Partida();
 
         partida.setCodigoUnico(sala.getCodigoUnico());
@@ -221,6 +231,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private Jugador crearJugador(Usuario usuario) throws FichaNoDisponibleException {
+
         Jugador jugador = new Jugador();
 
         jugador.setApodo(usuario.getUsername());
@@ -264,7 +275,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
 
             partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
-            partida.setIndiceTurnoActual(turnoAleatorio);
+            partida.setIndiceTurnoActual(jugadorSeleccionado.getOrden());
         }
     }
 
@@ -276,4 +287,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
             }
         }
     }
+
+
 }

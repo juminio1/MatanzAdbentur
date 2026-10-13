@@ -23,10 +23,16 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
+import org.mockito.ArgumentCaptor;
+
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,14 +42,17 @@ public class ServicioPartidaTest {
     private RepositorioPartida repositorioPartidaMock;
     private ServicioPartida servicioPartida;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
+    private ServicioDado servicioDadoMock;
 
     @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
+        servicioDadoMock = mock(ServicioDado.class);
         servicioPartida = new ServicioPartidaImpl(
                 repositorioPartidaMock,
-                repositorioSalaDeEsperaMock
+                repositorioSalaDeEsperaMock,
+                servicioDadoMock
         );
     }
 
@@ -58,6 +67,7 @@ public class ServicioPartidaTest {
         jugador2.setPosicionActual(7);
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
+        // devuelve la partida falsa
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
                 partidaSimulada
         );
@@ -182,7 +192,7 @@ public class ServicioPartidaTest {
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
 
-        
+
         Usuario creador = new Usuario();
         creador.setId(1L);
 
@@ -193,8 +203,8 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
-        
-        sala.setCreador(creador); 
+
+        sala.setCreador(creador);
 
         Partida partida = new Partida();
         partida.setCodigoUnico(sala.getCodigoUnico());
@@ -206,7 +216,7 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
 
-        
+
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
@@ -227,16 +237,16 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
-        
+
         sala.setCreador(creador);
-        
+
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);
 
         assertThrows(CantidadJugadoresInsuficienteException.class,
                 () -> servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L));
-                
+
         assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
         verify(repositorioPartidaMock, never()).guardarPartida(any());
     }
@@ -273,7 +283,7 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(null);
 
-        
+
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         verify(repositorioPartidaMock).guardarPartida(any(Partida.class));
@@ -284,7 +294,7 @@ public class ServicioPartidaTest {
             throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
-            
+
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -300,7 +310,7 @@ public class ServicioPartidaTest {
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
         sala.setCreador(creador);
-        
+
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
                 .thenReturn(partida);

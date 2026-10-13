@@ -440,12 +440,22 @@
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
+<<<<<<< HEAD
     <!-- Inyección segura de variables de sesión para el script -->
     <script th:inline="javascript">
         window.usuarioSesionId = /*[[${usuarioSesionId}]]*/ null;
         window.turnoActualId = /*[[${turnoActualId}]]*/ null;
         window.codigoSala = /*[[${partida.codigoUnico}]]*/ "";
     </script>
+=======
+            <button type="button" class="btn-tirar" id="btn-tirar"
+                    th:disabled="${usuarioSesionId != turnoActualId}">
+                Tirar dados
+            </button>
+        </div>
+    </section>
+</main>
+>>>>>>> e42a750a64e79286321379e57d268335bf5955b6
 
     <!-- Script de cliente -->
     <script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>

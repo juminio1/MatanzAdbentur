@@ -2,8 +2,8 @@
 
     <!-- LOGO A LA IZQUIERDA -->
     <a th:href="@{/home}" class="brand-link">
-        <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg" 
-             alt="El Matancero" 
+        <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg"
+             alt="El Matancero"
              class="logo-nav-img">
     </a>
 
@@ -20,18 +20,18 @@
         <!-- CON SESIÓN: Avatar y Menú Desplegable -->
         <div class="user-menu-container" th:if="${session.NOMBRE != null}">
             <button id="btnUserMenu" class="user-avatar-btn" type="button" aria-expanded="false" title="Mi Cuenta">
-                <img id="userNavAvatar" 
-                     src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png" 
-                     alt="Avatar de usuario" 
+                <img id="userNavAvatar"
+                     src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png"
+                     alt="Avatar de usuario"
                      class="avatar-nav-img" />
             </button>
 
             <!-- Menú Desplegable Flotante -->
             <div id="userDropdown" class="user-dropdown-menu oculto">
                 <div class="user-dropdown-header">
-                    <img id="dropdownUserAvatar" 
-                         src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png" 
-                         alt="Avatar grande" 
+                    <img id="dropdownUserAvatar"
+                         src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png"
+                         alt="Avatar grande"
                          class="avatar-dropdown-img" />
                     <div class="user-info-text">
                         <p class="user-name" id="menuUserName" th:text="${session.NOMBRE}">Usuario</p>
@@ -69,5 +69,4 @@
             </div>
         </div>
     </nav>
-
 </header>

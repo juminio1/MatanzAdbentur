@@ -1,10 +1,10 @@
-package com.tallerwebi.dominio.servicios;
+package com.tallerwebi.presentacion.DTO;
 
-public class ResultadoTirada {
+public class ResultadoTiradaDTO {
     private final int dado1;
     private final int dado2;
 
-    public ResultadoTirada(int dado1, int dado2) {
+    public ResultadoTiradaDTO(int dado1, int dado2) {
         this.dado1 = dado1;
         this.dado2 = dado2;
     }
