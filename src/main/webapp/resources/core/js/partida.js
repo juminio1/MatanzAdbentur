@@ -64,12 +64,7 @@ if (botonTirar) {
 // Busca todos los elementos del html que tenga la clase casillero
 const casilleros = document.querySelectorAll(".casillero");
 console.log("Casilleros encontrados:", casilleros.length);
-if (casilleros.length > 0) {
-    const ficha = document.createElement("div");
-    ficha.classList.add("ficha");
-    casilleros[0].appendChild(ficha);
-}
-
+Se;
 // GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
