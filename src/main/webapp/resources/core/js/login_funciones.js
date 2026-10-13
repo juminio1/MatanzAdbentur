@@ -44,9 +44,12 @@ export function validarCamposDeLogin(inputEmailValue, inputPasswordValue) {
   }
 
   // Ejecución segura tanto si el DOM ya cargó como si está cargando
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", inicializarTogglePassword);
-  } else {
-    inicializarTogglePassword();
-  }
-})();
+    // (y validación para que no rompa en los tests de Node.js)
+    if (typeof document !== 'undefined') {
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", inicializarTogglePassword);
+      } else {
+        inicializarTogglePassword();
+      }
+    }
+  })();
