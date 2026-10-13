@@ -16,7 +16,13 @@ let yaTiroEnEsteTurno = false;
 
 // Une el frontend con el backend de dados.
 async function obtenerResultadoDados() {
-    const respuesta = await fetch(`${basePath}/partida/tirar-dados`, { method: "POST" });
+    // Obtenemos el ID del jugador desde la variable global de la sesión
+    const idJugador = window.usuarioSesionId;
+
+    // Agregamos codigoUnico e idJugador a la URL de la petición
+    const respuesta = await fetch(`${basePath}/partida/tirar-dados?codigoUnico=${codigoPartida}&idJugador=${idJugador}`, {
+        method: "POST"
+    });
 
     if (!respuesta.ok) {
         throw new Error("No se pudieron tirar los dados");

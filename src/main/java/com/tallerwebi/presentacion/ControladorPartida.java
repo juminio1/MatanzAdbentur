@@ -194,7 +194,9 @@ public class ControladorPartida {
 
     @PostMapping("/partida/tirar-dados")
     @ResponseBody
-    public RespuestaMovimientoDTO tirarDados(@RequestParam String codigoUnico, @RequestParam int idJugador)
+    public RespuestaMovimientoDTO tirarDados(
+            @RequestParam("codigoUnico") String codigoUnico,
+            @RequestParam("idJugador") int idJugador)
             throws PartidaNoEncontradaException, JugadorNoEncontradoException {
 
         ResultadoTiradaDTO resultado = servicioPartida.tirarDados();//Llama al servicio para generar la tirada
