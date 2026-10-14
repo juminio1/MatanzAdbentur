@@ -1,4 +1,3 @@
-
 package com.tallerwebi.presentacion.DTO;
 
 public class TurnoDTO {
@@ -10,7 +9,7 @@ public class TurnoDTO {
     private String mensaje;
     private Integer rondaActual;
 
-    public TurnoDTO(String codigoPartida, Long id, String apodo, Integer orden, String mensaje) {
+    public TurnoDTO() {
     }
 
     public TurnoDTO(String codigoPartida, Long idJugadorActual,
