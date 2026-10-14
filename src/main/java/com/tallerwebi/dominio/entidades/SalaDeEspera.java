@@ -1,6 +1,6 @@
 package com.tallerwebi.dominio.entidades;
 
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
@@ -43,7 +43,7 @@ public class SalaDeEspera {
 
     @ElementCollection
     @Enumerated(EnumType.STRING)
-    private List<Ficha> fichasOcupadas;
+    private List<ColorFicha> fichasOcupadas;
 
     public SalaDeEspera() {
         this.usuarios = new ArrayList<>();
@@ -84,11 +84,11 @@ public class SalaDeEspera {
         this.usuarios = usuarios;
     }
 
-    public List<Ficha> getFichasOcupadas() {
+    public List<ColorFicha> getFichasOcupadas() {
         return fichasOcupadas;
     }
 
-    public void setFichasOcupadas(List<Ficha> fichasOcupadas) {
+    public void setFichasOcupadas(List<ColorFicha> fichasOcupadas) {
         this.fichasOcupadas = fichasOcupadas;
     }
 }

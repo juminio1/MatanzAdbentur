@@ -15,7 +15,7 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -495,19 +495,19 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
     Usuario usuarioUno = new Usuario();
     usuarioUno.setId(1L);
     usuarioUno.setUsername("JugadorRojo");
-    usuarioUno.setFicha(Ficha.ROJA);
+    usuarioUno.setFicha(ColorFicha.ROJO);
 
     Usuario usuarioDos = new Usuario();
     usuarioDos.setUsername("JugadorAzul");
-    usuarioDos.setFicha(Ficha.AZUL);
+    usuarioDos.setFicha(ColorFicha.AZUL);
 
     Usuario usuarioTres = new Usuario();
     usuarioTres.setUsername("JugadorVerde");
-    usuarioTres.setFicha(Ficha.VERDE);
+    usuarioTres.setFicha(ColorFicha.VERDE);
 
     Usuario usuarioCuatro = new Usuario();
     usuarioCuatro.setUsername("JugadorAmarillo");
-    usuarioCuatro.setFicha(Ficha.AMARILLA);
+    usuarioCuatro.setFicha(ColorFicha.AMARILLO);
 
     SalaDeEspera sala = new SalaDeEspera();
     sala.setCodigoUnico(codigo);

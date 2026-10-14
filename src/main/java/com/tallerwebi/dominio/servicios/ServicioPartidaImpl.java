@@ -6,7 +6,7 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -250,13 +250,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return jugador;
     }
 
-    private ColorFicha convertirFicha(Ficha ficha) throws FichaNoDisponibleException {
+    private ColorFicha convertirFicha(ColorFicha ficha) throws FichaNoDisponibleException {
         return switch (ficha) {
-            case ROJA -> ColorFicha.ROJO;
+            case ROJO -> ColorFicha.ROJO;
             case AZUL -> ColorFicha.AZUL;
             case VERDE -> ColorFicha.VERDE;
-            case AMARILLA -> ColorFicha.AMARILLO;
-            default -> throw new FichaNoDisponibleException("Ficha no disponible para la partida");
+            case AMARILLO -> ColorFicha.AMARILLO;
+            default -> throw new FichaNoDisponibleException("ColorFicha no disponible para la partida");
         };
     }
 
