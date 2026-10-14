@@ -42,10 +42,24 @@ public class Partida {
     @JoinColumn(name = "jugador_turno_id")
     private Jugador jugadorTurnoAleatorio;
 
-    public Partida() {
+    private Integer rondaActual;
+    private Integer turnosFinalizadosEnRonda;
+
+
+     public Partida() {
         this.jugadores = new ArrayList<>();
         this.estado = EstadoPartida.EN_ESPERA;
         this.indiceTurnoActual = 0;
+        this.rondaActual = 1;
+        this.turnosFinalizadosEnRonda = 0;
+    }
+
+    public Integer getTurnosFinalizadosEnRonda() {
+        return turnosFinalizadosEnRonda;
+    }
+
+    public void setTurnosFinalizadosEnRonda(Integer turnosFinalizadosEnRonda) {
+        this.turnosFinalizadosEnRonda = turnosFinalizadosEnRonda;
     }
 
     public Jugador getJugadorTurnoAleatorio() {
@@ -54,6 +68,14 @@ public class Partida {
 
     public void setJugadorTurnoAleatorio(Jugador jugadorTurnoAleatorio) {
         this.jugadorTurnoAleatorio = jugadorTurnoAleatorio;
+    }
+
+    public Integer getRondaActual() {
+        return this.rondaActual;
+    }
+
+    public void setRondaActual(Integer rondaActual) {
+        this.rondaActual = rondaActual;
     }
 
     public Long getId() {

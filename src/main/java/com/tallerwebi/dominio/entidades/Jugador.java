@@ -50,7 +50,6 @@ private ColorFicha ficha;
         this.ficha = ficha;
     }
 
-
     public Integer getDinero() {
         return dinero;
     }

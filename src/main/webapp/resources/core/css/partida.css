@@ -435,22 +435,54 @@
     position: relative;
 }
 
-.ficha {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    right: 4px;
-    bottom: 4px;
+/* Contenedor para las fichas dentro de cada casillero */
 
-    border-radius: 50%;
-    background: var(--p-rojo);
-    border: 2px solid white;
+.fichas-en-casillero {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+
+    display: grid;
+    grid-template-columns: repeat(2, 11px);
+    gap: 2px;
 
     z-index: 5;
+}
+
+/* Estilo general de las fichas */
+
+.ficha {
+    position: static;
+
+    width: 11px;
+    height: 11px;
+
+    border-radius: 50%;
+    border: 1px solid white;
+
+    box-sizing: border-box;
 
     box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
 
     transition: transform 0.15s ease;
+}
+
+/* Colores de las fichas */
+
+.ficha-rojo {
+    background-color: #E4584D;
+}
+
+.ficha-azul {
+    background-color: #2887E1;
+}
+
+.ficha-verde {
+    background-color: #12B981;
+}
+
+.ficha-amarillo {
+    background-color: #F5C400;
 }
 
 
@@ -475,4 +507,26 @@
     border-radius: 6px;
     font-size: 12px;
 
+}
+.contenedor-ronda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.ronda-titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333333;
+}
+
+#ronda-actual {
+    font-size: 18px;
+    font-weight: 700;
+    color: #d97706;
 }
