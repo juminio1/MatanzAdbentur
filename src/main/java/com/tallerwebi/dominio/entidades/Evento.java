@@ -1,45 +1,32 @@
 package com.tallerwebi.dominio.entidades;
 
-import com.tallerwebi.dominio.enums.TipoEvento;
+import com.tallerwebi.dominio.enums.TipoEfecto;
 import jakarta.persistence.*;
 
 @Entity
 public class Evento {
+
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String descripcion;
 
     @Enumerated(EnumType.STRING)
-    private TipoEvento tipoEvento;
-    private Integer monto;
+    private TipoEfecto tipoEfecto;
 
-    public Evento(Integer id, TipoEvento tipoEvento, Integer monto) {
-        this.id = id;
-        this.tipoEvento = tipoEvento;
-        this.monto = monto;
+    private Integer valor;
+
+    public Evento() {
     }
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public TipoEvento getTipoEvento() {
-        return tipoEvento;
-    }
-
-    public void setTipoEvento(TipoEvento tipoEvento) {
-        this.tipoEvento = tipoEvento;
-    }
-
-    public Integer getMonto() {
-        return monto;
-    }
-
-    public void setMonto(Integer monto) {
-        this.monto = monto;
-    }
+    // Dejá todos los getters y setters exactamente como los tenés...
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    public TipoEfecto getTipoEfecto() { return tipoEfecto; }
+    public void setTipoEfecto(TipoEfecto tipoEfecto) { this.tipoEfecto = tipoEfecto; }
+    public Integer getValor() { return valor; }
+    public void setValor(Integer valor) { this.valor = valor; }
 }
