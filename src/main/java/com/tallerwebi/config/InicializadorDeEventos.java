@@ -1,6 +1,6 @@
 package com.tallerwebi.config;
 
-import com.tallerwebi.dominio.entidades.Evento;
+import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;

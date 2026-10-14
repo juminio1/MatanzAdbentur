@@ -1,7 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.Evento;
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.infraestructura.RepositorioEvento; // <-- Importar esto
 import org.junit.jupiter.api.BeforeEach;

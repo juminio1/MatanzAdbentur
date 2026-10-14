@@ -1,10 +1,11 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.Evento;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import com.tallerwebi.dominio.entidades.eventos.Evento;
 
 import java.util.List;
 import java.util.Random;
@@ -33,8 +34,8 @@ public class RepositorioEventoImpl implements RepositorioEvento {
             return null;
         }
 
-        // Sorteamos uno
-        int indiceAleatorio = random.nextInt(eventos.size());
+        // Agarra un evento aleatoriamente ya guardado en la base de datos.
+        Integer indiceAleatorio = random.nextInt(eventos.size());
         return eventos.get(indiceAleatorio);
     }
 }

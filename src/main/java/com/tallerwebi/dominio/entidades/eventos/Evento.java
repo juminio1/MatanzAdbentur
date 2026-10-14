@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.entidades;
+package com.tallerwebi.dominio.entidades.eventos;
 
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import jakarta.persistence.*;

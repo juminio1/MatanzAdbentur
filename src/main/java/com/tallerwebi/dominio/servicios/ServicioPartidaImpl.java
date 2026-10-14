@@ -3,6 +3,7 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
+import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.Ficha;
