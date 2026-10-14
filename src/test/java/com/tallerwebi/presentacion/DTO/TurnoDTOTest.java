@@ -21,15 +21,14 @@ public class TurnoDTOTest {
 
     @Test
     public void dadoQueSeCreaUnTurnoDTOConDatosCuandoSeConsultanDaComoResultadoLosValoresDelConstructor() {
-        TurnoDTO turnoDTO = new TurnoDTO(
-                "MATANZA123", 2L, "Kevin", 1, "Es el turno de Kevin"
-        );
+        TurnoDTO turnoDTO = new TurnoDTO("MATANZA123", 2L, "Kevin", 1, "Es el turno de Kevin", 30);
 
         assertEquals("MATANZA123", turnoDTO.getCodigoPartida());
-        assertEquals(2, turnoDTO.getIdJugadorActual());
+        assertEquals(2L, turnoDTO.getIdJugadorActual());
         assertEquals("Kevin", turnoDTO.getApodoJugadorActual());
         assertEquals(1, turnoDTO.getOrden());
         assertEquals("Es el turno de Kevin", turnoDTO.getMensaje());
+        assertEquals(30, turnoDTO.getDuracionSegundos());
         assertNull(turnoDTO.getRondaActual());
     }
 
