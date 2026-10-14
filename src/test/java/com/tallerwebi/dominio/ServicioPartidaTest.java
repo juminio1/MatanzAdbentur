@@ -27,6 +27,8 @@ import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+
+import java.awt.*;
 import java.util.Arrays;
 
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -234,6 +236,10 @@ public class ServicioPartidaTest {
         usuarioTres.setUsername("usuario3");
         Usuario usuarioCuatro = new Usuario();
         usuarioCuatro.setUsername("usuario4");
+        usuarioUno.setFicha(ColorFicha.ROJO);
+        usuarioDos.setFicha(ColorFicha.AZUL);
+        usuarioTres.setFicha(ColorFicha.VERDE);
+        usuarioCuatro.setFicha(ColorFicha.AMARILLO);
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
