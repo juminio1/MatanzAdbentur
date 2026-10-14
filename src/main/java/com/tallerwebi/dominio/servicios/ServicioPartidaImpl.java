@@ -1,9 +1,8 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.Jugador;
-import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.SalaDeEspera;
-import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.entidades.*;
+import com.tallerwebi.dominio.entidades.Casillero.Casillero;
+import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.Ficha;
@@ -13,6 +12,7 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
@@ -37,16 +37,22 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final Random random = new Random();
     private final ServicioDado servicioDado;
+    private final ServicioEvento servicioEvento;
+    private final RepositorioCasillero repositorioCasillero;
 
     @Autowired
     public ServicioPartidaImpl(
         RepositorioPartida repositorioPartida,
         RepositorioSalaDeEspera repositorioSalaDeEspera,
-        ServicioDado servicioDado
+        ServicioDado servicioDado,
+        ServicioEvento servicioEvento,
+        RepositorioCasillero repositorioCasillero
     ) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.servicioDado = servicioDado;
+        this.servicioEvento = servicioEvento;
+        this.repositorioCasillero = repositorioCasillero;
     }
 
     @Override
@@ -60,6 +66,27 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Integer posicionActual = jugador.getPosicionActual();
         Integer nuevaPosicion = (posicionActual + cantidadAvance) % totalCasilleros;
         jugador.setPosicionActual(nuevaPosicion);
+
+        //traemos la lista completa de todos los casilleros del tablero
+        List<Casillero> tablero = repositorioCasillero.obtenerTodos();
+
+        //valida que el tablero exista y agarramos el casillero exacto usando el índice
+        if (tablero != null && !tablero.isEmpty() && nuevaPosicion < tablero.size()) {
+
+            Casillero casilleroDestino = tablero.get(nuevaPosicion);
+
+            //verifica dinámicamente si es un casillero de evento
+            if (casilleroDestino instanceof CasilleroEvento) {
+
+                //saaca la carta de la base de datos
+                Evento eventoSorteado = servicioEvento.obtenerEventoAleatorio();
+
+                if (eventoSorteado != null) {
+                    //le aplica el efecto al jugador
+                    servicioEvento.aplicarEvento(jugador, eventoSorteado);
+                }
+            }
+        }
     }
 
     @Override

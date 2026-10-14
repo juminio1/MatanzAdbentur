@@ -23,8 +23,10 @@ import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioDado;
+import com.tallerwebi.dominio.servicios.ServicioEvento;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
+import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import java.util.Arrays;
@@ -39,6 +41,8 @@ public class ServicioPartidaTest {
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
     private ServicioDado servicioDadoMock;
     private ServicioPartida servicioPartida;
+    private ServicioEvento servicioEventoMock;
+    private RepositorioCasillero repositorioCasilleroMock;
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -48,10 +52,15 @@ public class ServicioPartidaTest {
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
         servicioDadoMock = mock(ServicioDado.class);
 
+        servicioEventoMock = mock(ServicioEvento.class);
+        repositorioCasilleroMock = mock(RepositorioCasillero.class);
+
         servicioPartida = new ServicioPartidaImpl(
                 repositorioPartidaMock,
                 repositorioSalaDeEsperaMock,
-                servicioDadoMock
+                servicioDadoMock,
+                servicioEventoMock,
+                repositorioCasilleroMock
         );
     }
 

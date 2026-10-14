@@ -25,6 +25,7 @@ public class Jugador {
 
     private Integer orden;
     private Boolean pierdeTurno;
+    //private Boolean enCarcel = false;
 
     public Jugador() {
         this.dinero = 0;
@@ -35,6 +36,14 @@ public class Jugador {
     public Long getId() {
         return id;
     }
+
+   /* public Boolean getEnCarcel() {
+        return enCarcel;
+    }
+
+    public void setEnCarcel(Boolean enCarcel) {
+        this.enCarcel = enCarcel;
+    }*/
 
     public void setId(Long id) {
         this.id = id;
