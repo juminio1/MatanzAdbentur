@@ -177,6 +177,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
         validarSalaYPermisos(sala, idUsuario);
+        validarFichasSeleccionadas(sala);
 
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
         validarQueNoEsteEnCurso(partida);
@@ -244,20 +245,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
         jugador.setApodo(usuario.getUsername());
 
         if (usuario.getFicha() != null) {
-            jugador.setFicha(convertirFicha(usuario.getFicha()));
+            jugador.setFicha(usuario.getFicha());
         }
 
         return jugador;
-    }
-
-    private ColorFicha convertirFicha(ColorFicha ficha) throws FichaNoDisponibleException {
-        return switch (ficha) {
-            case ROJO -> ColorFicha.ROJO;
-            case AZUL -> ColorFicha.AZUL;
-            case VERDE -> ColorFicha.VERDE;
-            case AMARILLO -> ColorFicha.AMARILLO;
-            default -> throw new FichaNoDisponibleException("ColorFicha no disponible para la partida");
-        };
     }
 
     private void validarCantidadDeJugadores(Partida partida)
@@ -330,5 +321,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return jugador.getFicha().name();
         }
         return "ROJO";
+    }
+
+    private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
+        for (Usuario usuario : sala.getUsuarios()) {
+            if (usuario.getFicha() == null) {
+                throw new FichaNoDisponibleException("No se puede iniciar: Todos los jugadores deben seleccionar una ficha.");
+            }
+        }
     }
 }

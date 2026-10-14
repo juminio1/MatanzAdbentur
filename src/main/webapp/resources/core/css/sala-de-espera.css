@@ -336,10 +336,10 @@ body {
 }
 
 /* Fondos por color de peón */
-.salaEspera__ficha--roja { background: #fff0f1; }
+.salaEspera__ficha--rojo { background: #fff0f1; }
 .salaEspera__ficha--azul { background: #edf7ff; }
 .salaEspera__ficha--verde { background: #edf9f1; }
-.salaEspera__ficha--amarilla { background: #fff8e4; }
+.salaEspera__ficha--amarillo { background: #fff8e4; }
 
 /* ESTADO: ColorFicha seleccionada por el jugador actual */
 .salaEspera__ficha--seleccionada {
@@ -446,7 +446,7 @@ body {
 }
 
 
-.salaEspera__ficha--roja .peon {
+.salaEspera__ficha--rojo .peon {
     color: #df2f3b;
 }
 
@@ -461,7 +461,7 @@ body {
 }
 
 
-.salaEspera__ficha--amarilla .peon {
+.salaEspera__ficha--amarillo .peon {
     color: #e3ae08;
 }
 
