@@ -2,13 +2,13 @@ package com.tallerwebi.presentacion.DTO;
 
 public class PosicionFichaDTO {
 
-    private final int idJugador;
+    private final Long idJugador;
     private final String apodo;
     private final String color;
     private final Integer posicion;
 
     public PosicionFichaDTO(
-        int idJugador,
+        Long idJugador,
         String apodo,
         String color,
         Integer posicion
@@ -19,7 +19,7 @@ public class PosicionFichaDTO {
         this.posicion = posicion;
     }
 
-    public int getIdJugador() {
+    public Long getIdJugador() {
         return idJugador;
     }
 

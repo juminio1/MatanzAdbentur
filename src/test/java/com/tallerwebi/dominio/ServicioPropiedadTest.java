@@ -49,10 +49,10 @@ public class ServicioPropiedadTest {
     @Test
     public void jugadorDeberiaPagarAlquilerAlPropietario() {
         Jugador visitante = new Jugador();
-        visitante.setId(1);
+        visitante.setId(1L);
         visitante.setDinero(1000);
         Jugador propietario = new Jugador();
-        propietario.setId(2);
+        propietario.setId(2L);
         propietario.setDinero(500);
         Propiedad propiedad = new Propiedad(1L, 500, 100, propietario);
         // Simula el descuento al visitante.
@@ -77,7 +77,7 @@ public class ServicioPropiedadTest {
     @Test
     public void propietarioNoDeberiaPagarAlquilerPorSuPropiedad() {
         Jugador propietario = new Jugador();
-        propietario.setId(1);
+        propietario.setId(1L);
         propietario.setDinero(1000);
         Propiedad propiedad = new Propiedad(1L, 500, 100, propietario);
         servicioPropiedad.pagarAlquiler(propiedad, propietario);

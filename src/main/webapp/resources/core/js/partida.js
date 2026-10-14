@@ -20,9 +20,12 @@ async function obtenerResultadoDados() {
     const idJugador = window.usuarioSesionId;
 
     // Agregamos codigoUnico e idJugador a la URL de la petición
-    const respuesta = await fetch(`${basePath}/partida/tirar-dados?codigoUnico=${codigoPartida}&idJugador=${idJugador}`, {
-        method: "POST"
-    });
+    const respuesta = await fetch(
+        `${basePath}/partida/tirar-dados?codigoUnico=${codigoPartida}&idJugador=${idJugador}`,
+        {
+            method: "POST",
+        },
+    );
 
     if (!respuesta.ok) {
         throw new Error("No se pudieron tirar los dados");
@@ -52,21 +55,25 @@ if (botonTirar) {
 
             // No permitir otra tirada hasta que cambie el turno.
             yaTiroEnEsteTurno = true;
+
+            // El movimiento de la ficha lo realiza el WebSocket.
+            console.log("Nueva posición:", resultado.nuevaPosicion);
+
             tiradaExitosa = true;
         } catch (error) {
-            console.error("Error al tirar los dados:", error);
-            yaTiroEnEsteTurno = false;
+            console.error("Error al tirar los dados o mover la ficha:", error);
         } finally {
             estaTirando = false;
         }
 
         if (!tiradaExitosa) {
-            botonTirar.disabled = false;
+            if (!yaTiroEnEsteTurno) {
+                botonTirar.disabled = false;
+            }
             return;
         }
 
-        // TEMPORAL: finalizar el turno al terminar de tirar los dados.
-        // Cuando exista avanzar ficha, esta llamada deberá realizarse después.
+        // Finalizar el turno después de mover la ficha.
         try {
             await finalizarTurno();
         } catch (error) {
@@ -75,31 +82,159 @@ if (botonTirar) {
     });
 }
 
-// ELIMINAR cuando esté implementada la funcionalidad de fichas.
-const casilleros = document.querySelectorAll(".casillero");
-console.log("Casilleros encontrados:", casilleros.length);
+// Busca la ficha del jugador y el casillero al que debe avanzar.
+function moverFichaEnTablero(idJugador, nuevaPosicion) {
+    const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
+    const casilleroDestino = document.querySelector(
+        `.casillero[data-casillero="${nuevaPosicion}"] .fichas-en-casillero`,
+    );
 
-// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
-conectarWebSocketTurnos(basePath, codigoPartida);
+    // Verifica que existan la ficha y el casillero destino.
+    if (!ficha || !casilleroDestino) {
+        console.error("No se encontró la ficha o el casillero destino.", {
+            idJugador,
+            nuevaPosicion,
+            fichaEncontrada: Boolean(ficha),
+            casilleroEncontrado: Boolean(casilleroDestino),
+        });
+        return false;
+    }
+    //Mueve la ficha al nuevo casillero en el HTML.
+    casilleroDestino.appendChild(ficha);
+    return true;
+}
 
-function conectarWebSocketTurnos(base, codigo) {
-    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
+async function animarMovimientoFicha(idJugador, cantidadPasos) {
+    const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
+
+    if (!ficha) {
+        console.error("No se encontró la ficha del jugador:", idJugador);
         return;
     }
 
+    // Busca el casillero donde está actualmente la ficha.
+    const casilleroActual = ficha.closest(".casillero");
+
+    if (!casilleroActual) {
+        console.error("La ficha no está dentro de un casillero.");
+        return;
+    }
+
+    // Obtiene los casilleros en el orden en que aparecen en el tablero.
+    const casilleros = Array.from(document.querySelectorAll(".casillero[data-casillero]"));
+
+    let indiceActual = casilleros.indexOf(casilleroActual);
+
+    if (indiceActual === -1 || casilleros.length === 0) {
+        console.error("No se pudo determinar la posición de la ficha.");
+        return;
+    }
+
+    // Avanza un casillero por vez.
+    for (let paso = 0; paso < cantidadPasos; paso++) {
+        indiceActual = (indiceActual + 1) % casilleros.length;
+
+        const siguienteCasillero = casilleros[indiceActual];
+        const posicionDestino = siguienteCasillero.dataset.casillero;
+
+        // Mueve la ficha al siguiente casillero.
+        const movimientoRealizado = moverFichaEnTablero(idJugador, posicionDestino);
+
+        if (!movimientoRealizado) {
+            return;
+        }
+
+        // Pequeña pausa para que se vea el avance.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+}
+
+// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
+conectarWebSocketTurnos(basePath, codigoPartida);
+function conectarWebSocketTurnos(base, codigo) {
+    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
+        console.error("No se pudo conectar el WebSocket");
+        return;
+    }
     const socket = new SockJS(`${base}/ws`);
     const stompClient = Stomp.over(socket);
     stompClient.debug = null;
+    stompClient.connect(
+        {},
+        () => {
+            console.log("WebSocket conectado a la partida:", codigo);
 
-    stompClient.connect({}, () => {
-        stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
-            const turnoDTO = JSON.parse(mensaje.body);
+            //CANAL 1: cambios de turnos y rondas.
+            stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
+                const turnoDTO = JSON.parse(mensaje.body);
+                actualizarTurnoEnPantalla(turnoDTO);
+                // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
+                actualizarRondaActual(turnoDTO.rondaActual);
+            });
 
-            actualizarTurnoEnPantalla(turnoDTO);
-            // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
-            actualizarRondaActual(turnoDTO.rondaActual);
-        });
+            //CANAL 2: recibe el resultado de la tirada y el movimiento.
+            stompClient.subscribe(`/topic/partida/${codigo}`, async (mensaje) => {
+                //Esta ruta tiene que coincidir con la que esta controladorPartida. notificadorWebSocket.convertAndSend
+                const movimiento = JSON.parse(mensaje.body);
+                if (dado1) dado1.textContent = movimiento.dado1;
+                if (dado2) dado2.textContent = movimiento.dado2;
+                try {
+                    const cantidadPasos = Number(movimiento.dado1) + Number(movimiento.dado2);
+                    await animarMovimientoFicha(movimiento.idJugador, cantidadPasos);
+                    const ficha = document.querySelector(
+                        `.ficha[data-jugador-id="${movimiento.idJugador}"]`,
+                    );
+                    const casillero = ficha?.closest(".casillero");
+                    const posicionFinal = casillero ? casillero.dataset.casillero : "desconocida";
+                    console.log(
+                        "Resultado de la tirada:",
+                        "Jugador:",
+                        movimiento.idJugador,
+                        "| Dados:",
+                        movimiento.dado1,
+                        "+",
+                        movimiento.dado2,
+                        "| Total:",
+                        cantidadPasos,
+                        "| Casillero final:",
+                        posicionFinal,
+                    );
+                } catch (error) {
+                    console.error("Error al animar el movimiento:", error);
+                }
+            });
+
+            // 3. Escuchar la respuesta con las posiciones actuales.
+            stompClient.subscribe(`/topic/partida/${codigo}/posiciones`, (mensaje) => {
+                const posiciones = JSON.parse(mensaje.body);
+                sincronizarPosicionesFichas(posiciones);
+            });
+            // Primero nos suscribimos al canal y después solicitamos
+            // las posiciones actuales al backend.
+            stompClient.send(`/app/partida/${codigo}/solicitar-posiciones`, {}, JSON.stringify({}));
+        },
+        (error) => {
+            console.error("Error en la conexión WebSocket:", error);
+        },
+    );
+}
+
+function sincronizarPosicionesFichas(posiciones) {
+    if (!Array.isArray(posiciones)) {
+        console.error("La respuesta de posiciones no es una lista válida.");
+        return;
+    }
+
+    posiciones.forEach((jugador) => {
+        if (jugador.posicion == null) {
+            console.warn("El jugador no tiene una posición definida:", jugador.idJugador);
+            return;
+        }
+
+        moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
+
+    console.log("Posiciones de las fichas sincronizadas:", posiciones);
 }
 
 function actualizarTurnoEnPantalla(turnoDTO) {
@@ -124,9 +259,10 @@ function actualizarTurnoEnPantalla(turnoDTO) {
         if (contenedorTurno) {
             const span = document.createElement("span");
             span.className = "indicador-turno";
-            span.textContent = idJugadorActual === usuarioSesionId
-                ? "Tu turno"
-                : `Turno de ${turnoDTO.apodoJugadorActual}`;
+            span.textContent =
+                idJugadorActual === usuarioSesionId
+                    ? "Tu turno"
+                    : `Turno de ${turnoDTO.apodoJugadorActual}`;
             contenedorTurno.appendChild(span);
         }
     }
@@ -146,7 +282,7 @@ function actualizarRondaActual(rondaActual) {
     }
 }
 
-// TEMPORAL: finalizar turno después de tirar dados.
+// Finalizar turno después de avanzar la ficha.
 async function finalizarTurno() {
     console.log("Intentando avanzar el turno...");
 
