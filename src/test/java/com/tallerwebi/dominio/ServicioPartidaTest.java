@@ -43,8 +43,8 @@ public class ServicioPartidaTest {
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
     private ServicioDado servicioDadoMock;
     private NotificadorPartida notificadorPartidaMock;
-    private ServicioPartida servicioPartida;
     private GestorTemporizadorPartida gestorTemporizadorMock;
+    private ServicioPartida servicioPartida;
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -54,6 +54,7 @@ public class ServicioPartidaTest {
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
         servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
+        gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -603,5 +604,64 @@ public class ServicioPartidaTest {
 
         assertEquals("JugadorRojo", partida.getJugadores().get(0).getApodo());
         assertEquals("JugadorAmarillo", partida.getJugadores().get(3).getApodo());
+    }
+
+    @Test
+    public void alIniciarPartidaSeDebeProgramarElTemporizadorDe30Segundos() throws Exception {
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
+        Jugador jugador1 = new Jugador();
+        jugador1.setId(1L);
+        Jugador jugador2 = new Jugador();
+        jugador2.setId(2L);
+
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.setCreador(creador);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(sala.getCodigoUnico());
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.setJugadores(Arrays.asList(jugador1, jugador2));
+
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
+        when(
+            repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
+        ).thenReturn(partida);
+
+        servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
+
+        verify(gestorTemporizadorMock).programarTemporizador(
+            eq("ABC123"),
+            eq(30),
+            any(Runnable.class)
+        );
+    }
+
+    @Test
+    public void alAvanzarTurnoSeDebeCancelarElTemporizadorPrevioYProgramarUnoNuevo() {
+        String codigoPrueba = "MATANZA123";
+        Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
+        Jugador jugador1 = new Jugador();
+        jugador1.setOrden(0);
+        Jugador jugador2 = new Jugador();
+        jugador2.setOrden(1);
+        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+        partidaSimulada.setIndiceTurnoActual(0);
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+            partidaSimulada
+        );
+
+        servicioPartida.avanzarTurno(codigoPrueba);
+
+        verify(gestorTemporizadorMock).cancelarTemporizador(codigoPrueba);
+        verify(gestorTemporizadorMock).programarTemporizador(
+            eq(codigoPrueba),
+            eq(30),
+            any(Runnable.class)
+        );
     }
 }
