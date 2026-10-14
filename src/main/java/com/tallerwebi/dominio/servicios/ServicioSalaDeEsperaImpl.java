@@ -46,6 +46,9 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             throw new UsuarioNoEncontradoException();
         }
 
+        creador.setFicha(null);
+        repositorioUsuario.modificar(creador);
+
         SalaDeEspera nuevaSala = new SalaDeEspera();
 
         nuevaSala.setCodigoUnico(generarCodigoUnico());
@@ -81,6 +84,9 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             throw new SalaDeEsperaLlenaException();
         }
 
+        usuario.setFicha(null);
+        repositorioUsuario.modificar(usuario);
+
         sala.getUsuarios().add(usuario);
 
         repositorioSalaDeEspera.modificar(sala);
@@ -100,6 +106,12 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         }
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        if (usuario.getFicha() != null) {
+            sala.getFichasOcupadas().remove(usuario.getFicha());
+            usuario.setFicha(null);
+            repositorioUsuario.modificar(usuario);
+        }
 
         boolean removido = sala
             .getUsuarios()

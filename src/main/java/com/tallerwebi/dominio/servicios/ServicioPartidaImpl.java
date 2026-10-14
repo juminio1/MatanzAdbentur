@@ -319,8 +319,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private String obtenerNombreFichaSegura(Jugador jugador) {
         if (jugador.getFicha() != null) {
             return jugador.getFicha().name();
-        }
-        return "ROJO";
+        };
+        return null;
     }
 
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
