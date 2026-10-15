@@ -25,7 +25,7 @@ public class ServicioEventoImpl implements ServicioEvento {
 
     private final RepositorioEvento repositorioEvento;
     private final Random random;
-    private static final Integer RONDAS_ENTRE_EVENTOS = 2;
+    private static final Integer RONDAS_ENTRE_EVENTOS = 5;
     private final ServicioDado servicioDado;
 
     private final Map<String, Map<Long, Integer>> tiradasPorPartida = new ConcurrentHashMap<>();
@@ -241,3 +241,10 @@ public class ServicioEventoImpl implements ServicioEvento {
         return rondaActual % RONDAS_ENTRE_EVENTOS == 0;
     }
 }
+/*
+intentarResolverEventoGlobal(partida);
+obtenerJugadoresConResultadoElegido(...);
+prepararDesempate(...);
+aplicarConsecuenciaEventoGlobal(...);
+finalizarEventoGlobal(...);
+*/
