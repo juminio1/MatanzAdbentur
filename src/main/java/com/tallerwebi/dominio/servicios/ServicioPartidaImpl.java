@@ -6,7 +6,7 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -180,6 +180,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
         validarSalaYPermisos(sala, idUsuario);
+        validarFichasSeleccionadas(sala);
 
         Partida partida = prepararYCrearPartida(codigo, sala);
 
@@ -236,27 +237,25 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private void agregarJugadoresDesdeSala(Partida partida, SalaDeEspera sala)
         throws FichaNoDisponibleException {
-        if (sala.getUsuarios() == null) {
-            return;
-        }
-        for (Usuario usuario : sala.getUsuarios()) {
-            Jugador jugador = new Jugador();
-            jugador.setApodo(usuario.getUsername());
-            if (usuario.getFicha() != null) {
-                jugador.setFicha(convertirFicha(usuario.getFicha()));
+        if (sala.getUsuarios() != null) {
+            for (Usuario usuario : sala.getUsuarios()) {
+                Jugador jugador = crearJugador(usuario);
+                partida.getJugadores().add(jugador);
             }
-            partida.getJugadores().add(jugador);
         }
     }
+    
 
-    private ColorFicha convertirFicha(Ficha ficha) throws FichaNoDisponibleException {
-        return switch (ficha) {
-            case ROJA -> ColorFicha.ROJO;
-            case AZUL -> ColorFicha.AZUL;
-            case VERDE -> ColorFicha.VERDE;
-            case AMARILLA -> ColorFicha.AMARILLO;
-            default -> throw new FichaNoDisponibleException("Ficha no disponible para la partida");
-        };
+    private Jugador crearJugador(Usuario usuario) throws FichaNoDisponibleException {
+        Jugador jugador = new Jugador();
+
+        jugador.setApodo(usuario.getUsername());
+
+        if (usuario.getFicha() != null) {
+            jugador.setFicha(usuario.getFicha());
+        }
+
+        return jugador;
     }
 
     private void validarCantidadDeJugadores(Partida partida)
@@ -345,5 +344,20 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return (
             partida == null || partida.getJugadores() == null || partida.getJugadores().isEmpty()
         );
+    }
+
+    private String obtenerNombreFichaSegura(Jugador jugador) {
+        if (jugador.getFicha() != null) {
+            return jugador.getFicha().name();
+        };
+        return null;
+    }
+
+    private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
+        for (Usuario usuario : sala.getUsuarios()) {
+            if (usuario.getFicha() == null) {
+                throw new FichaNoDisponibleException("No se puede iniciar: Todos los jugadores deben seleccionar una ficha.");
+            }
+        }
     }
 }

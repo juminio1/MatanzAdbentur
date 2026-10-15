@@ -413,33 +413,38 @@
     position: relative;
 }
 
-/* Contenedor para las fichas dentro de cada casillero */
-
+/* Contenedor para las fichas dentro decada casillero */
 .fichas-en-casillero {
     position: absolute;
-    right: 2px;
-    bottom: 2px;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
 
     display: grid;
-    grid-template-columns: repeat(2, 11px);
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 2px;
+
+    place-items: center;
 
     z-index: 5;
 }
 
 /* Estilo general de las fichas */
-
 .ficha {
     position: static;
 
-    width: 11px;
-    height: 11px;
+    width: 100%;
+    height: 100%;
+
+    max-width: 24px;
+    max-height: 24px;
 
     border-radius: 50%;
     border: 1px solid white;
 
     box-sizing: border-box;
-
     box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
 
     transition: transform 0.15s ease;
