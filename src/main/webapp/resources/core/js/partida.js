@@ -373,10 +373,11 @@ function aplicarTurnoDTO(turnoDTO) {
     const jugadorAnterior = window.idJugadorTurnoAnterior;
     const cambioDeTurno = String(jugadorAnterior) !== String(turnoDTO.idJugadorActual);
 
+    if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
+    if (cambioDeTurno) iniciarRelojLocal(turnoDTO.duracionSegundos);
     actualizarTurnoEnPantalla(turnoDTO);
     actualizarRondaActual(turnoDTO.rondaActual);
-    if (cambioDeTurno) iniciarRelojLocal(turnoDTO.duracionSegundos);
 }
 
 // GESTIÓN DE RONDAS: solo se actualiza la visualización.
@@ -401,7 +402,6 @@ const btnModalInfoAccion = document.getElementById("btn-modal-info-accion");
 const posicionesPropiedad = new Set([1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29]);
 const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
 let propiedadSeleccionada = null;
-let temporizadorCompra = null;
 let resolviendoDecisionPropiedad = false;
 
 function actualizarEtiquetaPrecioPropiedad(propiedad) {
@@ -471,14 +471,17 @@ function mostrarInfoPropiedad(propiedad) {
         ?.closest(".casillero")?.dataset.casillero;
     const puedeComprar = propiedad.disponible
         && String(posicionJugador) === String(propiedad.posicion)
-        && String(window.turnoActualId) === String(window.usuarioSesionId);
+        && String(window.turnoActualId) === String(window.usuarioSesionId)
+        && tiempoRestante > 0;
     const esPropia = !propiedad.disponible
         && String(propiedad.propietarioId) === String(window.usuarioSesionId);
 
     if (propiedad.disponible) {
         infoNota.textContent = puedeComprar
             ? "Podés comprarla ahora o pasar."
-            : "Propiedad disponible. Solo se puede comprar al caer en ella durante tu turno.";
+            : (tiempoRestante <= 0 && String(window.turnoActualId) === String(window.usuarioSesionId)
+                ? "Terminó el tiempo de tu turno; ya no podés comprar esta propiedad."
+                : "Propiedad disponible. Solo se puede comprar al caer en ella durante tu turno.");
     } else if (esPropia) {
         infoNota.textContent = `Es tuya. Podés venderla al banco por $${propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2)}.`;
     } else {
@@ -518,7 +521,9 @@ async function cargarInfoPropiedad(posicion, abrirPopup = false) {
 }
 
 async function comprarPropiedadActual() {
-    if (!propiedadSeleccionada || !propiedadSeleccionada.disponible || resolviendoDecisionPropiedad) return;
+    if (!propiedadSeleccionada || !propiedadSeleccionada.disponible || resolviendoDecisionPropiedad
+        || tiempoRestante <= 0
+        || String(window.turnoActualId) !== String(window.usuarioSesionId)) return;
     resolviendoDecisionPropiedad = true;
     document.getElementById("btn-modal-comprar").disabled = true;
     document.getElementById("btn-modal-pasar").disabled = true;
@@ -553,8 +558,11 @@ async function comprarPropiedadActual() {
     } catch (error) {
         infoNota.textContent = error.message || "No se pudo comprar la propiedad.";
         document.getElementById("modal-propiedad-info").textContent = infoNota.textContent;
-        document.getElementById("btn-modal-comprar").disabled = false;
-        document.getElementById("btn-modal-pasar").disabled = false;
+        if (modalCompra?.open && tiempoRestante > 0
+            && String(window.turnoActualId) === String(window.usuarioSesionId)) {
+            document.getElementById("btn-modal-comprar").disabled = false;
+            document.getElementById("btn-modal-pasar").disabled = false;
+        }
         resolviendoDecisionPropiedad = false;
     }
 }
@@ -593,8 +601,8 @@ function agregarAlHistorial(texto) {
 }
 
 function cerrarModalCompra() {
-    if (temporizadorCompra) clearInterval(temporizadorCompra);
-    temporizadorCompra = null;
+    document.getElementById("btn-modal-comprar").disabled = true;
+    document.getElementById("btn-modal-pasar").disabled = true;
     if (modalCompra?.open) modalCompra.close();
     resolviendoDecisionPropiedad = false;
 }
@@ -631,16 +639,11 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
     document.getElementById("modal-propiedad-titulo").textContent = propiedad.nombre;
     document.getElementById("modal-propiedad-info").textContent =
         `Sin dueño · Precio: $${propiedad.precioCompra} · Alquiler: $${propiedad.alquiler}`;
+    if (tiempoRestante <= 0) return;
     document.getElementById("btn-modal-comprar").disabled = false;
     document.getElementById("btn-modal-pasar").disabled = false;
-    let segundos = 30;
-    document.getElementById("tiempo-compra").textContent = segundos;
+    document.getElementById("tiempo-compra").textContent = tiempoRestante;
     modalCompra.showModal();
-    temporizadorCompra = setInterval(() => {
-        segundos -= 1;
-        document.getElementById("tiempo-compra").textContent = segundos;
-        if (segundos <= 0) pasarTurnoPropiedad();
-    }, 1000);
 }
 
 document.querySelectorAll(".casillero[data-casillero]").forEach((casillero) => {
@@ -715,13 +718,22 @@ function iniciarRelojLocal(segundos) {
             elementoReloj.style.color = "";
             elementoReloj.style.fontWeight = "normal";
         }
+        sincronizarTiempoPopupCompra();
 
         // Acciones al llegar a cero
         if (tiempoRestante === 0) {
             clearInterval(intervaloReloj);
             bloquearControles();
+            cerrarModalCompra();
+            if (propiedadSeleccionada) mostrarInfoPropiedad(propiedadSeleccionada);
         }
     }, 1000);
+}
+
+function sincronizarTiempoPopupCompra() {
+    if (!modalCompra?.open) return;
+    const contadorCompra = document.getElementById("tiempo-compra");
+    if (contadorCompra) contadorCompra.textContent = String(Math.max(0, tiempoRestante));
 }
 
 function actualizarTextoReloj(elemento) {
