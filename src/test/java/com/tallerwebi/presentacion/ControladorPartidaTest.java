@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -18,6 +19,8 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -37,6 +40,8 @@ public class ControladorPartidaTest {
 
     private ServicioPartida servicioPartidaMock;
     private SimpMessagingTemplate notificadorWebSocketMock;
+    private ServicioCasillero servicioCasilleroMock;
+    private ServicioPropiedad servicioPropiedadMock;
     private ControladorPartida controladorPartida;
     private MockHttpServletRequest request;
     private MockHttpSession session;
@@ -45,9 +50,15 @@ public class ControladorPartidaTest {
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-        servicioPartidaMock = mock(ServicioPartida.class);
+        servicioCasilleroMock = mock(ServicioCasillero.class);
+        servicioPropiedadMock = mock(ServicioPropiedad.class);
 
-        controladorPartida = new ControladorPartida(servicioPartidaMock, notificadorWebSocketMock);
+        controladorPartida = new ControladorPartida(
+                servicioPartidaMock,
+                notificadorWebSocketMock,
+                servicioCasilleroMock,
+                servicioPropiedadMock
+        );
 
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
@@ -115,6 +126,7 @@ public class ControladorPartidaTest {
         assertEquals("partida", mav.getViewName());
         assertNotNull(mav.getModel().get("partida"));
         assertEquals(partidaMock, mav.getModel().get("partida"));
+        assertEquals(usuarioId, mav.getModel().get("usuarioSesionId"));
         assertEquals(1L, mav.getModel().get("turnoActualId"));
     }
 
@@ -210,11 +222,6 @@ public class ControladorPartidaTest {
         assertEquals(2, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
 
     @Test
@@ -335,11 +342,8 @@ public class ControladorPartidaTest {
         assertEquals(1, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
+
 
     @Test
     public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException {

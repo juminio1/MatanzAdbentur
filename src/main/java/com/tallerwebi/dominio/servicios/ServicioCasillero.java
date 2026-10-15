@@ -7,10 +7,10 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 
 import java.util.List;
 
-@FunctionalInterface
 public interface ServicioCasillero {
     //operaciones de admi
     List<Casillero> obtenerTodosLosCasilleros();
+    void guardarCasillero(Casillero casillero);
     //Casillero buscarPorId(Long id);
 
     // comportamiento del juego

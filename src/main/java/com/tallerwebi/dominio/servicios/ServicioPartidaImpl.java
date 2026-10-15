@@ -3,6 +3,8 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
@@ -13,7 +15,6 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -80,6 +81,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void actualizarJugador(Jugador jugador) {
+        repositorioPartida.actualizarJugador(jugador);
+    }
+
+    @Override
     public void incrementarRondas(Partida partida) {
         int ronda = partida.getRondaActual() == null ? 1 : partida.getRondaActual();
         int turnosFinalizados =
@@ -137,6 +143,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Integer indiceActual =
             partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
         return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
+    }
+
+    @Override
+    public Jugador obtenerJugadorPorId(Long idJugador) {
+        return repositorioPartida.buscarJugadorPorId(idJugador);
     }
 
     private Jugador buscarJugadorPorTurno(List<Jugador> jugadores, Integer indice) {
@@ -244,7 +255,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             }
         }
     }
-    
+
 
     private Jugador crearJugador(Usuario usuario) throws FichaNoDisponibleException {
         Jugador jugador = new Jugador();
@@ -352,7 +363,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         };
         return null;
     }
-        
+
 
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
         for (Usuario usuario : sala.getUsuarios()) {

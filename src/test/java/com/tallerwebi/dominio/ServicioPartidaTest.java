@@ -17,7 +17,6 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -31,14 +30,12 @@ import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
-import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
 
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
-import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -79,8 +76,50 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+                partidaSimulada
+        );
+
+        servicioPartida.inicializarTurnos(codigoPrueba);
+
+        assertEquals(0, partidaSimulada.getIndiceTurnoActual());
+        assertEquals(0, jugador1.getOrden());
+        assertEquals(1, jugador2.getOrden());
+        assertFalse(jugador1.getPierdeTurno());
+    }
+
+    @Test
+    public void queSeObtenganLasPosicionesYSeMuestrenTodosLosJugadoresPorCodigo() {
+        // partida falsa
+        String codigoPrueba = "MATANZA123";
+        Partida partidaSimulada = new Partida();
+
+        Jugador jugador1 = new Jugador();
+        jugador1.setPosicionActual(0);
+        Jugador jugador2 = new Jugador();
+        jugador2.setPosicionActual(7);
+        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
+
+        Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
+
+        assertNotNull(partidaObtenida);
+        assertEquals(2, partidaObtenida.getJugadores().size());
+        assertEquals(0, partidaObtenida.getJugadores().get(0).getPosicionActual());
+        assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
+    }
+
+    @Test
+    public void alInicializarTurnosDeberiaAsignarOrdenACadaJugadorYComenzarEnCero() {
+        String codigoPrueba = "MATANZA123";
+        Partida partidaSimulada = new Partida();
+        Jugador jugador1 = new Jugador();
+        Jugador jugador2 = new Jugador();
+        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
 
         servicioPartida.inicializarTurnos(codigoPrueba);
 
@@ -120,6 +159,7 @@ public class ServicioPartidaTest {
         jugador1.setOrden(0);
         Jugador jugador2 = new Jugador();
         jugador2.setOrden(1);
+
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
         partidaSimulada.setIndiceTurnoActual(0);
 
@@ -176,6 +216,7 @@ public class ServicioPartidaTest {
         jugador2.setOrden(1);
         Jugador jugador3 = new Jugador();
         jugador3.setOrden(2);
+
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2, jugador3));
         partidaSimulada.setIndiceTurnoActual(2);
 
@@ -226,6 +267,7 @@ public class ServicioPartidaTest {
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
+
         sala.setCreador(creador);
 
         Partida partida = new Partida();
@@ -233,10 +275,10 @@ public class ServicioPartidaTest {
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
 
-        when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
-        when(
-            repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
-        ).thenReturn(partida);
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico()))
+            .thenReturn(sala);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
+            .thenReturn(partida);
 
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
@@ -317,10 +359,13 @@ public class ServicioPartidaTest {
         Usuario usuarioUno = new Usuario();
         usuarioUno.setUsername("usuario1");
         usuarioUno.setId(1L);
+
         Usuario usuarioDos = new Usuario();
         usuarioDos.setUsername("usuario2");
+
         Usuario usuarioTres = new Usuario();
         usuarioTres.setUsername("usuario3");
+
         Usuario usuarioCuatro = new Usuario();
         usuarioCuatro.setUsername("usuario4");
         usuarioUno.setFicha(ColorFicha.ROJO);
@@ -338,6 +383,7 @@ public class ServicioPartidaTest {
             repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
         ).thenReturn(null);
 
+
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         verify(repositorioPartidaMock).guardarPartida(any(Partida.class));
@@ -345,7 +391,9 @@ public class ServicioPartidaTest {
 
     @Test
     public void dadoQueExisteUnaPartidaConJugadoresSeSeleccionaAleatoriamenteElTurnoInicialExitosamente()
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
+            throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
+            CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
+            SalaNoEncontradaException, FichaNoDisponibleException {
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -468,6 +516,26 @@ public class ServicioPartidaTest {
     }
 
     @Test
+    public void queSePuedaSumarDineroAlJugador() {
+        Jugador jugador = new Jugador();
+        jugador.setDinero(1000);
+
+        servicioPartida.sumarDinero(jugador, 500);
+
+        assertEquals(1500, jugador.getDinero());
+    }
+
+    @Test
+    public void queSePuedaRestarDineroAlJugador() {
+        Jugador jugador = new Jugador();
+        jugador.setDinero(1000);
+
+        servicioPartida.restarDinero(jugador, 300);
+
+        assertEquals(700, jugador.getDinero());
+    }
+
+    @Test
     public void queElJugadorActualiceSuPosicionAlMoverseUnEspacioValidoDentroDelTablero() {
         Jugador jugador = new Jugador();
         jugador.setPosicionActual(5);
@@ -570,6 +638,7 @@ public class ServicioPartidaTest {
 
     verify(repositorioPartidaMock, never()).guardarPartida(any());
 }
+
 
 @Test
 public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDaComoResultadoLasFichasConvertidas() {

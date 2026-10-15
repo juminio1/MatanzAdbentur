@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>El Matancero – Partida</title>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css"/>
-    <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css"/>
+    <link rel="stylesheet" th:href="@{/css/partida.css(v=turno-sync-3)}" href="../../../resources/core/css/partida.css?v=turno-sync-3"/>
 </head>
 <body class="pagina-partida">
 <!-- Barra superior: contador + jugadores -->
@@ -26,8 +26,8 @@
 
     <section class="jugadores">
         <article class="jugador" th:each="jugador : ${partida.jugadores}" th:id="${jugador.id}">
-            <img class="avatar-jugador" th:src="@{/images/personajes/TURRO%20ICON🇦🇷.jpg}"
-                 src="../../../resources/images/personajes/TURRO%20ICON🇦🇷.jpg" alt="Avatar del Jugador"/>
+            <img class="avatar-jugador" th:src="@{/images/personajes/personajeTurro.jpg}"
+                 src="../../../resources/core/images/personajes/personajeTurro.jpg" alt="Avatar del Jugador"/>
             <div class="contenedor-nombre-jugador">
                 <h3 class="nombre-jugador" th:text="${jugador.apodo}">JUGADOR</h3>
             </div>
@@ -68,7 +68,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 11; --fila: 5" data-casillero="1">
-                    <span class="casillero__nombre">Casillero 1</span>
+                    <span class="casillero__nombre">Plaza Barrio Marina</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 1}" class="ficha"
@@ -82,7 +82,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 10; --fila: 5" data-casillero="2">
-                    <span class="casillero__nombre">Casillero 2</span>
+                    <span class="casillero__nombre">Parroquia Stella Maris</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 2}" class="ficha"
@@ -94,7 +94,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 9; --fila: 5" data-casillero="3">
-                    <span class="casillero__nombre">Casillero 3</span>
+                    <span class="casillero__nombre">EVENTO 1</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 3}" class="ficha"
@@ -106,7 +106,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 8; --fila: 5" data-casillero="4">
-                    <span class="casillero__nombre">Casillero 4</span>
+                    <span class="casillero__nombre">Plaza San Justo</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 4}" class="ficha"
@@ -118,7 +118,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 7; --fila: 5" data-casillero="5">
-                    <span class="casillero__nombre">Casillero 5</span>
+                    <span class="casillero__nombre">UNLaM</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 5}" class="ficha"
@@ -130,7 +130,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 6; --fila: 5" data-casillero="6">
-                    <span class="casillero__nombre">Casillero 6</span>
+                    <span class="casillero__nombre">Colectivo 242</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 6}" class="ficha"
@@ -142,7 +142,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 5; --fila: 5" data-casillero="7">
-                    <span class="casillero__nombre">Casillero 7</span>
+                    <span class="casillero__nombre">Villa Palito</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 7}" class="ficha"
@@ -154,7 +154,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 4; --fila: 5" data-casillero="8">
-                    <span class="casillero__nombre">Casillero 8</span>
+                    <span class="casillero__nombre">Cárcel / Comisaría</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 8}" class="ficha"
@@ -166,7 +166,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 3; --fila: 5" data-casillero="9">
-                    <span class="casillero__nombre">Casillero 9</span>
+                    <span class="casillero__nombre">Cancha de Brown</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 9}" class="ficha"
@@ -179,7 +179,7 @@
 
                 <li class="casillero" style="--col: 2; --fila: 5" data-casillero="10">
 
-                    <span class="casillero__nombre">Casillero 10</span>
+                    <span class="casillero__nombre">EVENTO 2</span>
 
                     <div class="fichas-en-casillero">
 
@@ -197,7 +197,7 @@
 
                 <li class="casillero casillero--esquina" style="--col: 1; --fila: 5" data-casillero="11">
 
-                    <span class="casillero__nombre">Casillero 11</span>
+                    <span class="casillero__nombre">Jesse James</span>
 
                     <div class="fichas-en-casillero">
 
@@ -215,7 +215,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 4" data-casillero="12">
 
-                    <span class="casillero__nombre">Casillero 12</span>
+                    <span class="casillero__nombre">Parada 96</span>
 
                     <div class="fichas-en-casillero">
 
@@ -233,7 +233,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 3" data-casillero="13">
 
-                    <span class="casillero__nombre">Casillero 13</span>
+                    <span class="casillero__nombre">Villa San Pete</span>
 
                     <div class="fichas-en-casillero">
 
@@ -251,7 +251,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 2" data-casillero="14">
 
-                    <span class="casillero__nombre">Casillero 14</span>
+                    <span class="casillero__nombre">EVENTO 3</span>
 
                     <div class="fichas-en-casillero">
 
@@ -269,7 +269,7 @@
 
                 <li class="casillero casillero--esquina" style="--col: 1; --fila: 1" data-casillero="15">
 
-                    <span class="casillero__nombre">Casillero 15</span>
+                    <span class="casillero__nombre">Feria Carlos Casares</span>
 
                     <div class="fichas-en-casillero">
 
@@ -287,7 +287,7 @@
 
                 <li class="casillero" style="--col: 2; --fila: 1" data-casillero="16">
 
-                    <span class="casillero__nombre">Casillero 16</span>
+                    <span class="casillero__nombre">Plaza Barrio La Casona</span>
 
                     <div class="fichas-en-casillero">
 
@@ -305,7 +305,7 @@
 
                 <li class="casillero" style="--col: 3; --fila: 1" data-casillero="17">
 
-                    <span class="casillero__nombre">Casillero 17</span>
+                    <span class="casillero__nombre">Parada 621</span>
 
                     <div class="fichas-en-casillero">
 
@@ -323,7 +323,7 @@
 
                 <li class="casillero" style="--col: 4; --fila: 1" data-casillero="18">
 
-                    <span class="casillero__nombre">Casillero 18</span>
+                    <span class="casillero__nombre">Estación Laferrere</span>
 
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
@@ -340,7 +340,7 @@
 
                 <li class="casillero" style="--col: 5; --fila: 1" data-casillero="19">
 
-                    <span class="casillero__nombre">Casillero 19</span>
+                    <span class="casillero__nombre">Av. Luro</span>
 
                     <div class="fichas-en-casillero">
 
@@ -358,7 +358,7 @@
 
                 <li class="casillero" style="--col: 6; --fila: 1" data-casillero="20">
 
-                    <span class="casillero__nombre">Casillero 20</span>
+                    <span class="casillero__nombre">EVENTO 4</span>
 
                     <div class="fichas-en-casillero">
 
@@ -376,7 +376,7 @@
 
                 <li class="casillero" style="--col: 7; --fila: 1" data-casillero="21">
 
-                    <span class="casillero__nombre">Casillero 21</span>
+                    <span class="casillero__nombre">Puente 12</span>
 
                     <div class="fichas-en-casillero">
 
@@ -394,7 +394,7 @@
 
                 <li class="casillero" style="--col: 8; --fila: 1" data-casillero="22">
 
-                    <span class="casillero__nombre">Casillero 22</span>
+                    <span class="casillero__nombre">Superchino “Luna”</span>
 
                     <div class="fichas-en-casillero">
 
@@ -412,7 +412,7 @@
 
                 <li class="casillero" style="--col: 9; --fila: 1" data-casillero="23">
 
-                    <span class="casillero__nombre">Casillero 23</span>
+                    <span class="casillero__nombre">Cementerio Israelita</span>
 
                     <div class="fichas-en-casillero">
 
@@ -431,7 +431,7 @@
 
                 <li class="casillero" style="--col: 10; --fila: 1" data-casillero="24">
 
-                    <span class="casillero__nombre">Casillero 24</span>
+                    <span class="casillero__nombre">Colectivo 620</span>
 
                     <div class="fichas-en-casillero">
 
@@ -449,7 +449,7 @@
 
                 <li class="casillero" style="--col: 11; --fila: 1" data-casillero="25">
 
-                    <span class="casillero__nombre">Casillero 25</span>
+                    <span class="casillero__nombre">Regimiento de La Tablada</span>
 
                     <div class="fichas-en-casillero">
 
@@ -467,7 +467,7 @@
 
                 <li class="casillero casillero--esquina" style="--col: 12; --fila: 1" data-casillero="26">
 
-                    <span class="casillero__nombre">Casillero 26</span>
+                    <span class="casillero__nombre">Bingo Ramos Mejía</span>
 
                     <div class="fichas-en-casillero">
 
@@ -485,7 +485,7 @@
 
                 <li class="casillero" style="--col: 12; --fila: 2" data-casillero="27">
 
-                    <span class="casillero__nombre">Casillero 27</span>
+                    <span class="casillero__nombre">Estación Ramos Mejía</span>
 
                     <div class="fichas-en-casillero">
 
@@ -503,7 +503,7 @@
 
                 <li class="casillero" style="--col: 12; --fila: 3" data-casillero="28">
 
-                    <span class="casillero__nombre">Casillero 28</span>
+                    <span class="casillero__nombre">EVENTO 5</span>
 
                     <div class="fichas-en-casillero">
 
@@ -521,7 +521,7 @@
 
                 <li class="casillero" style="--col: 12; --fila: 4" data-casillero="29">
 
-                    <span class="casillero__nombre">Casillero 29</span>
+                    <span class="casillero__nombre">Pinar de Rocha</span>
 
                     <div class="fichas-en-casillero">
 
@@ -590,31 +590,31 @@
 <aside class="partida__lateral">
 
     <section class="info-casillero" aria-labelledby="info-titulo">
-        <button type="button" class="btn-casillero btn-casillero--principal">Inicio</button>
+        <button type="button" class="btn-casillero btn-casillero--principal" id="btn-info-casillero">Info de Propiedad</button>
         <header class="info-casillero__cabecera">
             <div>
                 <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
-                <p class="info-casillero__sub">Casillero #0 · Inicio</p>
+                <p id="info-sub" class="info-casillero__sub">Casillero #0</p>
             </div>
-            <span class="etiqueta">Evento</span>
+            <span id="info-etiqueta" class="etiqueta">Evento</span>
         </header>
 
         <dl class="info-casillero__datos">
             <div>
                 <dt>Valor de compra</dt>
-                <dd>No disponible</dd>
+                <dd id="info-precio">No disponible</dd>
             </div>
             <div>
                 <dt>Alquiler base</dt>
-                <dd class="dato--dinero">$0</dd>
+                <dd id="info-alquiler" class="dato--dinero">$0</dd>
             </div>
             <div>
                 <dt>Estado / dueño</dt>
-                <dd>Lugar público</dd>
+                <dd id="info-estado">Lugar público</dd>
             </div>
         </dl>
-        <p class="info-casillero__nota">Cobrás $200 al pasar.</p>
-        <button type="button" class="btn-casillero btn-casillero--secundario" disabled>
+        <p class="info-casillero__nota" id="info-nota">Seleccioná una propiedad del tablero para consultar sus datos.</p>
+        <button type="button" class="btn-casillero btn-casillero--secundario" id="btn-comprar" disabled>
             No adquirible
         </button>
 
@@ -650,6 +650,48 @@
 
 </aside>
 
+<dialog id="modal-info-propiedad" class="modal-propiedad modal-info-propiedad" aria-labelledby="popup-info-titulo">
+    <div class="modal-info-propiedad__contenido">
+        <header class="modal-info-propiedad__cabecera">
+            <div>
+                <p>Información de propiedad</p>
+                <h2 id="popup-info-titulo"></h2>
+            </div>
+            <button type="button" id="btn-cerrar-info-propiedad" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+        </header>
+        <p id="popup-info-descripcion" class="modal-info-propiedad__descripcion"></p>
+        <dl class="modal-info-propiedad__datos">
+            <div id="popup-precio-contenedor">
+                <dt>Precio de compra</dt>
+                <dd id="popup-info-precio"></dd>
+            </div>
+            <div id="popup-alquiler-contenedor" hidden>
+                <dt>Alquiler</dt>
+                <dd id="popup-info-alquiler"></dd>
+            </div>
+            <div>
+                <dt>Propietario</dt>
+                <dd id="popup-info-propietario">Sin propietario</dd>
+            </div>
+        </dl>
+        <button type="button" id="btn-modal-info-accion" class="btn-casillero btn-casillero--principal" disabled>No disponible</button>
+    </div>
+</dialog>
+
+<dialog id="modal-compra-propiedad" class="modal-propiedad">
+    <form method="dialog" class="modal-propiedad__contenido">
+        <h2 id="modal-propiedad-titulo">Propiedad disponible</h2>
+        <p id="modal-propiedad-info"></p>
+        <p>Tiempo restante del turno: <strong id="tiempo-compra">30</strong> segundos</p>
+        <div class="modal-propiedad__acciones">
+            <button type="button" id="btn-modal-comprar" class="btn-casillero btn-casillero--principal">Comprar</button>
+            <button type="button" id="btn-modal-pasar" class="btn-casillero btn-casillero--secundario">Pasar</button>
+        </div>
+    </form>
+</dialog>
+
+<div id="aviso-alquiler" class="aviso-alquiler" role="status" aria-live="polite" aria-atomic="true"></div>
+
 <!-- Librerías de WebSocket -->
 
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
@@ -673,7 +715,7 @@
 
 <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js}" src="../../../resources/core/js/partida.js" defer></script>
+<script th:src="@{/js/partida.js(v=turno-sync-4)}" src="../../../resources/core/js/partida.js?v=turno-sync-4" defer></script>
 
 </body>
 
