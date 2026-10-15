@@ -429,6 +429,19 @@
 .dato--dinero { color: var(--p-dorado); }
 .info-casillero__nota { color: var(--p-texto-suave); font-style: italic; font-size: 12px; }
 
+.modal-propiedad {
+    width: min(420px, calc(100vw - 32px));
+    padding: 0;
+    color: var(--p-texto);
+    background: var(--p-superficie);
+    border: 1px solid var(--p-borde);
+    border-radius: var(--p-radio);
+}
+.modal-propiedad::backdrop { background: rgb(0 0 0 / 65%); }
+.modal-propiedad__contenido { display: grid; gap: 14px; padding: 24px; }
+.modal-propiedad__contenido h2 { font-family: var(--font-titulos, "Barlow Condensed", sans-serif); }
+.modal-propiedad__acciones { display: flex; gap: 10px; }
+
 /* ---------- Fichas de jugadores ---------- */
 
 .casillero {

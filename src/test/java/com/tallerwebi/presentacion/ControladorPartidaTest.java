@@ -19,6 +19,8 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -38,6 +40,8 @@ public class ControladorPartidaTest {
 
     private ServicioPartida servicioPartidaMock;
     private SimpMessagingTemplate notificadorWebSocketMock;
+    private ServicioCasillero servicioCasilleroMock;
+    private ServicioPropiedad servicioPropiedadMock;
     private ControladorPartida controladorPartida;
     private MockHttpServletRequest request;
     private MockHttpSession session;
@@ -46,9 +50,15 @@ public class ControladorPartidaTest {
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-        servicioPartidaMock = mock(ServicioPartida.class);
+        servicioCasilleroMock = mock(ServicioCasillero.class);
+        servicioPropiedadMock = mock(ServicioPropiedad.class);
 
-        controladorPartida = new ControladorPartida(servicioPartidaMock, notificadorWebSocketMock);
+        controladorPartida = new ControladorPartida(
+                servicioPartidaMock,
+                notificadorWebSocketMock,
+                servicioCasilleroMock,
+                servicioPropiedadMock
+        );
 
         request = new MockHttpServletRequest();
         session = new MockHttpSession();

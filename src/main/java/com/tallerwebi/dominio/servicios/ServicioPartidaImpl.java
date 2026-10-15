@@ -74,6 +74,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void actualizarJugador(Jugador jugador) {
+        repositorioPartida.actualizarJugador(jugador);
+    }
+
+    @Override
     public void incrementarRondas(Partida partida) {
         if (partida.getRondaActual() == null) {
             partida.setRondaActual(1);
@@ -133,6 +138,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Integer indiceActual =
             partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
         return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
+    }
+
+    @Override
+    public Jugador obtenerJugadorPorId(Long idJugador) {
+        return repositorioPartida.buscarJugadorPorId(idJugador);
     }
 
     private Jugador buscarJugadorPorTurno(List<Jugador> jugadores, Integer indice) {

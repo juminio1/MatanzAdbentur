@@ -21,7 +21,7 @@ private final SessionFactory sessionFactory;
 //Guardar propiedad en la base de datos.
 @Override
     public void guardarPropiedad(Propiedad propiedad){
-    this.sessionFactory.getCurrentSession().persist(propiedad);//guarda la propiedad que se paso por parametro
+    this.sessionFactory.getCurrentSession().merge(propiedad);
 }
 //Buscar propiedad por id y devolverla.
 @Override

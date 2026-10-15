@@ -31,6 +31,23 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     }
 
     @Override
+    public void actualizarJugador(Jugador jugador) {
+        this.sessionFactory.getCurrentSession().merge(jugador);
+    }
+
+    @Override
+    public Jugador buscarJugadorPorId(Long idJugador) {
+        try {
+            return this.sessionFactory.getCurrentSession()
+                    .createQuery("FROM Jugador WHERE id = :idJugador", Jugador.class)
+                    .setParameter("idJugador", idJugador)
+                    .getSingleResult();
+        } catch (NoResultException ex) {
+            return null;
+        }
+    }
+
+    @Override
     public Partida buscarPartidaActiva() {
         String hql = "FROM Partida WHERE estado != :finalizada";
         try {

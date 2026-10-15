@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
@@ -10,18 +11,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Service("servicioPropiedad")
 @Transactional
 public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final RepositorioPropiedad repositorioPropiedad;
     private final ServicioPartida servicioPartida;
+    private final ServicioCasillero servicioCasillero;
     private static final int NIVEL_MAXIMO_MEJORA = 3;
+    private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
 
     @Autowired
-    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida) {
+    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida,
+                                 ServicioCasillero servicioCasillero) {
         this.repositorioPropiedad = repositorioPropiedad;
         this.servicioPartida = servicioPartida;
+        this.servicioCasillero = servicioCasillero;
+    }
+
+    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida) {
+        this(repositorioPropiedad, servicioPartida, null);
     }
 
     @Override
@@ -42,37 +52,99 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public void comprarPropiedad(Long idPropiedad, Jugador jugador) {
         validarJugador(jugador);
+        Jugador comprador = jugador.getId() == null ? null : servicioPartida.obtenerJugadorPorId(jugador.getId());
+        if (comprador == null) comprador = jugador;
+        ejecutarCompra(idPropiedad, comprador);
+        jugador.setDinero(comprador.getDinero());
+    }
 
+    @Override
+    public void comprarPropiedadParaJugador(Long idPropiedad, Long idJugador) {
+        if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
+        Jugador comprador = servicioPartida.obtenerJugadorPorId(idJugador);
+        if (comprador == null) throw new JugadorInvalidoException("No se encontró el jugador que compra.");
+        ejecutarCompra(idPropiedad, comprador);
+    }
 
+    private void ejecutarCompra(Long idPropiedad, Jugador comprador) {
         Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
         if (!estaDisponible(propiedadEncontrada)) {
             throw new PropiedadNoDisponibleException("La propiedad no está disponible.");
         }
 
-        if (jugador.getDinero() < propiedadEncontrada.getPrecioCompra()) {
+        if (comprador.getDinero() < propiedadEncontrada.getPrecioCompra()) {
             throw new DineroInsuficienteException("El jugador no tiene dinero suficiente para realizar la operación.");
         }
 
-        servicioPartida.restarDinero(jugador, propiedadEncontrada.getPrecioCompra());
-        propiedadEncontrada.setPropietario(jugador);
+        servicioPartida.restarDinero(comprador, propiedadEncontrada.getPrecioCompra());
+        propiedadEncontrada.setPropietario(comprador);
         repositorioPropiedad.guardarPropiedad(propiedadEncontrada);
+        servicioPartida.actualizarJugador(comprador);
+    }
 
+    @Override
+    public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
+        Jugador vendedor = obtenerVendedor(idJugador);
+        Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
+        validarPropietarioDeVenta(propiedad, idJugador);
+        int precioVenta = calcularPrecioVenta(propiedad);
+        propiedad.setPropietario(null);
+        propiedad.setNivelMejora(0);
+        servicioPartida.sumarDinero(vendedor, precioVenta);
+        repositorioPropiedad.guardarPropiedad(propiedad);
+        servicioPartida.actualizarJugador(vendedor);
+        return precioVenta;
+    }
+
+    private Jugador obtenerVendedor(Long idJugador) {
+        if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
+        Jugador vendedor = servicioPartida.obtenerJugadorPorId(idJugador);
+        if (vendedor == null) throw new JugadorInvalidoException("No se encontró el jugador que vende.");
+        return vendedor;
+    }
+
+    private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
+        Jugador propietario = propiedad.getPropietario();
+        if (propietario == null || !idJugador.equals(propietario.getId())) {
+            throw new PropiedadNoDisponibleException("Solo puedes vender una propiedad que te pertenece.");
+        }
+    }
+
+    private int calcularPrecioVenta(Propiedad propiedad) {
+        Integer precioCompra = propiedad.getPrecioCompra();
+        if (precioCompra == null || precioCompra < 0) {
+            throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
+        }
+        return precioCompra / 2;
     }
 
     @Override
     public void pagarAlquiler(Propiedad propiedad, Jugador jugador) {
         validarPropiedad(propiedad);
         validarJugador(jugador);
-        Jugador propietario = propiedad.getPropietario();
+        pagarAlquiler(propiedad, jugador, calcularAlquiler(propiedad));
+    }
+
+    @Override
+    public void pagarAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler) {
+        validarPropiedad(propiedad);
+        validarJugador(jugador);
+        if (montoAlquiler == null || montoAlquiler < 0) {
+            throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
+        }
+        Propiedad propiedadPersistida = repositorioPropiedad.buscarPropiedadPorId(propiedad.getId());
+        if (propiedadPersistida == null) propiedadPersistida = propiedad;
+        Jugador propietario = propiedadPersistida.getPropietario();
         if (propietario == null || propietario.getId().equals(jugador.getId())) {
             return;
         }
-        Integer alquiler = propiedad.getPrecioAlquiler();
-        if (alquiler == null || jugador.getDinero() < alquiler) {
-            throw new DineroInsuficienteException("El jugador no tiene dinero suficiente para pagar el alquiler.");
-        }
-        servicioPartida.restarDinero(jugador, alquiler);
-        servicioPartida.sumarDinero(propietario, alquiler);
+        Jugador pagador = servicioPartida.obtenerJugadorPorId(jugador.getId());
+        if (pagador == null) pagador = jugador;
+        servicioPartida.restarDinero(pagador, montoAlquiler);
+        jugador.setDinero(pagador.getDinero());
+        servicioPartida.actualizarJugador(pagador);
+        servicioPartida.sumarDinero(propietario, montoAlquiler);
+        servicioPartida.actualizarJugador(propietario);
     }
 
     @Override
@@ -94,6 +166,21 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
         //Devuelve el alquiler actualizado, redondeado hacia abajo al convertirlo a
         return (int) (alquilerBase * multiplicador);
+    }
+
+    @Override
+    public Integer calcularAlquiler(CasilleroPropiedad casillero, Propiedad propiedad) {
+        if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
+        Jugador propietario = propiedad.getPropietario();
+        if (propietario == null) return 25;
+        long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
+                .filter(CasilleroPropiedad.class::isInstance)
+                .map(CasilleroPropiedad.class::cast)
+                .filter(c -> POSICIONES_PARADA.contains(c.getPosicion()) && c.getPropiedad() != null)
+                .filter(c -> c.getPropiedad().getPropietario() != null
+                        && propietario.getId().equals(c.getPropiedad().getPropietario().getId()))
+                .count();
+        return (int) Math.min(200, 25 * (1L << Math.max(0, cantidadParadas - 1)));
     }
 
     @Override
