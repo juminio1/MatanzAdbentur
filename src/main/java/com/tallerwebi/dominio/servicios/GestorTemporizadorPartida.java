@@ -72,6 +72,20 @@ public class GestorTemporizadorPartida {
         temporizadores.put(codigoUnico, tarea);
     }
 
+    /** Inicia el reloj solo si la partida todavía no tiene un turno temporizado. */
+    public synchronized boolean programarTemporizadorSiNoExiste(
+        String codigoUnico,
+        int duracionSegundos,
+        Runnable accionExpiracion
+    ) {
+        ScheduledFuture<?> tareaExistente = temporizadores.get(codigoUnico);
+        if (tareaExistente != null && !tareaExistente.isDone()) {
+            return false;
+        }
+        programarTemporizador(codigoUnico, duracionSegundos, accionExpiracion);
+        return true;
+    }
+
     /**
      * Ejecuta la acción diferida dentro de un contexto de transacción activo de Spring/Hibernate.
      *
@@ -104,5 +118,16 @@ public class GestorTemporizadorPartida {
         if (tareaExistente != null && !tareaExistente.isDone()) {
             tareaExistente.cancel(false);
         }
+    }
+
+    /** Devuelve los segundos que quedan en el temporizador activo de una partida. */
+    public Integer obtenerSegundosRestantes(String codigoUnico) {
+        ScheduledFuture<?> tarea = temporizadores.get(codigoUnico);
+        if (tarea == null) {
+            return null;
+        }
+        if (tarea.isDone()) return 0;
+        long milisegundos = tarea.getDelay(TimeUnit.MILLISECONDS);
+        return (int) Math.max(0, (milisegundos + 999) / 1000);
     }
 }

@@ -22,6 +22,8 @@ public interface ServicioPartida {
     void incrementarRondas(Partida partida);
     void inicializarTurnos(String codigoUnico);
     Jugador obtenerJugadorActual(String codigoUnico);
+    Integer obtenerSegundosRestantesTurno(String codigoUnico);
+    void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico);
     ResultadoTiradaDTO tirarDados();

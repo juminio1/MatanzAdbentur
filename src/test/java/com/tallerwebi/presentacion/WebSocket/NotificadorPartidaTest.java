@@ -84,9 +84,9 @@ public class NotificadorPartidaTest {
         NotificadorPartida.notificarSaldos(template, servicioPartida, "ABC123");
 
         verify(template).convertAndSend("/topic/partida/ABC123/dinero",
-                Map.of("idJugador", 1L, "dinero", 125));
+                Map.of("idJugador", 1L, "dinero", 125, "enBancarrota", false));
         verify(template).convertAndSend("/topic/partida/ABC123/dinero",
-                Map.of("idJugador", 2L, "dinero", 300));
+                Map.of("idJugador", 2L, "dinero", 300, "enBancarrota", false));
     }
 
     @Test

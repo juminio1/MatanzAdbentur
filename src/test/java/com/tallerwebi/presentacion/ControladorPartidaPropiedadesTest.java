@@ -85,6 +85,35 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
+    void devuelveElCatalogoCompletoDePropiedadesParaUnJugadorDeLaPartida() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 0);
+        partida.setJugadores(List.of(jugador));
+        Propiedad propiedad = crearPropiedad(jugador);
+        CasilleroPropiedad casillero = crearCasillero(propiedad);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", jugador.getId());
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(casillero));
+        when(servicioPropiedad.calcularAlquiler(casillero, propiedad)).thenReturn(75);
+
+        ResponseEntity<?> respuesta = controlador.obtenerPropiedadesTablero(CODIGO, request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        List<?> catalogo = (List<?>) respuesta.getBody();
+        assertEquals(23, catalogo.size());
+        Map<?, ?> propiedadDisponible = (Map<?, ?>) catalogo.get(0);
+        assertEquals(1, propiedadDisponible.get("posicion"));
+        assertEquals("Plaza Barrio Marina", propiedadDisponible.get("nombre"));
+        assertEquals(true, propiedadDisponible.get("disponible"));
+        Map<?, ?> propiedadAdquirida = (Map<?, ?>) catalogo.get(2);
+        assertEquals(4, propiedadAdquirida.get("posicion"));
+        assertEquals("Plaza San Justo", propiedadAdquirida.get("nombre"));
+        assertEquals(jugador.getId(), propiedadAdquirida.get("propietarioId"));
+        assertEquals(75, propiedadAdquirida.get("alquiler"));
+    }
+
+    @Test
     void compraLaPropiedadDelJugadorActivoYNotificaElSiguienteTurno() {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, 1);

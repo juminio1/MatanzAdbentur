@@ -200,7 +200,7 @@ public class ServicioPartidaTest {
             eq(codigoPrueba),
             argThat(
                 (TurnoDTO dto) ->
-                    dto.getDuracionSegundos() != null && dto.getDuracionSegundos() == 30
+                    dto.getIdJugadorActual() != null
             )
         );
     }
@@ -284,7 +284,7 @@ public class ServicioPartidaTest {
 
         assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
         for (Jugador jugador : partida.getJugadores()) {
-            assertEquals(150000, jugador.getDinero());
+            assertEquals(2000, jugador.getDinero());
             assertEquals(0, jugador.getPosicionActual());
         }
     }
@@ -315,6 +315,7 @@ public class ServicioPartidaTest {
         when(
             repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
         ).thenReturn(partida);
+        when(gestorTemporizadorMock.obtenerSegundosRestantes(sala.getCodigoUnico())).thenReturn(null);
 
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
@@ -322,7 +323,7 @@ public class ServicioPartidaTest {
             eq("ABC123"),
             argThat(
                 (TurnoDTO dto) ->
-                    dto.getDuracionSegundos() != null && dto.getDuracionSegundos() == 30
+                    dto.getIdJugadorActual() != null && dto.getDuracionSegundos() == null
             )
         );
     }

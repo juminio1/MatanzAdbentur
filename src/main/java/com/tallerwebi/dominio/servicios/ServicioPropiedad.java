@@ -7,6 +7,7 @@ public interface ServicioPropiedad {
     void comprarPropiedad(Long idPropiedad, Jugador jugador);
     void comprarPropiedadParaJugador(Long idPropiedad, Long idJugador);
     Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador);
+    void transferirPropiedadParaJugadores(Long idPropiedad, Long idVendedor, Long idComprador, Integer precio);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler);
     Propiedad obtenerPropiedadExistente(Long idPropiedad);

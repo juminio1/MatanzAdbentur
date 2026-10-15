@@ -40,6 +40,7 @@ public class NotificadorPartida {
             Map<String, Object> saldo = new HashMap<>();
             saldo.put("idJugador", jugador.getId());
             saldo.put("dinero", jugador.getDinero());
+            saldo.put("enBancarrota", jugador.getEnBancarrota());
             template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/dinero", saldo);
         }
     }

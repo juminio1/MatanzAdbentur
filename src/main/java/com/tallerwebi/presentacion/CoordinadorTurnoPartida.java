@@ -8,7 +8,6 @@ import com.tallerwebi.presentacion.DTO.TurnoDTO;
 /** Coordina las consultas y notificaciones del turno vigente de una partida. */
 final class CoordinadorTurnoPartida {
 
-    private static final int DURACION_TURNO_SEGUNDOS = 30;
     private final ServicioPartida servicioPartida;
 
     CoordinadorTurnoPartida(ServicioPartida servicioPartida) {
@@ -30,7 +29,7 @@ final class CoordinadorTurnoPartida {
     private TurnoDTO crearTurno(String codigoPartida, Partida partida, Jugador jugadorActual) {
         TurnoDTO turno = new TurnoDTO(codigoPartida, jugadorActual.getId(), jugadorActual.getApodo(),
                 jugadorActual.getOrden(), "Es el turno de " + jugadorActual.getApodo(),
-                DURACION_TURNO_SEGUNDOS);
+                servicioPartida.obtenerSegundosRestantesTurno(codigoPartida));
         turno.setRondaActual(partida.getRondaActual());
         return turno;
     }

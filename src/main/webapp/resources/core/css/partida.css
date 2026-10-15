@@ -214,6 +214,15 @@
 
 .casillero--esquina {
     background: var(--p-beige);
+    font-weight: 400;
+}
+
+.casillero[data-casillero="0"] .casillero__nombre,
+.casillero[data-casillero="3"] .casillero__nombre,
+.casillero[data-casillero="10"] .casillero__nombre,
+.casillero[data-casillero="14"] .casillero__nombre,
+.casillero[data-casillero="20"] .casillero__nombre,
+.casillero[data-casillero="28"] .casillero__nombre {
     font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
     font-weight: 700;
 }
@@ -326,6 +335,20 @@
     min-height: 0;
 }
 
+.historial--centrado {
+    align-items: stretch;
+}
+
+.historial--centrado .historial__cabecera {
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.historial--centrado .historial__lista {
+    text-align: left;
+}
+
 .btn-casillero {
     width: 100%;
     padding: 10px;
@@ -389,6 +412,80 @@
 .modal-propiedad__contenido { display: grid; gap: 14px; padding: 24px; }
 .modal-propiedad__contenido h2 { font-family: var(--font-titulos, "Barlow Condensed", sans-serif); }
 .modal-propiedad__acciones { display: flex; gap: 10px; }
+
+.modal-bono-propiedades {
+    width: min(560px, calc(100vw - 32px));
+}
+
+.lista-propiedades-propias {
+    display: grid;
+    gap: 12px;
+    max-height: min(58vh, 520px);
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.propiedad-propia {
+    display: grid;
+    gap: 9px;
+    padding: 14px;
+    color: #17212b;
+    background: var(--color-localidad, #e2e9f2);
+    border: 1px solid rgb(23 33 43 / 18%);
+    border-radius: 8px;
+}
+
+.propiedad-propia h3 {
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 19px;
+}
+
+.propiedad-propia > p {
+    color: #455463;
+    font-size: 12px;
+}
+
+.propiedad-propia__datos {
+    display: grid;
+    gap: 5px;
+}
+
+.propiedad-propia__datos div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.propiedad-propia__datos dt { color: #455463; }
+.propiedad-propia__datos dd { font-weight: 700; }
+
+.propiedad-propia__acciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.oferta-venta-formulario {
+    display: grid;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--p-borde);
+}
+
+.oferta-venta-formulario h3 {
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 19px;
+}
+
+.control-propiedad {
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--p-borde);
+    border-radius: 6px;
+    color: var(--p-texto);
+    background: var(--p-superficie-2);
+    font: inherit;
+}
 
 .modal-info-propiedad {
     width: min(460px, calc(100vw - 32px));
@@ -487,6 +584,22 @@
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, 0);
+}
+
+.estado-bancarrota {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #7d2525;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.jugador--bancarrota {
+    opacity: 0.65;
 }
 
 /* ---------- Fichas de jugadores ---------- */

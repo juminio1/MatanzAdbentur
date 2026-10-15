@@ -19,11 +19,13 @@ private ColorFicha ficha;
 
     private Integer orden;
     private Boolean pierdeTurno;
+    private Boolean enBancarrota;
 
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
         this.pierdeTurno = false;
+        this.enBancarrota = false;
     }
 
     public Long getId() {
@@ -80,5 +82,13 @@ private ColorFicha ficha;
 
     public void setPierdeTurno(Boolean pierdeTurno) {
         this.pierdeTurno = pierdeTurno;
+    }
+
+    public Boolean getEnBancarrota() {
+        return Boolean.TRUE.equals(enBancarrota);
+    }
+
+    public void setEnBancarrota(Boolean enBancarrota) {
+        this.enBancarrota = Boolean.TRUE.equals(enBancarrota);
     }
 }
