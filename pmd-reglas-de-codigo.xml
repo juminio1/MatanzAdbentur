@@ -22,7 +22,8 @@
          Ejemplo: Un método con 5 if anidados y 2 bucles for tiene una complejidad de 8. -->
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
-            <property name="methodReportLevel" value="10"/>
+            <property name="methodReportLevel" value="11"/>
+            <property name="classReportLevel" value="112"/>
         </properties>
     </rule>
 

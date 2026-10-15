@@ -6,22 +6,17 @@
     font-family: 'Montserrat', sans-serif;
 }
 
- body {
-    background-color: #f7f7f7;
-
+body {
+    min-height: 100vh;
+    background-color: #111820;
     background-image:
-        linear-gradient(
-            rgba(247, 247, 247, 0.60),
-            rgba(247, 247, 247, 0.60)
-        ),
-        url('https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/Wireframe%20-%207.svg');
-
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    background-size: cover;
+        linear-gradient(rgba(8, 12, 18, 0.26), rgba(8, 12, 18, 0.42)),
+        url('../images/fondo/Wireframe%20-%207.jpg');
+    background-repeat: no-repeat, repeat;
+    background-size: cover, cover;
     background-position: center;
-
-    color: #111;
+    background-attachment: fixed;
+    color: #edf3f8;
     overflow-x: hidden;
 }
 
@@ -31,43 +26,68 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 50px 5%;
-    min-height: 80vh;
-    max-width: 1400px;
+    gap: clamp(28px, 5vw, 76px);
+    padding: clamp(36px, 6vh, 72px) clamp(24px, 5vw, 84px);
+    min-height: calc(100vh - 76px);
+    max-width: 1600px;
     margin: 0 auto;
 }
 
 /* COLUMNA IZQUIERDA: TEXTOS */
 .hero-text {
-    flex: 1;
-    padding-right: 40px;
-    max-width: 600px;
+    position: relative;
+    z-index: 1;
+    flex: 0 1 560px;
+    padding: clamp(26px, 4vw, 52px);
+    max-width: 610px;
+    border: 1px solid rgba(191, 211, 230, 0.24);
+    border-radius: 28px;
+    background: linear-gradient(145deg, rgba(30, 44, 58, 0.96), rgba(19, 29, 40, 0.94));
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(9px);
+}
+
+.hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 22px;
+    padding: 8px 13px;
+    border: 1px solid rgba(255, 210, 76, 0.46);
+    border-radius: 999px;
+    background: rgba(255, 210, 76, 0.12);
+    color: #ffe08a;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
 }
 
 /* ESTILOS PARA LA IMAGEN DEL TÍTULO */
 .main-title-img {
     width: 100%;
-    max-width: 500px;
+    max-width: 390px;
     /* Podés agrandar o achicar este valor según cómo lo veas */
     height: auto;
     margin-bottom: 15px;
     /* Le agregamos un pequeño drop-shadow para que resalte si es necesario */
-    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.1));
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.46));
 }
 
 .subtitle {
-    font-size: 36px;
+    font-size: clamp(28px, 3vw, 38px);
     font-weight: 800;
-    margin-bottom: 25px;
-    color: #111;
+    margin-bottom: 18px;
+    color: #fff2cd;
+    line-height: 1.15;
 }
 
 .hero-text p {
     font-size: 16px;
     line-height: 1.5;
-    margin-bottom: 20px;
-    font-weight: 600;
-    color: #333;
+    margin-bottom: 16px;
+    font-weight: 500;
+    color: #d7e1eb;
 }
 
 /* Botón Jugar Ahora */
@@ -79,15 +99,17 @@
     font-weight: 800;
     font-size: 18px;
     padding: 15px 30px;
-    border: 2px solid #111;
-    border-radius: 12px;
-    margin-top: 20px;
-    box-shadow: 3px 3px 0px #111;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    border: 2px solid #ffe08a;
+    border-radius: 14px;
+    margin-top: 8px;
+    box-shadow: 0 10px 24px rgba(255, 190, 45, 0.2);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
 
 .btn-play:hover {
     background-color: #ffc926;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(255, 190, 45, 0.3);
 }
 
 .btn-play:active {
@@ -97,22 +119,47 @@
 
 /* COLUMNA DERECHA: IMAGEN */
 .hero-image {
-    flex: 1.5; /* Le damos más prioridad de espacio en el flexbox frente al texto */
+    flex: 1 1 660px;
+    min-width: 0;
     display: flex;
-    justify-content: flex-end;
-    align-items: flex-end; /* Alinea la imagen hacia abajo */
+    justify-content: center;
+    align-items: center;
     position: relative;
+    isolation: isolate;
+}
+
+.hero-image::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: min(88%, 700px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 195, 72, 0.18), rgba(38, 133, 176, 0.12) 45%, transparent 72%);
+    filter: blur(8px);
 }
 
 .hero-image img {
     width: 100%;
-    max-width: 1100px; /* Aumentamos drásticamente el límite de tamaño */
+    max-width: 790px;
     height: auto;
-    filter: drop-shadow(-10px 10px 15px rgba(0, 0, 0, 0.1));
+    object-fit: contain;
+    filter: drop-shadow(0 28px 32px rgba(0, 0, 0, 0.42));
+    transform: rotate(-2deg);
+    transition: transform 0.35s ease;
+}
 
-    /* Con transform agrandamos la imagen un 25% más y la empujamos hacia la derecha y abajo */
-    transform: scale(1.25) translate(8%, 5%);
-    transform-origin: bottom right; /* Para que crezca desde la esquina inferior derecha */
+.hero-image:hover img {
+    transform: rotate(0deg) translateY(-5px) scale(1.015);
+}
+
+.hero--logueado .hero-text {
+    border-color: rgba(255, 210, 76, 0.36);
+    background: linear-gradient(145deg, rgba(34, 48, 62, 0.97), rgba(20, 31, 42, 0.96));
+}
+
+.hero--logueado .hero-image img {
+    max-width: 840px;
 }
 
 
@@ -182,4 +229,36 @@
         width: 100%;
         text-align: center;
     }
+}
+
+@media (max-width: 900px) {
+    .hero {
+        min-height: 0;
+        gap: 26px;
+        padding: 34px 5% 48px;
+    }
+
+    .hero-text {
+        width: min(100%, 620px);
+        flex: 0 1 auto;
+        padding: clamp(24px, 6vw, 42px);
+        margin-bottom: 0;
+        text-align: left;
+    }
+
+    .main-title-img { margin-inline: auto; }
+    .hero-image { flex: 0 1 auto; width: 100%; }
+    .hero-image img { width: min(100%, 620px); }
+}
+
+@media (max-width: 480px) {
+    .hero { padding: 24px 16px 36px; }
+    .hero-text { padding: 24px 20px; border-radius: 22px; }
+    .hero-kicker { font-size: 10px; margin-bottom: 16px; }
+    .main-title-img { max-width: 100%; }
+    .subtitle { font-size: 25px; }
+    .hero-text p br { display: none; }
+    .hero-text p { font-size: 14px; }
+    .btn-play { width: 100%; text-align: center; }
+    .hero-image img { width: min(100%, 420px); }
 }

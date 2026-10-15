@@ -10,20 +10,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
           rel="stylesheet">
 
-    <link rel="stylesheet" th:href="@{/css/header.css}">
-    <link rel="stylesheet" th:href="@{/css/home.css(v=fondo)}">
-    <link rel="stylesheet" th:href="@{/css/modal-pop.up.css}">
+    <link rel="stylesheet" th:href="@{/css/header.css(v=dark-2)}">
+    <link rel="stylesheet" th:href="@{/css/home.css(v=brick-home-3)}">
+    <link rel="stylesheet" th:href="@{/css/modal-pop.up.css(v=dark-2)}">
 </head>
 
 <body>
 
     <div th:replace="~{fragments/header :: header}"></div>
 
-    <main class="hero">
+    <main class="hero" th:classappend="${session.NOMBRE != null ? 'hero--logueado' : ''}">
 
         <div class="hero-text">
-            <!-- Logo principal desde Cloudflare R2 -->
-            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_4.svg" 
+            <span class="hero-kicker" th:if="${session.NOMBRE == null}">Tu barrio, tus reglas</span>
+            <span class="hero-kicker" th:if="${session.NOMBRE != null}">
+                ¡Qué bueno verte, <span th:text="${session.NOMBRE}">jugador</span>!
+            </span>
+
+            <img th:src="@{/images/logo/{logo}(logo='El matancero_4.svg')}"
+                 src="../../../resources/core/images/logo/El%20matancero_4.svg"
                  alt="El Matancero" 
                  class="main-title-img">
             
@@ -50,7 +55,8 @@
 
         <div class="hero-image">
 
-            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/ImagenCiudad.png"
+            <img th:src="@{/images/fondo/ImagenCiudad.png}"
+                 src="../../../resources/core/images/fondo/ImagenCiudad.png"
                  alt="Ciudad de La Matanza">
 
         </div>

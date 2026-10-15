@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>El Matancero – Partida</title>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css"/>
-    <link rel="stylesheet" th:href="@{/css/partida.css(v=turno-sync-3)}" href="../../../resources/core/css/partida.css?v=turno-sync-3"/>
+    <link rel="stylesheet" th:href="@{/css/partida.css(v=players-together-4)}" href="../../../resources/core/css/partida.css?v=players-together-4"/>
 </head>
 <body class="pagina-partida">
 <!-- Barra superior: contador + jugadores -->
@@ -28,7 +28,9 @@
     </div>
 
     <section class="jugadores">
-        <article class="jugador" th:each="jugador : ${partida.jugadores}" th:id="${jugador.id}">
+        <article class="jugador" th:each="jugador : ${partida.jugadores}" th:id="${jugador.id}"
+                 th:attr="data-bancarrota=${jugador.enBancarrota}"
+                 th:classappend="${jugador.enBancarrota} ? ' jugador--bancarrota' : ''">
             <img class="avatar-jugador" th:src="@{/images/personajes/personajeTurro.jpg}"
                  src="../../../resources/core/images/personajes/personajeTurro.jpg" alt="Avatar del Jugador"/>
             <div class="contenedor-nombre-jugador">
@@ -38,6 +40,7 @@
             <div class="datos-jugador">
                     <span class="dinero"
                           th:text="${jugador.dinero != null ? '$' + #numbers.formatInteger(jugador.dinero, 1, 'POINT') : '$0'}">$0</span>
+                    <span class="estado-bancarrota" th:if="${jugador.enBancarrota}">En quiebra</span>
             </div>
 
             <!-- Contenedor dinámico del estado de turno -->
@@ -397,7 +400,7 @@
 
                 <li class="casillero" style="--col: 8; --fila: 1" data-casillero="22">
 
-                    <span class="casillero__nombre">Superchino “Luna”</span>
+                    <span class="casillero__nombre">Superchino Luna</span>
 
                     <div class="fichas-en-casillero">
 
@@ -560,6 +563,8 @@
 
                 <button type="button" class="btn-accion">Abandonar</button>
 
+                <button type="button" class="btn-accion" id="btn-bono-propiedades">Propiedades</button>
+
                 <button type="button" class="btn-accion">Mercado Pago</button>
 
                 <button type="button" class="btn-accion">Recomendación</button>
@@ -589,39 +594,7 @@
 <!-- Panel lateral -->
 
 <aside class="partida__lateral">
-
-    <section class="info-casillero" aria-labelledby="info-titulo">
-        <button type="button" class="btn-casillero btn-casillero--principal" id="btn-info-casillero">Info de Propiedad</button>
-        <header class="info-casillero__cabecera">
-            <div>
-                <h2 id="info-titulo" class="info-casillero__nombre">Inicio</h2>
-                <p id="info-sub" class="info-casillero__sub">Casillero #0</p>
-            </div>
-            <span id="info-etiqueta" class="etiqueta">Evento</span>
-        </header>
-
-        <dl class="info-casillero__datos">
-            <div>
-                <dt>Valor de compra</dt>
-                <dd id="info-precio">No disponible</dd>
-            </div>
-            <div>
-                <dt>Alquiler base</dt>
-                <dd id="info-alquiler" class="dato--dinero">$0</dd>
-            </div>
-            <div>
-                <dt>Estado / dueño</dt>
-                <dd id="info-estado">Lugar público</dd>
-            </div>
-        </dl>
-        <p class="info-casillero__nota" id="info-nota">Seleccioná una propiedad del tablero para consultar sus datos.</p>
-        <button type="button" class="btn-casillero btn-casillero--secundario" id="btn-comprar" disabled>
-            No adquirible
-        </button>
-
-    </section>
-
-    <section class="historial" aria-labelledby="historial-titulo">
+    <section class="historial historial--centrado" aria-labelledby="historial-titulo">
 
         <header class="historial__cabecera">
 
@@ -633,23 +606,65 @@
 
         <ol class="historial__lista" aria-live="polite">
 
-            <li>El juego se ha reiniciado.</li>
-
-            <li>Caíste en: <strong>Avenida de Mayo</strong>.</li>
-
-            <li>Caíste en: <strong>UNLaM</strong>.</li>
-
-            <li>
-
-                ¡Bienvenido al tablero del Conurbano! Tu ficha roja parte desde la Salida.
-
-            </li>
+            <li class="historial__vacio">¡Bienvenido a La Matanza! Un lugar donde pasan cosas muy bizarras.</li>
 
         </ol>
-
     </section>
-
 </aside>
+
+<dialog id="modal-bono-propiedades" class="modal-propiedad modal-bono-propiedades" aria-labelledby="bono-propiedades-titulo">
+    <div class="modal-propiedad__contenido">
+        <header class="modal-info-propiedad__cabecera">
+            <div>
+                <p>Administrá tus propiedades</p>
+                <h2 id="bono-propiedades-titulo">Propiedades</h2>
+            </div>
+            <button type="button" id="btn-cerrar-bono-propiedades" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+        </header>
+        <p id="bono-propiedades-mensaje" class="modal-info-propiedad__descripcion" aria-live="polite"></p>
+        <div id="lista-propiedades-propias" class="lista-propiedades-propias"></div>
+    </div>
+</dialog>
+
+<dialog id="modal-vender-propiedad" class="modal-propiedad modal-bono-propiedades" aria-labelledby="vender-propiedad-titulo">
+    <div class="modal-propiedad__contenido">
+        <header class="modal-info-propiedad__cabecera">
+            <div><p>Elegí cómo vender</p><h2 id="vender-propiedad-titulo">Vender propiedad</h2></div>
+            <button type="button" id="btn-cerrar-vender-propiedad" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+        </header>
+        <p id="vender-propiedad-nombre" class="modal-info-propiedad__descripcion"></p>
+        <button type="button" id="btn-vender-al-banco" class="btn-casillero btn-casillero--secundario"></button>
+        <div class="oferta-venta-formulario">
+            <h3>Ofrecer a un jugador</h3>
+            <label for="oferta-jugador">Jugador</label>
+            <select id="oferta-jugador" class="control-propiedad">
+                <option value="">Elegí un jugador</option>
+                <option th:each="jugador : ${partida.jugadores}"
+                        th:if="${jugador.id != usuarioSesionId}"
+                        th:value="${jugador.id}" th:attr="data-bancarrota=${jugador.enBancarrota}"
+                        th:text="${jugador.apodo}">Jugador</option>
+            </select>
+            <label for="oferta-precio">Precio acordado</label>
+            <input id="oferta-precio" class="control-propiedad" type="number" min="0" step="1" inputmode="numeric"/>
+            <button type="button" id="btn-enviar-oferta" class="btn-casillero btn-casillero--principal">Enviar oferta</button>
+            <p id="oferta-venta-mensaje" class="modal-info-propiedad__descripcion" aria-live="polite"></p>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="modal-oferta-recibida" class="modal-propiedad modal-bono-propiedades" aria-labelledby="oferta-recibida-titulo">
+    <div class="modal-propiedad__contenido">
+        <header class="modal-info-propiedad__cabecera">
+            <div><p>Oferta de compra</p><h2 id="oferta-recibida-titulo">Te ofrecen una propiedad</h2></div>
+        </header>
+        <p id="oferta-recibida-detalle" class="modal-info-propiedad__descripcion"></p>
+        <div class="propiedad-propia__acciones">
+            <button type="button" id="btn-rechazar-oferta" class="btn-casillero btn-casillero--secundario">Rechazar</button>
+            <button type="button" id="btn-aceptar-oferta" class="btn-casillero btn-casillero--principal">Aceptar oferta</button>
+        </div>
+        <p id="oferta-recibida-mensaje" class="modal-info-propiedad__descripcion" aria-live="polite"></p>
+    </div>
+</dialog>
 
 <dialog id="modal-info-propiedad" class="modal-propiedad modal-info-propiedad" aria-labelledby="popup-info-titulo">
     <div class="modal-info-propiedad__contenido">
@@ -675,6 +690,7 @@
                 <dd id="popup-info-propietario">Sin propietario</dd>
             </div>
         </dl>
+        <p id="popup-info-nota" class="modal-info-propiedad__descripcion" aria-live="polite"></p>
         <button type="button" id="btn-modal-info-accion" class="btn-casillero btn-casillero--principal" disabled>No disponible</button>
     </div>
 </dialog>
@@ -695,9 +711,9 @@
 
 <!-- Librerías de WebSocket -->
 
-<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js" defer></script>
 
-<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js" defer></script>
 
 <!-- Inyección segura de variables de sesión para el script -->
 
@@ -705,9 +721,15 @@
 
     window.usuarioSesionId = /*[[${usuarioSesionId}]]*/ null;
 
+    window.dineroUsuarioSesion = /*[[${dineroUsuarioSesion}]]*/ 0;
+
+    window.usuarioEnBancarrota = /*[[${usuarioEnBancarrota}]]*/ false;
+
     window.turnoActualId = /*[[${turnoActualId}]]*/ null;
 
     window.codigoSala = /*[[${partida.codigoUnico}]]*/ "";
+
+    window.propiedadesIniciales = /*[[${propiedadesTablero}]]*/ [];
 
     window.jugadorAleatorioId = /*[[${partida.jugadorTurnoAleatorio != null ? partida.jugadorTurnoAleatorio.id : null}]]*/ null;
 
@@ -716,7 +738,7 @@
 
 <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=turno-sync-4)}" src="../../../resources/core/js/partida.js?v=turno-sync-4" defer></script>
+<script th:src="@{/js/partida.js(v=turno-sync-5)}" src="../../../resources/core/js/partida.js?v=turno-sync-5" charset="UTF-8" defer></script>
 
 </body>
 

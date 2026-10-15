@@ -283,7 +283,7 @@ public class ControladorPartidaTest {
         partida.setJugadorTurnoAleatorio(jugadorAleatorio);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
-        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(null);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorAleatorio);
 
         ModelAndView mav = controladorPartida.verTablero(codigoPartida, request);
 
@@ -360,6 +360,7 @@ public class ControladorPartidaTest {
 
         when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
         RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador);
 
@@ -388,6 +389,7 @@ public class ControladorPartidaTest {
 
         when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
         controladorPartida.tirarDados(codigoPrueba, idJugador);
 

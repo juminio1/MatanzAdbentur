@@ -92,6 +92,7 @@ public class ServicioPropiedadTest {
     public void jugadorDeberiaMejorarPropiedadSiEsDuenioDeTodoElGrupo() {
         Jugador jugador = new Jugador();
         jugador.setId(1L);
+        jugador.setDinero(2000);
 
         Propiedad propiedad1 = new Propiedad(1L, "Plaza San Justo", 500, 100, jugador, SAN_JUSTO);
 
@@ -117,7 +118,7 @@ public class ServicioPropiedadTest {
     public void alquilerDeberiaAumentarSegunElNivelDeMejoras() {
         Propiedad propiedad = new Propiedad(1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
         propiedad.setNivelMejora(2);
-        assertEquals(200, servicioPropiedad.calcularAlquiler(propiedad));
+        assertEquals(300, servicioPropiedad.calcularAlquiler(propiedad));
     }
 
     @Test

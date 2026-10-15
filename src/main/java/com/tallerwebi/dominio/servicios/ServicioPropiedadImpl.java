@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -20,8 +21,19 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final RepositorioPropiedad repositorioPropiedad;
     private final ServicioPartida servicioPartida;
     private final ServicioCasillero servicioCasillero;
-    private static final int NIVEL_MAXIMO_MEJORA = 3;
+    private static final int NIVEL_MAXIMO_MEJORA = 5;
+    private static final int[] ALQUILERES_MEJORADOS = {200, 300, 500, 1000, 1500};
     private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
+    private static final Map<GrupoPropiedades, Set<Integer>> POSICIONES_LOCALIDADES = Map.of(
+            GrupoPropiedades.VILLA_LUZURIAGA, Set.of(1, 2),
+            GrupoPropiedades.SAN_JUSTO, Set.of(4, 5, 7),
+            GrupoPropiedades.ISIDRO_CASANOVA, Set.of(9, 11, 13),
+            GrupoPropiedades.RAFAEL_CASTILLO, Set.of(15, 16),
+            GrupoPropiedades.LAFERRERE, Set.of(18, 19),
+            GrupoPropiedades.CIUDAD_EVITA, Set.of(21, 22),
+            GrupoPropiedades.LA_TABLADA, Set.of(23, 25),
+            GrupoPropiedades.RAMOS_MEJIA, Set.of(26, 27, 29)
+    );
 
     @Autowired
     public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida,
@@ -97,6 +109,27 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         return precioVenta;
     }
 
+    @Override
+    public void transferirPropiedadParaJugadores(Long idPropiedad, Long idVendedor, Long idComprador, Integer precio) {
+        if (precio == null || precio < 0) throw new PropiedadInvalidaException("El precio ofrecido no es válido.");
+        Jugador vendedor = obtenerVendedor(idVendedor);
+        Jugador comprador = obtenerVendedor(idComprador);
+        Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
+        validarPropietarioDeVenta(propiedad, idVendedor);
+        if (Objects.equals(idVendedor, idComprador)) {
+            throw new PropiedadInvalidaException("No podés comprarle una propiedad a vos mismo.");
+        }
+        if (comprador.getDinero() < precio) {
+            throw new DineroInsuficienteException("El comprador no tiene dinero suficiente para aceptar la oferta.");
+        }
+        servicioPartida.restarDinero(comprador, precio);
+        servicioPartida.sumarDinero(vendedor, precio);
+        propiedad.setPropietario(comprador);
+        servicioPartida.actualizarJugador(comprador);
+        servicioPartida.actualizarJugador(vendedor);
+        repositorioPropiedad.guardarPropiedad(propiedad);
+    }
+
     private Jugador obtenerVendedor(Long idJugador) {
         if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
         Jugador vendedor = servicioPartida.obtenerJugadorPorId(idJugador);
@@ -153,20 +186,16 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         validarPropiedad(propiedad);
 
         Integer alquilerBase = propiedad.getPrecioAlquiler();
-        Integer nivelMejora = propiedad.getNivelMejora();
+        Integer nivelMejora = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
         if (alquilerBase == null || alquilerBase < 0) {
             throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
         }
 
-        if (nivelMejora == null || nivelMejora < 0) {
+        if (nivelMejora < 0) {
             throw new PropiedadInvalidaException("El nivel de mejora no es válido.");
         }
-
-        //Calcula el aumento del 50 % por cada mejora.
-        double multiplicador = 1 + (0.5 * nivelMejora);
-
-        //Devuelve el alquiler actualizado, redondeado hacia abajo al convertirlo a
-        return (int) (alquilerBase * multiplicador);
+        if (nivelMejora == 0) return alquilerBase;
+        return ALQUILERES_MEJORADOS[Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA) - 1];
     }
 
     @Override
@@ -174,7 +203,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Long idPartida = casillero.getPartidaId();
         if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
         Jugador propietario = propiedad.getPropietario();
-        if (propietario == null || servicioCasillero == null || idPartida == null) return 25;
+        if (propietario == null || servicioCasillero == null || idPartida == null) return 20;
         long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroPropiedad.class::isInstance)
                 .map(CasilleroPropiedad.class::cast)
@@ -183,7 +212,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
                 .filter(c -> c.getPropiedad().getPropietario() != null
                         && Objects.equals(propietario.getId(), c.getPropiedad().getPropietario().getId()))
                 .count();
-        return (int) Math.min(200, 25 * (1L << Math.max(0, cantidadParadas - 1)));
+        int[] alquileresPorParadas = {0, 20, 50, 100, 200};
+        return alquileresPorParadas[(int) Math.min(cantidadParadas, alquileresPorParadas.length - 1)];
     }
 
     @Override
@@ -196,17 +226,26 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         validarGrupoCompleto(propiedad, jugador);
         validarNivelMejora(propiedad);
 
-        //Aumenta el nivel de mejora en uno.
-        propiedad.setNivelMejora(propiedad.getNivelMejora() + 1);
+        int nivelActual = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
+        int costoMejora = ALQUILERES_MEJORADOS[nivelActual];
+        Jugador jugadorActualizado = jugador.getId() == null ? null : servicioPartida.obtenerJugadorPorId(jugador.getId());
+        if (jugadorActualizado == null) jugadorActualizado = jugador;
+        if (jugadorActualizado.getDinero() < costoMejora) {
+            throw new DineroInsuficienteException("No tenés dinero suficiente para subir el alquiler.");
+        }
+        servicioPartida.restarDinero(jugadorActualizado, costoMejora);
+        servicioPartida.actualizarJugador(jugadorActualizado);
+        jugador.setDinero(jugadorActualizado.getDinero());
+        jugador.setEnBancarrota(jugadorActualizado.getEnBancarrota());
+        propiedad.setNivelMejora(nivelActual + 1);
     }
 
-    //Limita el nivel de mejoras hasta 3
+    //Limita el nivel de mejoras hasta 5
     private void validarNivelMejora(Propiedad propiedad) {
         Integer nivelMejora = propiedad.getNivelMejora();
 
-        if (nivelMejora == null ||
-                nivelMejora < 0 ||
-                nivelMejora >= NIVEL_MAXIMO_MEJORA) {
+        if ((nivelMejora != null && nivelMejora < 0) ||
+                (nivelMejora != null && nivelMejora >= NIVEL_MAXIMO_MEJORA)) {
             throw new PropiedadNoMejorableException("El nivel de mejora no es válido o alcanzó el máximo.");
         }
     }
@@ -233,28 +272,44 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private void validarGrupoCompleto(Propiedad propiedad, Jugador jugador) {
-        GrupoPropiedades grupo = propiedad.getGrupo();
-
-        if (!esDuenioDeTodoElGrupo(grupo, jugador)) {
+        if (!esDuenioDeTodoElGrupo(propiedad, jugador)) {
             throw new PropiedadNoMejorableException("Debes ser dueño de todas las propiedades de la localidad para mejorarlas.");
         }
     }
 
-    //Busca la propiepiedad que pertenecen a esa localidad.
-    private boolean esDuenioDeTodoElGrupo(GrupoPropiedades grupo, Jugador jugador) {
-        List<Propiedad> propiedades = repositorioPropiedad.buscarPropiedadesPorGrupo(grupo);
-
-        if (propiedades.isEmpty()) {
-            return false;
+    private boolean esDuenioDeTodoElGrupo(Propiedad propiedad, Jugador jugador) {
+        Set<Integer> posiciones = POSICIONES_LOCALIDADES.get(propiedad.getGrupo());
+        if (posiciones == null) return false;
+        if (servicioCasillero == null) {
+            List<Propiedad> propiedadesGrupo = repositorioPropiedad.buscarPropiedadesPorGrupo(propiedad.getGrupo());
+            return !propiedadesGrupo.isEmpty() && propiedadesGrupo.stream().allMatch(propiedadGrupo ->
+                    propiedadGrupo.getPropietario() != null
+                            && Objects.equals(jugador.getId(), propiedadGrupo.getPropietario().getId()));
         }
+        CasilleroPropiedad objetivo = buscarCasilleroDePropiedad(propiedad.getId());
+        if (objetivo == null || objetivo.getPartidaId() == null
+                || !posiciones.contains(objetivo.getPosicion())) return false;
+        List<CasilleroPropiedad> propiedadesPartida = servicioCasillero.obtenerTodosLosCasilleros().stream()
+                .filter(CasilleroPropiedad.class::isInstance)
+                .map(CasilleroPropiedad.class::cast)
+                .filter(casillero -> Objects.equals(objetivo.getPartidaId(), casillero.getPartidaId()))
+                .filter(casillero -> posiciones.contains(casillero.getPosicion()))
+                .toList();
+        return posiciones.stream().allMatch(posicion -> propiedadesPartida.stream()
+                .anyMatch(casillero -> posicion.equals(casillero.getPosicion())
+                        && casillero.getPropiedad() != null
+                        && casillero.getPropiedad().getPropietario() != null
+                        && Objects.equals(jugador.getId(), casillero.getPropiedad().getPropietario().getId())));
+    }
 
-        for (Propiedad propiedad : propiedades) {
-            //verifica q todas tengan al jugador como propietario
-            if (propiedad.getPropietario() == null || !propiedad.getPropietario().getId().equals(jugador.getId())) {
-                return false;
-            }
-        }
-        return true;
+    private CasilleroPropiedad buscarCasilleroDePropiedad(Long idPropiedad) {
+        if (idPropiedad == null) return null;
+        return servicioCasillero.obtenerTodosLosCasilleros().stream()
+                .filter(CasilleroPropiedad.class::isInstance)
+                .map(CasilleroPropiedad.class::cast)
+                .filter(casillero -> casillero.getPropiedad() != null
+                        && idPropiedad.equals(casillero.getPropiedad().getId()))
+                .findFirst().orElse(null);
     }
 
 

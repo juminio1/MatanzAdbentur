@@ -22,6 +22,7 @@
         <hsqldb.version>2.7.4</hsqldb.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <checkstyle.runtime.version>13.8.0</checkstyle.runtime.version>
+        <jetty.http.port>8080</jetty.http.port>
     </properties>
 
     <dependencies>
@@ -451,7 +452,7 @@
                 <configuration>
                     <scanIntervalSeconds>2</scanIntervalSeconds>
                     <httpConnector>
-                        <port>8080</port>
+                        <port>${jetty.http.port}</port>
                     </httpConnector>
                     <webApp>
                         <contextPath>/spring</contextPath>

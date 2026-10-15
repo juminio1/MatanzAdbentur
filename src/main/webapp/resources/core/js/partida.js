@@ -7,13 +7,11 @@ const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 const dado1 = document.getElementById("dado-1");
 const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
-if (botonTirar && window.usuarioSesionId != null
-    && String(window.usuarioSesionId) === String(window.turnoActualId)) {
-    botonTirar.disabled = false;
-}
+if (botonTirar) botonTirar.disabled = true;
 
 // Evita enviar varias peticiones simultáneas.
 let estaTirando = false;
+let posicionesInicialesSincronizadas = false;
 
 // Registra si el jugador actual ya tiró en este turno.
 let yaTiroEnEsteTurno = false;
@@ -81,15 +79,13 @@ if (botonTirar) {
             tiradaExitosa = true;
         } catch (error) {
             console.error("Error al tirar los dados o mover la ficha:", error);
-            if (infoNota) infoNota.textContent = error.message || "No se pudo completar la tirada.";
+            if (notaModalInfo) notaModalInfo.textContent = error.message || "No se pudo completar la tirada.";
         } finally {
             estaTirando = false;
         }
 
         if (!tiradaExitosa) {
-            if (!yaTiroEnEsteTurno) {
-                botonTirar.disabled = false;
-            }
+            actualizarBotonTirada();
             return;
         }
 
@@ -119,7 +115,7 @@ function moverFichaEnTablero(idJugador, nuevaPosicion) {
     return true;
 }
 
-async function animarMovimientoFicha(idJugador, cantidadPasos) {
+async function animarMovimientoFicha(idJugador, cantidadPasos, posicionAnterior) {
     const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
 
     if (!ficha) {
@@ -128,7 +124,17 @@ async function animarMovimientoFicha(idJugador, cantidadPasos) {
     }
 
     // Busca el casillero donde está actualmente la ficha.
-    const casilleroActual = ficha.closest(".casillero");
+    let casilleroActual = ficha.closest(".casillero");
+
+    if (posicionAnterior != null && Number.isInteger(Number(posicionAnterior))) {
+        const casilleroAnterior = document.querySelector(
+            `.casillero[data-casillero="${Number(posicionAnterior)}"]`,
+        );
+        if (casilleroAnterior && casilleroActual !== casilleroAnterior) {
+            moverFichaEnTablero(idJugador, Number(posicionAnterior));
+            casilleroActual = casilleroAnterior;
+        }
+    }
 
     if (!casilleroActual) {
         console.error("La ficha no está dentro de un casillero.");
@@ -165,14 +171,23 @@ async function animarMovimientoFicha(idJugador, cantidadPasos) {
 }
 
 // GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
-conectarWebSocketTurnos(basePath, codigoPartida);
-iniciarSincronizacionTurno(basePath, codigoPartida);
-
 let consultaTurnoEnCurso = false;
+let clienteWebSocketPartida = null;
 function iniciarSincronizacionTurno(base, codigo) {
     if (!codigo) return;
     actualizarTurnoDesdeServidor(base, codigo);
     window.setInterval(() => actualizarTurnoDesdeServidor(base, codigo), 2000);
+}
+
+function iniciarSincronizacionPosiciones() {
+    solicitarPosicionesPartida();
+    window.setInterval(solicitarPosicionesPartida, 5000);
+}
+
+function solicitarPosicionesPartida() {
+    if (clienteWebSocketPartida?.connected) {
+        clienteWebSocketPartida.send(`/app/partida/${codigoPartida}/solicitar-posiciones`, {}, JSON.stringify({}));
+    }
 }
 
 async function actualizarTurnoDesdeServidor(base, codigo) {
@@ -203,6 +218,7 @@ function conectarWebSocketTurnos(base, codigo) {
         {},
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
+            clienteWebSocketPartida = stompClient;
 
             //CANAL 1: cambios de turnos y rondas.
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
@@ -226,13 +242,21 @@ function conectarWebSocketTurnos(base, codigo) {
                 const propiedad = JSON.parse(mensaje.body);
                 actualizarEtiquetaPrecioPropiedad(propiedad);
                 if (propiedadSeleccionada?.posicion === propiedad.posicion) mostrarInfoPropiedad(propiedad);
+                if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
+                if (propiedad.idVendedor != null && propiedad.dineroVendedor != null) {
+                    actualizarDineroJugador(propiedad.idVendedor, propiedad.dineroVendedor,
+                        propiedad.bancarrotaVendedor);
+                }
                 if (propiedad.idJugadorPropietario != null && propiedad.dineroJugador != null) {
-                    actualizarDineroJugador(propiedad.idJugadorPropietario, propiedad.dineroJugador);
+                    actualizarDineroJugador(propiedad.idJugadorPropietario, propiedad.dineroJugador,
+                        propiedad.enBancarrota);
+                } else if (propiedad.idJugador != null && propiedad.dineroJugador != null) {
+                    actualizarDineroJugador(propiedad.idJugador, propiedad.dineroJugador, propiedad.enBancarrota);
                 }
             });
             stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
                 const saldo = JSON.parse(mensaje.body);
-                actualizarDineroJugador(saldo.idJugador, saldo.dinero);
+                actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
             });
             stompClient.subscribe(`/topic/partida/${codigo}/alquiler`, (mensaje) => {
                 const aviso = JSON.parse(mensaje.body);
@@ -240,17 +264,31 @@ function conectarWebSocketTurnos(base, codigo) {
             });
             // Primero nos suscribimos al canal y después solicitamos
             // las posiciones actuales al backend.
-            stompClient.send(`/app/partida/${codigo}/solicitar-posiciones`, {}, JSON.stringify({}));
+            solicitarPosicionesPartida();
         },
         (error) => {
+            clienteWebSocketPartida = null;
             console.error("Error en la conexión WebSocket:", error);
+            window.setTimeout(() => conectarWebSocketTurnos(base, codigo), 3000);
         },
     );
 }
 
-const movimientosEnCurso = new Map();
+const movimientosEnCurso = new Set();
+const movimientosDeJugadoresEnCurso = new Set();
 const avisosAlquilerPendientes = new Map();
+const estadoPropiedadesConocido = new Map();
 let temporizadorAvisoAlquiler;
+
+function actualizarBotonTirada() {
+    if (!botonTirar) return;
+    botonTirar.disabled = !posicionesInicialesSincronizadas
+        || movimientosDeJugadoresEnCurso.size > 0
+        || estaTirando
+        || yaTiroEnEsteTurno
+        || window.usuarioEnBancarrota
+        || String(window.turnoActualId) !== String(window.usuarioSesionId);
+}
 
 function guardarAvisoAlquiler(aviso) {
     if (String(aviso.idJugadorPagador) !== String(window.usuarioSesionId)) return;
@@ -260,15 +298,19 @@ function guardarAvisoAlquiler(aviso) {
     avisosAlquilerPendientes.set(idJugador, avisos);
 }
 
-function mostrarAvisoAlquiler(aviso) {
+function mostrarAvisoPartida(mensaje) {
     const elemento = document.getElementById("aviso-alquiler");
     if (!elemento) return;
-    elemento.textContent = `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`;
+    elemento.textContent = mensaje;
     elemento.classList.add("aviso-alquiler--visible");
     clearTimeout(temporizadorAvisoAlquiler);
     temporizadorAvisoAlquiler = setTimeout(() => {
         elemento.classList.remove("aviso-alquiler--visible");
     }, 5000);
+}
+
+function mostrarAvisoAlquiler(aviso) {
+    mostrarAvisoPartida(`Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`);
 }
 
 function mostrarAvisosAlquilerDelJugador(idJugador) {
@@ -277,24 +319,40 @@ function mostrarAvisosAlquilerDelJugador(idJugador) {
     avisos.forEach(mostrarAvisoAlquiler);
 }
 
+function registrarCaidaEnHistorial(idJugador, posicion) {
+    const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
+    const nombreCasillero = casillero?.querySelector(".casillero__nombre")?.textContent.trim()
+        || `casillero #${posicion}`;
+    const nombreJugador = document.getElementById(String(idJugador))
+        ?.querySelector(".nombre-jugador")?.textContent.trim()
+        || `Jugador ${idJugador}`;
+    agregarAlHistorial(`${nombreJugador} cay\u00f3 en ${nombreCasillero}.`);
+}
+
 async function procesarMovimiento(movimiento) {
-    const clave = `${movimiento.idJugador}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
+    const clave = movimiento.idMovimiento
+        ? String(movimiento.idMovimiento)
+        : `${movimiento.idJugador}:${movimiento.posicionAnterior}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
     if (movimientosEnCurso.has(clave)) return;
-    movimientosEnCurso.set(clave, true);
-    setTimeout(() => movimientosEnCurso.delete(clave), 5000);
+    movimientosEnCurso.add(clave);
     if (dado1) dado1.textContent = movimiento.dado1;
     if (dado2) dado2.textContent = movimiento.dado2;
     try {
         const pasos = Number(movimiento.dado1) + Number(movimiento.dado2);
-        await animarMovimientoFicha(movimiento.idJugador, pasos);
+        movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        actualizarBotonTirada();
+        await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         const posicionFinal = Number(movimiento.nuevaPosicion);
         if (Number.isInteger(posicionFinal)) {
             moverFichaEnTablero(movimiento.idJugador, posicionFinal);
+            registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
             await atenderCaidaEnCasillero(movimiento.idJugador, posicionFinal);
         }
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
+        actualizarBotonTirada();
         mostrarAvisosAlquilerDelJugador(movimiento.idJugador);
     }
 }
@@ -306,6 +364,7 @@ function sincronizarPosicionesFichas(posiciones) {
     }
 
     posiciones.forEach((jugador) => {
+        if (movimientosDeJugadoresEnCurso.has(String(jugador.idJugador))) return;
         if (jugador.posicion == null) {
             console.warn("El jugador no tiene una posición definida:", jugador.idJugador);
             return;
@@ -314,6 +373,8 @@ function sincronizarPosicionesFichas(posiciones) {
         moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
 
+    posicionesInicialesSincronizadas = true;
+    actualizarBotonTirada();
     console.log("Posiciones de las fichas sincronizadas:", posiciones);
 }
 
@@ -372,10 +433,20 @@ function aplicarTurnoDTO(turnoDTO) {
     if (!turnoDTO || turnoDTO.idJugadorActual == null) return;
     const jugadorAnterior = window.idJugadorTurnoAnterior;
     const cambioDeTurno = String(jugadorAnterior) !== String(turnoDTO.idJugadorActual);
+    const idJugadorReloj = String(turnoDTO.idJugadorActual);
+    const cambioDeTurnoDelReloj = String(window.idJugadorTurnoCronometro) !== idJugadorReloj;
 
     if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
-    if (cambioDeTurno) iniciarRelojLocal(turnoDTO.duracionSegundos);
+    if (cambioDeTurno && modalBonoPropiedades?.open) cargarPropiedadesPropias();
+    if (turnoDTO.duracionSegundos == null) {
+        prepararRelojSinIniciar();
+        window.turnoInicialSincronizado = true;
+    } else if (cambioDeTurnoDelReloj || !window.turnoInicialSincronizado) {
+        iniciarRelojLocal(turnoDTO.duracionSegundos);
+        window.idJugadorTurnoCronometro = idJugadorReloj;
+        window.turnoInicialSincronizado = true;
+    }
     actualizarTurnoEnPantalla(turnoDTO);
     actualizarRondaActual(turnoDTO.rondaActual);
 }
@@ -389,24 +460,70 @@ function actualizarRondaActual(rondaActual) {
     }
 }
 
-const infoTitulo = document.getElementById("info-titulo");
-const infoSub = document.getElementById("info-sub");
-const infoPrecio = document.getElementById("info-precio");
-const infoAlquiler = document.getElementById("info-alquiler");
-const infoEstado = document.getElementById("info-estado");
-const infoNota = document.getElementById("info-nota");
-const btnComprar = document.getElementById("btn-comprar");
 const modalCompra = document.getElementById("modal-compra-propiedad");
 const modalInfoPropiedad = document.getElementById("modal-info-propiedad");
 const btnModalInfoAccion = document.getElementById("btn-modal-info-accion");
+const notaModalInfo = document.getElementById("popup-info-nota");
+const modalBonoPropiedades = document.getElementById("modal-bono-propiedades");
+const listaPropiedadesPropias = document.getElementById("lista-propiedades-propias");
+const mensajeBonoPropiedades = document.getElementById("bono-propiedades-mensaje");
+const modalVenderPropiedad = document.getElementById("modal-vender-propiedad");
+const nombrePropiedadEnVenta = document.getElementById("vender-propiedad-nombre");
+const mensajeOfertaVenta = document.getElementById("oferta-venta-mensaje");
+const modalOfertaRecibida = document.getElementById("modal-oferta-recibida");
+const mensajeOfertaRecibida = document.getElementById("oferta-recibida-mensaje");
 const posicionesPropiedad = new Set([1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29]);
 const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
+const nivelesAlquiler = [200, 300, 500, 1000, 1500];
+const posicionesLocalidades = {
+    VILLA_LUZURIAGA: [1, 2],
+    SAN_JUSTO: [4, 5, 7],
+    ISIDRO_CASANOVA: [9, 11, 13],
+    RAFAEL_CASTILLO: [15, 16],
+    LAFERRERE: [18, 19],
+    CIUDAD_EVITA: [21, 22],
+    LA_TABLADA: [23, 25],
+    RAMOS_MEJIA: [26, 27, 29],
+};
+const nombresLocalidades = {
+    VILLA_LUZURIAGA: "Villa Luzuriaga",
+    SAN_JUSTO: "San Justo",
+    ISIDRO_CASANOVA: "Isidro Casanova",
+    RAFAEL_CASTILLO: "Rafael Castillo",
+    LAFERRERE: "Laferrere",
+    CIUDAD_EVITA: "Ciudad Evita",
+    LA_TABLADA: "La Tablada",
+    RAMOS_MEJIA: "Ramos Mej\u00eda",
+};
+const coloresLocalidades = {
+    VILLA_LUZURIAGA: "#ed5da8",
+    SAN_JUSTO: "#42b6e8",
+    ISIDRO_CASANOVA: "#ffbd42",
+    RAFAEL_CASTILLO: "#91d64b",
+    LAFERRERE: "#a17be8",
+    CIUDAD_EVITA: "#f16c5e",
+    LA_TABLADA: "#38c8b5",
+    RAMOS_MEJIA: "#f0df4c",
+};
+const posicionesParadas = new Set([6, 12, 17, 24]);
 let propiedadSeleccionada = null;
 let resolviendoDecisionPropiedad = false;
+let propiedadesPropiasActuales = [];
+let propiedadParaVender = null;
+let ofertaActiva = null;
 
 function actualizarEtiquetaPrecioPropiedad(propiedad) {
     const casillero = document.querySelector(`.casillero[data-casillero="${propiedad.posicion}"]`);
     if (!casillero) return;
+
+    const colorLocalidad = coloresLocalidades[propiedad.grupo];
+    if (colorLocalidad) {
+        casillero.style.backgroundColor = colorLocalidad;
+        casillero.dataset.grupoLocalidad = propiedad.grupo;
+    } else if (posicionesParadas.has(Number(propiedad.posicion))) {
+        casillero.style.backgroundColor = "#fff0c2";
+        casillero.dataset.grupoLocalidad = "PARADAS";
+    }
 
     casillero.classList.add("casillero--precio-superior");
 
@@ -423,7 +540,7 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
 
     etiqueta.textContent = `$${Number(monto).toLocaleString("es-AR")}`;
     etiqueta.title = tieneDueno
-        ? `Alquiler: $${monto} · Propietario: ${propiedad.propietario}`
+        ? `Alquiler: $${monto} \u00b7 Propietario: ${propiedad.propietario}`
         : `Precio de compra: $${monto}`;
     etiqueta.setAttribute("aria-label", etiqueta.title);
     const colorPropietario = tieneDueno ? obtenerColorFichaJugador(propiedad.propietarioId) : null;
@@ -432,6 +549,41 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
     } else {
         delete etiqueta.dataset.color;
     }
+    registrarCambioPropiedadEnHistorial(propiedad);
+}
+
+function registrarCambioPropiedadEnHistorial(propiedad) {
+    const posicion = Number(propiedad.posicion);
+    const propietarioId = propiedad.propietarioId == null ? null : String(propiedad.propietarioId);
+    const nivel = Number(propiedad.nivelMejora ?? 0);
+    const anterior = estadoPropiedadesConocido.get(posicion);
+
+    if (anterior && anterior.propietarioId !== propietarioId) {
+        if (anterior.propietarioId == null && propietarioId != null) {
+            const comprador = obtenerNombreJugadorHistorial(propietarioId);
+            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} por $${propiedad.precioCompra}.`);
+        } else if (propietarioId == null) {
+            const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
+            const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
+            agregarAlHistorial(`${vendedor} vendi\u00f3 ${propiedad.nombre} al banco por $${precio}.`);
+        } else {
+            const comprador = obtenerNombreJugadorHistorial(propietarioId);
+            const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
+            const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
+            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} a ${vendedor} por $${precio}.`);
+        }
+    } else if (anterior && nivel > anterior.nivel) {
+        const propietario = obtenerNombreJugadorHistorial(propietarioId);
+        agregarAlHistorial(`${propietario} aument\u00f3 el alquiler de ${propiedad.nombre} a $${propiedad.alquiler}.`);
+    }
+
+    estadoPropiedadesConocido.set(posicion, { propietarioId, nivel });
+}
+
+function obtenerNombreJugadorHistorial(idJugador) {
+    return document.getElementById(String(idJugador))
+        ?.querySelector(".nombre-jugador")?.textContent.trim()
+        || `Jugador ${idJugador}`;
 }
 
 function obtenerColorFichaJugador(idJugador) {
@@ -440,74 +592,83 @@ function obtenerColorFichaJugador(idJugador) {
     return coloresFicha.find((color) => ficha?.classList.contains(`ficha-${color}`)) || null;
 }
 
-async function cargarEtiquetasPrecioTablero() {
-    try {
-        const propiedades = await Promise.all(Array.from(posicionesPropiedad, async (posicion) => {
-            const respuesta = await fetch(
-                `${basePath}/partida/${codigoPartida}/propiedades/${posicion}`,
-                { cache: "no-store" },
-            );
-            if (!respuesta.ok) return null;
-            return respuesta.json();
-        }));
-        propiedades.filter(Boolean).forEach(actualizarEtiquetaPrecioPropiedad);
-    } catch (error) {
-        console.error(error);
-    }
+function pintarLocalidadesTablero() {
+    Object.entries(posicionesLocalidades).forEach(([grupo, posiciones]) => {
+        posiciones.forEach((posicion) => {
+            const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
+            if (!casillero) return;
+            casillero.style.backgroundColor = coloresLocalidades[grupo];
+            casillero.dataset.grupoLocalidad = grupo;
+        });
+    });
+    posicionesParadas.forEach((posicion) => {
+        const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
+        if (!casillero) return;
+        casillero.style.backgroundColor = "#fff0c2";
+        casillero.dataset.grupoLocalidad = "PARADAS";
+    });
 }
 
 function mostrarInfoPropiedad(propiedad) {
     propiedadSeleccionada = propiedad;
     actualizarEtiquetaPrecioPropiedad(propiedad);
     const tienePropietario = propiedad.propietarioId != null;
-    infoTitulo.textContent = propiedad.nombre;
-    infoSub.textContent = propiedad.descripcion
-        ? `Casillero #${propiedad.posicion} · ${propiedad.descripcion}`
+    const descripcion = propiedad.descripcion
+        ? `Casillero #${propiedad.posicion} \u00b7 ${propiedad.descripcion}`
         : `Casillero #${propiedad.posicion}`;
-    infoPrecio.textContent = `$${propiedad.precioCompra}`;
-    infoAlquiler.textContent = `$${propiedad.alquiler}`;
-    infoEstado.textContent = propiedad.disponible ? "Sin dueño" : `Pertenece a ${propiedad.propietario}`;
+    const esPropia = !propiedad.disponible
+        && String(propiedad.propietarioId) === String(window.usuarioSesionId);
     const posicionJugador = document.querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)
         ?.closest(".casillero")?.dataset.casillero;
     const puedeComprar = propiedad.disponible
         && String(posicionJugador) === String(propiedad.posicion)
         && String(window.turnoActualId) === String(window.usuarioSesionId)
         && tiempoRestante > 0;
-    const esPropia = !propiedad.disponible
-        && String(propiedad.propietarioId) === String(window.usuarioSesionId);
-
-    if (propiedad.disponible) {
-        infoNota.textContent = puedeComprar
-            ? "Podés comprarla ahora o pasar."
-            : (tiempoRestante <= 0 && String(window.turnoActualId) === String(window.usuarioSesionId)
-                ? "Terminó el tiempo de tu turno; ya no podés comprar esta propiedad."
-                : "Propiedad disponible. Solo se puede comprar al caer en ella durante tu turno.");
-    } else if (esPropia) {
-        infoNota.textContent = `Es tuya. Podés venderla al banco por $${propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2)}.`;
-    } else {
-        infoNota.textContent = "El alquiler se cobra automáticamente cuando un rival cae aquí.";
-    }
-
-    btnComprar.disabled = !puedeComprar && !esPropia;
-    btnComprar.dataset.accionPropiedad = puedeComprar ? "comprar" : (esPropia ? "vender" : "");
-    btnComprar.textContent = puedeComprar
+    const textoAccion = puedeComprar
         ? `Comprar por $${propiedad.precioCompra}`
-        : (esPropia ? `Vender por $${propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2)}` : "No disponible");
+        : (esPropia ? "Propiedad propia" : "No disponible");
 
     document.getElementById("popup-info-titulo").textContent = propiedad.nombre;
-    document.getElementById("popup-info-descripcion").textContent = infoSub.textContent;
+    document.getElementById("popup-info-descripcion").textContent = descripcion;
     document.getElementById("popup-precio-contenedor").hidden = tienePropietario;
     document.getElementById("popup-alquiler-contenedor").hidden = !tienePropietario;
     document.getElementById("popup-info-precio").textContent = `$${Number(propiedad.precioCompra).toLocaleString("es-AR")}`;
     document.getElementById("popup-info-alquiler").textContent = `$${Number(propiedad.alquiler).toLocaleString("es-AR")}`;
     document.getElementById("popup-info-propietario").textContent = propiedad.propietario || "Sin propietario";
-    btnModalInfoAccion.disabled = btnComprar.disabled;
-    btnModalInfoAccion.textContent = btnComprar.textContent;
+    notaModalInfo.textContent = puedeComprar
+        ? "Pod\u00e9s comprarla ahora o pasar."
+        : (esPropia
+            ? "Es tu propiedad. Administr\u00e1 el alquiler desde Bono de propiedades."
+            : (tienePropietario
+                ? "El alquiler se cobra automáticamente cuando un rival cae aquí."
+                : "Solo podés comprarla al caer en ella durante tu turno."));
+    btnModalInfoAccion.disabled = !puedeComprar;
+    btnModalInfoAccion.textContent = textoAccion;
 }
 
-function actualizarDineroJugador(idJugador, dinero) {
-    const saldo = document.getElementById(String(idJugador))?.querySelector(".dinero");
+function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
+    const tarjeta = document.getElementById(String(idJugador));
+    const saldo = tarjeta?.querySelector(".dinero");
     if (saldo) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
+    if (String(idJugador) === String(window.usuarioSesionId)) {
+        window.dineroUsuarioSesion = Number(dinero);
+    }
+    if (!tarjeta || !enBancarrota) return;
+
+    tarjeta.dataset.bancarrota = "true";
+    tarjeta.classList.add("jugador--bancarrota");
+    if (!tarjeta.querySelector(".estado-bancarrota")) {
+        const etiqueta = document.createElement("span");
+        etiqueta.className = "estado-bancarrota";
+        etiqueta.textContent = "En quiebra";
+        tarjeta.querySelector(".datos-jugador")?.appendChild(etiqueta);
+    }
+    if (String(idJugador) === String(window.usuarioSesionId) && !window.usuarioEnBancarrota) {
+        window.usuarioEnBancarrota = true;
+        bloquearControles();
+        cerrarModalCompra();
+        mostrarAvisoPartida("Llegaste a tu límite de deudas.");
+    }
 }
 
 async function cargarInfoPropiedad(posicion, abrirPopup = false) {
@@ -545,19 +706,30 @@ async function comprarPropiedadActual() {
         }
         if (!respuesta.ok) {
             console.error("El servidor rechazó la compra:", respuesta.status, datos, cuerpoRespuesta);
+            if (datos.codigoError === "DINERO_INSUFICIENTE") {
+                cerrarModalCompra();
+                mostrarAvisoPartida("No tenés guita para comprar esta propiedad.");
+                await finalizarTurno();
+                return;
+            }
             throw new Error(datos.error || `El servidor rechazó la compra (HTTP ${respuesta.status}).`);
         }
         mostrarInfoPropiedad(datos);
         cerrarModalCompra();
-        agregarAlHistorial(`Compraste: ${datos.nombre}`);
-        if (datos.dineroJugador != null) actualizarDineroJugador(datos.idJugadorPropietario ?? window.usuarioSesionId, datos.dineroJugador);
+        if (datos.dineroJugador != null) {
+            actualizarDineroJugador(
+                datos.idJugadorPropietario ?? window.usuarioSesionId,
+                datos.dineroJugador,
+                datos.enBancarrota,
+            );
+        }
         if (datos.idJugadorActual != null) {
             window.turnoActualId = datos.idJugadorActual;
             actualizarTurnoEnPantalla({ idJugadorActual: datos.idJugadorActual, apodoJugadorActual: "" });
         }
     } catch (error) {
-        infoNota.textContent = error.message || "No se pudo comprar la propiedad.";
-        document.getElementById("modal-propiedad-info").textContent = infoNota.textContent;
+        notaModalInfo.textContent = error.message || "No se pudo comprar la propiedad.";
+        document.getElementById("modal-propiedad-info").textContent = notaModalInfo.textContent;
         if (modalCompra?.open && tiempoRestante > 0
             && String(window.turnoActualId) === String(window.usuarioSesionId)) {
             document.getElementById("btn-modal-comprar").disabled = false;
@@ -567,37 +739,13 @@ async function comprarPropiedadActual() {
     }
 }
 
-async function venderPropiedadActual() {
-    if (!propiedadSeleccionada || btnComprar.dataset.accionPropiedad !== "vender" || resolviendoDecisionPropiedad) return;
-    const propiedad = propiedadSeleccionada;
-    const precioVenta = Number(propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2));
-    if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${precioVenta}?`)) return;
-
-    resolviendoDecisionPropiedad = true;
-    btnComprar.disabled = true;
-    try {
-        const respuesta = await fetch(
-            `${basePath}/partida/${codigoPartida}/propiedades/${propiedad.posicion}/vender`,
-            { method: "POST", credentials: "same-origin" },
-        );
-        const datos = await respuesta.json();
-        if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
-
-        mostrarInfoPropiedad(datos);
-        actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
-        agregarAlHistorial(`Vendiste al banco: ${datos.nombre} por $${datos.precioVenta}`);
-    } catch (error) {
-        infoNota.textContent = error.message || "No se pudo vender la propiedad.";
-        btnComprar.disabled = false;
-    } finally {
-        resolviendoDecisionPropiedad = false;
-    }
-}
-
 function agregarAlHistorial(texto) {
     const item = document.createElement("li");
     item.textContent = texto;
-    document.querySelector(".historial__lista")?.prepend(item);
+    const lista = document.querySelector(".historial__lista");
+    if (!lista) return;
+    lista.querySelector(".historial__vacio")?.remove();
+    lista.prepend(item);
 }
 
 function cerrarModalCompra() {
@@ -625,16 +773,23 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
         if (!propiedad) {
             return;
         }
-        agregarAlHistorial(`Caíste en: ${propiedad.nombre}`);
     } catch (error) {
         console.error(error);
-        infoNota.textContent = "No se pudo verificar si la propiedad está disponible para comprar.";
+        notaModalInfo.textContent = "No se pudo verificar si la propiedad está disponible para comprar.";
         return;
     }
 
     // El diálogo de compra se abre solo tras confirmar que está libre y que
     // quien cayó sigue siendo el jugador del turno en esta sesión.
     if (propiedad.disponible !== true || String(window.turnoActualId) !== String(idJugador)) return;
+
+    const saldoActual = document.getElementById(String(idJugador))?.querySelector(".dinero")?.textContent ?? "0";
+    const dineroDisponible = Number(saldoActual.replace(/[^\d-]/g, "")) || 0;
+    if (dineroDisponible < Number(propiedad.precioCompra)) {
+        mostrarAvisoPartida("No tenés guita para comprar esta propiedad.");
+        await finalizarTurno().catch((error) => console.error("No se pudo pasar el turno:", error));
+        return;
+    }
 
     document.getElementById("modal-propiedad-titulo").textContent = propiedad.nombre;
     document.getElementById("modal-propiedad-info").textContent =
@@ -652,23 +807,262 @@ document.querySelectorAll(".casillero[data-casillero]").forEach((casillero) => {
         cargarInfoPropiedad(casillero.dataset.casillero, true).catch(console.error);
     });
 });
-document.getElementById("btn-info-casillero")?.addEventListener("click", () => {
-    const posicion = document.querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)?.closest(".casillero")?.dataset.casillero;
-    if (posicion != null) cargarInfoPropiedad(posicion, true).catch(console.error);
-});
 document.getElementById("btn-cerrar-info-propiedad")?.addEventListener("click", () => modalInfoPropiedad.close());
 modalInfoPropiedad?.addEventListener("click", (event) => {
     if (event.target === modalInfoPropiedad) modalInfoPropiedad.close();
 });
-btnModalInfoAccion?.addEventListener("click", () => btnComprar.click());
+btnModalInfoAccion?.addEventListener("click", comprarPropiedadActual);
 document.getElementById("btn-modal-comprar")?.addEventListener("click", comprarPropiedadActual);
 document.getElementById("btn-modal-pasar")?.addEventListener("click", pasarTurnoPropiedad);
-btnComprar?.addEventListener("click", () => {
-    if (btnComprar.dataset.accionPropiedad === "comprar") comprarPropiedadActual();
-    if (btnComprar.dataset.accionPropiedad === "vender") venderPropiedadActual();
+
+document.getElementById("btn-bono-propiedades")?.addEventListener("click", () => {
+    if (!modalBonoPropiedades.open) modalBonoPropiedades.showModal();
+    cargarPropiedadesPropias();
+});
+document.getElementById("btn-cerrar-bono-propiedades")?.addEventListener("click", () => modalBonoPropiedades.close());
+document.getElementById("btn-cerrar-vender-propiedad")?.addEventListener("click", () => modalVenderPropiedad.close());
+document.getElementById("btn-vender-al-banco")?.addEventListener("click", () => venderPropiedadBono(propiedadParaVender));
+document.getElementById("btn-enviar-oferta")?.addEventListener("click", enviarOfertaVenta);
+document.getElementById("btn-aceptar-oferta")?.addEventListener("click", () => responderOfertaVenta(true));
+document.getElementById("btn-rechazar-oferta")?.addEventListener("click", () => responderOfertaVenta(false));
+modalBonoPropiedades?.addEventListener("click", (event) => {
+    if (event.target === modalBonoPropiedades) modalBonoPropiedades.close();
+});
+modalVenderPropiedad?.addEventListener("click", (event) => {
+    if (event.target === modalVenderPropiedad) modalVenderPropiedad.close();
 });
 
-cargarEtiquetasPrecioTablero();
+async function cargarPropiedadesPropias() {
+    if (!listaPropiedadesPropias || !mensajeBonoPropiedades) return;
+    mensajeBonoPropiedades.textContent = "Cargando tus propiedades...";
+    listaPropiedadesPropias.replaceChildren();
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/propiedades`, {
+            cache: "no-store", credentials: "same-origin",
+        });
+        const propiedades = await respuesta.json();
+        if (!respuesta.ok) throw new Error(propiedades.error || "No se pudieron cargar las propiedades.");
+        if (!Array.isArray(propiedades)) throw new Error("El servidor devolvió una lista de propiedades inválida.");
+        if (!propiedades.length) {
+            propiedadesPropiasActuales = [];
+            mensajeBonoPropiedades.textContent = "No hay propiedades para mostrar.";
+            return;
+        }
+        propiedades.forEach(actualizarEtiquetaPrecioPropiedad);
+        propiedadesPropiasActuales = propiedades.filter((propiedad) =>
+            String(propiedad.propietarioId) === String(window.usuarioSesionId));
+        mensajeBonoPropiedades.textContent = propiedadesPropiasActuales.length
+            ? "Para subir alquiler necesit\u00e1s toda la localidad y estar en tu turno."
+            : "Todavía no tenés propiedades.";
+        propiedadesPropiasActuales.forEach((propiedad) => {
+            listaPropiedadesPropias.appendChild(crearTarjetaPropiedad(propiedad));
+        });
+    } catch (error) {
+        mensajeBonoPropiedades.textContent = error.message || "No se pudieron cargar tus propiedades.";
+    }
+}
+
+function crearTarjetaPropiedad(propiedad) {
+    const tarjeta = document.createElement("article");
+    tarjeta.className = "propiedad-propia";
+    tarjeta.dataset.grupo = propiedad.grupo || "";
+    tarjeta.style.setProperty("--color-localidad", posicionesParadas.has(Number(propiedad.posicion))
+        ? "#fff0c2" : (coloresLocalidades[propiedad.grupo] || "#e2e9f2"));
+    const titulo = document.createElement("h3");
+    titulo.textContent = propiedad.nombre;
+    const ubicacion = document.createElement("p");
+    const nombreLocalidad = posicionesParadas.has(Number(propiedad.posicion))
+        ? "Parada / colectivo"
+        : (nombresLocalidades[propiedad.grupo] || propiedad.descripcion || "Localidad");
+    ubicacion.textContent = `${nombreLocalidad} \u00b7 Casillero #${propiedad.posicion}`;
+    const datos = document.createElement("dl");
+    datos.className = "propiedad-propia__datos";
+    agregarDatoPropiedad(datos, "Compra", propiedad.precioCompra);
+    agregarDatoPropiedad(datos, "Alquiler base", propiedad.alquilerBase);
+    agregarDatoPropiedad(datos, "Alquiler actual", propiedad.alquiler);
+    agregarDatoPropiedad(datos, "Due\u00f1o", propiedad.propietarioId == null
+        ? "Sin due\u00f1o"
+        : (String(propiedad.propietarioId) === String(window.usuarioSesionId) ? "Vos" : propiedad.propietario));
+    const esPropia = String(propiedad.propietarioId) === String(window.usuarioSesionId);
+    if (!esPropia) {
+        tarjeta.append(titulo, ubicacion, datos);
+        return tarjeta;
+    }
+    const nivel = Number(propiedad.nivelMejora ?? 0);
+    if (!posicionesParadas.has(Number(propiedad.posicion))) {
+        agregarDatoPropiedad(datos, "Nivel", `${nivel} / ${nivelesAlquiler.length}`);
+    }
+    const acciones = document.createElement("div");
+    acciones.className = "propiedad-propia__acciones";
+    const botonSubir = document.createElement("button");
+    botonSubir.type = "button";
+    botonSubir.className = "btn-casillero btn-casillero--secundario";
+    const localidadCompleta = tieneLocalidadCompleta(propiedad);
+    const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
+    const costoMejora = nivelesAlquiler[nivel];
+    botonSubir.disabled = !localidadCompleta || nivel >= nivelesAlquiler.length
+        || posicionesParadas.has(Number(propiedad.posicion)) || !esTurnoPropio || window.usuarioEnBancarrota
+        || Number(window.dineroUsuarioSesion) < costoMejora;
+    botonSubir.textContent = esTurnoPropio ? "Subir alquiler" : "Disponible en tu turno";
+    botonSubir.addEventListener("click", () => subirAlquilerPropiedad(propiedad.posicion, botonSubir));
+    const botonVender = document.createElement("button");
+    botonVender.type = "button";
+    botonVender.className = "btn-casillero btn-casillero--principal";
+    botonVender.disabled = Boolean(window.usuarioEnBancarrota);
+    botonVender.textContent = "Vender";
+    botonVender.addEventListener("click", () => abrirOpcionesVenta(propiedad));
+    acciones.append(botonSubir, botonVender);
+    tarjeta.append(titulo, ubicacion, datos, acciones);
+    return tarjeta;
+}
+
+function tieneLocalidadCompleta(propiedad) {
+    const posiciones = posicionesLocalidades[propiedad.grupo] || [];
+    return posiciones.length > 0 && posiciones.every((posicion) =>
+        propiedadesPropiasActuales.some((propiedadPropia) => Number(propiedadPropia.posicion) === posicion));
+}
+
+function agregarDatoPropiedad(lista, etiqueta, valor) {
+    const fila = document.createElement("div");
+    const termino = document.createElement("dt");
+    termino.textContent = etiqueta;
+    const dato = document.createElement("dd");
+    dato.textContent = typeof valor === "number" ? `$${Number(valor).toLocaleString("es-AR")}` : valor;
+    fila.append(termino, dato);
+    lista.appendChild(fila);
+}
+
+async function subirAlquilerPropiedad(posicion, boton) {
+    boton.disabled = true;
+    try {
+        const alquilerAnterior = propiedadesPropiasActuales.find((propiedad) =>
+            Number(propiedad.posicion) === Number(posicion))?.alquiler;
+        const respuesta = await fetch(
+            `${basePath}/partida/${codigoPartida}/propiedades/${posicion}/subir-alquiler`,
+            { method: "POST", credentials: "same-origin" },
+        );
+        const propiedad = await respuesta.json();
+        if (!respuesta.ok) throw new Error(propiedad.error || "No se pudo subir el alquiler.");
+        actualizarEtiquetaPrecioPropiedad(propiedad);
+        actualizarDineroJugador(propiedad.idJugador ?? window.usuarioSesionId,
+            propiedad.dineroJugador, propiedad.enBancarrota);
+        await cargarPropiedadesPropias();
+    } catch (error) {
+        mensajeBonoPropiedades.textContent = error.message || "No se pudo subir el alquiler.";
+        boton.disabled = false;
+    }
+}
+
+function abrirOpcionesVenta(propiedad) {
+    propiedadParaVender = propiedad;
+    nombrePropiedadEnVenta.textContent = `${propiedad.nombre} \u00b7 Alquiler actual: $${propiedad.alquiler}`;
+    document.getElementById("btn-vender-al-banco").textContent =
+        `Vender al banco por $${Number(propiedad.precioVenta).toLocaleString("es-AR")}`;
+    document.getElementById("oferta-precio").value = "";
+    document.getElementById("oferta-jugador").value = "";
+    mensajeOfertaVenta.textContent = "";
+    const selector = document.getElementById("oferta-jugador");
+    Array.from(selector.options).forEach((opcion) => {
+        if (!opcion.value) return;
+        opcion.hidden = opcion.dataset.bancarrota === "true";
+        opcion.disabled = opcion.hidden;
+    });
+    if (!modalVenderPropiedad.open) modalVenderPropiedad.showModal();
+}
+
+async function venderPropiedadBono(propiedad) {
+    if (!propiedad) return;
+    if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${propiedad.precioVenta}?`)) return;
+    try {
+        const respuesta = await fetch(
+            `${basePath}/partida/${codigoPartida}/propiedades/${propiedad.posicion}/vender`,
+            { method: "POST", credentials: "same-origin" },
+        );
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
+        actualizarEtiquetaPrecioPropiedad(datos);
+        actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
+        modalVenderPropiedad.close();
+        await cargarPropiedadesPropias();
+    } catch (error) {
+        mensajeBonoPropiedades.textContent = error.message || "No se pudo vender la propiedad.";
+    }
+}
+
+async function enviarOfertaVenta() {
+    if (!propiedadParaVender) return;
+    const boton = document.getElementById("btn-enviar-oferta");
+    const idJugadorComprador = document.getElementById("oferta-jugador").value;
+    const precio = Number(document.getElementById("oferta-precio").value);
+    if (!idJugadorComprador || !Number.isInteger(precio) || precio < 0) {
+        mensajeOfertaVenta.textContent = "Elegí un jugador e ingresá un precio válido.";
+        return;
+    }
+    boton.disabled = true;
+    try {
+        const respuesta = await fetch(
+            `${basePath}/partida/${codigoPartida}/propiedades/${propiedadParaVender.posicion}/ofertas`,
+            { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idJugadorComprador: Number(idJugadorComprador), precio }) },
+        );
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo enviar la oferta.");
+        mensajeOfertaVenta.textContent = "Oferta enviada. La propiedad se transfiere cuando el otro jugador la acepte.";
+        setTimeout(() => { if (modalVenderPropiedad.open) modalVenderPropiedad.close(); }, 1500);
+    } catch (error) {
+        mensajeOfertaVenta.textContent = error.message || "No se pudo enviar la oferta.";
+    } finally {
+        boton.disabled = false;
+    }
+}
+
+async function revisarOfertasPendientes() {
+    if (!codigoPartida || modalOfertaRecibida?.open) return;
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/ofertas-pendientes`, {
+            cache: "no-store", credentials: "same-origin",
+        });
+        if (!respuesta.ok) return;
+        const ofertas = await respuesta.json();
+        if (!ofertas.length) return;
+        ofertaActiva = ofertas[0];
+        document.getElementById("oferta-recibida-detalle").textContent =
+            `${ofertaActiva.apodoVendedor} te ofrece ${ofertaActiva.nombrePropiedad} por $${ofertaActiva.precio}.`;
+        mensajeOfertaRecibida.textContent = "";
+        modalOfertaRecibida.showModal();
+    } catch (error) {
+        console.warn("No se pudieron revisar las ofertas de propiedades.", error);
+    }
+}
+
+async function responderOfertaVenta(aceptar) {
+    if (!ofertaActiva) return;
+    const botones = [document.getElementById("btn-aceptar-oferta"), document.getElementById("btn-rechazar-oferta")];
+    botones.forEach((boton) => { boton.disabled = true; });
+    try {
+        const respuesta = await fetch(
+            `${basePath}/partida/${codigoPartida}/ofertas/${ofertaActiva.idOferta}/responder`,
+            { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ aceptar }) },
+        );
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo responder la oferta.");
+        if (aceptar) {
+            actualizarEtiquetaPrecioPropiedad(datos);
+            actualizarDineroJugador(datos.idJugador, datos.dineroJugador, datos.enBancarrota);
+            actualizarDineroJugador(datos.idVendedor, datos.dineroVendedor, datos.bancarrotaVendedor);
+        }
+        modalOfertaRecibida.close();
+        ofertaActiva = null;
+        if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
+    } catch (error) {
+        mensajeOfertaRecibida.textContent = error.message || "No se pudo responder la oferta.";
+    } finally {
+        botones.forEach((boton) => { boton.disabled = false; });
+    }
+}
+
+window.setInterval(revisarOfertasPendientes, 2500);
 
 // Finalizar turno después de avanzar la ficha.
 async function finalizarTurno() {
@@ -701,7 +1095,7 @@ function iniciarRelojLocal(segundos) {
     const elementoReloj = document.getElementById("cronometro-nro");
     if (!elementoReloj) return;
     const duracion = Number(segundos);
-    tiempoRestante = Number.isFinite(duracion) && duracion > 0 ? duracion : 30;
+    tiempoRestante = Number.isFinite(duracion) && duracion >= 0 ? duracion : 30;
     clearInterval(intervaloReloj); // Limpia cualquier reloj anterior
     actualizarTextoReloj(elementoReloj);
 
@@ -741,20 +1135,48 @@ function actualizarTextoReloj(elemento) {
     elemento.innerText = `00:${tiempoRestante.toString().padStart(2, '0')}`;
 }
 
+function prepararRelojSinIniciar() {
+    const elementoReloj = document.getElementById("cronometro-nro");
+    clearInterval(intervaloReloj);
+    tiempoRestante = 30;
+    actualizarTextoReloj(elementoReloj);
+}
+
 function bloquearControles() {
     const btnTirar = document.getElementById("btn-tirar");
     if(btnTirar) btnTirar.disabled = true;
-    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = true);
+    document.querySelectorAll(".btn-accion").forEach(btn => {
+        if (btn.id !== "btn-bono-propiedades") btn.disabled = true;
+    });
 }
 
 function desbloquearControles() {
+    if (window.usuarioEnBancarrota) {
+        bloquearControles();
+        return;
+    }
     const btnTirar = document.getElementById("btn-tirar");
     if(btnTirar) btnTirar.disabled = false;
-    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = false);
+    document.querySelectorAll(".btn-accion").forEach(btn => {
+        if (btn.id !== "btn-bono-propiedades") btn.disabled = false;
+    });
+    actualizarBotonTirada();
 }
 
     // Arranque inicial al cargar la página
 window.addEventListener("DOMContentLoaded", () => {
+    // El servidor ya renderiza cada ficha en su casillero; no hay que esperar
+    // el primer viaje de ida y vuelta al WebSocket para habilitar la partida.
+    posicionesInicialesSincronizadas = true;
+    pintarLocalidadesTablero();
+    if (Array.isArray(window.propiedadesIniciales)) {
+        window.propiedadesIniciales.forEach(actualizarEtiquetaPrecioPropiedad);
+    }
+    actualizarBotonTirada();
+    conectarWebSocketTurnos(basePath, codigoPartida);
+    iniciarSincronizacionTurno(basePath, codigoPartida);
+    iniciarSincronizacionPosiciones();
+    revisarOfertasPendientes();
     // 1. Aplicamos el efecto visual al jugador activo según Thymeleaf
     if (window.turnoActualId) {
         const cardActiva = document.getElementById(window.turnoActualId);
@@ -768,10 +1190,12 @@ window.addEventListener("DOMContentLoaded", () => {
     window.idJugadorTurnoAnterior = window.turnoActualId == null
         ? undefined
         : String(window.turnoActualId);
-    iniciarRelojLocal(30);
-
+    if (!window.turnoInicialSincronizado) prepararRelojSinIniciar();
     // 3. Bloqueamos si no es nuestro turno
     if (String(window.turnoActualId) !== String(window.usuarioSesionId)) {
         bloquearControles();
+    } else if (window.usuarioEnBancarrota) {
+        bloquearControles();
+        mostrarAvisoPartida("Llegaste a tu límite de deudas.");
     }
 });

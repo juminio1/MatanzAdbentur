@@ -7,18 +7,15 @@
 
 body {
     min-height: 100vh;
-    background-color: #f7f7f7;
+    background-color: #111820;
     background-image:
-        linear-gradient(
-            rgba(247, 247, 247, 0.68),
-            rgba(247, 247, 247, 0.68)
-        ),
-        url('https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/Wireframe%20-%207.svg');
-    background-repeat: no-repeat;
+        linear-gradient(rgba(8, 12, 18, 0.2), rgba(8, 12, 18, 0.38)),
+        url('../images/fondo/Wireframe%20-%207.jpg');
+    background-repeat: no-repeat, repeat;
     background-attachment: fixed;
-    background-size: cover;
+    background-size: cover, cover;
     background-position: center;
-    color: #111;
+    color: #edf3f8;
     overflow-x: hidden;
 }
 
@@ -36,11 +33,11 @@ body {
     min-height: 560px;
     display: grid;
     grid-template-columns: 0.9fr 1.1fr;
-    background-color: white;
-    border: 3px solid #111;
+    background-color: #1b2632;
+    border: 3px solid #080d13;
     border-radius: 22px;
     overflow: hidden;
-    box-shadow: 9px 9px 0 #111;
+    box-shadow: 9px 9px 0 #080d13;
 }
 
 .login-info {
@@ -170,13 +167,35 @@ body {
 
 .login-form-title h2 {
     margin-bottom: 8px;
-    color: #111;
+    color: #edf3f8;
     font-size: 36px;
     font-weight: 900;
 }
 
+/* El panel del formulario acompaña el tema oscuro global. */
+.login-form-section {
+    background: #1b2632;
+    color: #edf3f8;
+}
+
+.login-form-title > span {
+    color: #76c8f0;
+}
+
+.register-section,
+.register-section p {
+    color: #d6e0e9;
+}
+
+.register-section a,
+.form-group a {
+    color: #76c8f0;
+}
+
+.login-form-title h2 { color: #edf3f8; }
+
 .login-form-title p {
-    color: #666;
+    color: #b3c1ce;
     font-size: 15px;
     font-weight: 500;
 }
@@ -189,7 +208,7 @@ body {
 
 .form-group label {
     margin-bottom: 8px;
-    color: #222;
+    color: #d6e0e9;
     font-size: 14px;
     font-weight: 700;
 }
@@ -198,10 +217,10 @@ body {
     width: 100%;
     height: 52px;
     padding: 0 16px;
-    background-color: #f4f4f4;
-    border: 2px solid #111;
+    background-color: #111a23;
+    border: 2px solid #39495a;
     border-radius: 10px;
-    color: #111;
+    color: #edf3f8;
     font-size: 15px;
     outline: none;
     transition:
@@ -211,11 +230,11 @@ body {
 }
 
 .form-control-login::placeholder {
-    color: #999;
+    color: #94a3b3;
 }
 
 .form-control-login:focus {
-    background-color: white;
+    background-color: #17232f;
     border-color: #2b3990;
     box-shadow: 0 0 0 3px rgba(43, 57, 144, 0.12);
 }
