@@ -5,6 +5,8 @@ public enum TipoEventoGlobal{
     INUNDACION,
     EL_KEVIN,
     TRAMITES_AFIP,
-    PIQUETE
+    PIQUETE,
+    FIAT_600,
+    ACCIDENTE_SARMIENTO,
 
 }

@@ -102,6 +102,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void incrementarRondas(Partida partida) {
+        
         if (partida.getRondaActual() == null) {
             partida.setRondaActual(1);
         }
@@ -117,6 +118,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (turnosFinalizado == partida.getJugadores().size()) {
             partida.setRondaActual(partida.getRondaActual() + 1);
             partida.setTurnosFinalizadosEnRonda(0);
+            servicioEvento.verificarActivacionEventoGlobal(partida);
         }
     }
 

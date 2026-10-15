@@ -38,4 +38,20 @@ public class RepositorioEventoImpl implements RepositorioEvento {
         Integer indiceAleatorio = random.nextInt(eventos.size());
         return eventos.get(indiceAleatorio);
     }
+
+    @Override
+    @SuppressWarnings("PMD.CloseResource")
+    public Evento obtenerEventoGlobalAleatorio() {
+
+        final Session session = sessionFactory.getCurrentSession();
+
+        List<Evento> eventosGlobales = session.createQuery("FROM EventoGlobal", Evento.class).list();
+
+        if (eventosGlobales.isEmpty()) {
+            return null;
+        }
+
+        Integer indiceAleatorio = random.nextInt(eventosGlobales.size());
+        return eventosGlobales.get(indiceAleatorio);
+    }
 }

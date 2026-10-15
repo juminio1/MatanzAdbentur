@@ -7,4 +7,5 @@ public enum TipoEfecto {
     IR_A_CASILLERO,
     PERDER_TURNO,
     //IR_A_CARCEL
+    VOLVER_INCICO
 }

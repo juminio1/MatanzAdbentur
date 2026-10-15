@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.entidades.eventos;
 
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 
 import jakarta.persistence.Entity;
