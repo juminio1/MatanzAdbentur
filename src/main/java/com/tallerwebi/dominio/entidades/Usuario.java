@@ -1,12 +1,8 @@
 package com.tallerwebi.dominio.entidades;
 
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
 public class Usuario {
@@ -27,7 +23,8 @@ public class Usuario {
     private String rol;
     private Boolean activo = false;
 
-    private Ficha ficha;
+    @Enumerated(EnumType.STRING)
+    private ColorFicha ficha;
 
     public Long getId() {
         return id;
@@ -89,11 +86,11 @@ public class Usuario {
         this.avatar = string;
     }
 
-    public Ficha getFicha() {
+    public ColorFicha getFicha() {
         return ficha;
     }
 
-    public void setFicha(Ficha ficha) {
+    public void setFicha(ColorFicha ficha) {
         this.ficha = ficha;
     }
 }

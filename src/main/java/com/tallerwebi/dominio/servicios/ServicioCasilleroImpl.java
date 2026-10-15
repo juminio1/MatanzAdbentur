@@ -28,6 +28,11 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
         return repositorioCasillero.obtenerTodos();
     }
 
+    @Override
+    public void guardarCasillero(Casillero casillero) {
+        repositorioCasillero.guardar(casillero);
+    }
+
     /*@Override
     public Casillero buscarPorId(Long id) {
         return null;

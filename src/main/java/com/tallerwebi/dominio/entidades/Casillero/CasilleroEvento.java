@@ -8,11 +8,13 @@ import jakarta.persistence.Enumerated;
 @Entity
 public class CasilleroEvento extends Casillero{
 
+
     @Enumerated(EnumType.STRING)
     private TipoEvento tipoEvento;
 
     private Integer monto;
 
+    public CasilleroEvento() {}
     public CasilleroEvento(Long id, Integer posicion, String nombre, String descripcion, TipoEvento evento, Integer monto) {
         super(id, posicion, nombre, descripcion);
         this.tipoEvento = evento;

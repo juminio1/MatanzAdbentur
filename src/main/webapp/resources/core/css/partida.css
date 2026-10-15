@@ -1,4 +1,3 @@
-/* Montserrat (por si la pantalla de partida no la carga desde otro lado) */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap');
 
 .pagina-partida {
@@ -98,6 +97,7 @@
     flex-direction: row;
     gap: 3rem;
     justify-content: flex-start;
+
 }
 
 .cronometro {
@@ -116,7 +116,11 @@
     border-radius: 12px;
     box-shadow: var(--p-sombra);
     flex-wrap: nowrap;
+
 }
+.contenedor-cronometro-icono { width: 32px; height: 32px; color: var(--p-dorado); }
+.cronometro-nro { font-size: 12px; }
+
 
 .contenedor-cronometro-icono {
     width: 2rem;
@@ -138,6 +142,7 @@
 }
 
 .jugador {
+
     position: relative;
     width: 18rem;
     max-width: 20rem;
@@ -199,28 +204,7 @@
 .indicador-turno {
     display: none;
 }
-/*----CUANDO SE HAGA EL JS------
-.contenedor-turno {
-    background-color: #ffd24c;
-    border: 2px solid #111;
-    box-shadow: 3px 3px 0 #111;
-    width: 5rem;
-    margin-left: 13rem;
-    height: 2rem;
-    margin-top: 0rem;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.indicador-turno {
-    display: block;
-    color: #111;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: 800;
-}*/
+
 
 
 /* ---------- Zona del tablero ---------- */
@@ -517,45 +501,193 @@
     font-weight: 500;
 }
 
+.modal-propiedad {
+    width: min(420px, calc(100vw - 32px));
+    padding: 0;
+    color: var(--p-texto);
+    background: var(--p-superficie);
+    border: 1px solid var(--p-borde);
+    border-radius: var(--p-radio);
+}
+.modal-propiedad::backdrop { background: rgb(0 0 0 / 65%); }
+.modal-propiedad__contenido { display: grid; gap: 14px; padding: 24px; }
+.modal-propiedad__contenido h2 { font-family: var(--font-titulos, "Barlow Condensed", sans-serif); }
+.modal-propiedad__acciones { display: flex; gap: 10px; }
+
+.modal-info-propiedad {
+    width: min(460px, calc(100vw - 32px));
+}
+
+.modal-info-propiedad__contenido {
+    display: grid;
+    gap: 16px;
+    padding: 24px;
+}
+
+.modal-info-propiedad__cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.modal-info-propiedad__cabecera p {
+    margin-bottom: 4px;
+    color: var(--p-texto-suave);
+    font-size: 12px;
+}
+
+.modal-info-propiedad__cabecera h2 {
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 26px;
+}
+
+.modal-info-propiedad__cerrar {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--p-borde);
+    border-radius: 50%;
+    background: var(--p-superficie-2);
+    color: var(--p-texto);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.modal-info-propiedad__descripcion {
+    color: var(--p-texto-suave);
+}
+
+.modal-info-propiedad__datos {
+    display: grid;
+    gap: 8px;
+}
+
+.modal-info-propiedad__datos div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--p-fondo);
+}
+
+.modal-info-propiedad__datos div[hidden] {
+    display: none;
+}
+
+.modal-info-propiedad__datos dt {
+    color: var(--p-texto-suave);
+}
+
+.modal-info-propiedad__datos dd {
+    font-weight: 700;
+    text-align: right;
+}
+
+.aviso-alquiler {
+    position: fixed;
+    z-index: 1100;
+    top: 24px;
+    left: 50%;
+    max-width: min(90vw, 520px);
+    padding: 14px 22px;
+    border: 1px solid var(--p-dorado);
+    border-radius: var(--p-radio);
+    background: var(--p-superficie-2);
+    color: var(--p-texto);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+    font-weight: 700;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -10px);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    pointer-events: none;
+}
+
+.aviso-alquiler--visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
 /* ---------- Fichas de jugadores ---------- */
 
 .casillero {
     position: relative;
 }
 
-/* Contenedor para las fichas dentro de cada casillero */
+.casillero__precio {
+    position: absolute;
+    z-index: 7;
+    display: block;
+    min-width: 48%;
+    box-sizing: border-box;
+    padding: 2px 4px;
+    border: 1px solid #718394;
+    border-radius: 2px;
+    background: #FFFFFF;
+    color: #131B22;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: clamp(6px, 0.85cqw, 11px);
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+}
 
+.casillero--precio-superior .casillero__precio {
+    top: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.casillero__precio[data-color="rojo"] { background: #E4584D; color: #FFFFFF; border-color: #B83E36; }
+.casillero__precio[data-color="azul"] { background: #2887E1; color: #FFFFFF; border-color: #1765AD; }
+.casillero__precio[data-color="verde"] { background: #12B981; color: #FFFFFF; border-color: #0B865D; }
+.casillero__precio[data-color="amarillo"] { background: #F5C400; color: #202020; border-color: #B79100; }
+
+/* Contenedor para las fichas dentro decada casillero */
 .fichas-en-casillero {
     position: absolute;
-    right: 2px;
-    bottom: 2px;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
 
     display: grid;
-    grid-template-columns: repeat(2, 11px);
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 2px;
+
+    place-items: center;
 
     z-index: 5;
 }
 
 /* Estilo general de las fichas */
-
 .ficha {
     position: static;
 
-    width: 11px;
-    height: 11px;
+    width: 100%;
+    height: 100%;
+
+    max-width: 24px;
+    max-height: 24px;
 
     border-radius: 50%;
     border: 2px solid #111;
 
     box-sizing: border-box;
-
-    box-shadow: 1px 1px 0 #111;
-
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
     transition: transform 0.15s ease;
 }
 
-/* Colores de las fichas (paleta del proyecto, siguen siendo distinguibles) */
+/* Colores de las fichas */
 
 .ficha-rojo {
     background-color: #e74c5b;
@@ -624,4 +756,59 @@
     font-size: 18px;
     font-weight: 900;
     color: var(--p-azul);
+}
+
+/* Estilos para indicar el jugador activo */
+
+/* 1. Transición base: se la sumamos a tu clase .jugador actual para que los cambios de tamaño sean fluidos */
+.jugador {
+    transition: all 0.3s ease-in-out;
+    border: 2px solid transparent;
+}
+
+/* 2. El jugador que TIENE el turno: crece, brilla en dorado y se pone por encima */
+.jugador.turno-activo {
+    transform: scale(1.08);
+    border: 2px solid var(--p-dorado);
+    box-shadow: 0 0 20px rgba(196, 166, 47, 0.5); /* Sombra basada en --p-dorado */
+    z-index: 10;
+}
+
+/* El avatar del jugador activo también recibe un borde dorado */
+.jugador.turno-activo .avatar-jugador {
+    border: 3px solid var(--p-dorado);
+    box-shadow: 0 0 10px rgba(196, 166, 47, 0.8);
+}
+
+/* 3. Los jugadores que NO tienen el turno: se achican, se opacan y se ponen en escala de grises */
+.jugadores:has(.turno-activo) .jugador:not(.turno-activo) {
+    opacity: 0.5;
+    filter: grayscale(60%);
+    transform: scale(0.95);
+}
+
+/* 4. Revivimos tu clase .indicador-turno (que tenías en display: none) y la convertimos en un badge flotante animado */
+.jugador.turno-activo .indicador-turno {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    bottom: -10px;
+    right: 20px;
+    background-color: var(--p-dorado);
+    color: var(--p-fondo);
+    padding: 4px 16px;
+    border-radius: 12px;
+    font-family: var(--font-titulos, sans-serif);
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    animation: latido-turno 1.5s infinite ease-in-out;
+}
+
+/* Animación para que el badge del turno palpite */
+@keyframes latido-turno {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }

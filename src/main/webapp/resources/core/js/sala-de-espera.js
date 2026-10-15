@@ -35,7 +35,7 @@ function conectarWebSocket(codigoSala, urlWebSocket) {
 
                 const seleccion = JSON.parse(mensaje.body);
 
-                console.log("Ficha seleccionada:", seleccion);
+                console.log("ColorFicha seleccionada:", seleccion);
 
                 const datosSala = document.getElementById("datos-sala");
 

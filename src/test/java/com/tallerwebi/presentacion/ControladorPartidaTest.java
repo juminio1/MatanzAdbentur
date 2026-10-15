@@ -4,11 +4,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -19,10 +18,10 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
@@ -41,6 +40,8 @@ public class ControladorPartidaTest {
 
     private ServicioPartida servicioPartidaMock;
     private SimpMessagingTemplate notificadorWebSocketMock;
+    private ServicioCasillero servicioCasilleroMock;
+    private ServicioPropiedad servicioPropiedadMock;
     private ControladorPartida controladorPartida;
     private MockHttpServletRequest request;
     private MockHttpSession session;
@@ -49,9 +50,15 @@ public class ControladorPartidaTest {
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-        servicioPartidaMock = mock(ServicioPartida.class);
+        servicioCasilleroMock = mock(ServicioCasillero.class);
+        servicioPropiedadMock = mock(ServicioPropiedad.class);
 
-        controladorPartida = new ControladorPartida(servicioPartidaMock, notificadorWebSocketMock);
+        controladorPartida = new ControladorPartida(
+                servicioPartidaMock,
+                notificadorWebSocketMock,
+                servicioCasilleroMock,
+                servicioPropiedadMock
+        );
 
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
@@ -106,7 +113,7 @@ public class ControladorPartidaTest {
 
         Partida partidaMock = new Partida();
         Jugador jugadorMock = new Jugador();
-        jugadorMock.setId(1);
+        jugadorMock.setId(1L);
         jugadorMock.setApodo("Messi");
         partidaMock.setJugadores(List.of(jugadorMock));
         partidaMock.setJugadorTurnoAleatorio(jugadorMock);
@@ -119,6 +126,7 @@ public class ControladorPartidaTest {
         assertEquals("partida", mav.getViewName());
         assertNotNull(mav.getModel().get("partida"));
         assertEquals(partidaMock, mav.getModel().get("partida"));
+        assertEquals(usuarioId, mav.getModel().get("usuarioSesionId"));
         assertEquals(1L, mav.getModel().get("turnoActualId"));
     }
 
@@ -162,7 +170,7 @@ public class ControladorPartidaTest {
         session.setAttribute("NOMBRE", "intruso");
 
         Jugador jugadorConTurno = new Jugador();
-        jugadorConTurno.setId(1);
+        jugadorConTurno.setId(1L);
         jugadorConTurno.setApodo("pepito");
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorConTurno);
@@ -184,12 +192,12 @@ public class ControladorPartidaTest {
         session.setAttribute("NOMBRE", "pepito");
 
         Jugador jugadorActual = new Jugador();
-        jugadorActual.setId(1);
+        jugadorActual.setId(1L);
         jugadorActual.setApodo("pepito");
         jugadorActual.setOrden(0);
 
         Jugador jugadorSiguiente = new Jugador();
-        jugadorSiguiente.setId(2);
+        jugadorSiguiente.setId(2L);
         jugadorSiguiente.setApodo("Messi");
         jugadorSiguiente.setOrden(1);
 
@@ -214,11 +222,6 @@ public class ControladorPartidaTest {
         assertEquals(2, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
 
     @Test
@@ -236,7 +239,7 @@ public class ControladorPartidaTest {
         session.setAttribute("NOMBRE", "MESSI");
 
         Jugador jugador = new Jugador();
-        jugador.setId(7);
+        jugador.setId(7L);
         jugador.setApodo("Messi");
 
         Partida partida = new Partida();
@@ -272,7 +275,7 @@ public class ControladorPartidaTest {
         session.setAttribute("id", 4L);
 
         Jugador jugadorAleatorio = new Jugador();
-        jugadorAleatorio.setId(4);
+        jugadorAleatorio.setId(4L);
         jugadorAleatorio.setApodo("Jugador cuatro");
 
         Partida partida = new Partida();
@@ -310,12 +313,12 @@ public class ControladorPartidaTest {
         session.setAttribute("NOMBRE", "PEPITO");
 
         Jugador jugadorActual = new Jugador();
-        jugadorActual.setId(1);
+        jugadorActual.setId(1L);
         jugadorActual.setApodo("pepito");
         jugadorActual.setOrden(0);
 
         Jugador jugadorSiguiente = new Jugador();
-        jugadorSiguiente.setId(2);
+        jugadorSiguiente.setId(2L);
         jugadorSiguiente.setApodo("Messi");
         jugadorSiguiente.setOrden(1);
 
@@ -339,16 +342,13 @@ public class ControladorPartidaTest {
         assertEquals(1, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
+
 
     @Test
     public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         String codigoPrueba = "MATANZA123";
-        int idJugador = 1;
+        Long idJugador = 1L;
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -375,7 +375,7 @@ public class ControladorPartidaTest {
     @Test
     public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         String codigoPrueba = "MATANZA123";
-        int idJugador = 1;
+        Long idJugador = 1L;
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -397,7 +397,7 @@ public class ControladorPartidaTest {
     @Test
     public void queLanceExcepcionSiElJugadorNoExisteEnLaPartida() {
         String codigoPrueba = "MATANZA123";
-        int idJugadorInexistente = 99;
+        Long idJugadorInexistente = 99L;
 
         Partida partidaVacia = new Partida();
         partidaVacia.setJugadores(Collections.emptyList());

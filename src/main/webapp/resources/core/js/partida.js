@@ -7,6 +7,10 @@ const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 const dado1 = document.getElementById("dado-1");
 const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
+if (botonTirar && window.usuarioSesionId != null
+    && String(window.usuarioSesionId) === String(window.turnoActualId)) {
+    botonTirar.disabled = false;
+}
 
 // Evita enviar varias peticiones simultáneas.
 let estaTirando = false;
@@ -16,19 +20,36 @@ let yaTiroEnEsteTurno = false;
 
 // Une el frontend con el backend de dados.
 async function obtenerResultadoDados() {
-    // Obtenemos el ID del jugador desde la variable global de la sesión
     const idJugador = window.usuarioSesionId;
-
-    // Agregamos codigoUnico e idJugador a la URL de la petición
-    const respuesta = await fetch(`${basePath}/partida/tirar-dados?codigoUnico=${codigoPartida}&idJugador=${idJugador}`, {
-        method: "POST"
-    });
-
-    if (!respuesta.ok) {
-        throw new Error("No se pudieron tirar los dados");
+    if (idJugador == null || !codigoPartida) {
+        throw new Error("Faltan los datos de la partida o del jugador para tirar los dados.");
     }
 
-    return await respuesta.json();
+    const parametros = new URLSearchParams({
+        codigoUnico: String(codigoPartida),
+        idJugador: String(idJugador),
+    });
+    const respuesta = await fetch(`${basePath}/partida/tirar-dados?${parametros}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+    });
+    const cuerpo = await respuesta.text();
+    let resultado;
+    try {
+        resultado = JSON.parse(cuerpo);
+    } catch (error) {
+        const detalle = cuerpo.trim().startsWith("<")
+            ? "El servidor devolvió una página en lugar del resultado de los dados."
+            : "El servidor respondió con datos que no son JSON.";
+        throw new Error(`HTTP ${respuesta.status}: ${detalle}`);
+    }
+
+    if (!respuesta.ok) {
+        throw new Error(`HTTP ${respuesta.status}: ${resultado.error || "No se pudieron tirar los dados."}`);
+    }
+
+    return resultado;
 }
 
 // Escucha el clic y ejecuta la tirada.
@@ -52,54 +73,248 @@ if (botonTirar) {
 
             // No permitir otra tirada hasta que cambie el turno.
             yaTiroEnEsteTurno = true;
+
+            // El movimiento de la ficha lo realiza el WebSocket.
+            console.log("Nueva posición:", resultado.nuevaPosicion);
+            await procesarMovimiento(resultado);
+
             tiradaExitosa = true;
         } catch (error) {
-            console.error("Error al tirar los dados:", error);
-            yaTiroEnEsteTurno = false;
+            console.error("Error al tirar los dados o mover la ficha:", error);
+            if (infoNota) infoNota.textContent = error.message || "No se pudo completar la tirada.";
         } finally {
             estaTirando = false;
         }
 
         if (!tiradaExitosa) {
-            botonTirar.disabled = false;
+            if (!yaTiroEnEsteTurno) {
+                botonTirar.disabled = false;
+            }
             return;
         }
 
-        // TEMPORAL: finalizar el turno al terminar de tirar los dados.
-        // Cuando exista avanzar ficha, esta llamada deberá realizarse después.
-        try {
-            await finalizarTurno();
-        } catch (error) {
-            console.error("Falló el cambio de turno:", error);
-        }
+        // El turno termina cuando se resuelve la compra, se pasa o vence el plazo.
     });
 }
 
-// ELIMINAR cuando esté implementada la funcionalidad de fichas.
-const casilleros = document.querySelectorAll(".casillero");
-console.log("Casilleros encontrados:", casilleros.length);
+// Busca la ficha del jugador y el casillero al que debe avanzar.
+function moverFichaEnTablero(idJugador, nuevaPosicion) {
+    const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
+    const casilleroDestino = document.querySelector(
+        `.casillero[data-casillero="${nuevaPosicion}"] .fichas-en-casillero`,
+    );
 
-// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
-conectarWebSocketTurnos(basePath, codigoPartida);
+    // Verifica que existan la ficha y el casillero destino.
+    if (!ficha || !casilleroDestino) {
+        console.error("No se encontró la ficha o el casillero destino.", {
+            idJugador,
+            nuevaPosicion,
+            fichaEncontrada: Boolean(ficha),
+            casilleroEncontrado: Boolean(casilleroDestino),
+        });
+        return false;
+    }
+    //Mueve la ficha al nuevo casillero en el HTML.
+    casilleroDestino.appendChild(ficha);
+    return true;
+}
 
-function conectarWebSocketTurnos(base, codigo) {
-    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
+async function animarMovimientoFicha(idJugador, cantidadPasos) {
+    const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
+
+    if (!ficha) {
+        console.error("No se encontró la ficha del jugador:", idJugador);
         return;
     }
 
+    // Busca el casillero donde está actualmente la ficha.
+    const casilleroActual = ficha.closest(".casillero");
+
+    if (!casilleroActual) {
+        console.error("La ficha no está dentro de un casillero.");
+        return;
+    }
+
+    // Obtiene los casilleros en el orden en que aparecen en el tablero.
+    const casilleros = Array.from(document.querySelectorAll(".casillero[data-casillero]"));
+
+    let indiceActual = casilleros.indexOf(casilleroActual);
+
+    if (indiceActual === -1 || casilleros.length === 0) {
+        console.error("No se pudo determinar la posición de la ficha.");
+        return;
+    }
+
+    // Avanza un casillero por vez.
+    for (let paso = 0; paso < cantidadPasos; paso++) {
+        indiceActual = (indiceActual + 1) % casilleros.length;
+
+        const siguienteCasillero = casilleros[indiceActual];
+        const posicionDestino = siguienteCasillero.dataset.casillero;
+
+        // Mueve la ficha al siguiente casillero.
+        const movimientoRealizado = moverFichaEnTablero(idJugador, posicionDestino);
+
+        if (!movimientoRealizado) {
+            return;
+        }
+
+        // Pequeña pausa para que se vea el avance.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+}
+
+// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
+conectarWebSocketTurnos(basePath, codigoPartida);
+iniciarSincronizacionTurno(basePath, codigoPartida);
+
+let consultaTurnoEnCurso = false;
+function iniciarSincronizacionTurno(base, codigo) {
+    if (!codigo) return;
+    actualizarTurnoDesdeServidor(base, codigo);
+    window.setInterval(() => actualizarTurnoDesdeServidor(base, codigo), 2000);
+}
+
+async function actualizarTurnoDesdeServidor(base, codigo) {
+    if (consultaTurnoEnCurso) return;
+    consultaTurnoEnCurso = true;
+    try {
+        const respuesta = await fetch(`${base}/partida/${codigo}/turno`, { cache: "no-store" });
+        if (!respuesta.ok) return;
+        const turnoDTO = await respuesta.json();
+        if (turnoDTO.idJugadorActual == null) return;
+        aplicarTurnoDTO(turnoDTO);
+    } catch (error) {
+        console.warn("No se pudo sincronizar el turno con el servidor.", error);
+    } finally {
+        consultaTurnoEnCurso = false;
+    }
+}
+
+function conectarWebSocketTurnos(base, codigo) {
+    if (!codigo || typeof SockJS === "undefined" || typeof Stomp === "undefined") {
+        console.error("No se pudo conectar el WebSocket");
+        return;
+    }
     const socket = new SockJS(`${base}/ws`);
     const stompClient = Stomp.over(socket);
     stompClient.debug = null;
+    stompClient.connect(
+        {},
+        () => {
+            console.log("WebSocket conectado a la partida:", codigo);
 
-    stompClient.connect({}, () => {
-        stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
-            const turnoDTO = JSON.parse(mensaje.body);
+            //CANAL 1: cambios de turnos y rondas.
+            stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
+                const turnoDTO = JSON.parse(mensaje.body);
+                aplicarTurnoDTO(turnoDTO);
+            });
 
-            actualizarTurnoEnPantalla(turnoDTO);
-            // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
-            actualizarRondaActual(turnoDTO.rondaActual);
-        });
+            //CANAL 2: recibe el resultado de la tirada y el movimiento.
+            stompClient.subscribe(`/topic/partida/${codigo}`, async (mensaje) => {
+                //Esta ruta tiene que coincidir con la que esta controladorPartida. notificadorWebSocket.convertAndSend
+                const movimiento = JSON.parse(mensaje.body);
+                await procesarMovimiento(movimiento);
+            });
+
+            // 3. Escuchar la respuesta con las posiciones actuales.
+            stompClient.subscribe(`/topic/partida/${codigo}/posiciones`, (mensaje) => {
+                const posiciones = JSON.parse(mensaje.body);
+                sincronizarPosicionesFichas(posiciones);
+            });
+            stompClient.subscribe(`/topic/partida/${codigo}/propiedades`, (mensaje) => {
+                const propiedad = JSON.parse(mensaje.body);
+                actualizarEtiquetaPrecioPropiedad(propiedad);
+                if (propiedadSeleccionada?.posicion === propiedad.posicion) mostrarInfoPropiedad(propiedad);
+                if (propiedad.idJugadorPropietario != null && propiedad.dineroJugador != null) {
+                    actualizarDineroJugador(propiedad.idJugadorPropietario, propiedad.dineroJugador);
+                }
+            });
+            stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
+                const saldo = JSON.parse(mensaje.body);
+                actualizarDineroJugador(saldo.idJugador, saldo.dinero);
+            });
+            stompClient.subscribe(`/topic/partida/${codigo}/alquiler`, (mensaje) => {
+                const aviso = JSON.parse(mensaje.body);
+                guardarAvisoAlquiler(aviso);
+            });
+            // Primero nos suscribimos al canal y después solicitamos
+            // las posiciones actuales al backend.
+            stompClient.send(`/app/partida/${codigo}/solicitar-posiciones`, {}, JSON.stringify({}));
+        },
+        (error) => {
+            console.error("Error en la conexión WebSocket:", error);
+        },
+    );
+}
+
+const movimientosEnCurso = new Map();
+const avisosAlquilerPendientes = new Map();
+let temporizadorAvisoAlquiler;
+
+function guardarAvisoAlquiler(aviso) {
+    if (String(aviso.idJugadorPagador) !== String(window.usuarioSesionId)) return;
+    const idJugador = String(aviso.idJugadorPagador);
+    const avisos = avisosAlquilerPendientes.get(idJugador) || [];
+    avisos.push(aviso);
+    avisosAlquilerPendientes.set(idJugador, avisos);
+}
+
+function mostrarAvisoAlquiler(aviso) {
+    const elemento = document.getElementById("aviso-alquiler");
+    if (!elemento) return;
+    elemento.textContent = `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`;
+    elemento.classList.add("aviso-alquiler--visible");
+    clearTimeout(temporizadorAvisoAlquiler);
+    temporizadorAvisoAlquiler = setTimeout(() => {
+        elemento.classList.remove("aviso-alquiler--visible");
+    }, 5000);
+}
+
+function mostrarAvisosAlquilerDelJugador(idJugador) {
+    const avisos = avisosAlquilerPendientes.get(String(idJugador)) || [];
+    avisosAlquilerPendientes.delete(String(idJugador));
+    avisos.forEach(mostrarAvisoAlquiler);
+}
+
+async function procesarMovimiento(movimiento) {
+    const clave = `${movimiento.idJugador}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
+    if (movimientosEnCurso.has(clave)) return;
+    movimientosEnCurso.set(clave, true);
+    setTimeout(() => movimientosEnCurso.delete(clave), 5000);
+    if (dado1) dado1.textContent = movimiento.dado1;
+    if (dado2) dado2.textContent = movimiento.dado2;
+    try {
+        const pasos = Number(movimiento.dado1) + Number(movimiento.dado2);
+        await animarMovimientoFicha(movimiento.idJugador, pasos);
+        const posicionFinal = Number(movimiento.nuevaPosicion);
+        if (Number.isInteger(posicionFinal)) {
+            moverFichaEnTablero(movimiento.idJugador, posicionFinal);
+            await atenderCaidaEnCasillero(movimiento.idJugador, posicionFinal);
+        }
+    } catch (error) {
+        console.error("Error al animar el movimiento:", error);
+    } finally {
+        mostrarAvisosAlquilerDelJugador(movimiento.idJugador);
+    }
+}
+
+function sincronizarPosicionesFichas(posiciones) {
+    if (!Array.isArray(posiciones)) {
+        console.error("La respuesta de posiciones no es una lista válida.");
+        return;
+    }
+
+    posiciones.forEach((jugador) => {
+        if (jugador.posicion == null) {
+            console.warn("El jugador no tiene una posición definida:", jugador.idJugador);
+            return;
+        }
+
+        moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
+
+    console.log("Posiciones de las fichas sincronizadas:", posiciones);
 }
 
 function actualizarTurnoEnPantalla(turnoDTO) {
@@ -124,17 +339,45 @@ function actualizarTurnoEnPantalla(turnoDTO) {
         if (contenedorTurno) {
             const span = document.createElement("span");
             span.className = "indicador-turno";
-            span.textContent = idJugadorActual === usuarioSesionId
-                ? "Tu turno"
-                : `Turno de ${turnoDTO.apodoJugadorActual}`;
+            span.textContent =
+                idJugadorActual === usuarioSesionId
+                    ? "Tu turno"
+                    : `Turno de ${turnoDTO.apodoJugadorActual}`;
             contenedorTurno.appendChild(span);
         }
     }
 
-    // Bloquear o habilitar el botón según el jugador actual.
-    if (botonTirar && window.usuarioSesionId !== undefined && window.usuarioSesionId !== null) {
-        botonTirar.disabled = usuarioSesionId !== idJugadorActual;
+    // --- MAGIA VISUAL: ACTUALIZAR TARJETAS ---
+    // 1. Le sacamos la clase 'turno-activo' a todos los jugadores
+    document.querySelectorAll(".jugador").forEach((card) => {
+        card.classList.remove("turno-activo");
+    });
+
+    // 2. Se la agregamos únicamente al contenedor (article) del jugador que le toca
+    const cardJugadorActivo = document.getElementById(idJugadorActual);
+    if (cardJugadorActivo) {
+        cardJugadorActivo.classList.add("turno-activo");
     }
+
+    // Bloquear o habilitar TODOS los botones según el jugador actual.
+    if (usuarioSesionId === idJugadorActual) {
+        desbloquearControles();
+    } else {
+        bloquearControles();
+    }
+    if (propiedadSeleccionada) mostrarInfoPropiedad(propiedadSeleccionada);
+}
+
+function aplicarTurnoDTO(turnoDTO) {
+    if (!turnoDTO || turnoDTO.idJugadorActual == null) return;
+    const jugadorAnterior = window.idJugadorTurnoAnterior;
+    const cambioDeTurno = String(jugadorAnterior) !== String(turnoDTO.idJugadorActual);
+
+    if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
+    window.turnoActualId = turnoDTO.idJugadorActual;
+    if (cambioDeTurno) iniciarRelojLocal(turnoDTO.duracionSegundos);
+    actualizarTurnoEnPantalla(turnoDTO);
+    actualizarRondaActual(turnoDTO.rondaActual);
 }
 
 // GESTIÓN DE RONDAS: solo se actualiza la visualización.
@@ -146,7 +389,288 @@ function actualizarRondaActual(rondaActual) {
     }
 }
 
-// TEMPORAL: finalizar turno después de tirar dados.
+const infoTitulo = document.getElementById("info-titulo");
+const infoSub = document.getElementById("info-sub");
+const infoPrecio = document.getElementById("info-precio");
+const infoAlquiler = document.getElementById("info-alquiler");
+const infoEstado = document.getElementById("info-estado");
+const infoNota = document.getElementById("info-nota");
+const btnComprar = document.getElementById("btn-comprar");
+const modalCompra = document.getElementById("modal-compra-propiedad");
+const modalInfoPropiedad = document.getElementById("modal-info-propiedad");
+const btnModalInfoAccion = document.getElementById("btn-modal-info-accion");
+const posicionesPropiedad = new Set([1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29]);
+const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
+let propiedadSeleccionada = null;
+let resolviendoDecisionPropiedad = false;
+
+function actualizarEtiquetaPrecioPropiedad(propiedad) {
+    const casillero = document.querySelector(`.casillero[data-casillero="${propiedad.posicion}"]`);
+    if (!casillero) return;
+
+    casillero.classList.add("casillero--precio-superior");
+
+    let etiqueta = casillero.querySelector(".casillero__precio");
+    if (!etiqueta) {
+        etiqueta = document.createElement("span");
+        etiqueta.className = "casillero__precio";
+        casillero.appendChild(etiqueta);
+    }
+
+    const tieneDueno = propiedad.disponible === false && propiedad.propietarioId != null;
+    const monto = tieneDueno ? propiedad.alquiler : propiedad.precioCompra;
+    if (monto == null) return;
+
+    etiqueta.textContent = `$${Number(monto).toLocaleString("es-AR")}`;
+    etiqueta.title = tieneDueno
+        ? `Alquiler: $${monto} · Propietario: ${propiedad.propietario}`
+        : `Precio de compra: $${monto}`;
+    etiqueta.setAttribute("aria-label", etiqueta.title);
+    const colorPropietario = tieneDueno ? obtenerColorFichaJugador(propiedad.propietarioId) : null;
+    if (colorPropietario) {
+        etiqueta.dataset.color = colorPropietario;
+    } else {
+        delete etiqueta.dataset.color;
+    }
+}
+
+function obtenerColorFichaJugador(idJugador) {
+    if (idJugador == null) return null;
+    const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
+    return coloresFicha.find((color) => ficha?.classList.contains(`ficha-${color}`)) || null;
+}
+
+async function cargarEtiquetasPrecioTablero() {
+    try {
+        const propiedades = await Promise.all(Array.from(posicionesPropiedad, async (posicion) => {
+            const respuesta = await fetch(
+                `${basePath}/partida/${codigoPartida}/propiedades/${posicion}`,
+                { cache: "no-store" },
+            );
+            if (!respuesta.ok) return null;
+            return respuesta.json();
+        }));
+        propiedades.filter(Boolean).forEach(actualizarEtiquetaPrecioPropiedad);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function mostrarInfoPropiedad(propiedad) {
+    propiedadSeleccionada = propiedad;
+    actualizarEtiquetaPrecioPropiedad(propiedad);
+    const tienePropietario = propiedad.propietarioId != null;
+    infoTitulo.textContent = propiedad.nombre;
+    infoSub.textContent = propiedad.descripcion
+        ? `Casillero #${propiedad.posicion} · ${propiedad.descripcion}`
+        : `Casillero #${propiedad.posicion}`;
+    infoPrecio.textContent = `$${propiedad.precioCompra}`;
+    infoAlquiler.textContent = `$${propiedad.alquiler}`;
+    infoEstado.textContent = propiedad.disponible ? "Sin dueño" : `Pertenece a ${propiedad.propietario}`;
+    const posicionJugador = document.querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)
+        ?.closest(".casillero")?.dataset.casillero;
+    const puedeComprar = propiedad.disponible
+        && String(posicionJugador) === String(propiedad.posicion)
+        && String(window.turnoActualId) === String(window.usuarioSesionId)
+        && tiempoRestante > 0;
+    const esPropia = !propiedad.disponible
+        && String(propiedad.propietarioId) === String(window.usuarioSesionId);
+
+    if (propiedad.disponible) {
+        infoNota.textContent = puedeComprar
+            ? "Podés comprarla ahora o pasar."
+            : (tiempoRestante <= 0 && String(window.turnoActualId) === String(window.usuarioSesionId)
+                ? "Terminó el tiempo de tu turno; ya no podés comprar esta propiedad."
+                : "Propiedad disponible. Solo se puede comprar al caer en ella durante tu turno.");
+    } else if (esPropia) {
+        infoNota.textContent = `Es tuya. Podés venderla al banco por $${propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2)}.`;
+    } else {
+        infoNota.textContent = "El alquiler se cobra automáticamente cuando un rival cae aquí.";
+    }
+
+    btnComprar.disabled = !puedeComprar && !esPropia;
+    btnComprar.dataset.accionPropiedad = puedeComprar ? "comprar" : (esPropia ? "vender" : "");
+    btnComprar.textContent = puedeComprar
+        ? `Comprar por $${propiedad.precioCompra}`
+        : (esPropia ? `Vender por $${propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2)}` : "No disponible");
+
+    document.getElementById("popup-info-titulo").textContent = propiedad.nombre;
+    document.getElementById("popup-info-descripcion").textContent = infoSub.textContent;
+    document.getElementById("popup-precio-contenedor").hidden = tienePropietario;
+    document.getElementById("popup-alquiler-contenedor").hidden = !tienePropietario;
+    document.getElementById("popup-info-precio").textContent = `$${Number(propiedad.precioCompra).toLocaleString("es-AR")}`;
+    document.getElementById("popup-info-alquiler").textContent = `$${Number(propiedad.alquiler).toLocaleString("es-AR")}`;
+    document.getElementById("popup-info-propietario").textContent = propiedad.propietario || "Sin propietario";
+    btnModalInfoAccion.disabled = btnComprar.disabled;
+    btnModalInfoAccion.textContent = btnComprar.textContent;
+}
+
+function actualizarDineroJugador(idJugador, dinero) {
+    const saldo = document.getElementById(String(idJugador))?.querySelector(".dinero");
+    if (saldo) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
+}
+
+async function cargarInfoPropiedad(posicion, abrirPopup = false) {
+    const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/propiedades/${posicion}`, { cache: "no-store" });
+    if (respuesta.status === 404) return null;
+    if (!respuesta.ok) throw new Error("No se pudo consultar la propiedad");
+    const propiedad = await respuesta.json();
+    mostrarInfoPropiedad(propiedad);
+    if (abrirPopup && !modalInfoPropiedad.open) modalInfoPropiedad.showModal();
+    return propiedad;
+}
+
+async function comprarPropiedadActual() {
+    if (!propiedadSeleccionada || !propiedadSeleccionada.disponible || resolviendoDecisionPropiedad
+        || tiempoRestante <= 0
+        || String(window.turnoActualId) !== String(window.usuarioSesionId)) return;
+    resolviendoDecisionPropiedad = true;
+    document.getElementById("btn-modal-comprar").disabled = true;
+    document.getElementById("btn-modal-pasar").disabled = true;
+    try {
+        const urlCompra = `${basePath}/partida/${codigoPartida}/propiedades/${propiedadSeleccionada.posicion}/comprar`;
+        let respuesta;
+        try {
+            respuesta = await fetch(urlCompra, { method: "POST", credentials: "same-origin" });
+        } catch (error) {
+            console.error("No se pudo conectar con el endpoint de compra:", urlCompra, error);
+            throw new Error("No se pudo conectar con el servidor. Comprobá que la aplicación siga ejecutándose.");
+        }
+        const cuerpoRespuesta = await respuesta.text();
+        let datos = {};
+        try {
+            datos = cuerpoRespuesta ? JSON.parse(cuerpoRespuesta) : {};
+        } catch (error) {
+            console.error("El endpoint de compra devolvió una respuesta que no es JSON:", respuesta.status, cuerpoRespuesta);
+        }
+        if (!respuesta.ok) {
+            console.error("El servidor rechazó la compra:", respuesta.status, datos, cuerpoRespuesta);
+            throw new Error(datos.error || `El servidor rechazó la compra (HTTP ${respuesta.status}).`);
+        }
+        mostrarInfoPropiedad(datos);
+        cerrarModalCompra();
+        agregarAlHistorial(`Compraste: ${datos.nombre}`);
+        if (datos.dineroJugador != null) actualizarDineroJugador(datos.idJugadorPropietario ?? window.usuarioSesionId, datos.dineroJugador);
+        if (datos.idJugadorActual != null) {
+            window.turnoActualId = datos.idJugadorActual;
+            actualizarTurnoEnPantalla({ idJugadorActual: datos.idJugadorActual, apodoJugadorActual: "" });
+        }
+    } catch (error) {
+        infoNota.textContent = error.message || "No se pudo comprar la propiedad.";
+        document.getElementById("modal-propiedad-info").textContent = infoNota.textContent;
+        if (modalCompra?.open && tiempoRestante > 0
+            && String(window.turnoActualId) === String(window.usuarioSesionId)) {
+            document.getElementById("btn-modal-comprar").disabled = false;
+            document.getElementById("btn-modal-pasar").disabled = false;
+        }
+        resolviendoDecisionPropiedad = false;
+    }
+}
+
+async function venderPropiedadActual() {
+    if (!propiedadSeleccionada || btnComprar.dataset.accionPropiedad !== "vender" || resolviendoDecisionPropiedad) return;
+    const propiedad = propiedadSeleccionada;
+    const precioVenta = Number(propiedad.precioVenta ?? Math.floor(propiedad.precioCompra / 2));
+    if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${precioVenta}?`)) return;
+
+    resolviendoDecisionPropiedad = true;
+    btnComprar.disabled = true;
+    try {
+        const respuesta = await fetch(
+            `${basePath}/partida/${codigoPartida}/propiedades/${propiedad.posicion}/vender`,
+            { method: "POST", credentials: "same-origin" },
+        );
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
+
+        mostrarInfoPropiedad(datos);
+        actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
+        agregarAlHistorial(`Vendiste al banco: ${datos.nombre} por $${datos.precioVenta}`);
+    } catch (error) {
+        infoNota.textContent = error.message || "No se pudo vender la propiedad.";
+        btnComprar.disabled = false;
+    } finally {
+        resolviendoDecisionPropiedad = false;
+    }
+}
+
+function agregarAlHistorial(texto) {
+    const item = document.createElement("li");
+    item.textContent = texto;
+    document.querySelector(".historial__lista")?.prepend(item);
+}
+
+function cerrarModalCompra() {
+    document.getElementById("btn-modal-comprar").disabled = true;
+    document.getElementById("btn-modal-pasar").disabled = true;
+    if (modalCompra?.open) modalCompra.close();
+    resolviendoDecisionPropiedad = false;
+}
+
+async function pasarTurnoPropiedad() {
+    if (resolviendoDecisionPropiedad) return;
+    resolviendoDecisionPropiedad = true;
+    cerrarModalCompra();
+    await finalizarTurno().catch(console.error);
+}
+
+async function atenderCaidaEnCasillero(idJugador, posicion) {
+    if (String(idJugador) !== String(window.usuarioSesionId)) return;
+    if (!posicionesPropiedad.has(Number(posicion))) return;
+    let propiedad;
+    try {
+        propiedad = await cargarInfoPropiedad(posicion);
+        // Los casilleros especiales no tienen ficha de propiedad: no abren modal.
+        // El backend avanza el turno automáticamente en esos casilleros.
+        if (!propiedad) {
+            return;
+        }
+        agregarAlHistorial(`Caíste en: ${propiedad.nombre}`);
+    } catch (error) {
+        console.error(error);
+        infoNota.textContent = "No se pudo verificar si la propiedad está disponible para comprar.";
+        return;
+    }
+
+    // El diálogo de compra se abre solo tras confirmar que está libre y que
+    // quien cayó sigue siendo el jugador del turno en esta sesión.
+    if (propiedad.disponible !== true || String(window.turnoActualId) !== String(idJugador)) return;
+
+    document.getElementById("modal-propiedad-titulo").textContent = propiedad.nombre;
+    document.getElementById("modal-propiedad-info").textContent =
+        `Sin dueño · Precio: $${propiedad.precioCompra} · Alquiler: $${propiedad.alquiler}`;
+    if (tiempoRestante <= 0) return;
+    document.getElementById("btn-modal-comprar").disabled = false;
+    document.getElementById("btn-modal-pasar").disabled = false;
+    document.getElementById("tiempo-compra").textContent = tiempoRestante;
+    modalCompra.showModal();
+}
+
+document.querySelectorAll(".casillero[data-casillero]").forEach((casillero) => {
+    casillero.addEventListener("click", (event) => {
+        if (event.target.closest(".ficha")) return;
+        cargarInfoPropiedad(casillero.dataset.casillero, true).catch(console.error);
+    });
+});
+document.getElementById("btn-info-casillero")?.addEventListener("click", () => {
+    const posicion = document.querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)?.closest(".casillero")?.dataset.casillero;
+    if (posicion != null) cargarInfoPropiedad(posicion, true).catch(console.error);
+});
+document.getElementById("btn-cerrar-info-propiedad")?.addEventListener("click", () => modalInfoPropiedad.close());
+modalInfoPropiedad?.addEventListener("click", (event) => {
+    if (event.target === modalInfoPropiedad) modalInfoPropiedad.close();
+});
+btnModalInfoAccion?.addEventListener("click", () => btnComprar.click());
+document.getElementById("btn-modal-comprar")?.addEventListener("click", comprarPropiedadActual);
+document.getElementById("btn-modal-pasar")?.addEventListener("click", pasarTurnoPropiedad);
+btnComprar?.addEventListener("click", () => {
+    if (btnComprar.dataset.accionPropiedad === "comprar") comprarPropiedadActual();
+    if (btnComprar.dataset.accionPropiedad === "vender") venderPropiedadActual();
+});
+
+cargarEtiquetasPrecioTablero();
+
+// Finalizar turno después de avanzar la ficha.
 async function finalizarTurno() {
     console.log("Intentando avanzar el turno...");
 
@@ -161,9 +685,93 @@ async function finalizarTurno() {
     }
 
     const turnoDTO = await respuesta.json();
+    aplicarTurnoDTO(turnoDTO);
 
     console.log("Siguiente jugador:", turnoDTO.apodoJugadorActual);
     console.log("Ronda actual:", turnoDTO.rondaActual);
 
     return turnoDTO;
 }
+
+// gestor turno-contador
+let intervaloReloj = null;
+let tiempoRestante = 30;
+
+function iniciarRelojLocal(segundos) {
+    const elementoReloj = document.getElementById("cronometro-nro");
+    if (!elementoReloj) return;
+    const duracion = Number(segundos);
+    tiempoRestante = Number.isFinite(duracion) && duracion > 0 ? duracion : 30;
+    clearInterval(intervaloReloj); // Limpia cualquier reloj anterior
+    actualizarTextoReloj(elementoReloj);
+
+    intervaloReloj = setInterval(() => {
+        tiempoRestante--;
+        if (tiempoRestante < 0) tiempoRestante = 0;
+        actualizarTextoReloj(elementoReloj);
+
+        // Feedback visual en rojo
+        if (tiempoRestante <= 5 && tiempoRestante > 0) {
+            elementoReloj.style.color = "#d9534f";
+            elementoReloj.style.fontWeight = "bold";
+        } else {
+            elementoReloj.style.color = "";
+            elementoReloj.style.fontWeight = "normal";
+        }
+        sincronizarTiempoPopupCompra();
+
+        // Acciones al llegar a cero
+        if (tiempoRestante === 0) {
+            clearInterval(intervaloReloj);
+            bloquearControles();
+            cerrarModalCompra();
+            if (propiedadSeleccionada) mostrarInfoPropiedad(propiedadSeleccionada);
+        }
+    }, 1000);
+}
+
+function sincronizarTiempoPopupCompra() {
+    if (!modalCompra?.open) return;
+    const contadorCompra = document.getElementById("tiempo-compra");
+    if (contadorCompra) contadorCompra.textContent = String(Math.max(0, tiempoRestante));
+}
+
+function actualizarTextoReloj(elemento) {
+    if (!elemento) return;
+    elemento.innerText = `00:${tiempoRestante.toString().padStart(2, '0')}`;
+}
+
+function bloquearControles() {
+    const btnTirar = document.getElementById("btn-tirar");
+    if(btnTirar) btnTirar.disabled = true;
+    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = true);
+}
+
+function desbloquearControles() {
+    const btnTirar = document.getElementById("btn-tirar");
+    if(btnTirar) btnTirar.disabled = false;
+    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = false);
+}
+
+    // Arranque inicial al cargar la página
+window.addEventListener("DOMContentLoaded", () => {
+    // 1. Aplicamos el efecto visual al jugador activo según Thymeleaf
+    if (window.turnoActualId) {
+        const cardActiva = document.getElementById(window.turnoActualId);
+        if (cardActiva) {
+            cardActiva.classList.add("turno-activo");
+        }
+    }
+
+    // 2. Iniciamos el reloj visual
+    window.turnoActualId = window.turnoActualId || null;
+    window.idJugadorTurnoAnterior = window.turnoActualId == null
+        ? undefined
+        : String(window.turnoActualId);
+    iniciarRelojLocal(30);
+
+    // 3. Bloqueamos si no es nuestro turno
+    if (String(window.turnoActualId) !== String(window.usuarioSesionId)) {
+        bloquearControles();
+    }
+});

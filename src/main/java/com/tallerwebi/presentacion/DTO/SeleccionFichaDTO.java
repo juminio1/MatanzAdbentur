@@ -1,17 +1,17 @@
 package com.tallerwebi.presentacion.DTO;
 
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 
 public class SeleccionFichaDTO {
 
     private String codigoUnicoPartida;
     private Long idUsuario;
-    private Ficha fichaSeleccionada;
+    private ColorFicha fichaSeleccionada;
 
     public SeleccionFichaDTO() {
     }
 
-    public SeleccionFichaDTO(String codigoUnicoPartida, Long idUsuario, Ficha fichaSeleccionada) {
+    public SeleccionFichaDTO(String codigoUnicoPartida, Long idUsuario, ColorFicha fichaSeleccionada) {
         this.codigoUnicoPartida = codigoUnicoPartida;
         this.idUsuario = idUsuario;
         this.fichaSeleccionada = fichaSeleccionada;
@@ -33,11 +33,11 @@ public class SeleccionFichaDTO {
         this.idUsuario = idUsuario;
     }
 
-    public Ficha getFichaSeleccionada() {
+    public ColorFicha getFichaSeleccionada() {
         return fichaSeleccionada;
     }
 
-    public void setFichaSeleccionada(Ficha fichaSeleccionada) {
+    public void setFichaSeleccionada(ColorFicha fichaSeleccionada) {
         this.fichaSeleccionada = fichaSeleccionada;
     }
     

@@ -6,6 +6,7 @@ public class RespuestaMovimientoDTO {
     private Integer dado2;
     private Integer suma;
     private Integer nuevaPosicion;
+    private Long idJugador;
 
     public RespuestaMovimientoDTO() {
     }
@@ -41,4 +42,13 @@ public class RespuestaMovimientoDTO {
     public void setNuevaPosicion(Integer nuevaPosicion) {
         this.nuevaPosicion = nuevaPosicion;
     }
+
+    public Long getIdJugador(){
+        return idJugador;
+    }
+
+    public void setIdJugador(Long idJugador){
+        this.idJugador = idJugador;
+    }
 }
+

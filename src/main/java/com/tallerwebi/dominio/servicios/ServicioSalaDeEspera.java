@@ -7,7 +7,7 @@ import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
 import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 
@@ -24,6 +24,6 @@ public interface ServicioSalaDeEspera {
 
     SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException;
 
-    void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+    void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException;
 }
