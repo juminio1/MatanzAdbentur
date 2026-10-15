@@ -310,7 +310,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private PosicionFichaDTO mapearAJugadorPosicionDTO(Jugador jugador) {
-        String nombreFicha = jugador.getFicha() != null ? jugador.getFicha().name() : "ROJO";
+        String nombreFicha = obtenerNombreFichaSegura(jugador);
         Integer posicion =
             jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
         return new PosicionFichaDTO(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
@@ -352,6 +352,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         };
         return null;
     }
+        
 
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
         for (Usuario usuario : sala.getUsuarios()) {
