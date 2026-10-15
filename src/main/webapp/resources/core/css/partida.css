@@ -36,36 +36,6 @@
     margin: 0;
     padding: 0;
 }
-.pagina-partida {
-    --p-fondo: #131B22;
-    --p-superficie: #1B2733;
-    --p-superficie-2: #243445;
-    --p-borde: #34495E;
-    --p-texto: #F5F5F2;
-    --p-texto-suave: #9FB2C4;
-    --p-gris: #A3A3A3;
-    --p-claro: #DDDDDD;
-    --p-azul: #1B4468;
-    --p-azul-hover: #245781;
-    --p-celeste: #7BBFE0;
-    --p-dorado: #C4A62F;
-    --p-rojo: #E4584D;
-    --p-verde: #12B981;
-    --p-crema: #EFEAE2;
-    --p-beige: #C9BDA9;
-
-
-    --p-radio: 10px;
-    --p-gap: 16px;
-
-    margin: 0;
-    background: var(--p-fondo);
-    color: var(--p-texto);
-    font-family: var(--font-texto), sans-serif;
-    font-size: 14px;
-    overflow: hidden; /* la partida debe verse completa, sin scroll */
-}
-
 /* ---------- Estructura general ---------- */
 
 .pagina-partida {
@@ -186,28 +156,6 @@
 .indicador-turno{
     display:none;
 }
-/*----CUANDO SE HAGA EL JS------
-.contenedor-turno{
-    background-color: #FFB703;
-    width: 5rem;
-    margin-left: 13rem;
-    height: 2rem;
-    margin-top: 0rem;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
->>>>>>> tablero
-}
-.indicador-turno {
-    display: block;
-    color: #000;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: bold;
-}*/
-
 
 /* ---------- Zona del tablero ---------- */
 
@@ -678,4 +626,59 @@
     font-size: 18px;
     font-weight: 700;
     color: #d97706;
+}
+
+/* Estilos para indicar el jugador activo */
+
+/* 1. Transición base: se la sumamos a tu clase .jugador actual para que los cambios de tamaño sean fluidos */
+.jugador {
+    transition: all 0.3s ease-in-out;
+    border: 2px solid transparent;
+}
+
+/* 2. El jugador que TIENE el turno: crece, brilla en dorado y se pone por encima */
+.jugador.turno-activo {
+    transform: scale(1.08);
+    border: 2px solid var(--p-dorado);
+    box-shadow: 0 0 20px rgba(196, 166, 47, 0.5); /* Sombra basada en --p-dorado */
+    z-index: 10;
+}
+
+/* El avatar del jugador activo también recibe un borde dorado */
+.jugador.turno-activo .avatar-jugador {
+    border: 3px solid var(--p-dorado);
+    box-shadow: 0 0 10px rgba(196, 166, 47, 0.8);
+}
+
+/* 3. Los jugadores que NO tienen el turno: se achican, se opacan y se ponen en escala de grises */
+.jugadores:has(.turno-activo) .jugador:not(.turno-activo) {
+    opacity: 0.5;
+    filter: grayscale(60%);
+    transform: scale(0.95);
+}
+
+/* 4. Revivimos tu clase .indicador-turno (que tenías en display: none) y la convertimos en un badge flotante animado */
+.jugador.turno-activo .indicador-turno {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    bottom: -10px;
+    right: 20px;
+    background-color: var(--p-dorado);
+    color: var(--p-fondo);
+    padding: 4px 16px;
+    border-radius: 12px;
+    font-family: var(--font-titulos, sans-serif);
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    animation: latido-turno 1.5s infinite ease-in-out;
+}
+
+/* Animación para que el badge del turno palpite */
+@keyframes latido-turno {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }

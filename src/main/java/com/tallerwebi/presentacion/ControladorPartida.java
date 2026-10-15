@@ -3,25 +3,22 @@ package com.tallerwebi.presentacion;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import jakarta.servlet.http.HttpServletRequest;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -88,7 +85,7 @@ public class ControladorPartida {
         this.servicioPartida = servicioPartida;
         this.servicioCasillero = servicioCasillero;
         this.servicioPropiedad = servicioPropiedad;
-        this.coordinadorTurno = new CoordinadorTurnoPartida(servicioPartida, notificadorWebSocket);
+        this.coordinadorTurno = new CoordinadorTurnoPartida(servicioPartida);
     }
 
     @GetMapping("/partida/{codigoPartida}/propiedades/{posicion}")
@@ -198,7 +195,7 @@ public class ControladorPartida {
             actualizado.put("idJugadorPropietario", jugador.getId());
             actualizado.put("dineroJugador", compradorActualizado.getDinero());
             notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/propiedades", actualizado);
-            TurnoDTO turno = coordinadorTurno.avanzarYNotificarTurno(codigoPartida);
+            TurnoDTO turno = coordinadorTurno.avanzarYObtenerTurno(codigoPartida);
             if (turno != null) actualizado.put("idJugadorActual", turno.getIdJugadorActual());
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException ex) {
@@ -268,7 +265,6 @@ public class ControladorPartida {
         return dto;
     }
 
-
     /*@GetMapping("/partida")
     public ModelAndView verTablero(
         @RequestParam(value = "codigo", required = false) String codigoUnico,
@@ -308,14 +304,13 @@ public class ControladorPartida {
 
     @GetMapping("/partida")
     public ModelAndView verTablero(
-            @RequestParam(value = "codigo", required = false) String codigoUnico,
-            HttpServletRequest request
+        @RequestParam(value = "codigo", required = false) String codigoUnico,
+        HttpServletRequest request
     ) {
         String codigoFinal = ResolutorJugadorSesion.resolverCodigoPartida(codigoUnico, request);
         if (codigoFinal == null) {
             return new ModelAndView("redirect:/home");
         }
-
 
         Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
         if (partidaReal == null) {
@@ -376,25 +371,26 @@ public class ControladorPartida {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        boolean coincideId = usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId());
-        boolean coincideNombre = nombreSesion != null && nombreSesion.equalsIgnoreCase(jugadorActual.getApodo());
+        boolean coincideId =
+            usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId());
+        boolean coincideNombre =
+            nombreSesion != null && nombreSesion.equalsIgnoreCase(jugadorActual.getApodo());
 
         if (!coincideId && !coincideNombre) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        return ResponseEntity.ok(coordinadorTurno.avanzarYNotificarTurno(codigoPartida));
+        return ResponseEntity.ok(coordinadorTurno.avanzarYObtenerTurno(codigoPartida));
     }
 
     @PostMapping("/partida/tirar-dados")
     @ResponseBody
     public RespuestaMovimientoDTO tirarDados(
-            @RequestParam("codigoUnico") String codigoUnico,
-            @RequestParam("idJugador") Long idJugador)
-            throws PartidaNoEncontradaException, JugadorNoEncontradoException {
-
-        ResultadoTiradaDTO resultado = servicioPartida.tirarDados();//Llama al servicio para generar la tirada
-        Partida partida = servicioPartida.obtenerPartida(codigoUnico);//Se trae la partida
+        @RequestParam("codigoUnico") String codigoUnico,
+        @RequestParam("idJugador") Long idJugador
+    ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        ResultadoTiradaDTO resultado = servicioPartida.tirarDados(); //Llama al servicio para generar la tirada
+        Partida partida = servicioPartida.obtenerPartida(codigoUnico); //Se trae la partida
 
         if (partida == null) {
             throw new PartidaNoEncontradaException();
@@ -406,7 +402,7 @@ public class ControladorPartida {
                 jugadorActual = j;
                 break;
             }
-        }//Busca al jugador en la lista que tiro los dados en esa partida
+        } //Busca al jugador en la lista que tiro los dados en esa partida
 
         if (jugadorActual == null) {
             throw new JugadorNoEncontradoException("No se encontró el jugador en esta partida");
@@ -417,7 +413,7 @@ public class ControladorPartida {
 
         //se arma el paquete de datos para que el frontend lo dibuje
         RespuestaMovimientoDTO respuesta = new RespuestaMovimientoDTO();
-        respuesta.setIdJugador(jugadorActual.getId());//identifica que el jugador se movio
+        respuesta.setIdJugador(jugadorActual.getId()); //identifica que el jugador se movio
         respuesta.setDado1(resultado.getDado1());
         respuesta.setDado2(resultado.getDado2());
         respuesta.setSuma(resultado.sumarDados());
@@ -429,7 +425,7 @@ public class ControladorPartida {
                 jugadorActual.getPosicionActual());
         boolean requiereCompra = resolverPropiedadDestino(casilleroDestino, jugadorActual, codigoUnico);
         if (!requiereCompra) {
-            coordinadorTurno.avanzarYNotificarTurno(codigoUnico);
+            coordinadorTurno.avanzarYObtenerTurno(codigoUnico);
         }
 
         // Notifica a todos los jugadores la nueva posición.
@@ -451,9 +447,8 @@ public class ControladorPartida {
         NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
         return false;
     }
-
     @ExceptionHandler(JugadorNoEncontradoException.class)
     public ResponseEntity<String> manejarJugadorNoEncontrado(JugadorNoEncontradoException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());//le devuelve al frontend un código 404 de "not found" y el mensaje de la excepción
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage()); //le devuelve al frontend un código 404 de "not found" y el mensaje de la excepción
     }
 }

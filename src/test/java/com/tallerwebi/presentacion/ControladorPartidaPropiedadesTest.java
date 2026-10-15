@@ -111,7 +111,6 @@ class ControladorPartidaPropiedadesTest {
         assertEquals(false, respuesta.getBody().get("disponible"));
         verify(servicioPartida).avanzarTurno(CODIGO);
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
-        verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/turno"), any(TurnoDTO.class));
     }
 
     @Test

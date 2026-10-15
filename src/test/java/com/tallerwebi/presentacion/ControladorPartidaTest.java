@@ -222,11 +222,6 @@ public class ControladorPartidaTest {
         assertEquals(2, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
 
     @Test
@@ -347,10 +342,6 @@ public class ControladorPartidaTest {
         assertEquals(1, respuesta.getBody().getRondaActual());
 
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
-        verify(notificadorWebSocketMock, times(1)).convertAndSend(
-                "/topic/partida/" + codigoPartida + "/turno",
-                respuesta.getBody()
-        );
     }
 
 
