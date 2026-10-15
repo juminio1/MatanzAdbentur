@@ -10,7 +10,7 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
@@ -183,10 +183,9 @@ public class ServicioSalaDeEsperaTest {
         this.servicioSalaDeEspera.seleccionarFicha(
             "ABC123",
             1L,
-            com.tallerwebi.dominio.enums.Ficha.ROJA
-        );
+            com.tallerwebi.dominio.enums.ColorFicha.ROJO);
 
-        assertTrue(sala.getFichasOcupadas().contains(com.tallerwebi.dominio.enums.Ficha.ROJA));
+        assertTrue(sala.getFichasOcupadas().contains(com.tallerwebi.dominio.enums.ColorFicha.ROJO));
         verify(this.repositorioSalaDeEsperaMock).modificar(sala);
     }
 
@@ -195,7 +194,7 @@ public class ServicioSalaDeEsperaTest {
         Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
-        sala.getFichasOcupadas().add(com.tallerwebi.dominio.enums.Ficha.ROJA);
+        sala.getFichasOcupadas().add(com.tallerwebi.dominio.enums.ColorFicha.ROJO);
 
         when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
         when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
@@ -204,7 +203,7 @@ public class ServicioSalaDeEsperaTest {
             this.servicioSalaDeEspera.seleccionarFicha(
                 "ABC123",
                 1L,
-                com.tallerwebi.dominio.enums.Ficha.ROJA
+                com.tallerwebi.dominio.enums.ColorFicha.ROJO
             )
         );
 
@@ -221,8 +220,8 @@ public class ServicioSalaDeEsperaTest {
         sala.setUsuarios(usuarios);
         assertEquals(usuarios, sala.getUsuarios());
 
-        List<Ficha> fichas = new ArrayList<>();
-        fichas.add(Ficha.ROJA);
+        List<ColorFicha> fichas = new ArrayList<>();
+        fichas.add(ColorFicha.ROJO);
         sala.setFichasOcupadas(fichas);
         assertEquals(fichas, sala.getFichasOcupadas());
     }
@@ -241,10 +240,10 @@ public void queSePuedaSeleccionarLaFichaRojaExitosamente() throws Exception {
     when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123"))
             .thenReturn(sala);
 
-    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, Ficha.ROJA);
+    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
 
-    assertEquals(Ficha.ROJA, usuario.getFicha());
-    assertTrue(sala.getFichasOcupadas().contains(Ficha.ROJA));
+    assertEquals(ColorFicha.ROJO, usuario.getFicha());
+    assertTrue(sala.getFichasOcupadas().contains(ColorFicha.ROJO));
 
     verify(this.repositorioUsuarioMock).modificar(usuario);
     verify(this.repositorioSalaDeEsperaMock).modificar(sala);
@@ -263,10 +262,10 @@ public void queSePuedaSeleccionarLaFichaAmarillaExitosamente() throws Exception 
     when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123"))
             .thenReturn(sala);
 
-    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, Ficha.AMARILLA);
+    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.AMARILLO);
 
-    assertEquals(Ficha.AMARILLA, usuario.getFicha());
-    assertTrue(sala.getFichasOcupadas().contains(Ficha.AMARILLA));
+    assertEquals(ColorFicha.AMARILLO, usuario.getFicha());
+    assertTrue(sala.getFichasOcupadas().contains(ColorFicha.AMARILLO));
 
     verify(this.repositorioUsuarioMock).modificar(usuario);
     verify(this.repositorioSalaDeEsperaMock).modificar(sala);
@@ -278,7 +277,7 @@ public void queNoSePuedaSeleccionarUnaFichaOcupadaPorOtroUsuario() {
 
     SalaDeEspera sala = new SalaDeEspera();
     sala.setCodigoUnico("ABC123");
-    sala.getFichasOcupadas().add(Ficha.ROJA);
+    sala.getFichasOcupadas().add(ColorFicha.ROJO);
 
     when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L))
             .thenReturn(usuario);
@@ -288,7 +287,7 @@ public void queNoSePuedaSeleccionarUnaFichaOcupadaPorOtroUsuario() {
 
     assertThrows(FichaOcupadaException.class, () ->
             this.servicioSalaDeEspera.seleccionarFicha(
-                    "ABC123", 1L, Ficha.ROJA
+                    "ABC123", 1L, ColorFicha.ROJO
             )
     );
 
@@ -305,7 +304,7 @@ public void queNoSePuedaSeleccionarUnaFichaSiElUsuarioNoExiste() {
 
     assertThrows(UsuarioNoEncontradoException.class, () ->
             this.servicioSalaDeEspera.seleccionarFicha(
-                    "ABC123", 1L, Ficha.ROJA
+                    "ABC123", 1L, ColorFicha.ROJO
             )
     );
 
@@ -324,7 +323,7 @@ public void queNoSePuedaSeleccionarUnaFichaSiLaSalaNoExiste() {
 
     assertThrows(SalaNoEncontradaException.class, () ->
             this.servicioSalaDeEspera.seleccionarFicha(
-                    "ABC123", 1L, Ficha.ROJA
+                    "ABC123", 1L, ColorFicha.ROJO
             )
     );
 
@@ -336,11 +335,11 @@ public void queNoSePuedaSeleccionarUnaFichaSiLaSalaNoExiste() {
 @Test
 public void queUnUsuarioPuedaCambiarDeFichaVerdeARoja() throws Exception {
     Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
-    usuario.setFicha(Ficha.VERDE);
+    usuario.setFicha(ColorFicha.VERDE);
 
     SalaDeEspera sala = new SalaDeEspera();
     sala.setCodigoUnico("ABC123");
-    sala.getFichasOcupadas().add(Ficha.VERDE);
+    sala.getFichasOcupadas().add(ColorFicha.VERDE);
 
     when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L))
             .thenReturn(usuario);
@@ -348,11 +347,11 @@ public void queUnUsuarioPuedaCambiarDeFichaVerdeARoja() throws Exception {
     when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123"))
             .thenReturn(sala);
 
-    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, Ficha.ROJA);
+    this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
 
-    assertEquals(Ficha.ROJA, usuario.getFicha());
-    assertTrue(sala.getFichasOcupadas().contains(Ficha.ROJA));
-    assertFalse(sala.getFichasOcupadas().contains(Ficha.VERDE));
+    assertEquals(ColorFicha.ROJO, usuario.getFicha());
+    assertTrue(sala.getFichasOcupadas().contains(ColorFicha.ROJO));
+    assertFalse(sala.getFichasOcupadas().contains(ColorFicha.VERDE));
     assertEquals(1, sala.getFichasOcupadas().size());
 
     verify(this.repositorioUsuarioMock).modificar(usuario);
@@ -362,11 +361,11 @@ public void queUnUsuarioPuedaCambiarDeFichaVerdeARoja() throws Exception {
 @Test
 public void queSeleccionarLaMismaFichaNoGenereUnaExcepcion() {
     Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
-    usuario.setFicha(Ficha.AZUL);
+    usuario.setFicha(ColorFicha.AZUL);
 
     SalaDeEspera sala = new SalaDeEspera();
     sala.setCodigoUnico("ABC123");
-    sala.getFichasOcupadas().add(Ficha.AZUL);
+    sala.getFichasOcupadas().add(ColorFicha.AZUL);
 
     when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L))
             .thenReturn(usuario);
@@ -376,11 +375,11 @@ public void queSeleccionarLaMismaFichaNoGenereUnaExcepcion() {
 
     assertDoesNotThrow(() ->
             this.servicioSalaDeEspera.seleccionarFicha(
-                    "ABC123", 1L, Ficha.AZUL
+                    "ABC123", 1L, ColorFicha.AZUL
             )
     );
 
-    assertEquals(Ficha.AZUL, usuario.getFicha());
+    assertEquals(ColorFicha.AZUL, usuario.getFicha());
     assertEquals(1, sala.getFichasOcupadas().size());
 }
 

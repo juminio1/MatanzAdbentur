@@ -15,7 +15,7 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -29,7 +29,10 @@ import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+
+import java.awt.*;
 import java.util.Arrays;
+import java.util.List;
 
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -243,6 +246,10 @@ public class ServicioPartidaTest {
         usuarioTres.setUsername("usuario3");
         Usuario usuarioCuatro = new Usuario();
         usuarioCuatro.setUsername("usuario4");
+        usuarioUno.setFicha(ColorFicha.ROJO);
+        usuarioDos.setFicha(ColorFicha.AZUL);
+        usuarioTres.setFicha(ColorFicha.VERDE);
+        usuarioCuatro.setFicha(ColorFicha.AMARILLO);
 
         SalaDeEspera sala = new SalaDeEspera();
         sala.setCodigoUnico("ABC123");
@@ -504,19 +511,19 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
     Usuario usuarioUno = new Usuario();
     usuarioUno.setId(1L);
     usuarioUno.setUsername("JugadorRojo");
-    usuarioUno.setFicha(Ficha.ROJA);
+    usuarioUno.setFicha(ColorFicha.ROJO);
 
     Usuario usuarioDos = new Usuario();
     usuarioDos.setUsername("JugadorAzul");
-    usuarioDos.setFicha(Ficha.AZUL);
+    usuarioDos.setFicha(ColorFicha.AZUL);
 
     Usuario usuarioTres = new Usuario();
     usuarioTres.setUsername("JugadorVerde");
-    usuarioTres.setFicha(Ficha.VERDE);
+    usuarioTres.setFicha(ColorFicha.VERDE);
 
     Usuario usuarioCuatro = new Usuario();
     usuarioCuatro.setUsername("JugadorAmarillo");
-    usuarioCuatro.setFicha(Ficha.AMARILLA);
+    usuarioCuatro.setFicha(ColorFicha.AMARILLO);
 
     SalaDeEspera sala = new SalaDeEspera();
     sala.setCodigoUnico(codigo);
@@ -546,5 +553,86 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
     assertEquals("JugadorRojo", partida.getJugadores().get(0).getApodo());
     assertEquals("JugadorAmarillo", partida.getJugadores().get(3).getApodo());
 }
+
+    @Test
+    public void queFalleAlIniciarPartidaSiUnJugadorNoTieneFicha() {
+        String codigo = "SALA01";
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico(codigo);
+
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+        creador.setFicha(ColorFicha.ROJO);
+
+        Usuario invitado = new Usuario();
+        invitado.setId(2L);
+        invitado.setFicha(null); // Sin ficha seleccionada
+
+        sala.setCreador(creador);
+        sala.getUsuarios().addAll(List.of(creador, invitado));
+
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
+
+        // Si usas JUnit 5:
+        assertThrows(FichaNoDisponibleException.class, () -> {
+            servicioPartida.iniciarPartida(codigo, 1L);
+        });
+
+        // (Si tu proyecto usa JUnit 4 con @Test(expected = ...), puedes usar esa anotación en lugar de assertThrows)
+    }
+
+    @Test
+    public void queFalleAlIniciarPartidaSiUsuarioNoEsElCreador() {
+        String codigo = "SALA01";
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico(codigo);
+
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
+        Usuario otroUsuario = new Usuario();
+        otroUsuario.setId(2L);
+
+        sala.setCreador(creador);
+        sala.getUsuarios().addAll(List.of(creador, otroUsuario));
+
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
+
+        // Intenta iniciar el usuario con id 2L (no es el creador)
+        assertThrows(IllegalArgumentException.class, () -> {
+            servicioPartida.iniciarPartida(codigo, 2L);
+        });
+    }
+
+    @Test
+    public void queFalleAlIniciarPartidaSiYaEstaEnCurso() {
+        String codigo = "SALA01";
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico(codigo);
+
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+        creador.setFicha(ColorFicha.ROJO);
+
+        Usuario invitado = new Usuario();
+        invitado.setId(2L);
+        invitado.setFicha(ColorFicha.AZUL);
+
+        sala.setCreador(creador);
+        sala.getUsuarios().addAll(List.of(creador, invitado));
+
+        // Simulamos que ya existe una partida en curso para este código
+        Partida partidaExistente = new Partida();
+        partidaExistente.setCodigoUnico(codigo);
+        partidaExistente.setEstado(EstadoPartida.EN_CURSO); // o como identifiques que ya está iniciada
+
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partidaExistente);
+
+        assertThrows(PartidaIniciadaException.class, () -> {
+            servicioPartida.iniciarPartida(codigo, 1L);
+        });
+    }
+
 
 }

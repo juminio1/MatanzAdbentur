@@ -1,13 +1,7 @@
 package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
-import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
-import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
-import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
-import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import jakarta.servlet.http.HttpServletRequest;
@@ -186,6 +180,13 @@ private ModelAndView procesarInicioPartida(String codigoUnico, Long idUsuario, H
         redirectAttributes.addAttribute("codigo", codigoUnico);
 
         return new ModelAndView(REDIRECT_PARTIDA);
+
+    } catch (FichaNoDisponibleException exception) {
+        return redireccionarASalaConError(
+                codigoUnico,
+                exception.getMessage(),
+                redirectAttributes
+        );
 
     } catch (Exception exception) {
         LOGGER.error("Error al iniciar la partida {}", codigoUnico, exception);
