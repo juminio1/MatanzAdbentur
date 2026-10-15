@@ -166,11 +166,17 @@ function conectarWebSocketTurnos(base, codigo) {
 
             //CANAL 1: cambios de turnos y rondas.
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
-                const turnoDTO = JSON.parse(mensaje.body);
-                actualizarTurnoEnPantalla(turnoDTO);
-                // GESTIÓN DE RONDAS: el backend informa la ronda a todos.
-                actualizarRondaActual(turnoDTO.rondaActual);
-            });
+            const turnoDTO = JSON.parse(mensaje.body);
+    
+            // Novedad: Guardamos de quién es el turno
+            window.turnoActualId = turnoDTO.idJugadorActual; 
+    
+            actualizarTurnoEnPantalla(turnoDTO);
+            actualizarRondaActual(turnoDTO.rondaActual);
+    
+            // Novedad: Disparamos el reloj visual con los segundos del servidor
+            iniciarRelojLocal(turnoDTO.duracionSegundos);
+        });
 
             //CANAL 2: recibe el resultado de la tirada y el movimiento.
             stompClient.subscribe(`/topic/partida/${codigo}`, async (mensaje) => {
@@ -237,7 +243,7 @@ function sincronizarPosicionesFichas(posiciones) {
     console.log("Posiciones de las fichas sincronizadas:", posiciones);
 }
 
-function actualizarTurnoEnPantalla(turnoDTO) {
+/*function actualizarTurnoEnPantalla(turnoDTO) {
     const idJugadorActual = String(turnoDTO.idJugadorActual);
     const usuarioSesionId = String(window.usuarioSesionId);
 
@@ -268,10 +274,62 @@ function actualizarTurnoEnPantalla(turnoDTO) {
     }
 
     // Bloquear o habilitar el botón según el jugador actual.
-    if (botonTirar && window.usuarioSesionId !== undefined && window.usuarioSesionId !== null) {
-        botonTirar.disabled = usuarioSesionId !== idJugadorActual;
+    if (usuarioSesionId === idJugadorActual) {
+        desbloquearControles();
+    } else {
+        bloquearControles();
     }
-}
+} */
+
+function actualizarTurnoEnPantalla(turnoDTO) {
+    const idJugadorActual = String(turnoDTO.idJugadorActual);
+    const usuarioSesionId = String(window.usuarioSesionId);
+
+    // Si cambia el jugador activo, comienza un nuevo turno.
+    if (window.idJugadorTurnoAnterior !== idJugadorActual) {
+        yaTiroEnEsteTurno = false;
+        window.idJugadorTurnoAnterior = idJugadorActual;
+    }
+
+    // Limpiar indicadores de turno previos.
+    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => {
+        contenedor.innerHTML = "";
+    });
+
+    // Mostrar a quién le toca jugar.
+    const cardJugador = document.getElementById(idJugadorActual);
+    if (cardJugador) {
+        const contenedorTurno = cardJugador.querySelector(".contenedor-turno");
+        if (contenedorTurno) {
+            const span = document.createElement("span");
+            span.className = "indicador-turno";
+            span.textContent =
+                idJugadorActual === usuarioSesionId
+                    ? "Tu turno"
+                    : `Turno de ${turnoDTO.apodoJugadorActual}`;
+            contenedorTurno.appendChild(span);
+        }
+    }
+
+    // --- MAGIA VISUAL: ACTUALIZAR TARJETAS ---
+    // 1. Le sacamos la clase 'turno-activo' a todos los jugadores
+    document.querySelectorAll(".jugador").forEach((card) => {
+        card.classList.remove("turno-activo");
+    });
+
+    // 2. Se la agregamos únicamente al contenedor (article) del jugador que le toca
+    const cardJugadorActivo = document.getElementById(idJugadorActual);
+    if (cardJugadorActivo) {
+        cardJugadorActivo.classList.add("turno-activo");
+    }
+
+    // Bloquear o habilitar TODOS los botones según el jugador actual.
+    if (usuarioSesionId === idJugadorActual) {
+        desbloquearControles();
+    } else {
+        bloquearControles();
+    }
+}    
 
 // GESTIÓN DE RONDAS: solo se actualiza la visualización.
 function actualizarRondaActual(rondaActual) {
@@ -303,3 +361,76 @@ async function finalizarTurno() {
 
     return turnoDTO;
 }
+
+// gestor turno-contador
+let intervaloReloj = null;
+let tiempoRestante = 30;
+
+function iniciarRelojLocal(segundos) {
+    tiempoRestante = segundos || 30;
+    const elementoReloj = document.getElementById("cronometro-nro");
+    clearInterval(intervaloReloj); // Limpia cualquier reloj anterior
+    actualizarTextoReloj(elementoReloj);
+
+    intervaloReloj = setInterval(() => {
+        tiempoRestante--;
+        if (tiempoRestante < 0) tiempoRestante = 0;
+        actualizarTextoReloj(elementoReloj);
+
+        // Feedback visual en rojo
+        if (tiempoRestante <= 5 && tiempoRestante > 0) {
+            elementoReloj.style.color = "#d9534f"; 
+            elementoReloj.style.fontWeight = "bold";
+        } else {
+            elementoReloj.style.color = ""; 
+            elementoReloj.style.fontWeight = "normal";
+        }
+
+        // Acciones al llegar a cero
+        if (tiempoRestante === 0) {
+            clearInterval(intervaloReloj);
+            bloquearControles();
+    
+        // Si es mi turno y se acaba el tiempo, fuerzo el cambio de turno
+        if (String(window.turnoActualId) === String(window.usuarioSesionId)) {
+            finalizarTurno(); 
+            }
+        }
+    }, 1000);
+}
+
+function actualizarTextoReloj(elemento) {
+    elemento.innerText = `00:${tiempoRestante.toString().padStart(2, '0')}`;
+}
+
+function bloquearControles() {
+    const btnTirar = document.getElementById("btn-tirar");
+    if(btnTirar) btnTirar.disabled = true;
+    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = true);
+}
+
+function desbloquearControles() {
+    const btnTirar = document.getElementById("btn-tirar");
+    if(btnTirar) btnTirar.disabled = false;
+    document.querySelectorAll(".btn-accion").forEach(btn => btn.disabled = false);
+}
+
+    // Arranque inicial al cargar la página
+window.addEventListener("DOMContentLoaded", () => {
+    // 1. Aplicamos el efecto visual al jugador activo según Thymeleaf
+    if (window.turnoActualId) {
+        const cardActiva = document.getElementById(window.turnoActualId);
+        if (cardActiva) {
+            cardActiva.classList.add("turno-activo");
+        }
+    }
+
+    // 2. Iniciamos el reloj visual
+    window.turnoActualId = window.turnoActualId || null;
+    iniciarRelojLocal(30); 
+    
+    // 3. Bloqueamos si no es nuestro turno
+    if (String(window.turnoActualId) !== String(window.usuarioSesionId)) {
+        bloquearControles();
+    }
+});

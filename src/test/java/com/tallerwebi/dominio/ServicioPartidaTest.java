@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.entidades.Jugador;
@@ -22,6 +24,7 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.dominio.servicios.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
@@ -33,6 +36,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +47,8 @@ public class ServicioPartidaTest {
     private RepositorioPartida repositorioPartidaMock;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
     private ServicioDado servicioDadoMock;
+    private NotificadorPartida notificadorPartidaMock;
+    private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
 
     private static final int TOTAL_CASILLEROS = 30;
@@ -50,11 +58,15 @@ public class ServicioPartidaTest {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
         servicioDadoMock = mock(ServicioDado.class);
+        notificadorPartidaMock = mock(NotificadorPartida.class);
+        gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
 
         servicioPartida = new ServicioPartidaImpl(
-                repositorioPartidaMock,
-                repositorioSalaDeEsperaMock,
-                servicioDadoMock
+            repositorioPartidaMock,
+            repositorioSalaDeEsperaMock,
+            servicioDadoMock,
+            gestorTemporizadorMock,
+            notificadorPartidaMock
         );
     }
 
@@ -103,6 +115,7 @@ public class ServicioPartidaTest {
     public void dadoQueEsTurnoDelPrimerJugadorCuandoSeAvanzaTurnoDaComoResultadoElSegundoJugador() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
         Jugador jugador2 = new Jugador();
@@ -120,9 +133,43 @@ public class ServicioPartidaTest {
     }
 
     @Test
+    public void dadoQueSeAvanzaTurnoSeNotificaNuevoTurnoConDuracion() {
+        String codigoPrueba = "MATANZA123";
+        Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
+        Jugador jugador1 = new Jugador();
+        jugador1.setId(1L);
+        jugador1.setApodo("Jugador1");
+        jugador1.setOrden(0);
+
+        Jugador jugador2 = new Jugador();
+        jugador2.setId(2L);
+        jugador2.setApodo("Jugador2");
+        jugador2.setOrden(1);
+
+        partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
+        partidaSimulada.setIndiceTurnoActual(0);
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
+            partidaSimulada
+        );
+
+        servicioPartida.avanzarTurno(codigoPrueba);
+
+        verify(notificadorPartidaMock).notificarCambioDeTurno(
+            eq(codigoPrueba),
+            argThat(
+                (TurnoDTO dto) ->
+                    dto.getDuracionSegundos() != null && dto.getDuracionSegundos() == 30
+            )
+        );
+    }
+
+    @Test
     public void dadoQueEsElUltimoJugadorCuandoSeAvanzaTurnoDaComoResultadoElPrimero() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
         Jugador jugador2 = new Jugador();
@@ -145,6 +192,7 @@ public class ServicioPartidaTest {
     public void dadoQueElSiguienteJugadorPierdeTurnoCuandoSeAvanzaDaComoResultadoQueSeLoSaltea() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
         Jugador jugador2 = new Jugador();
@@ -197,6 +245,44 @@ public class ServicioPartidaTest {
             assertEquals(150000, jugador.getDinero());
             assertEquals(0, jugador.getPosicionActual());
         }
+    }
+
+    @Test
+    public void dadoQueSeIniciaPartidaSeNotificaTurnoInicialConDuracion()
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
+        Usuario creador = new Usuario();
+        creador.setId(1L);
+
+        Jugador jugadorUno = new Jugador();
+        jugadorUno.setId(1L);
+        jugadorUno.setApodo("J1");
+        Jugador jugadorDos = new Jugador();
+        jugadorDos.setId(2L);
+        jugadorDos.setApodo("J2");
+
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.setCreador(creador);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(sala.getCodigoUnico());
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos));
+
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico())).thenReturn(sala);
+        when(
+            repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
+        ).thenReturn(partida);
+
+        servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
+
+        verify(notificadorPartidaMock).notificarCambioDeTurno(
+            eq("ABC123"),
+            argThat(
+                (TurnoDTO dto) ->
+                    dto.getDuracionSegundos() != null && dto.getDuracionSegundos() == 30
+            )
+        );
     }
 
     @Test
@@ -259,10 +345,7 @@ public class ServicioPartidaTest {
 
     @Test
     public void dadoQueExisteUnaPartidaConJugadoresSeSeleccionaAleatoriamenteElTurnoInicialExitosamente()
-            throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
-            SalaNoEncontradaException, FichaNoDisponibleException {
-            
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -360,6 +443,7 @@ public class ServicioPartidaTest {
         jugadorCuatro.setOrden(3);
 
         Partida partida = new Partida();
+        partida.setCodigoUnico(codigoPrueba);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setIndiceTurnoActual(2);
         partida.setRondaActual(1);
@@ -385,7 +469,6 @@ public class ServicioPartidaTest {
 
     @Test
     public void queElJugadorActualiceSuPosicionAlMoverseUnEspacioValidoDentroDelTablero() {
-
         Jugador jugador = new Jugador();
         jugador.setPosicionActual(5);
         int avanceExacto = 7;
@@ -393,20 +476,19 @@ public class ServicioPartidaTest {
 
         servicioPartida.moverJugador(jugador, avanceExacto, totalCasilleros);
 
-        assertEquals(12, jugador.getPosicionActual());//verifica el calculo de posicion
+        assertEquals(12, jugador.getPosicionActual());
     }
 
     @Test
     public void queSiLaFichaSuperaElUltimoCasilleroDelTableroContinueDesdeElComienzo() {
-
         Jugador jugador = new Jugador();
-        jugador.setPosicionActual(28); //posición cerca del final del tablero
+        jugador.setPosicionActual(28);
         int avance = 5;
         int totalCasilleros = 30;
 
         servicioPartida.moverJugador(jugador, avance, totalCasilleros);
 
-        assertEquals(3, jugador.getPosicionActual());//verifica que al superar los 3 casilleros, da la vuelta y avanza
+        assertEquals(3, jugador.getPosicionActual());
     }
 
     @Test
@@ -418,7 +500,7 @@ public class ServicioPartidaTest {
 
         servicioPartida.moverJugador(jugador, avance, totalCasilleros);
 
-        assertEquals(0, jugador.getPosicionActual());//valida que si llega a 30 debe reiniciar la posicion a 0
+        assertEquals(0, jugador.getPosicionActual());
     }
 
     @Test
@@ -433,7 +515,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
-                partidaSimulada
+            partidaSimulada
         );
 
         Partida partidaObtenida = servicioPartida.obtenerPartida(codigoPrueba);
@@ -457,38 +539,32 @@ public class ServicioPartidaTest {
         verify(servicioDadoMock, times(1)).tirarDados();
     }
 
+    @Test
+    public void dadoQueHayMasDeCuatroJugadoresCuandoSeIniciaLaPartidaDaComoResultadoCantidadMaximaSuperada() {
+        String codigo = "ABC123";
 
-@Test
-public void dadoQueHayMasDeCuatroJugadoresCuandoSeIniciaLaPartidaDaComoResultadoCantidadMaximaSuperada() {
-    String codigo = "ABC123";
+        Usuario creador = new Usuario();
+        creador.setId(1L);
 
-    Usuario creador = new Usuario();
-    creador.setId(1L);
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico(codigo);
+        sala.setCreador(creador);
 
-    SalaDeEspera sala = new SalaDeEspera();
-    sala.setCodigoUnico(codigo);
-    sala.setCreador(creador);
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.setJugadores(
+            Arrays.asList(new Jugador(), new Jugador(), new Jugador(), new Jugador(), new Jugador())
+        );
 
-    Partida partida = new Partida();
-    partida.setEstado(EstadoPartida.EN_ESPERA);
-    partida.setJugadores(Arrays.asList(
-            new Jugador(),
-            new Jugador(),
-            new Jugador(),
-            new Jugador(),
-            new Jugador()
-    ));
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
 
-    when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo))
-            .thenReturn(sala);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
-    when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
-            .thenReturn(partida);
+        assertThrows(CantidadMaximaJugadoresSuperadaException.class, () ->
+            servicioPartida.iniciarPartida(codigo, 1L)
+        );
 
-    assertThrows(
-            CantidadMaximaJugadoresSuperadaException.class,
-            () -> servicioPartida.iniciarPartida(codigo, 1L)
-    );
+        assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
 
     assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
 
