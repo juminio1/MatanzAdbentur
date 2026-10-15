@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
 import com.tallerwebi.presentacion.ControladorSalaEsperaWebSocket;
@@ -37,11 +37,11 @@ public class ControladorSalaEsperaWebSocketTest {
         SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
         seleccion.setCodigoUnicoPartida("ABC123");
         seleccion.setIdUsuario(1L);
-        seleccion.setFichaSeleccionada(Ficha.ROJA);
+        seleccion.setFichaSeleccionada(ColorFicha.ROJO);
 
         controladorWebSocket.seleccionarFicha(seleccion);
 
-        verify(servicioSalaDeEsperaMock).seleccionarFicha("ABC123", 1L, Ficha.ROJA);
+        verify(servicioSalaDeEsperaMock).seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
 
         verify(messagingTemplateMock).convertAndSend("/topic/partida/ABC123", seleccion);
     }
@@ -51,11 +51,11 @@ public class ControladorSalaEsperaWebSocketTest {
         SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
         seleccion.setCodigoUnicoPartida("ABC123");
         seleccion.setIdUsuario(2L);
-        seleccion.setFichaSeleccionada(Ficha.ROJA);
+        seleccion.setFichaSeleccionada(ColorFicha.ROJO);
 
         doThrow(new FichaOcupadaException("La ficha ya se encuentra seleccionada"))
             .when(servicioSalaDeEsperaMock)
-            .seleccionarFicha("ABC123", 2L, Ficha.ROJA);
+            .seleccionarFicha("ABC123", 2L, ColorFicha.ROJO);
 
         controladorWebSocket.seleccionarFicha(seleccion);
 
@@ -77,7 +77,7 @@ public void SeleccionarFichaExitosaSinMessagingTemplate() throws Exception {
     SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
     seleccion.setCodigoUnicoPartida("ABC123");
     seleccion.setIdUsuario(1L);
-    seleccion.setFichaSeleccionada(Ficha.ROJA);
+    seleccion.setFichaSeleccionada(ColorFicha.ROJO);
 
     assertDoesNotThrow(() ->
         controladorSinMessaging.seleccionarFicha(seleccion)
@@ -86,7 +86,7 @@ public void SeleccionarFichaExitosaSinMessagingTemplate() throws Exception {
     verify(servicioSalaDeEsperaMock).seleccionarFicha(
         "ABC123",
         1L,
-        Ficha.ROJA
+        ColorFicha.ROJO
     );
 
     verifyNoInteractions(messagingTemplateMock);
@@ -103,11 +103,11 @@ public void SeleccionarFichaOcupadaSinMessagingTemplate() throws Exception {
     SeleccionFichaDTO seleccion = new SeleccionFichaDTO();
     seleccion.setCodigoUnicoPartida("ABC123");
     seleccion.setIdUsuario(2L);
-    seleccion.setFichaSeleccionada(Ficha.ROJA);
+    seleccion.setFichaSeleccionada(ColorFicha.ROJO);
 
     doThrow(new FichaOcupadaException("La ficha ya se encuentra seleccionada"))
         .when(servicioSalaDeEsperaMock)
-        .seleccionarFicha("ABC123", 2L, Ficha.ROJA);
+        .seleccionarFicha("ABC123", 2L, ColorFicha.ROJO);
 
     assertDoesNotThrow(() ->
         controladorSinMessaging.seleccionarFicha(seleccion)
@@ -116,7 +116,7 @@ public void SeleccionarFichaOcupadaSinMessagingTemplate() throws Exception {
     verify(servicioSalaDeEsperaMock).seleccionarFicha(
         "ABC123",
         2L,
-        Ficha.ROJA
+        ColorFicha.ROJO
     );
 
     verifyNoInteractions(messagingTemplateMock);

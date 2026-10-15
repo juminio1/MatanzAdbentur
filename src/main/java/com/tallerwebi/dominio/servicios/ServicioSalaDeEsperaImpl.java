@@ -2,7 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.Ficha;
+import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
@@ -46,6 +46,9 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             throw new UsuarioNoEncontradoException();
         }
 
+        creador.setFicha(null);
+        repositorioUsuario.modificar(creador);
+
         SalaDeEspera nuevaSala = new SalaDeEspera();
 
         nuevaSala.setCodigoUnico(generarCodigoUnico());
@@ -81,6 +84,9 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             throw new SalaDeEsperaLlenaException();
         }
 
+        usuario.setFicha(null);
+        repositorioUsuario.modificar(usuario);
+
         sala.getUsuarios().add(usuario);
 
         repositorioSalaDeEspera.modificar(sala);
@@ -100,6 +106,12 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         }
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
+
+        if (usuario.getFicha() != null) {
+            sala.getFichasOcupadas().remove(usuario.getFicha());
+            usuario.setFicha(null);
+            repositorioUsuario.modificar(usuario);
+        }
 
         boolean removido = sala
             .getUsuarios()
@@ -155,7 +167,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     }
 
     @Override
-    public void seleccionarFicha(String codigoUnico, Long idUsuario, Ficha ficha)
+    public void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
         Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
 
@@ -165,7 +177,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
-        Ficha fichaAnterior = usuario.getFicha();
+        ColorFicha fichaAnterior = usuario.getFicha();
 
         // Si vuelve a elegir su misma ficha, no hacemos nada
         if (ficha == fichaAnterior) {
