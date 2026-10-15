@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service("servicioPropiedad")
@@ -170,15 +171,17 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     @Override
     public Integer calcularAlquiler(CasilleroPropiedad casillero, Propiedad propiedad) {
+        Long idPartida = casillero.getPartidaId();
         if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
         Jugador propietario = propiedad.getPropietario();
-        if (propietario == null) return 25;
+        if (propietario == null || servicioCasillero == null || idPartida == null) return 25;
         long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroPropiedad.class::isInstance)
                 .map(CasilleroPropiedad.class::cast)
                 .filter(c -> POSICIONES_PARADA.contains(c.getPosicion()) && c.getPropiedad() != null)
+                .filter(c -> idPartida.equals(c.getPartidaId()))
                 .filter(c -> c.getPropiedad().getPropietario() != null
-                        && propietario.getId().equals(c.getPropiedad().getPropietario().getId()))
+                        && Objects.equals(propietario.getId(), c.getPropiedad().getPropietario().getId()))
                 .count();
         return (int) Math.min(200, 25 * (1L << Math.max(0, cantidadParadas - 1)));
     }

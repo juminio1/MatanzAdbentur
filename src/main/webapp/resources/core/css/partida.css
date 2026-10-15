@@ -442,11 +442,142 @@
 .modal-propiedad__contenido h2 { font-family: var(--font-titulos, "Barlow Condensed", sans-serif); }
 .modal-propiedad__acciones { display: flex; gap: 10px; }
 
+.modal-info-propiedad {
+    width: min(460px, calc(100vw - 32px));
+}
+
+.modal-info-propiedad__contenido {
+    display: grid;
+    gap: 16px;
+    padding: 24px;
+}
+
+.modal-info-propiedad__cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.modal-info-propiedad__cabecera p {
+    margin-bottom: 4px;
+    color: var(--p-texto-suave);
+    font-size: 12px;
+}
+
+.modal-info-propiedad__cabecera h2 {
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 26px;
+}
+
+.modal-info-propiedad__cerrar {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--p-borde);
+    border-radius: 50%;
+    background: var(--p-superficie-2);
+    color: var(--p-texto);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.modal-info-propiedad__descripcion {
+    color: var(--p-texto-suave);
+}
+
+.modal-info-propiedad__datos {
+    display: grid;
+    gap: 8px;
+}
+
+.modal-info-propiedad__datos div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--p-fondo);
+}
+
+.modal-info-propiedad__datos div[hidden] {
+    display: none;
+}
+
+.modal-info-propiedad__datos dt {
+    color: var(--p-texto-suave);
+}
+
+.modal-info-propiedad__datos dd {
+    font-weight: 700;
+    text-align: right;
+}
+
+.aviso-alquiler {
+    position: fixed;
+    z-index: 1100;
+    top: 24px;
+    left: 50%;
+    max-width: min(90vw, 520px);
+    padding: 14px 22px;
+    border: 1px solid var(--p-dorado);
+    border-radius: var(--p-radio);
+    background: var(--p-superficie-2);
+    color: var(--p-texto);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+    font-weight: 700;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -10px);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    pointer-events: none;
+}
+
+.aviso-alquiler--visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
 /* ---------- Fichas de jugadores ---------- */
 
 .casillero {
     position: relative;
 }
+
+.casillero__precio {
+    position: absolute;
+    z-index: 7;
+    display: block;
+    min-width: 48%;
+    box-sizing: border-box;
+    padding: 2px 4px;
+    border: 1px solid #718394;
+    border-radius: 2px;
+    background: #FFFFFF;
+    color: #131B22;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: clamp(6px, 0.85cqw, 11px);
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.casillero--precio-superior .casillero__precio {
+    top: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.casillero__precio[data-color="rojo"] { background: #E4584D; color: #FFFFFF; border-color: #B83E36; }
+.casillero__precio[data-color="azul"] { background: #2887E1; color: #FFFFFF; border-color: #1765AD; }
+.casillero__precio[data-color="verde"] { background: #12B981; color: #FFFFFF; border-color: #0B865D; }
+.casillero__precio[data-color="amarillo"] { background: #F5C400; color: #202020; border-color: #B79100; }
 
 /* Contenedor para las fichas dentro decada casillero */
 .fichas-en-casillero {

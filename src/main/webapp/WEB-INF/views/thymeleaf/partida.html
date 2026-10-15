@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>El Matancero – Partida</title>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css"/>
-    <link rel="stylesheet" th:href="@{/css/partida.css}" href="../../../resources/core/css/partida.css"/>
+    <link rel="stylesheet" th:href="@{/css/partida.css(v=popup-propiedad-1)}" href="../../../resources/core/css/partida.css?v=popup-propiedad-1"/>
 </head>
 <body class="pagina-partida">
 <!-- Barra superior: contador + jugadores -->
@@ -26,8 +26,8 @@
 
     <section class="jugadores">
         <article class="jugador" th:each="jugador : ${partida.jugadores}" th:id="${jugador.id}">
-            <img class="avatar-jugador" th:src="@{/images/personajes/TURRO%20ICON🇦🇷.jpg}"
-                 src="../../../resources/images/personajes/TURRO%20ICON🇦🇷.jpg" alt="Avatar del Jugador"/>
+            <img class="avatar-jugador" th:src="@{/images/personajes/personajeTurro.jpg}"
+                 src="../../../resources/core/images/personajes/personajeTurro.jpg" alt="Avatar del Jugador"/>
             <div class="contenedor-nombre-jugador">
                 <h3 class="nombre-jugador" th:text="${jugador.apodo}">JUGADOR</h3>
             </div>
@@ -650,6 +650,34 @@
 
 </aside>
 
+<dialog id="modal-info-propiedad" class="modal-propiedad modal-info-propiedad" aria-labelledby="popup-info-titulo">
+    <div class="modal-info-propiedad__contenido">
+        <header class="modal-info-propiedad__cabecera">
+            <div>
+                <p>Información de propiedad</p>
+                <h2 id="popup-info-titulo"></h2>
+            </div>
+            <button type="button" id="btn-cerrar-info-propiedad" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+        </header>
+        <p id="popup-info-descripcion" class="modal-info-propiedad__descripcion"></p>
+        <dl class="modal-info-propiedad__datos">
+            <div id="popup-precio-contenedor">
+                <dt>Precio de compra</dt>
+                <dd id="popup-info-precio"></dd>
+            </div>
+            <div id="popup-alquiler-contenedor" hidden>
+                <dt>Alquiler</dt>
+                <dd id="popup-info-alquiler"></dd>
+            </div>
+            <div>
+                <dt>Propietario</dt>
+                <dd id="popup-info-propietario">Sin propietario</dd>
+            </div>
+        </dl>
+        <button type="button" id="btn-modal-info-accion" class="btn-casillero btn-casillero--principal" disabled>No disponible</button>
+    </div>
+</dialog>
+
 <dialog id="modal-compra-propiedad" class="modal-propiedad">
     <form method="dialog" class="modal-propiedad__contenido">
         <h2 id="modal-propiedad-titulo">Propiedad disponible</h2>
@@ -661,6 +689,8 @@
         </div>
     </form>
 </dialog>
+
+<div id="aviso-alquiler" class="aviso-alquiler" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- Librerías de WebSocket -->
 
@@ -686,7 +716,7 @@
 
 <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=compra-propiedad-2)}" src="../../../resources/core/js/partida.js?v=compra-propiedad-2" defer></script>
+<script th:src="@{/js/partida.js(v=turno-sync-2)}" src="../../../resources/core/js/partida.js?v=turno-sync-2" defer></script>
 
 </body>
 
