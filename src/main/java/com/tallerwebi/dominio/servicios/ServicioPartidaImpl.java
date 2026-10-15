@@ -5,8 +5,8 @@ import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.enums.ColorFicha;
-import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.ColorFicha;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -73,12 +73,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         //valida que el tablero exista y agarramos el casillero exacto usando el índice
         if (tablero != null && !tablero.isEmpty() && nuevaPosicion < tablero.size()) {
-
             Casillero casilleroDestino = tablero.get(nuevaPosicion);
 
             //verifica dinámicamente si es un casillero de evento
             if (casilleroDestino instanceof CasilleroEvento) {
-
                 //saaca la carta de la base de datos
                 Evento eventoSorteado = servicioEvento.obtenerEventoAleatorio();
 
@@ -102,7 +100,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void incrementarRondas(Partida partida) {
-        
         if (partida.getRondaActual() == null) {
             partida.setRondaActual(1);
         }
@@ -118,7 +115,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (turnosFinalizado == partida.getJugadores().size()) {
             partida.setRondaActual(partida.getRondaActual() + 1);
             partida.setTurnosFinalizadosEnRonda(0);
-            servicioEvento.verificarActivacionEventoGlobal(partida);
+            servicioEvento.verificarActivacionEventoGlobal(partida); //Esto agregue 
         }
     }
 
@@ -229,6 +226,18 @@ public class ServicioPartidaImpl implements ServicioPartida {
         repositorioPartida.guardarPartida(partida);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+
+        if (partida == null || partida.getJugadores() == null) {
+            return List.of();
+        }
+
+        return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDTO).toList();
+    }
+
     private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
         throws SalaNoEncontradaException {
         if (sala == null) {
@@ -326,18 +335,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
-        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
-
-        if (partida == null || partida.getJugadores() == null) {
-            return List.of();
-        }
-
-        return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDTO).toList();
-    }
-
     private PosicionFichaDTO mapearAJugadorPosicionDTO(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
         Integer posicion =
@@ -349,14 +346,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private String obtenerNombreFichaSegura(Jugador jugador) {
         if (jugador.getFicha() != null) {
             return jugador.getFicha().name();
-        };
+        }
         return null;
     }
 
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
         for (Usuario usuario : sala.getUsuarios()) {
             if (usuario.getFicha() == null) {
-                throw new FichaNoDisponibleException("No se puede iniciar: Todos los jugadores deben seleccionar una ficha.");
+                throw new FichaNoDisponibleException(
+                    "No se puede iniciar: Todos los jugadores deben seleccionar una ficha."
+                );
             }
         }
     }

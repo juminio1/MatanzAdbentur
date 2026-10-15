@@ -7,6 +7,7 @@ import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.infraestructura.RepositorioEvento;
@@ -87,13 +88,11 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
 
         Boolean inundacion = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.INUNDACION);
-        Boolean piquete =eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.PIQUETE);
+        Boolean piquete = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.PIQUETE);
         Boolean afip = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.TRAMITES_AFIP);
 
         if (inundacion || piquete || afip) {
             tiradasPorPartida.putIfAbsent(partida.getCodigoUnico(), new ConcurrentHashMap<>()); //Esto prepara un espacio donde se registraran las tiradas de los jugadores de esa partida
-
-            return;
         }
 
         eventosDeSeleccionDeJugadorAleatorio(partida, eventoGlobal);
@@ -102,6 +101,15 @@ public class ServicioEventoImpl implements ServicioEvento {
     @Override
     public void verificarActivacionEventoGlobal(Partida partida) {
         if (this.activarEventoGlobalPorRondas(partida.getRondaActual())) {
+        }
+    }
+
+    private void validarJugadorEnPartida(Partida partida, Jugador jugador) throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException {
+
+        Boolean perteneceAPartida = partida.getJugadores().stream().anyMatch(participante -> participante.getId().equals(jugador.getId()));
+
+        if (!perteneceAPartida) {
+            throw new JugadorNoEncontradoException("El jugador no se encontro en la partida");
         }
     }
 
