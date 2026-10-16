@@ -68,9 +68,12 @@ public class ServicioEventoImpl implements ServicioEvento {
                 this.moverCasilleros(jugador, evento);
                 break;
             case IR_A_CASILLERO:
-            case VOLVER_INCICO:
+            case VOLVER_INICIO:
                 jugador.setPosicionActual(evento.getValor());
                 break;
+            default:
+                // código si no hay coincidencias
+
         }
     }
 

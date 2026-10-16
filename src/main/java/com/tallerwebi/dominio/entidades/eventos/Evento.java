@@ -4,12 +4,14 @@ import com.tallerwebi.dominio.enums.TipoEfecto;
 import jakarta.persistence.*;
 
 @Entity
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 public class Evento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 1000)
     private String descripcion;
 
     @Enumerated(EnumType.STRING)

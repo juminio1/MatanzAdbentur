@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import com.tallerwebi.dominio.entidades.eventos.Evento;
+import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 
 import java.util.List;
 import java.util.Random;
@@ -45,7 +46,7 @@ public class RepositorioEventoImpl implements RepositorioEvento {
 
         final Session session = sessionFactory.getCurrentSession();
 
-        List<Evento> eventosGlobales = session.createQuery("FROM EventoGlobal", Evento.class).list();
+        List<EventoGlobal> eventosGlobales = session.createQuery("FROM EventoGlobal", EventoGlobal.class).list();
 
         if (eventosGlobales.isEmpty()) {
             return null;
