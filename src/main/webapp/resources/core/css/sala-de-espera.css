@@ -765,6 +765,85 @@ body {
     color: white;
 }
 
+/* Tema oscuro para la sala y sus paneles. */
+body {
+    min-height: 100vh;
+    background-color: #111820;
+    color: #edf3f8;
+}
+
+.salaEspera {
+    background-color: #111820;
+    background-image:
+        linear-gradient(rgba(8, 12, 18, 0.2), rgba(8, 12, 18, 0.38)),
+        url('../images/fondo/Wireframe%20-%207.jpg');
+    background-repeat: no-repeat, repeat;
+    background-size: cover, cover;
+    background-attachment: fixed;
+    background-position: center;
+    color: #edf3f8;
+}
+
+.salaEspera__contenedor,
+.salaEspera__codigo,
+.salaEspera__fichas,
+.salaEspera__jugadores {
+    background-color: #1b2632;
+    border-color: #344252;
+    color: #edf3f8;
+}
+
+.salaEspera__codigo {
+    background-image: linear-gradient(135deg, #223345, #1b2632);
+    border-color: #3b5269;
+}
+
+.salaEspera__titulo h1,
+.salaEspera__subtitulo h2,
+.salaEspera__jugadorInfo strong,
+.salaEspera__codigoNumero span {
+    color: #edf3f8;
+}
+
+.salaEspera__titulo p,
+.salaEspera__subtitulo p,
+.salaEspera__jugadorInfo small,
+.salaEspera__nombre span,
+.salaEspera__contador span {
+    color: #b3c1ce;
+}
+
+.salaEspera__icono {
+    background: #26384a;
+    color: #76c8f0;
+}
+
+.salaEspera__codigoNumero,
+.salaEspera__copiar {
+    background: #111a23;
+    border-color: #3b5269;
+    color: #d9e8f4;
+}
+
+.salaEspera__jugador {
+    background: #202c38;
+    border-color: #344252;
+}
+
+.salaEspera__ficha > span {
+    color: #18222d;
+}
+
+.salaEspera__ficha--ocupada {
+    background: #394552 !important;
+    border-color: #566575 !important;
+}
+
+.salaEspera__iniciar,
+.salaEspera__invitar {
+    border-color: #3b5269;
+}
+
 @media (max-width: 1000px) {
 
     .salaEspera__contenido {

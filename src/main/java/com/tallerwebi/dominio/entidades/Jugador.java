@@ -1,36 +1,31 @@
 package com.tallerwebi.dominio.entidades;
 
 import com.tallerwebi.dominio.enums.ColorFicha;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 @Entity
 public class Jugador {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@Id
+@GeneratedValue(strategy= GenerationType.IDENTITY)
+private Long id;
+private String apodo;
+private Integer dinero;
 
-    private String apodo;
+@Enumerated(EnumType.STRING)
+private ColorFicha ficha;
 
-    @Enumerated(EnumType.STRING)
-    private ColorFicha ficha;
-
-    private Integer dinero;
     private Integer posicionActual;
 
     private Integer orden;
     private Boolean pierdeTurno;
-    //private Boolean enCarcel = false;
+    private Boolean enBancarrota;
 
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
         this.pierdeTurno = false;
+        this.enBancarrota = false;
     }
 
     public Long getId() {
@@ -95,5 +90,13 @@ public class Jugador {
 
     public void setPierdeTurno(Boolean pierdeTurno) {
         this.pierdeTurno = pierdeTurno;
+    }
+
+    public Boolean getEnBancarrota() {
+        return Boolean.TRUE.equals(enBancarrota);
+    }
+
+    public void setEnBancarrota(Boolean enBancarrota) {
+        this.enBancarrota = Boolean.TRUE.equals(enBancarrota);
     }
 }

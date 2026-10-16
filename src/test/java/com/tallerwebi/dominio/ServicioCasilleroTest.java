@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.enums.TipoEvento;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.tallerwebi.dominio.enums.GrupoPropiedades.*;
 import static com.tallerwebi.dominio.enums.TipoEvento.RESTA;
 import static com.tallerwebi.dominio.enums.TipoEvento.SUMA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,7 +79,7 @@ public class ServicioCasilleroTest {
     public void usarGettersYSetterDePropiedad(){
         Jugador si = new Jugador();
         si.setId(1L);
-        Propiedad propiedad = new Propiedad(1L,12,23,si);
+        Propiedad propiedad = new Propiedad(1L,"UNLAM", 12,23,si, SAN_JUSTO);
 
         Jugador no = new Jugador();
         no.setId(2L);

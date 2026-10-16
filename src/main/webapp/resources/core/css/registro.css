@@ -18,10 +18,10 @@
     max-width: 1050px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background-color: rgba(255, 255, 255, 0.93);
-    border: 2px solid #111;
+    background-color: rgba(27, 38, 50, 0.97);
+    border: 2px solid #080d13;
     border-radius: 20px;
-    box-shadow: 7px 7px 0 #111;
+    box-shadow: 7px 7px 0 #080d13;
     overflow: hidden;
 }
 
@@ -77,12 +77,12 @@
 .registro-card-header h2 {
     font-size: 30px;
     font-weight: 900;
-    color: #111;
+    color: #edf3f8;
     margin-bottom: 5px;
 }
 
 .registro-card-header p {
-    color: #666;
+    color: #b3c1ce;
     font-size: 14px;
 }
 
@@ -95,16 +95,17 @@
     margin-bottom: 7px;
     font-size: 14px;
     font-weight: 700;
-    color: #222;
+    color: #d6e0e9;
 }
 
 .form-group input {
     width: 100%;
     padding: 12px 14px;
-    border: 2px solid #ccc;
+    border: 2px solid #39495a;
     border-radius: 9px;
     font-size: 15px;
-    background-color: white;
+    background-color: #111a23;
+    color: #edf3f8;
     outline: none;
     transition:
         border-color 0.2s ease,
@@ -118,7 +119,7 @@
 
 .form-group input.input-error {
     border-color: #d93025;
-    background-color: #fff8f8;
+    background-color: #351d25;
 }
 
 .form-group input.input-error:focus {
@@ -203,7 +204,7 @@
 }
 
 .ayuda-password {
-    color: #777;
+    color: #aebdcc;
     font-size: 11px;
     line-height: 1.4;
     margin-top: 5px;
@@ -240,17 +241,27 @@
     text-align: center;
     margin-top: 22px;
     font-size: 13px;
-    color: #555;
+    color: #b3c1ce;
 }
 
 .login-link a {
-    color: #2b3990;
+    color: #76c8f0;
     font-weight: 800;
     text-decoration: none;
 }
 
 .login-link a:hover {
     text-decoration: underline;
+}
+
+.mensaje-error-general {
+    background-color: #351d25;
+    color: #ffc3ca;
+}
+
+.ayuda-password,
+.login-link {
+    color: #b3c1ce;
 }
 
 /* --- MEDIA QUERIES --- */

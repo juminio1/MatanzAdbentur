@@ -9,17 +9,26 @@ public class TurnoDTO {
     private Integer orden;
     private String mensaje;
     private Integer rondaActual;
+    private Integer duracionSegundos;
 
-    public TurnoDTO() {
-    }
+    // Constructor vacío (requerido por Jackson/Spring)
+    public TurnoDTO() {}
 
-    public TurnoDTO(String codigoPartida, Long idJugadorActual,
-                    String apodoJugadorActual, Integer orden, String mensaje) {
+    // Único constructor con parámetros (incluye la duración)
+    public TurnoDTO(
+        String codigoPartida,
+        Long idJugadorActual,
+        String apodoJugadorActual,
+        Integer orden,
+        String mensaje,
+        Integer duracionSegundos
+    ) {
         this.codigoPartida = codigoPartida;
         this.idJugadorActual = idJugadorActual;
         this.apodoJugadorActual = apodoJugadorActual;
         this.orden = orden;
         this.mensaje = mensaje;
+        this.duracionSegundos = duracionSegundos;
     }
 
     public String getCodigoPartida() {
@@ -68,5 +77,13 @@ public class TurnoDTO {
 
     public void setRondaActual(Integer rondaActual) {
         this.rondaActual = rondaActual;
+    }
+
+    public Integer getDuracionSegundos() {
+        return duracionSegundos;
+    }
+
+    public void setDuracionSegundos(Integer duracionSegundos) {
+        this.duracionSegundos = duracionSegundos;
     }
 }

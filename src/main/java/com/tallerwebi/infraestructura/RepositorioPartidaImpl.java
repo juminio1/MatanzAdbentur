@@ -1,13 +1,19 @@
 package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+
+import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import jakarta.persistence.NoResultException;
 import java.util.List;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository("repositorioPartida")
 public class RepositorioPartidaImpl implements RepositorioPartida {
@@ -22,6 +28,23 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     @Override
     public void guardarPartida(Partida partida) {
         this.sessionFactory.getCurrentSession().persist(partida);
+    }
+
+    @Override
+    public void actualizarJugador(Jugador jugador) {
+        this.sessionFactory.getCurrentSession().merge(jugador);
+    }
+
+    @Override
+    public Jugador buscarJugadorPorId(Long idJugador) {
+        try {
+            return this.sessionFactory.getCurrentSession()
+                    .createQuery("FROM Jugador WHERE id = :idJugador", Jugador.class)
+                    .setParameter("idJugador", idJugador)
+                    .getSingleResult();
+        } catch (NoResultException ex) {
+            return null;
+        }
     }
 
     @Override

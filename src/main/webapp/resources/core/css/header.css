@@ -4,8 +4,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 24px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    background-color: #18222d;
+    border-bottom: 1px solid #344252;
     position: relative;
     z-index: 1050;
     width: 100%;
@@ -39,14 +39,14 @@
 
 .nav-links a {
     text-decoration: none;
-    color: #4b5563;
+    color: #c5d0dc;
     font-weight: 600;
     font-size: 14px;
     transition: color 0.2s ease;
 }
 
 .nav-links a:hover {
-    color: #111827;
+    color: #ffffff;
 }
 
 .btn-login {
@@ -107,11 +107,11 @@
     top: calc(100% + 10px) !important;
     right: 0 !important;
     width: 260px !important;
-    background-color: #ffffff !important;
+    background-color: #202c38 !important;
     border-radius: 12px !important;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
     padding: 16px !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid #3b4a5a !important;
     z-index: 99999 !important;
     display: block !important;
 }
@@ -142,13 +142,13 @@
     margin: 0;
     font-weight: 700;
     font-size: 15px;
-    color: #1f2937;
+    color: #f1f5f9;
     line-height: 1.2;
 }
 
 .user-info-text .user-role {
     font-size: 11px;
-    color: #6b7280;
+    color: #aebdcc;
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -162,7 +162,7 @@
 .selector-title {
     font-size: 12px;
     font-weight: 600;
-    color: #4b5563;
+    color: #c5d0dc;
     margin-bottom: 8px;
 }
 
@@ -201,7 +201,7 @@
 .user-dropdown-divider {
     margin: 14px 0 12px 0;
     border: 0;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #3b4a5a;
 }
 
 .btn-logout {

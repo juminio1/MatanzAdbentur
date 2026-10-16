@@ -23,4 +23,9 @@ public class RepositorioCasilleroImpl implements RepositorioCasillero {
                 .createQuery("FROM Casillero", Casillero.class)
                 .list();
     }
+
+    @Override
+    public void guardar(Casillero casillero) {
+        sessionFactory.getCurrentSession().persist(casillero);
+    }
 }

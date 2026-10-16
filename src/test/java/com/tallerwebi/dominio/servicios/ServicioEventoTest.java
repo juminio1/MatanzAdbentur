@@ -19,7 +19,7 @@ public class ServicioEventoTest {
     @BeforeEach
     public void init() {
         repositorioEventoMock = mock(RepositorioEvento.class);
-        servicioEvento = new ServicioEventoImpl(repositorioEventoMock);
+        //servicioEvento = new ServicioEventoImpl(repositorioEventoMock);
     }
 
     @Test

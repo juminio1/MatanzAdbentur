@@ -1,11 +1,10 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.*;
-import com.tallerwebi.dominio.entidades.Casillero.Casillero;
-import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
-import com.tallerwebi.dominio.entidades.eventos.Evento;
-import com.tallerwebi.dominio.enums.ColorFicha;
-import com.tallerwebi.dominio.enums.ColorFicha;
+import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.SalaDeEspera;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
@@ -14,10 +13,11 @@ import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
-import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import java.time.Instant;
 import java.util.List;
 import java.util.Random;
@@ -31,15 +31,19 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private static final int CANTIDAD_MAXIMA_DE_JUGADORES = 4;
     private static final int CANTIDAD_MINIMA_DE_JUGADORES = 2;
-    private static final int CANTIDAD_INICIAL_DINERO = 150000;
+    private static final int CANTIDAD_INICIAL_DINERO = 2000;
+    private static final int LIMITE_BANCARROTA = 250;
     private static final int POSICION_INICIAL = 0;
+    private static final int DURACION_TURNO_SEGUNDOS = 30;
 
     private final RepositorioPartida repositorioPartida;
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final Random random = new Random();
     private final ServicioDado servicioDado;
     private final ServicioEvento servicioEvento;
-    private final RepositorioCasillero repositorioCasillero;
+   // private final RepositorioCasillero repositorioCasillero;
+    private final NotificadorPartida notificadorPartida;
+    private final GestorTemporizadorPartida gestorTemporizador;
 
     @Autowired
     public ServicioPartidaImpl(
@@ -47,13 +51,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
         RepositorioSalaDeEspera repositorioSalaDeEspera,
         ServicioDado servicioDado,
         ServicioEvento servicioEvento,
-        RepositorioCasillero repositorioCasillero
+        RepositorioCasillero repositorioCasillero,
+        GestorTemporizadorPartida gestorTemporizador,
+        @Autowired(required = false) NotificadorPartida notificadorPartida
     ) {
         this.repositorioPartida = repositorioPartida;
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.servicioDado = servicioDado;
         this.servicioEvento = servicioEvento;
-        this.repositorioCasillero = repositorioCasillero;
+        this.gestorTemporizador = gestorTemporizador;
+        this.notificadorPartida = notificadorPartida;
     }
 
     @Override
@@ -64,33 +71,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
-        Integer posicionActual = jugador.getPosicionActual();
-        Integer nuevaPosicion = (posicionActual + cantidadAvance) % totalCasilleros;
-        jugador.setPosicionActual(nuevaPosicion);
-
-        //traemos la lista completa de todos los casilleros del tablero
-        List<Casillero> tablero = repositorioCasillero.obtenerTodos();
-
-        //valida que el tablero exista y agarramos el casillero exacto usando el índice
-        if (tablero != null && !tablero.isEmpty() && nuevaPosicion < tablero.size()) {
-            Casillero casilleroDestino = tablero.get(nuevaPosicion);
-
-            //verifica dinámicamente si es un casillero de evento
-            if (casilleroDestino instanceof CasilleroEvento) {
-                //saaca la carta de la base de datos
-                Evento eventoSorteado = servicioEvento.obtenerEventoAleatorio();
-
-                if (eventoSorteado != null) {
-                    //le aplica el efecto al jugador
-                    servicioEvento.aplicarEvento(jugador, eventoSorteado);
-                }
-            }
-        }
+        jugador.setPosicionActual((jugador.getPosicionActual() + cantidadAvance) % totalCasilleros);
     }
 
     @Override
     public void restarDinero(Jugador jugador, Integer monto) {
         jugador.setDinero(jugador.getDinero() - monto);
+        if (jugador.getDinero() <= LIMITE_BANCARROTA) {
+            jugador.setEnBancarrota(true);
+        }
     }
 
     @Override
@@ -99,24 +88,32 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void actualizarJugador(Jugador jugador) {
+        repositorioPartida.actualizarJugador(jugador);
+    }
+
+    @Override
     public void incrementarRondas(Partida partida) {
-        if (partida.getRondaActual() == null) {
-            partida.setRondaActual(1);
+        int ronda = partida.getRondaActual() == null ? 1 : partida.getRondaActual();
+        int turnosFinalizados =
+            partida.getTurnosFinalizadosEnRonda() == null
+                ? 0
+                : partida.getTurnosFinalizadosEnRonda();
+
+        long jugadoresActivos = partida.getJugadores().stream()
+            .filter(jugador -> !jugador.getEnBancarrota())
+            .count();
+        if (jugadoresActivos == 0) return;
+
+        turnosFinalizados++;
+
+        if (turnosFinalizados >= jugadoresActivos) {
+            ronda++;
+            turnosFinalizados = 0;
         }
 
-        if (partida.getTurnosFinalizadosEnRonda() == null) {
-            partida.setTurnosFinalizadosEnRonda(0);
-        }
-
-        Integer turnosFinalizado = partida.getTurnosFinalizadosEnRonda() + 1;
-
-        partida.setTurnosFinalizadosEnRonda(turnosFinalizado);
-
-        if (turnosFinalizado == partida.getJugadores().size()) {
-            partida.setRondaActual(partida.getRondaActual() + 1);
-            partida.setTurnosFinalizadosEnRonda(0);
-            servicioEvento.verificarActivacionEventoGlobal(partida); //Esto agregue 
-        }
+        partida.setRondaActual(ronda);
+        partida.setTurnosFinalizadosEnRonda(turnosFinalizados);
     }
 
     @Override
@@ -127,28 +124,28 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void inicializarTurnos(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-
-        if (
-            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
-        ) {
-            int orden = 0;
-            for (Jugador jugador : partida.getJugadores()) {
-                jugador.setOrden(orden);
-                jugador.setPierdeTurno(false);
-                orden++;
-            }
-            if (partida.getIndiceTurnoActual() == null) {
-                partida.setIndiceTurnoActual(0);
-            }
-            repositorioPartida.guardarPartida(partida);
+        if (esPartidaConJugadoresInvalida(partida)) {
+            return;
         }
+
+        int orden = 0;
+        for (Jugador jugador : partida.getJugadores()) {
+            jugador.setOrden(orden);
+            jugador.setPierdeTurno(false);
+            jugador.setEnBancarrota(false);
+            orden++;
+        }
+        partida.setIndiceTurnoActual(
+            partida.getIndiceTurnoActual() == null ? 0 : partida.getIndiceTurnoActual()
+        );
+        repositorioPartida.guardarPartida(partida);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Jugador obtenerJugadorActual(String codigoUnico) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
-        if (partida == null || partida.getJugadores() == null || partida.getJugadores().isEmpty()) {
+        if (esPartidaConJugadoresInvalida(partida)) {
             return null;
         }
 
@@ -158,12 +155,36 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Integer indiceActual =
             partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
-        return buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
+        Jugador jugadorActual = buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
+        return jugadorActual != null && !jugadorActual.getEnBancarrota() ? jugadorActual : null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer obtenerSegundosRestantesTurno(String codigoUnico) {
+        return gestorTemporizador.obtenerSegundosRestantes(codigoUnico);
+    }
+
+    @Override
+    public void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+        if (partida == null) return;
+        boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
+            codigoUnico,
+            DURACION_TURNO_SEGUNDOS,
+            () -> avanzarTurno(codigoUnico)
+        );
+        if (iniciado) notificarTurnoActual(partida, false);
+    }
+
+    @Override
+    public Jugador obtenerJugadorPorId(Long idJugador) {
+        return repositorioPartida.buscarJugadorPorId(idJugador);
     }
 
     private Jugador buscarJugadorPorTurno(List<Jugador> jugadores, Integer indice) {
         for (Jugador jugador : jugadores) {
-            if (jugador.getOrden() != null && jugador.getOrden().equals(indice)) {
+            if (indice.equals(jugador.getOrden())) {
                 return jugador;
             }
         }
@@ -172,31 +193,50 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void avanzarTurno(String codigoUnico) {
+        gestorTemporizador.cancelarTemporizador(codigoUnico);
+
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+        if (esPartidaConJugadoresInvalida(partida)) {
+            return;
+        }
 
-        if (
-            partida != null && partida.getJugadores() != null && !partida.getJugadores().isEmpty()
-        ) {
-            int cantidadJugadores = partida.getJugadores().size();
-            int indiceActual =
-                partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+        int indiceActual =
+            partida.getIndiceTurnoActual() != null ? partida.getIndiceTurnoActual() : 0;
+        incrementarRondas(partida);
 
-            incrementarRondas(partida);
-
-            int siguienteIndice = (indiceActual + 1) % cantidadJugadores;
-            partida.setIndiceTurnoActual(siguienteIndice);
+        Jugador candidato = buscarSiguienteJugadorActivo(partida, indiceActual, false);
+        if (candidato == null) {
+            // Si todos los jugadores activos estaban penalizados, termina el efecto
+            // de perder turno para que la partida nunca quede bloqueada.
+            candidato = buscarSiguienteJugadorActivo(partida, indiceActual, true);
+            if (candidato != null) candidato.setPierdeTurno(false);
+        }
+        if (candidato == null) {
             repositorioPartida.guardarPartida(partida);
+            gestorTemporizador.cancelarTemporizador(codigoUnico);
+            return;
+        }
 
-            Jugador jugadorSiguiente = obtenerJugadorActual(codigoUnico);
+        partida.setIndiceTurnoActual(candidato.getOrden());
+        repositorioPartida.guardarPartida(partida);
+        notificarTurnoActual(partida, true);
+    }
 
-            if (
-                jugadorSiguiente != null && Boolean.TRUE.equals(jugadorSiguiente.getPierdeTurno())
-            ) {
-                jugadorSiguiente.setPierdeTurno(false);
-                repositorioPartida.guardarPartida(partida);
-                avanzarTurno(codigoUnico);
+    private Jugador buscarSiguienteJugadorActivo(Partida partida, int indiceActual,
+                                                 boolean incluirJugadoresPenalizados) {
+        int cantidadJugadores = partida.getJugadores().size();
+        for (int desplazamiento = 1; desplazamiento <= cantidadJugadores; desplazamiento++) {
+            int siguienteIndice = (indiceActual + desplazamiento) % cantidadJugadores;
+            Jugador candidato = buscarJugadorPorTurno(partida.getJugadores(), siguienteIndice);
+            if (candidato != null && !candidato.getEnBancarrota()) {
+                if (Boolean.TRUE.equals(candidato.getPierdeTurno()) && !incluirJugadoresPenalizados) {
+                    candidato.setPierdeTurno(false);
+                } else {
+                    return candidato;
+                }
             }
         }
+        return null;
     }
 
     @Override
@@ -206,14 +246,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         validarSalaYPermisos(sala, idUsuario);
         validarFichasSeleccionadas(sala);
 
-        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
-        validarQueNoEsteEnCurso(partida);
-
-        if (partida == null) {
-            partida = crearPartidaDesdeSala(sala);
-        } else if (partida.getJugadores().isEmpty()) {
-            agregarJugadoresDesdeSala(partida, sala);
-        }
+        Partida partida = prepararYCrearPartida(codigo, sala);
 
         validarCantidadDeJugadores(partida);
         inicializarAtributosDeCadaJugador(partida);
@@ -224,18 +257,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
         repositorioPartida.guardarPartida(partida);
+
+        gestorTemporizador.cancelarTemporizador(codigo);
+        notificarTurnoActual(partida, false);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
+    private Partida prepararYCrearPartida(String codigo, SalaDeEspera sala)
+        throws PartidaIniciadaException, FichaNoDisponibleException {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
-
-        if (partida == null || partida.getJugadores() == null) {
-            return List.of();
+        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
+            throw new PartidaIniciadaException();
         }
 
-        return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDTO).toList();
+        if (partida == null) {
+            return crearPartidaDesdeSala(sala);
+        }
+
+        if (partida.getJugadores().isEmpty()) {
+            agregarJugadoresDesdeSala(partida, sala);
+        }
+        return partida;
     }
 
     private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
@@ -250,21 +291,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
-    private void validarQueNoEsteEnCurso(Partida partida) throws PartidaIniciadaException {
-        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
-            throw new PartidaIniciadaException();
-        }
-    }
-
     private Partida crearPartidaDesdeSala(SalaDeEspera sala) throws FichaNoDisponibleException {
         Partida partida = new Partida();
-
         partida.setCodigoUnico(sala.getCodigoUnico());
         partida.setCreador(sala.getCreador());
         partida.setEstado(EstadoPartida.EN_ESPERA);
-
         agregarJugadoresDesdeSala(partida, sala);
-
         return partida;
     }
 
@@ -277,6 +309,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             }
         }
     }
+
 
     private Jugador crearJugador(Usuario usuario) throws FichaNoDisponibleException {
         Jugador jugador = new Jugador();
@@ -292,42 +325,39 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private void validarCantidadDeJugadores(Partida partida)
         throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
-        List<Jugador> jugadores = partida.getJugadores();
-
-        if (jugadores.size() < CANTIDAD_MINIMA_DE_JUGADORES) {
+        int total = partida.getJugadores().size();
+        if (total < CANTIDAD_MINIMA_DE_JUGADORES) {
             throw new CantidadJugadoresInsuficienteException("Cantidad de jugadores insuficientes");
         }
-
-        if (jugadores.size() > CANTIDAD_MAXIMA_DE_JUGADORES) {
+        if (total > CANTIDAD_MAXIMA_DE_JUGADORES) {
             throw new CantidadMaximaJugadoresSuperadaException("Máxima de jugadores superados");
         }
     }
 
     private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida) {
-        List<Jugador> jugadores = partida.getJugadores();
-
-        if (jugadores != null && !jugadores.isEmpty()) {
-            Integer turnoAleatorio = random.nextInt(jugadores.size());
-
-            Jugador jugadorSeleccionado = jugadores.get(turnoAleatorio);
-
-            partida.setJugadorTurnoAleatorio(jugadorSeleccionado);
-            partida.setIndiceTurnoActual(jugadorSeleccionado.getOrden());
+        if (partida.getJugadores() == null || partida.getJugadores().isEmpty()) {
+            return;
         }
+        Jugador seleccionado = partida
+            .getJugadores()
+            .get(random.nextInt(partida.getJugadores().size()));
+        partida.setJugadorTurnoAleatorio(seleccionado);
+        partida.setIndiceTurnoActual(seleccionado.getOrden());
     }
 
     private void inicializarAtributosDeCadaJugador(Partida partida) {
-        if (partida.getJugadores() != null) {
-            for (Jugador jugador : partida.getJugadores()) {
-                jugador.setDinero(CANTIDAD_INICIAL_DINERO);
-                jugador.setPosicionActual(POSICION_INICIAL);
-            }
+        if (partida.getJugadores() == null) {
+            return;
+        }
+        for (Jugador jugador : partida.getJugadores()) {
+            jugador.setDinero(CANTIDAD_INICIAL_DINERO);
+            jugador.setPosicionActual(POSICION_INICIAL);
+            jugador.setEnBancarrota(false);
         }
     }
 
     private void asignarOrdenInicialJugadores(Partida partida) {
         int orden = 0;
-
         for (Jugador jugador : partida.getJugadores()) {
             jugador.setOrden(orden);
             jugador.setPierdeTurno(false);
@@ -335,12 +365,50 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo);
+        if (esPartidaConJugadoresInvalida(partida)) {
+            return List.of();
+        }
+        return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDTO).toList();
+    }
+
     private PosicionFichaDTO mapearAJugadorPosicionDTO(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
         Integer posicion =
             jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
-
         return new PosicionFichaDTO(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
+    }
+
+    private void notificarTurnoActual(Partida partida, boolean iniciarTemporizador) {
+        Jugador jugadorActual = obtenerJugadorActual(partida.getCodigoUnico());
+        if (jugadorActual != null && iniciarTemporizador && partida.getCodigoUnico() != null) {
+            gestorTemporizador.programarTemporizador(
+                partida.getCodigoUnico(),
+                DURACION_TURNO_SEGUNDOS,
+                () -> avanzarTurno(partida.getCodigoUnico())
+            );
+        }
+        if (jugadorActual != null && notificadorPartida != null) {
+            TurnoDTO turnoDTO = new TurnoDTO(
+                partida.getCodigoUnico(),
+                jugadorActual.getId(),
+                jugadorActual.getApodo(),
+                jugadorActual.getOrden(),
+                "Es el turno de " + jugadorActual.getApodo(),
+                obtenerSegundosRestantesTurno(partida.getCodigoUnico())
+            );
+            turnoDTO.setRondaActual(partida.getRondaActual());
+            notificadorPartida.notificarCambioDeTurno(partida.getCodigoUnico(), turnoDTO);
+        }
+    }
+
+    private boolean esPartidaConJugadoresInvalida(Partida partida) {
+        return (
+            partida == null || partida.getJugadores() == null || partida.getJugadores().isEmpty()
+        );
     }
 
     private String obtenerNombreFichaSegura(Jugador jugador) {
@@ -349,6 +417,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
         return null;
     }
+
 
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
         for (Usuario usuario : sala.getUsuarios()) {
