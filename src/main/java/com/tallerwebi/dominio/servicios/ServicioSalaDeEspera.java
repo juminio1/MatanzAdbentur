@@ -17,13 +17,13 @@ public interface ServicioSalaDeEspera {
     SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException;
 
     SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
-        throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException;
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException;
 
     void abandonarSala(Long idUsuario, String codigoUnico)
-        throws UsuarioNoEncontradoException, SalaNoEncontradaException;
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException;
 
     SalaDeEspera obtenerSalaPorCodigo(String codigoUnico) throws SalaNoEncontradaException;
 
     void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
-        throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException;
+            throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException;
 }

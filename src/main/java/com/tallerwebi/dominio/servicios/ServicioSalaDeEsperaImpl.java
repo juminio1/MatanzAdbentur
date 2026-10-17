@@ -14,6 +14,7 @@ import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -137,8 +138,19 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
     private SalaActualizadaDTO obtenerEstadoSala(SalaDeEspera sala) {
         List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
+        List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
 
-        return new SalaActualizadaDTO(sala.getCodigoUnico(), usernames);
+        // Mapear cada usuario con su ficha elegida
+        Map<String, String> asignadas = new java.util.HashMap<>();
+        for (Usuario u : sala.getUsuarios()) {
+            if (u.getFicha() != null) {
+                asignadas.put(u.getUsername(), u.getFicha().name());
+            }
+        }
+
+        SalaActualizadaDTO dto = new SalaActualizadaDTO(sala.getCodigoUnico(), usernames, fichas);
+        dto.setFichasAsignadas(asignadas);
+        return dto;
     }
 
     private void notificarCambioDeSala(SalaDeEspera sala) {
@@ -200,5 +212,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         repositorioUsuario.modificar(usuario);
         repositorioSalaDeEspera.modificar(sala);
+
+        notificarCambioDeSala(sala);
     }
 }

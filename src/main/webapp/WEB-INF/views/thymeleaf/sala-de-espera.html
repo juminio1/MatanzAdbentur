@@ -212,62 +212,57 @@
                     <!-- JUGADORES CONECTADOS -->
                     <div class="salaEspera__jugador" th:each="usuario : ${usuarios}">
 
-                        <div class="avatar avatar--azul">
-
-                                <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
-                                    U
-                                </span>
-
+                        <!-- Avatar con el color de su ficha (o azul si aún no eligió) -->
+                        <div class="avatar"
+                             th:classappend="${usuario.ficha != null ? 'avatar--' + #strings.toLowerCase(usuario.ficha.name()) : 'avatar--azul'}">
+                            <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
+                                U
+                            </span>
                         </div>
 
                         <div class="salaEspera__jugadorInfo">
-
                             <strong th:text="${usuario.username}">
                                 Nombre del jugador
                             </strong>
 
                             <div class="salaEspera__listo">
                                 <span></span>
-                                Listo
+                                <th:block th:text="${usuario.ficha != null ? 'Listo' : 'Eligiendo ficha...'}">Listo</th:block>
                             </div>
-
                         </div>
 
-                        <button class="salaEspera__menu" type="button">
-                            ⋮
-                        </button>
+                        <!-- MINI-FICHA (Reemplaza a los caracteres raros) -->
+                        <div class="salaEspera__jugadorFicha"
+                             th:classappend="${usuario.ficha != null ? 'salaEspera__jugadorFicha--' + #strings.toLowerCase(usuario.ficha.name()) : 'salaEspera__jugadorFicha--vacia'}"
+                             th:text="${usuario.ficha != null ? '' : '?'}"
+                             th:title="${usuario.ficha != null ? 'Ficha: ' + usuario.ficha.name() : 'Aún no eligió ficha'}">
+                        </div>
 
                     </div>
 
                     <!-- LUGARES DISPONIBLES -->
                     <th:block th:if="${cantidadUsuarios < 4}">
-
                         <div class="salaEspera__jugador salaEspera__jugador--vacio"
                              th:each="i : ${#numbers.sequence(cantidadUsuarios + 1, 4)}">
 
                             <div class="avatar avatar--vacio"></div>
 
                             <div class="salaEspera__jugadorInfo">
-
                                 <strong>
                                     Esperando jugador...
                                 </strong>
-
                                 <small>
                                     Esperando que alguien se una
                                 </small>
-
                             </div>
 
-                            <button class="salaEspera__menu" type="button">
-                            </button>
+                            <div class="salaEspera__jugadorFicha salaEspera__jugadorFicha--vacia" style="visibility: hidden;">
+                            </div>
 
                         </div>
-
                     </th:block>
 
                 </div>
-
             </article>
             <!-- FIN COLUMNA DERECHA -->
 
@@ -303,7 +298,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <!-- SCRIPTS DE LA APLICACIÓN -->
-<script th:src="@{/js/sala-de-espera.js}"></script>
+<script th:src="@{/js/sala-de-espera.js(v=fichas-1)}"></script>
 <script th:src="@{/js/menu-usuario.js(v=100)}"></script>
 </body>
 
