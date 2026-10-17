@@ -107,7 +107,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--rojo" type="button" data-ficha="ROJO"
                                 onclick="seleccionarFicha('ROJO')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -123,7 +127,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--azul" type="button" data-ficha="AZUL"
                                 onclick="seleccionarFicha('AZUL')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -139,7 +147,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--verde" type="button" data-ficha="VERDE"
                                 onclick="seleccionarFicha('VERDE')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -155,7 +167,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--amarillo" type="button"
                                 data-ficha="AMARILLO" onclick="seleccionarFicha('AMARILLO')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -221,9 +237,17 @@
                         </div>
 
                         <div class="salaEspera__jugadorInfo">
-                            <strong th:text="${usuario.username}">
-                                Nombre del jugador
-                            </strong>
+                            <div class="salaEspera__nombre">
+                                <strong th:text="${usuario.username}">Nombre</strong>
+
+                                <!-- Corona si es el creador -->
+                                <svg th:if="${creador != null and (creador.id == usuario.id or creador.username == usuario.username)}"
+                                     class="corona" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="#f59e0b" stroke="#d97706" stroke-width="1.2"
+                                     title="Anfitrión de la sala">
+                                    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5v-2z"/>
+                                </svg>
+                            </div>
 
                             <div class="salaEspera__listo"
                                  th:style="${usuario.ficha == null ? 'color: #8b96a4;' : ''}">

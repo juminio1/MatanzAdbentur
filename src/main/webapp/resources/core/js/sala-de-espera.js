@@ -123,11 +123,32 @@ function actualizarJugadores(salaActualizada) {
         }
         avatar.textContent = username.charAt(0).toUpperCase();
 
-        const info = document.createElement("div");
+const info = document.createElement("div");
         info.className = "salaEspera__jugadorInfo";
+
+        const nombreWrapper = document.createElement("div");
+        nombreWrapper.className = "salaEspera__nombre";
 
         const nombre = document.createElement("strong");
         nombre.textContent = username;
+        nombreWrapper.appendChild(nombre);
+
+        // Si es el creador de la sala, le agregamos la corona dorada SVG
+        if (salaActualizada.creador && username === salaActualizada.creador) {
+            const corona = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            corona.setAttribute("class", "corona");
+            corona.setAttribute("width", "16");
+            corona.setAttribute("height", "16");
+            corona.setAttribute("viewBox", "0 0 24 24");
+            corona.setAttribute("fill", "#f59e0b");
+            corona.setAttribute("stroke", "#d97706");
+            corona.setAttribute("stroke-width", "1.2");
+            corona.setAttribute("title", "Anfitrión de la sala");
+            corona.innerHTML = '<path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5v-2z"/>';
+            nombreWrapper.appendChild(corona);
+        }
+
+        info.appendChild(nombreWrapper);
 
         // Estado: verde con "Listo" si eligió ficha, gris con "Sin ficha" si aún no eligió
         const listo = document.createElement("div");

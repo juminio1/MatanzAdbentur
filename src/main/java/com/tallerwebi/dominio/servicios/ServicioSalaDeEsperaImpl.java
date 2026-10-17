@@ -140,7 +140,6 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
         List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
 
-        // Mapear cada usuario con su ficha elegida
         Map<String, String> asignadas = new java.util.HashMap<>();
         for (Usuario u : sala.getUsuarios()) {
             if (u.getFicha() != null) {
@@ -150,6 +149,12 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         SalaActualizadaDTO dto = new SalaActualizadaDTO(sala.getCodigoUnico(), usernames, fichas);
         dto.setFichasAsignadas(asignadas);
+
+        // Seteamos el creador de la sala
+        if (sala.getCreador() != null) {
+            dto.setCreador(sala.getCreador().getUsername());
+        }
+
         return dto;
     }
 
