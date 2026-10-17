@@ -32,17 +32,26 @@ public class ControladorSalaEsperaWebSocket {
     @MessageMapping("/seleccionar-ficha")
     public void seleccionarFicha(SeleccionFichaDTO seleccion) {
         try {
+            // 1. Invocar al servicio
             servicioSalaDeEspera.seleccionarFicha(
                     seleccion.getCodigoUnicoPartida(),
                     seleccion.getIdUsuario(),
                     seleccion.getFichaSeleccionada()
             );
 
+            // 2. Notificar la selección a la partida (lo que espera el test)
+            if (messagingTemplate != null) {
+                messagingTemplate.convertAndSend(
+                        "/topic/partida/" + seleccion.getCodigoUnicoPartida(),
+                        seleccion
+                );
+            }
+
         } catch (FichaOcupadaException e) {
             if (messagingTemplate != null) {
                 messagingTemplate.convertAndSend(
                         "/topic/partida/" + seleccion.getCodigoUnicoPartida() + "/errores",
-                        "La ficha seleccionada ya está ocupada por otro jugador."
+                        "La ficha ya se encuentra seleccionada"
                 );
             }
         } catch (Exception e) {
