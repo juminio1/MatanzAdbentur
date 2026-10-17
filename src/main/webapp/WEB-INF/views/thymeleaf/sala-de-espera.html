@@ -107,7 +107,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--rojo" type="button" data-ficha="ROJO"
                                 onclick="seleccionarFicha('ROJO')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -123,7 +127,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--azul" type="button" data-ficha="AZUL"
                                 onclick="seleccionarFicha('AZUL')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -139,7 +147,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--verde" type="button" data-ficha="VERDE"
                                 onclick="seleccionarFicha('VERDE')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -155,7 +167,11 @@
                         <button class="salaEspera__ficha salaEspera__ficha--amarillo" type="button"
                                 data-ficha="AMARILLO" onclick="seleccionarFicha('AMARILLO')">
 
-                            <div class="salaEspera__check" style="display: none;">✓</div>
+                            <div class="salaEspera__check" style="display: none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
 
                             <div class="peon">
                                 <div class="peon__cabeza"></div>
@@ -212,62 +228,66 @@
                     <!-- JUGADORES CONECTADOS -->
                     <div class="salaEspera__jugador" th:each="usuario : ${usuarios}">
 
-                        <div class="avatar avatar--azul">
-
-                                <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
-                                    U
-                                </span>
-
+                        <!-- Avatar con color de ficha o azul -->
+                        <div class="avatar"
+                             th:classappend="${usuario.ficha != null} ? |avatar--${#strings.toLowerCase(usuario.ficha)}| : 'avatar--azul'">
+                            <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
+                                U
+                            </span>
                         </div>
 
                         <div class="salaEspera__jugadorInfo">
+                            <div class="salaEspera__nombre">
+                                <strong th:text="${usuario.username}">Nombre</strong>
 
-                            <strong th:text="${usuario.username}">
-                                Nombre del jugador
-                            </strong>
-
-                            <div class="salaEspera__listo">
-                                <span></span>
-                                Listo
+                                <!-- Corona si es el creador -->
+                                <svg th:if="${creador != null and (creador.id == usuario.id or creador.username == usuario.username)}"
+                                     class="corona" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="#f59e0b" stroke="#d97706" stroke-width="1.2"
+                                     title="Anfitrión de la sala">
+                                    <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v2H5v-2z"/>
+                                </svg>
                             </div>
 
+                            <div class="salaEspera__listo"
+                                 th:style="${usuario.ficha == null ? 'color: #8b96a4;' : ''}">
+                                <span th:style="${usuario.ficha == null ? 'background: #8b96a4;' : ''}"></span>
+                                <th:block th:text="${usuario.ficha != null ? 'Listo' : 'Sin ficha'}">Listo</th:block>
+                            </div>
                         </div>
 
-                        <button class="salaEspera__menu" type="button">
-                            ⋮
-                        </button>
+                        <!-- Mini-ficha sin doble guion bajo -->
+                        <div class="salaEspera__jugadorFicha"
+                             th:classappend="${usuario.ficha != null ? 'ficha-' + #strings.toLowerCase(usuario.ficha) : 'ficha-vacia'}"
+                             th:text="${usuario.ficha == null ? '?' : ''}"
+                             th:title="${usuario.ficha != null ? 'Ficha: ' + usuario.ficha : 'Aún no eligió ficha'}">
+                        </div>
 
                     </div>
 
                     <!-- LUGARES DISPONIBLES -->
                     <th:block th:if="${cantidadUsuarios < 4}">
-
                         <div class="salaEspera__jugador salaEspera__jugador--vacio"
                              th:each="i : ${#numbers.sequence(cantidadUsuarios + 1, 4)}">
 
                             <div class="avatar avatar--vacio"></div>
 
                             <div class="salaEspera__jugadorInfo">
-
                                 <strong>
                                     Esperando jugador...
                                 </strong>
-
                                 <small>
                                     Esperando que alguien se una
                                 </small>
-
                             </div>
 
-                            <button class="salaEspera__menu" type="button">
-                            </button>
+                            <div class="salaEspera__jugadorFicha salaEspera__jugadorFicha--vacia" style="visibility: hidden;">
+                            </div>
 
                         </div>
-
                     </th:block>
 
                 </div>
-
             </article>
             <!-- FIN COLUMNA DERECHA -->
 
@@ -277,22 +297,14 @@
         <section class="salaEspera__acciones">
 
             <form th:action="@{/iniciar-partida}" method="post">
-
                 <input type="hidden" name="codigoUnico" th:value="${codigoUnico}">
-
                 <button type="submit" class="salaEspera__iniciar">
                     Iniciar partida
                 </button>
-
             </form>
 
             <div th:if="${errorIniciarPartida}" class="salaEspera__error" th:text="${errorIniciarPartida}">
             </div>
-
-            <button type="button" class="salaEspera__invitar">
-                Invitar
-            </button>
-
         </section>
 
     </div>
@@ -303,7 +315,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <!-- SCRIPTS DE LA APLICACIÓN -->
-<script th:src="@{/js/sala-de-espera.js}"></script>
+<script th:src="@{/js/sala-de-espera.js(v=fichas-1)}"></script>
 <script th:src="@{/js/menu-usuario.js(v=100)}"></script>
 </body>
 

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
@@ -382,7 +384,32 @@ public void queSeleccionarLaMismaFichaNoGenereUnaExcepcion() {
     assertEquals(ColorFicha.AZUL, usuario.getFicha());
     assertEquals(1, sala.getFichasOcupadas().size());
 }
+    @Test
+    public void queSePuedaSeleccionarUnaFichaLibreYSeNotifiqueALaSala() throws Exception {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+        usuario.setUsername("rafael");
 
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(usuario);
 
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
+
+        assertEquals(ColorFicha.ROJO, usuario.getFicha());
+        assertTrue(sala.getFichasOcupadas().contains(ColorFicha.ROJO));
+
+        verify(this.repositorioUsuarioMock).modificar(usuario);
+        verify(this.repositorioSalaDeEsperaMock).modificar(sala);
+
+        // Verifica que notificadorSala haya recibido el DTO con la ficha ocupada y asignada
+        verify(this.notificadorSalaMock).notificarSalaActualizada(argThat(dto ->
+                "ABC123".equals(dto.getCodigo()) &&
+                        dto.getFichasOcupadas().contains("ROJO") &&
+                        "ROJO".equals(dto.getFichasAsignadas().get("rafael"))
+        ));
+    }
 }
 
