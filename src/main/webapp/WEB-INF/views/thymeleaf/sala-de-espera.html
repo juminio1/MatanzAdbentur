@@ -212,9 +212,9 @@
                     <!-- JUGADORES CONECTADOS -->
                     <div class="salaEspera__jugador" th:each="usuario : ${usuarios}">
 
-                        <!-- Avatar con el color de su ficha (o azul si aún no eligió) -->
+                        <!-- Avatar con color de ficha o azul -->
                         <div class="avatar"
-                             th:classappend="${usuario.ficha != null ? 'avatar--' + #strings.toLowerCase(usuario.ficha.name()) : 'avatar--azul'}">
+                             th:classappend="${usuario.ficha != null} ? |avatar--${#strings.toLowerCase(usuario.ficha)}| : 'avatar--azul'">
                             <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
                                 U
                             </span>
@@ -225,17 +225,18 @@
                                 Nombre del jugador
                             </strong>
 
-                            <div class="salaEspera__listo">
-                                <span></span>
-                                <th:block th:text="${usuario.ficha != null ? 'Listo' : 'Eligiendo ficha...'}">Listo</th:block>
+                            <div class="salaEspera__listo"
+                                 th:style="${usuario.ficha == null ? 'color: #8b96a4;' : ''}">
+                                <span th:style="${usuario.ficha == null ? 'background: #8b96a4;' : ''}"></span>
+                                <th:block th:text="${usuario.ficha != null ? 'Listo' : 'Sin ficha'}">Listo</th:block>
                             </div>
                         </div>
 
-                        <!-- MINI-FICHA (Reemplaza a los caracteres raros) -->
+                        <!-- Mini-ficha sin doble guion bajo -->
                         <div class="salaEspera__jugadorFicha"
-                             th:classappend="${usuario.ficha != null ? 'salaEspera__jugadorFicha--' + #strings.toLowerCase(usuario.ficha.name()) : 'salaEspera__jugadorFicha--vacia'}"
-                             th:text="${usuario.ficha != null ? '' : '?'}"
-                             th:title="${usuario.ficha != null ? 'Ficha: ' + usuario.ficha.name() : 'Aún no eligió ficha'}">
+                             th:classappend="${usuario.ficha != null ? 'ficha-' + #strings.toLowerCase(usuario.ficha) : 'ficha-vacia'}"
+                             th:text="${usuario.ficha == null ? '?' : ''}"
+                             th:title="${usuario.ficha != null ? 'Ficha: ' + usuario.ficha : 'Aún no eligió ficha'}">
                         </div>
 
                     </div>
@@ -272,22 +273,14 @@
         <section class="salaEspera__acciones">
 
             <form th:action="@{/iniciar-partida}" method="post">
-
                 <input type="hidden" name="codigoUnico" th:value="${codigoUnico}">
-
                 <button type="submit" class="salaEspera__iniciar">
                     Iniciar partida
                 </button>
-
             </form>
 
             <div th:if="${errorIniciarPartida}" class="salaEspera__error" th:text="${errorIniciarPartida}">
             </div>
-
-            <button type="button" class="salaEspera__invitar">
-                Invitar
-            </button>
-
         </section>
 
     </div>

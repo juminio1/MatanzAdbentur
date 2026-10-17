@@ -129,25 +129,31 @@ function actualizarJugadores(salaActualizada) {
         const nombre = document.createElement("strong");
         nombre.textContent = username;
 
+        // Estado: verde con "Listo" si eligió ficha, gris con "Sin ficha" si aún no eligió
         const listo = document.createElement("div");
         listo.className = "salaEspera__listo";
 
         const punto = document.createElement("span");
+        if (!colorFicha) {
+            punto.style.background = "#8b96a4";
+            listo.style.color = "#8b96a4";
+        }
+
         listo.appendChild(punto);
-        listo.appendChild(document.createTextNode(colorFicha ? "Listo" : "Eligiendo ficha..."));
+        listo.appendChild(document.createTextNode(colorFicha ? "Listo" : "Sin ficha"));
 
         info.appendChild(nombre);
         info.appendChild(listo);
 
-        // INDICADOR DE FICHA (reemplaza los caracteres raros)
+        // INDICADOR DE FICHA (muestra el círculo de color o el ?)
         const badgeFicha = document.createElement("div");
         badgeFicha.className = "salaEspera__jugadorFicha";
 
         if (colorFicha) {
-            badgeFicha.classList.add(`salaEspera__jugadorFicha--${colorFicha.toLowerCase()}`);
+            badgeFicha.classList.add(`ficha-${colorFicha.toLowerCase()}`, `salaEspera__jugadorFicha--${colorFicha.toLowerCase()}`);
             badgeFicha.title = `Ficha elegida: ${colorFicha}`;
         } else {
-            badgeFicha.classList.add("salaEspera__jugadorFicha--vacia");
+            badgeFicha.classList.add("ficha-vacia", "salaEspera__jugadorFicha--vacia");
             badgeFicha.textContent = "?";
             badgeFicha.title = "Aún no seleccionó ficha";
         }
