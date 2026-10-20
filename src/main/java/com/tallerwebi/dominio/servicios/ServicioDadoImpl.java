@@ -11,8 +11,6 @@ public class ServicioDadoImpl implements ServicioDado {
 
     @Override
     public ResultadoTiradaDTO tirarDados() {
-        int d1 = random.nextInt(6) + 1; // Genera valor entre 1 y 6
-        int d2 = random.nextInt(6) + 1; // Genera valor entre 1 y 6
-        return new ResultadoTiradaDTO(d1, d2);
+        return new ResultadoTiradaDTO(random.nextInt(6) + 1, random.nextInt(6) + 1);
     }
 }

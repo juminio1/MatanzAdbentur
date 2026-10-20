@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
@@ -17,11 +19,15 @@ import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
+import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorSalaWebSocket;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 public class ServicioSalaDeEsperaTest {
 
@@ -39,7 +45,7 @@ public class ServicioSalaDeEsperaTest {
         this.servicioSalaDeEspera = new ServicioSalaDeEsperaImpl(
             this.repositorioSalaDeEsperaMock,
             this.repositorioUsuarioMock,
-            this.notificadorSalaMock
+            new PublicadorEventos<>(List.of(new ObservadorSalaWebSocket(this.notificadorSalaMock)))
         );
     }
 
@@ -52,6 +58,60 @@ public class ServicioSalaDeEsperaTest {
         usuario.setRol("USER");
 
         return usuario;
+    }
+
+    @Test
+    public void notificaLaInstantaneaDeSalaSolamenteDespuesDelCommit() throws Exception {
+        SalaDeEspera sala = prepararSalaParaObservadores();
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            servicioSalaDeEspera.seleccionarFicha("OBSERVER", 1L, ColorFicha.ROJO);
+            verifyNoInteractions(notificadorSalaMock);
+            sala.getFichasOcupadas().clear();
+            sala.getUsuarios().get(0).setUsername("Nombre cambiado");
+
+            TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+
+            verify(notificadorSalaMock).notificarSalaActualizada(argThat(estado ->
+                    estado.getUsernames().equals(List.of("Ana"))
+                    && estado.getFichasOcupadas().equals(List.of("ROJO"))
+                    && estado.getFichasAsignadas().equals(java.util.Map.of("Ana", "ROJO"))));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    @Test
+    public void noNotificaLaSalaCuandoLaTransaccionSeRevierte() throws Exception {
+        prepararSalaParaObservadores();
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            servicioSalaDeEspera.seleccionarFicha("OBSERVER", 1L, ColorFicha.ROJO);
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(sincronizacion ->
+                    sincronizacion.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+
+            verifyNoInteractions(notificadorSalaMock);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+
+    private SalaDeEspera prepararSalaParaObservadores() {
+        Usuario usuario = crearUsuarioEjemplo(1L, "ana@example.test");
+        usuario.setUsername("Ana");
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("OBSERVER");
+        sala.setCreador(usuario);
+        sala.getUsuarios().add(usuario);
+        when(repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(repositorioSalaDeEsperaMock.buscarPorCodigo("OBSERVER")).thenReturn(sala);
+        return sala;
     }
 
     @Test
@@ -382,7 +442,32 @@ public void queSeleccionarLaMismaFichaNoGenereUnaExcepcion() {
     assertEquals(ColorFicha.AZUL, usuario.getFicha());
     assertEquals(1, sala.getFichasOcupadas().size());
 }
+    @Test
+    public void queSePuedaSeleccionarUnaFichaLibreYSeNotifiqueALaSala() throws Exception {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+        usuario.setUsername("rafael");
 
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(usuario);
 
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
+
+        assertEquals(ColorFicha.ROJO, usuario.getFicha());
+        assertTrue(sala.getFichasOcupadas().contains(ColorFicha.ROJO));
+
+        verify(this.repositorioUsuarioMock).modificar(usuario);
+        verify(this.repositorioSalaDeEsperaMock).modificar(sala);
+
+        // Verifica que notificadorSala haya recibido el DTO con la ficha ocupada y asignada
+        verify(this.notificadorSalaMock).notificarSalaActualizada(argThat(dto ->
+                "ABC123".equals(dto.getCodigo()) &&
+                        dto.getFichasOcupadas().contains("ROJO") &&
+                        "ROJO".equals(dto.getFichasAsignadas().get("rafael"))
+        ));
+    }
 }
 

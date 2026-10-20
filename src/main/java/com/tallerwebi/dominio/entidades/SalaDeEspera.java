@@ -43,6 +43,7 @@ public class SalaDeEspera {
 
     @ElementCollection
     @Enumerated(EnumType.STRING)
+    @Column(name = "fichasOcupadas", length = 20, columnDefinition = "varchar(20)")
     private List<ColorFicha> fichasOcupadas;
 
     public SalaDeEspera() {

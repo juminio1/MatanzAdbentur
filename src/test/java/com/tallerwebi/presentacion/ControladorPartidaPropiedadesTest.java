@@ -27,6 +27,8 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 class ControladorPartidaPropiedadesTest {
 
@@ -47,6 +49,93 @@ class ControladorPartidaPropiedadesTest {
         servicioCasillero = mock(ServicioCasillero.class);
         servicioPropiedad = mock(ServicioPropiedad.class);
         controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
+    }
+
+    @Test
+    void lasOperacionesDePropiedadConservanNotFoundParaPosicionesQueNoSonPropiedades() {
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(crearPartida());
+
+        assertEquals(HttpStatus.NOT_FOUND, controlador.obtenerInfoPropiedad(CODIGO, 0).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, controlador.comprarPropiedad(CODIGO, 0).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, controlador.venderPropiedad(
+                CODIGO, 0, new MockHttpServletRequest()).getStatusCode());
+        verify(servicioCasillero, never()).obtenerTodosLosCasilleros();
+    }
+
+    @Test
+    void ignoraCasillerosDeOtraPartidaYSinPropiedadAlConsultarElCatalogo() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 0);
+        partida.setJugadores(List.of(jugador));
+        CasilleroPropiedad ajeno = crearCasillero(crearPropiedad(jugador));
+        ajeno.setPartidaId(99L);
+        CasilleroPropiedad sinPropiedad = crearCasillero(null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", jugador.getId());
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(ajeno, sinPropiedad));
+
+        Map<String, Object> individual = controlador.obtenerInfoPropiedad(CODIGO, 4).getBody();
+        List<?> catalogo = (List<?>) controlador.obtenerPropiedadesTablero(CODIGO, request).getBody();
+
+        assertEquals(true, individual.get("disponible"));
+        assertNull(individual.get("propietarioId"));
+        assertEquals(individual, catalogo.get(2));
+    }
+
+    @Test
+    void mejoraLaPropiedadDelJugadorActivoYPublicaSuSaldoActualizado() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 4);
+        partida.setJugadores(List.of(jugador));
+        Propiedad propiedad = crearPropiedad(jugador);
+        CasilleroPropiedad casillero = crearCasillero(propiedad);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", jugador.getId());
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorPorId(jugador.getId())).thenReturn(jugador);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(jugador);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(casillero));
+        when(servicioPropiedad.obtenerPropiedadExistente(ID_PROPIEDAD)).thenReturn(propiedad);
+        when(servicioPropiedad.calcularAlquiler(casillero, propiedad)).thenReturn(100);
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.subirAlquilerPropiedad(CODIGO, 4, request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(100, respuesta.getBody().get("alquiler"));
+        assertEquals(1000, respuesta.getBody().get("dineroJugador"));
+        verify(servicioPropiedad).mejorarPropiedad(ID_PROPIEDAD, jugador);
+        verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
+    }
+
+    @Test
+    void rechazaLaMejoraCuandoElJugadorNoTieneElTurno() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 4);
+        partida.setJugadores(List.of(jugador));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", jugador.getId());
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorPorId(jugador.getId())).thenReturn(jugador);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(crearJugador(2L, "Luna", 1000, 0));
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.subirAlquilerPropiedad(CODIGO, 4, request);
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        assertEquals("Solo podés subir alquileres durante tu turno.", respuesta.getBody().get("error"));
+        verify(servicioPropiedad, never()).mejorarPropiedad(any(), any());
+    }
+
+    @Test
+    void rechazaLaCompraSinJugadorActivoSinConsultarNuevamenteElTurno() {
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(crearPartida());
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.comprarPropiedad(CODIGO, 1);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals("No hay un jugador activo en esta partida.", respuesta.getBody().get("error"));
+        verify(servicioPartida).obtenerJugadorActual(CODIGO);
+        verify(servicioPropiedad, never()).comprarPropiedadParaJugador(any(), any());
     }
 
     @Test
@@ -122,7 +211,7 @@ class ControladorPartidaPropiedadesTest {
         Propiedad propiedad = crearPropiedad(null);
         CasilleroPropiedad casillero = crearCasillero(propiedad, 1);
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
-        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(comprador, comprador, siguiente);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(comprador, siguiente);
         when(servicioPartida.obtenerJugadorPorId(comprador.getId())).thenReturn(comprador);
         when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(casillero));
         when(servicioPropiedad.obtenerPropiedadExistente(ID_PROPIEDAD)).thenReturn(propiedad);
@@ -139,6 +228,7 @@ class ControladorPartidaPropiedadesTest {
         assertEquals(siguiente.getId(), respuesta.getBody().get("idJugadorActual"));
         assertEquals(false, respuesta.getBody().get("disponible"));
         verify(servicioPartida).avanzarTurno(CODIGO);
+        verify(servicioPartida, times(2)).obtenerJugadorActual(CODIGO);
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
     }
 

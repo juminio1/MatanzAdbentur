@@ -64,7 +64,7 @@ public class ControladorOfertaPropiedad {
             HttpServletRequest request) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null || !POSICIONES_PROPIEDAD.contains(posicion)) return ResponseEntity.notFound().build();
-        Long idVendedor = jugadorSesion(partida, request);
+        Long idVendedor = ResolutorJugadorSesion.resolver(partida, request);
         Long idComprador = numeroLong(datos.get("idJugadorComprador"));
         Integer precio = numeroInteger(datos.get("precio"));
         if (!participantesValidos(partida, idVendedor, idComprador) || precio == null) {
@@ -86,8 +86,8 @@ public class ControladorOfertaPropiedad {
                                                 HttpServletRequest request) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
-        Long idJugador = jugadorSesion(partida, request);
-        if (!pertenece(partida, idJugador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
+        Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
+        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
         Instant ahora = Instant.now();
         List<Map<String, Object>> resultado = ofertas.values().stream()
                 .filter(oferta -> oferta.codigoPartida.equals(codigoPartida)
@@ -107,8 +107,8 @@ public class ControladorOfertaPropiedad {
             HttpServletRequest request) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
-        Long idComprador = jugadorSesion(partida, request);
-        if (!pertenece(partida, idComprador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
+        Long idComprador = ResolutorJugadorSesion.resolver(partida, request);
+        if (!ResolutorJugadorSesion.pertenece(partida, idComprador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
         OfertaVenta oferta = ofertas.get(idOferta);
         if (!esOfertaVigente(oferta, codigoPartida, idComprador)) {
             return error(HttpStatus.CONFLICT, "La oferta ya no está disponible.");
@@ -192,37 +192,28 @@ public class ControladorOfertaPropiedad {
                 .findFirst().orElse(null);
     }
 
-    private boolean participantesValidos(Partida partida, Long vendedor, Long comprador) {
+    private Boolean participantesValidos(Partida partida, Long vendedor, Long comprador) {
         return vendedor != null && comprador != null && !vendedor.equals(comprador)
                 && puedeParticipar(partida, vendedor) && puedeParticipar(partida, comprador);
     }
 
-    private boolean puedeParticipar(Partida partida, Long idJugador) {
+    private Boolean puedeParticipar(Partida partida, Long idJugador) {
         Jugador jugador = idJugador == null ? null : servicioPartida.obtenerJugadorPorId(idJugador);
-        return jugador != null && !jugador.getEnBancarrota() && pertenece(partida, idJugador);
+        return jugador != null && !jugador.getEnBancarrota() && ResolutorJugadorSesion.pertenece(partida, idJugador);
     }
 
-    private boolean pertenece(Partida partida, Long idJugador) {
-        return idJugador != null && partida.getJugadores() != null
-                && partida.getJugadores().stream().anyMatch(jugador -> idJugador.equals(jugador.getId()));
-    }
 
-    private boolean perteneceAlVendedor(CasilleroPropiedad casillero, Long idVendedor) {
+    private Boolean perteneceAlVendedor(CasilleroPropiedad casillero, Long idVendedor) {
         return casillero != null && casillero.getPropiedad() != null
                 && casillero.getPropiedad().getPropietario() != null
                 && idVendedor.equals(casillero.getPropiedad().getPropietario().getId());
     }
 
-    private boolean esOfertaVigente(OfertaVenta oferta, String codigoPartida, Long idComprador) {
+    private Boolean esOfertaVigente(OfertaVenta oferta, String codigoPartida, Long idComprador) {
         return oferta != null && oferta.codigoPartida.equals(codigoPartida)
                 && oferta.idComprador.equals(idComprador) && oferta.expira.isAfter(Instant.now());
     }
 
-    private Long jugadorSesion(Partida partida, HttpServletRequest request) {
-        Long idUsuario = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
-        String nombre = (String) request.getSession().getAttribute("NOMBRE");
-        return ResolutorJugadorSesion.resolver(partida, idUsuario, nombre);
-    }
 
     private Long numeroLong(Object valor) {
         return valor instanceof Number numero ? numero.longValue() : null;
@@ -230,8 +221,8 @@ public class ControladorOfertaPropiedad {
 
     private Integer numeroInteger(Object valor) {
         if (!(valor instanceof Number numero)) return null;
-        long precio = numero.longValue();
-        return precio < 0 || precio > Integer.MAX_VALUE ? null : (int) precio;
+        Long precio = numero.longValue();
+        return precio < 0 || precio > Integer.MAX_VALUE ? null : precio.intValue();
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus estado, String mensaje) {

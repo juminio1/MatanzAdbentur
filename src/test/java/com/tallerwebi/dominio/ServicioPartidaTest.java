@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -38,6 +39,8 @@ import java.util.List;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
+import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +57,7 @@ public class ServicioPartidaTest {
 
     private static final int TOTAL_CASILLEROS = 30;
 
-    @BeforeEach
+     @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
@@ -62,19 +65,14 @@ public class ServicioPartidaTest {
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
 
-        servicioEventoMock = mock(ServicioEvento.class);
-        repositorioCasilleroMock = mock(RepositorioCasillero.class);
-
         servicioPartida = new ServicioPartidaImpl(
-                repositorioPartidaMock,
-                repositorioSalaDeEsperaMock,
-                servicioDadoMock,
-                servicioEventoMock,
-                repositorioCasilleroMock,
-                 gestorTemporizadorMock,
-                notificadorPartidaMock
+            repositorioPartidaMock,
+            repositorioSalaDeEsperaMock,
+            servicioDadoMock,
+            gestorTemporizadorMock,
+            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
         );
-    }
+    }}
 
     @Test
     public void dadoQueHayDosJugadoresCuandoSeInicializanTurnosDaComoResultadoUnOrdenParaCadaUno() {
@@ -94,6 +92,32 @@ public class ServicioPartidaTest {
         assertEquals(0, jugador1.getOrden());
         assertEquals(1, jugador2.getOrden());
         assertFalse(jugador1.getPierdeTurno());
+    }
+
+    @Test
+    public void alInicializarTurnosSeRestablecenJugadoresYSeConservaElIndiceExistente() {
+        String codigo = "MATANZA123";
+        Partida partida = new Partida();
+        Jugador jugador = new Jugador();
+        jugador.setOrden(3);
+        jugador.setPierdeTurno(true);
+        jugador.setEnBancarrota(true);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(7);
+        partida.setJugadores(List.of(jugador));
+        partida.setIndiceTurnoActual(2);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+        servicioPartida.inicializarTurnos(codigo);
+
+        assertEquals(0, jugador.getOrden());
+        assertFalse(jugador.getPierdeTurno());
+        assertFalse(jugador.getEnBancarrota());
+        assertEquals(500, jugador.getDinero());
+        assertEquals(7, jugador.getPosicionActual());
+        assertEquals(2, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock).guardarPartida(partida);
     }
 
     @Test
@@ -179,6 +203,150 @@ public class ServicioPartidaTest {
         servicioPartida.avanzarTurno(codigoPrueba);
 
         assertEquals(1, partidaSimulada.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void lasOperacionesDeTurnoIgnoranPartidasSinJugadores() {
+        String codigo = "SIN-JUGADORES";
+        Partida sinLista = new Partida();
+        sinLista.setJugadores(null);
+        Partida listaVacia = new Partida();
+        listaVacia.setJugadores(List.of());
+
+        for (Partida partida : Arrays.asList(null, sinLista, listaVacia)) {
+            when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+                .thenReturn(partida);
+
+            servicioPartida.inicializarTurnos(codigo);
+            assertEquals(null, servicioPartida.obtenerJugadorActual(codigo));
+            assertTrue(servicioPartida.obtenerPosicionesFichas(codigo).isEmpty());
+            servicioPartida.avanzarTurno(codigo);
+        }
+
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+    @Test
+    public void alAvanzarTurnoSeOmiteAlJugadorEnBancarrota() {
+        String codigo = "BANCARROTA";
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador activo = new Jugador();
+        activo.setOrden(0);
+        Jugador enBancarrota = new Jugador();
+        enBancarrota.setOrden(1);
+        enBancarrota.setEnBancarrota(true);
+        partida.setJugadores(List.of(activo, enBancarrota));
+        partida.setIndiceTurnoActual(1);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+        assertEquals(null, servicioPartida.obtenerJugadorActual(codigo));
+        partida.setIndiceTurnoActual(0);
+        servicioPartida.avanzarTurno(codigo);
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(activo, servicioPartida.obtenerJugadorActual(codigo));
+        assertTrue(enBancarrota.getEnBancarrota());
+    }
+
+    @Test
+    public void alIniciarTemporizadorSinJugadorActivoNoSeNotificaTurno() {
+        String codigo = "SIN-JUGADORES";
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setJugadores(List.of());
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
+            eq(codigo), eq(30), any(Runnable.class))).thenReturn(true);
+
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+   /* @Test
+    public void alAvanzarTurnoSinNotificadorSeProgramaElTemporizadorIgualmente() {
+        String codigo = "SIN-NOTIFICADOR";
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador jugador = new Jugador();
+        jugador.setOrden(0);
+        partida.setJugadores(List.of(jugador));
+        partida.setIndiceTurnoActual(null);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+        ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
+            repositorioPartidaMock, repositorioSalaDeEsperaMock, servicioDadoMock,
+            gestorTemporizadorMock, null,null, null );
+
+        servicioSinNotificador.avanzarTurno(codigo);
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        verify(gestorTemporizadorMock).programarTemporizador(
+            eq(codigo), eq(30), any(Runnable.class));
+        verify(repositorioPartidaMock).guardarPartida(partida);
+    }*/
+
+    @Test
+    public void alAvanzarConTodosPenalizadosSeRestablecenPenalizacionesYContinuaLaPartida() {
+        String codigo = "TODOS-PENALIZADOS";
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador primero = new Jugador();
+        primero.setOrden(0);
+        primero.setPierdeTurno(true);
+        Jugador segundo = new Jugador();
+        segundo.setOrden(1);
+        segundo.setPierdeTurno(true);
+        partida.setJugadores(List.of(primero, segundo));
+        partida.setIndiceTurnoActual(0);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+        servicioPartida.avanzarTurno(codigo);
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertFalse(primero.getPierdeTurno());
+        assertFalse(segundo.getPierdeTurno());
+        verify(repositorioPartidaMock).guardarPartida(partida);
+        verify(gestorTemporizadorMock).programarTemporizador(
+            eq(codigo), eq(30), any(Runnable.class));
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq(codigo), any(TurnoDTO.class));
+    }
+
+    @Test
+    public void alAvanzarConTodosEnBancarrotaSeGuardaSinCambiarTurnoNiProgramarTemporizador() {
+        String codigo = "TODOS-EN-BANCARROTA";
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador primero = new Jugador();
+        primero.setOrden(0);
+        primero.setEnBancarrota(true);
+        Jugador segundo = new Jugador();
+        segundo.setOrden(1);
+        segundo.setEnBancarrota(true);
+        segundo.setPierdeTurno(true);
+        partida.setJugadores(List.of(primero, segundo));
+        partida.setIndiceTurnoActual(0);
+        partida.setRondaActual(3);
+        partida.setTurnosFinalizadosEnRonda(1);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            .thenReturn(partida);
+
+        servicioPartida.avanzarTurno(codigo);
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(3, partida.getRondaActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertTrue(segundo.getPierdeTurno());
+        verify(repositorioPartidaMock).guardarPartida(partida);
+        verify(gestorTemporizadorMock, times(2)).cancelarTemporizador(codigo);
+        verify(gestorTemporizadorMock, never()).programarTemporizador(
+            any(), anyInt(), any(Runnable.class));
+        verifyNoInteractions(notificadorPartidaMock);
     }
 
     @Test
@@ -779,6 +947,4 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
             servicioPartida.iniciarPartida(codigo, 1L);
         });
     }
-
-
 }

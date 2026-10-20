@@ -11,7 +11,7 @@ public interface ServicioPropiedad {
     void pagarAlquiler(Propiedad propiedad, Jugador jugador);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler);
     Propiedad obtenerPropiedadExistente(Long idPropiedad);
-    boolean estaDisponible(Propiedad propiedad);
+    Boolean estaDisponible(Propiedad propiedad);
     Integer calcularAlquiler(Propiedad propiedad);
     Integer calcularAlquiler(CasilleroPropiedad casillero, Propiedad propiedad);
     void mejorarPropiedad(Long idPropiedad, Jugador jugador);
