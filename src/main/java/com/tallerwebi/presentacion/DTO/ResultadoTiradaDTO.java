@@ -1,23 +1,23 @@
 package com.tallerwebi.presentacion.DTO;
 
 public class ResultadoTiradaDTO {
-    private final int dado1;
-    private final int dado2;
+    private final Integer dado1;
+    private final Integer dado2;
 
-    public ResultadoTiradaDTO(int dado1, int dado2) {
+    public ResultadoTiradaDTO(Integer dado1, Integer dado2) {
         this.dado1 = dado1;
         this.dado2 = dado2;
     }
 
-    public int getDado1() {
+    public Integer getDado1() {
         return dado1;
     }
 
-    public int getDado2() {
+    public Integer getDado2() {
         return dado2;
     }
 
-    public int sumarDados() {
+    public Integer sumarDados() {
         return dado1 + dado2;
     }
 }

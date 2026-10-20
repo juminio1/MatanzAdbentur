@@ -21,8 +21,9 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final RepositorioPropiedad repositorioPropiedad;
     private final ServicioPartida servicioPartida;
     private final ServicioCasillero servicioCasillero;
-    private static final int NIVEL_MAXIMO_MEJORA = 5;
-    private static final int[] ALQUILERES_MEJORADOS = {200, 300, 500, 1000, 1500};
+    private static final Integer NIVEL_MAXIMO_MEJORA = 5;
+    private static final List<Integer> ALQUILERES_MEJORADOS = List.of(200, 300, 500, 1000, 1500);
+    private static final List<Integer> ALQUILERES_POR_PARADAS = List.of(0, 20, 50, 100, 200);
     private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
     private static final Map<GrupoPropiedades, Set<Integer>> POSICIONES_LOCALIDADES = Map.of(
             GrupoPropiedades.VILLA_LUZURIAGA, Set.of(1, 2),
@@ -58,7 +59,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     @Override
-    public boolean estaDisponible(Propiedad propiedad) {
+    public Boolean estaDisponible(Propiedad propiedad) {
         return propiedad != null && propiedad.getPropietario() == null;
     }
 
@@ -73,9 +74,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     @Override
     public void comprarPropiedadParaJugador(Long idPropiedad, Long idJugador) {
-        if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
-        Jugador comprador = servicioPartida.obtenerJugadorPorId(idJugador);
-        if (comprador == null) throw new JugadorInvalidoException("No se encontró el jugador que compra.");
+        Jugador comprador = obtenerJugadorExistente(idJugador, "No se encontró el jugador que compra.");
         ejecutarCompra(idPropiedad, comprador);
     }
 
@@ -97,10 +96,10 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     @Override
     public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
-        Jugador vendedor = obtenerVendedor(idJugador);
+        Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
-        int precioVenta = calcularPrecioVenta(propiedad);
+        Integer precioVenta = calcularPrecioVenta(propiedad);
         propiedad.setPropietario(null);
         propiedad.setNivelMejora(0);
         servicioPartida.sumarDinero(vendedor, precioVenta);
@@ -112,8 +111,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public void transferirPropiedadParaJugadores(Long idPropiedad, Long idVendedor, Long idComprador, Integer precio) {
         if (precio == null || precio < 0) throw new PropiedadInvalidaException("El precio ofrecido no es válido.");
-        Jugador vendedor = obtenerVendedor(idVendedor);
-        Jugador comprador = obtenerVendedor(idComprador);
+        Jugador vendedor = obtenerJugadorExistente(idVendedor, "No se encontró el jugador que vende.");
+        Jugador comprador = obtenerJugadorExistente(idComprador, "No se encontró el jugador que vende.");
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idVendedor);
         if (Objects.equals(idVendedor, idComprador)) {
@@ -130,10 +129,10 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         repositorioPropiedad.guardarPropiedad(propiedad);
     }
 
-    private Jugador obtenerVendedor(Long idJugador) {
+    private Jugador obtenerJugadorExistente(Long idJugador, String mensajeNoEncontrado) {
         if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
         Jugador vendedor = servicioPartida.obtenerJugadorPorId(idJugador);
-        if (vendedor == null) throw new JugadorInvalidoException("No se encontró el jugador que vende.");
+        if (vendedor == null) throw new JugadorInvalidoException(mensajeNoEncontrado);
         return vendedor;
     }
 
@@ -144,7 +143,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         }
     }
 
-    private int calcularPrecioVenta(Propiedad propiedad) {
+    private Integer calcularPrecioVenta(Propiedad propiedad) {
         Integer precioCompra = propiedad.getPrecioCompra();
         if (precioCompra == null || precioCompra < 0) {
             throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
@@ -156,13 +155,17 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     public void pagarAlquiler(Propiedad propiedad, Jugador jugador) {
         validarPropiedad(propiedad);
         validarJugador(jugador);
-        pagarAlquiler(propiedad, jugador, calcularAlquiler(propiedad));
+        ejecutarPagoAlquiler(propiedad, jugador, calcularAlquilerValidada(propiedad));
     }
 
     @Override
     public void pagarAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler) {
         validarPropiedad(propiedad);
         validarJugador(jugador);
+        ejecutarPagoAlquiler(propiedad, jugador, montoAlquiler);
+    }
+
+    private void ejecutarPagoAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler) {
         if (montoAlquiler == null || montoAlquiler < 0) {
             throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
         }
@@ -184,7 +187,10 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public Integer calcularAlquiler(Propiedad propiedad) {
         validarPropiedad(propiedad);
+        return calcularAlquilerValidada(propiedad);
+    }
 
+    private Integer calcularAlquilerValidada(Propiedad propiedad) {
         Integer alquilerBase = propiedad.getPrecioAlquiler();
         Integer nivelMejora = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
         if (alquilerBase == null || alquilerBase < 0) {
@@ -195,7 +201,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throw new PropiedadInvalidaException("El nivel de mejora no es válido.");
         }
         if (nivelMejora == 0) return alquilerBase;
-        return ALQUILERES_MEJORADOS[Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA) - 1];
+        return ALQUILERES_MEJORADOS.get(Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA) - 1);
     }
 
     @Override
@@ -204,7 +210,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
         Jugador propietario = propiedad.getPropietario();
         if (propietario == null || servicioCasillero == null || idPartida == null) return 20;
-        long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
+        Long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroPropiedad.class::isInstance)
                 .map(CasilleroPropiedad.class::cast)
                 .filter(c -> POSICIONES_PARADA.contains(c.getPosicion()) && c.getPropiedad() != null)
@@ -212,8 +218,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
                 .filter(c -> c.getPropiedad().getPropietario() != null
                         && Objects.equals(propietario.getId(), c.getPropiedad().getPropietario().getId()))
                 .count();
-        int[] alquileresPorParadas = {0, 20, 50, 100, 200};
-        return alquileresPorParadas[(int) Math.min(cantidadParadas, alquileresPorParadas.length - 1)];
+        return ALQUILERES_POR_PARADAS.get(
+                Math.toIntExact(Math.min(cantidadParadas, ALQUILERES_POR_PARADAS.size() - 1)));
     }
 
     @Override
@@ -226,8 +232,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         validarGrupoCompleto(propiedad, jugador);
         validarNivelMejora(propiedad);
 
-        int nivelActual = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
-        int costoMejora = ALQUILERES_MEJORADOS[nivelActual];
+        Integer nivelActual = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
+        Integer costoMejora = ALQUILERES_MEJORADOS.get(nivelActual);
         Jugador jugadorActualizado = jugador.getId() == null ? null : servicioPartida.obtenerJugadorPorId(jugador.getId());
         if (jugadorActualizado == null) jugadorActualizado = jugador;
         if (jugadorActualizado.getDinero() < costoMejora) {
@@ -244,8 +250,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private void validarNivelMejora(Propiedad propiedad) {
         Integer nivelMejora = propiedad.getNivelMejora();
 
-        if ((nivelMejora != null && nivelMejora < 0) ||
-                (nivelMejora != null && nivelMejora >= NIVEL_MAXIMO_MEJORA)) {
+        if (nivelMejora != null && (nivelMejora < 0 || nivelMejora >= NIVEL_MAXIMO_MEJORA)) {
             throw new PropiedadNoMejorableException("El nivel de mejora no es válido o alcanzó el máximo.");
         }
     }
@@ -277,7 +282,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         }
     }
 
-    private boolean esDuenioDeTodoElGrupo(Propiedad propiedad, Jugador jugador) {
+    private Boolean esDuenioDeTodoElGrupo(Propiedad propiedad, Jugador jugador) {
         Set<Integer> posiciones = POSICIONES_LOCALIDADES.get(propiedad.getGrupo());
         if (posiciones == null) return false;
         if (servicioCasillero == null) {

@@ -29,6 +29,22 @@ public class ServicioPropiedadTest {
     }
 
     @Test
+    public void ambasFormasDePagarAlquilerConservanElOrdenDeValidacion() {
+        Jugador jugador = new Jugador();
+        Propiedad propiedad = new Propiedad();
+        assertThrows(com.tallerwebi.dominio.excepcion.PropiedadInvalidaException.class,
+                () -> servicioPropiedad.pagarAlquiler(null, jugador));
+        assertThrows(com.tallerwebi.dominio.excepcion.PropiedadInvalidaException.class,
+                () -> servicioPropiedad.pagarAlquiler(null, jugador, -1));
+        assertThrows(com.tallerwebi.dominio.excepcion.JugadorInvalidoException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, null));
+        assertThrows(com.tallerwebi.dominio.excepcion.JugadorInvalidoException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, null, -1));
+        assertThrows(com.tallerwebi.dominio.excepcion.PropiedadInvalidaException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, jugador, -1));
+    }
+
+    @Test
     public void jugadorDeberiaComprarUnaPropiedadDisponible() {
         Long idPropiedad = 1L;
         Jugador jugador = new Jugador();

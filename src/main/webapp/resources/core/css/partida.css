@@ -271,7 +271,7 @@
     border: 1px solid #080d13;
     text-align: center;
     font-size: clamp(8px, 1.1cqw, 13px);
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.1;
     overflow: hidden;
 }
@@ -281,17 +281,16 @@
 
 .casillero--esquina {
     background: var(--p-dorado);
-    font-weight: 400;
 }
 
-.casillero[data-casillero="0"] .casillero__nombre,
-.casillero[data-casillero="3"] .casillero__nombre,
-.casillero[data-casillero="10"] .casillero__nombre,
-.casillero[data-casillero="14"] .casillero__nombre,
-.casillero[data-casillero="20"] .casillero__nombre,
-.casillero[data-casillero="28"] .casillero__nombre {
+.casillero[data-casillero="0"] {
+    background: #ffffff;
+    color: #000000;
+}
+
+.casillero__nombre {
     font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
-    font-weight: 700;
+    font-weight: 800;
 }
 
 /* Centro: columnas 2 a 11, filas 2 a 4 */
@@ -383,7 +382,7 @@
     border: var(--p-borde-grueso);
     border-radius: 10px;
     background: var(--p-dorado);
-    color: var(--p-texto);
+    color: #ffffff;
     font-family: var(--font-titulos);
     font-size: 16px;
     font-weight: 900;
@@ -417,6 +416,7 @@
 .partida__lateral {
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     gap: var(--p-gap);
 }
 
@@ -433,8 +433,12 @@
 }
 
 .historial {
-    flex: 1;
+    flex: none;
     min-height: 0;
+    margin-top: var(--historial-desplazamiento, 0px);
+    height: var(--historial-alto, min(74dvh, 620px));
+    max-height: 100%;
+    box-sizing: border-box;
 }
 
 .historial--centrado {
@@ -522,7 +526,7 @@
     .acciones__secundarias { gap: 6px; }
     .btn-accion { flex: 1 1 auto; }
     .partida__lateral { grid-column: 1; }
-    .historial { flex: none; max-height: min(42dvh, 360px); }
+    .historial { flex: none; height: min(55dvh, 460px); max-height: none; }
 }
 
 @media (max-width: 480px) {
@@ -556,7 +560,7 @@
     box-shadow: var(--p-sombra-suave);
     transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.2s ease;
 }
-.btn-casillero--principal { background: var(--p-dorado); color: var(--p-texto); }
+.btn-casillero--principal { background: var(--p-dorado); color: #ffffff; }
 .btn-casillero--secundario { background: var(--p-azul); color: #ffffff; }
 .btn-casillero--principal:not(:disabled):hover {
     background: var(--p-dorado-hover);
@@ -601,7 +605,7 @@
     border: 2px solid #111;
     border-radius: 20px;
     background: var(--p-dorado);
-    color: var(--p-texto);
+    color: #ffffff;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.5px;
@@ -871,7 +875,7 @@
 .casillero__precio[data-color="rojo"] { background: #E4584D; color: #FFFFFF; border-color: #B83E36; }
 .casillero__precio[data-color="azul"] { background: #2887E1; color: #FFFFFF; border-color: #1765AD; }
 .casillero__precio[data-color="verde"] { background: #12B981; color: #FFFFFF; border-color: #0B865D; }
-.casillero__precio[data-color="amarillo"] { background: #F5C400; color: #202020; border-color: #B79100; }
+.casillero__precio[data-color="amarillo"] { background: #F5C400; color: #b00000; border-color: #B79100; }
 
 /* Contenedor para las fichas dentro decada casillero */
 .fichas-en-casillero {
@@ -955,6 +959,24 @@
     font-size: 12px;
     font-weight: 500;
 }
+.historial__lista li[data-color="rojo"] { color: #ff8591; }
+.historial__lista li[data-color="azul"] { color: #5dc7e5; }
+.historial__lista li[data-color="verde"] { color: #43dba6; }
+.historial__lista li[data-color="amarillo"] { color: #ffd24c; }
+
+/* Los botones amarillos conservan texto negro, sin contorno. */
+.btn-tirar,
+.btn-casillero--principal {
+    color: #000000;
+    text-shadow: none;
+}
+
+.etiqueta:not(.etiqueta--vivo),
+.casillero--esquina,
+.casillero__precio[data-color="amarillo"] {
+    color: #b00000;
+    text-shadow: none;
+}
 .contenedor-ronda {
     display: flex;
     align-items: center;
@@ -1019,7 +1041,7 @@
     right: 24px;
     padding: 3px 16px 4px;
     background-color: var(--p-dorado);
-    color: var(--p-texto);
+    color: #000000;
     border: 2px solid #111;
     border-top: none;               /* se "pega" a la tarjeta */
     border-radius: 0 0 12px 12px;

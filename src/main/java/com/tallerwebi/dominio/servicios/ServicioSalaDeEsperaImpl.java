@@ -9,8 +9,8 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
-import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
-import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
+import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
+import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Locale;
@@ -25,27 +25,23 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Transactional
 public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
-    private static final int LIMITE_JUGADORES = 4;
+    private static final Integer LIMITE_JUGADORES = 4;
 
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final RepositorioUsuario repositorioUsuario;
-    private final NotificadorSala notificadorSala;
+    private final PublicadorEventos<EventoSalaActualizada> publicadorSala;
 
     @Autowired
-    public ServicioSalaDeEsperaImpl(RepositorioSalaDeEspera repositorioSalaDeEspera, RepositorioUsuario repositorioUsuario, NotificadorSala notificadorSala) {
+    public ServicioSalaDeEsperaImpl(RepositorioSalaDeEspera repositorioSalaDeEspera, RepositorioUsuario repositorioUsuario, PublicadorEventos<EventoSalaActualizada> publicadorSala) {
 
         this.repositorioSalaDeEspera = repositorioSalaDeEspera;
         this.repositorioUsuario = repositorioUsuario;
-        this.notificadorSala = notificadorSala;
+        this.publicadorSala = publicadorSala;
     }
 
     @Override
     public SalaDeEspera crearSalaDeEspera(Long idUsuario) throws UsuarioNoEncontradoException {
-        Usuario creador = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-
-        if (creador == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+        Usuario creador = obtenerUsuarioExistente(idUsuario);
 
         creador.setFicha(null);
         repositorioUsuario.modificar(creador);
@@ -64,15 +60,11 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+        Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
-        boolean yaEstaEnSala = sala
+        Boolean yaEstaEnSala = sala
             .getUsuarios()
             .stream()
             .anyMatch(u -> u.getId() != null && u.getId().equals(usuario.getId()));
@@ -100,11 +92,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public void abandonarSala(Long idUsuario, String codigoUnico)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+        Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
@@ -114,7 +102,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             repositorioUsuario.modificar(usuario);
         }
 
-        boolean removido = sala
+        Boolean removido = sala
             .getUsuarios()
             .removeIf(u -> u.getId() != null && u.getId().equals(usuario.getId()));
 
@@ -136,7 +124,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         return sala;
     }
 
-    private SalaActualizadaDTO obtenerEstadoSala(SalaDeEspera sala) {
+    private EventoSalaActualizada obtenerEstadoSala(SalaDeEspera sala) {
         List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
         List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
 
@@ -147,19 +135,12 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             }
         }
 
-        SalaActualizadaDTO dto = new SalaActualizadaDTO(sala.getCodigoUnico(), usernames, fichas);
-        dto.setFichasAsignadas(asignadas);
-
-        // Seteamos el creador de la sala
-        if (sala.getCreador() != null) {
-            dto.setCreador(sala.getCreador().getUsername());
-        }
-
-        return dto;
+        String creador = sala.getCreador() == null ? null : sala.getCreador().getUsername();
+        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador);
     }
 
     private void notificarCambioDeSala(SalaDeEspera sala) {
-        SalaActualizadaDTO estadoActualizado = obtenerEstadoSala(sala);
+        EventoSalaActualizada estadoActualizado = obtenerEstadoSala(sala);
 
         if (
             TransactionSynchronizationManager.isSynchronizationActive() &&
@@ -170,13 +151,21 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
                     @Override
                     public void afterCommit() {
                         //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
-                        notificadorSala.notificarSalaActualizada(estadoActualizado);
+                        publicadorSala.notificar(estadoActualizado);
                     }
                 }
             );
         } else {
-            notificadorSala.notificarSalaActualizada(estadoActualizado);
+            publicadorSala.notificar(estadoActualizado);
         }
+    }
+
+    private Usuario obtenerUsuarioExistente(Long idUsuario) {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
+        return usuario;
     }
 
     private String generarCodigoUnico() {
@@ -186,11 +175,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
+        Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 

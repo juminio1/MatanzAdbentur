@@ -113,7 +113,7 @@ public ModelAndView iniciarPartida(
     HttpServletRequest request,
     RedirectAttributes redirectAttributes
 ) {
-    Long idUsuario = obtenerIdUsuario(request);
+    Long idUsuario = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
 
     if (idUsuario == null) {
         return new ModelAndView(REDIRECT_LOGIN);
@@ -140,38 +140,10 @@ private ModelAndView procesarInicioPartida(String codigoUnico, Long idUsuario, H
             redirectAttributes
         );
 
-    } catch (IllegalArgumentException exception) {
-        return redireccionarASalaConError(
-            codigoUnico,
-            "Solo el creador de la sala puede iniciar la partida",
-            redirectAttributes
-        );
-
     } catch (SalaNoEncontradaException exception) {
         return redireccionarConError(
             REDIRECT_HOME,
             "La sala de espera no existe",
-            redirectAttributes
-        );
-
-    } catch (PartidaNoEncontradaException exception) {
-        return redireccionarASalaConError(
-            codigoUnico,
-            "No se encontró una partida para esta sala",
-            redirectAttributes
-        );
-
-    } catch (CantidadJugadoresInsuficienteException exception) {
-        return redireccionarASalaConError(
-            codigoUnico,
-            "No hay suficientes jugadores para iniciar la partida",
-            redirectAttributes
-        );
-
-    } catch (CantidadMaximaJugadoresSuperadaException exception) {
-        return redireccionarASalaConError(
-            codigoUnico,
-            "Se superó la cantidad máxima de jugadores",
             redirectAttributes
         );
 
@@ -181,13 +153,8 @@ private ModelAndView procesarInicioPartida(String codigoUnico, Long idUsuario, H
 
         return new ModelAndView(REDIRECT_PARTIDA);
 
-    } catch (FichaNoDisponibleException exception) {
-        return redireccionarASalaConError(
-                codigoUnico,
-                exception.getMessage(),
-                redirectAttributes
-        );
-
+    } catch (IllegalArgumentException | PartidaNoEncontradaException | CantidadJugadoresInsuficienteException | CantidadMaximaJugadoresSuperadaException | FichaNoDisponibleException exception) {
+        return redireccionarASalaConError(codigoUnico, mensajeErrorInicio(exception), redirectAttributes);
     } catch (Exception exception) {
         LOGGER.error("Error al iniciar la partida {}", codigoUnico, exception);
 
@@ -198,6 +165,16 @@ private ModelAndView procesarInicioPartida(String codigoUnico, Long idUsuario, H
         );
     }
 }
+
+    private String mensajeErrorInicio(Exception exception) {
+        return switch (exception) {
+            case IllegalArgumentException ignorada -> "Solo el creador de la sala puede iniciar la partida";
+            case PartidaNoEncontradaException ignorada -> "No se encontró una partida para esta sala";
+            case CantidadJugadoresInsuficienteException ignorada -> "No hay suficientes jugadores para iniciar la partida";
+            case CantidadMaximaJugadoresSuperadaException ignorada -> "Se superó la cantidad máxima de jugadores";
+            default -> exception.getMessage();
+        };
+    }
 
     private ModelAndView iniciarPartidaExitosamente(
     String codigoUnico,
@@ -229,13 +206,4 @@ private ModelAndView redireccionarConError(String destino, String mensaje, Redir
     return new ModelAndView(destino);
 }
 
-private Long obtenerIdUsuario(HttpServletRequest request) {
-    Long idUsuario = (Long) request.getSession().getAttribute("id");
-
-    if (idUsuario == null) {
-        idUsuario = (Long) request.getSession().getAttribute("IDUSUARIO");
-    }
-
-    return idUsuario;
-}
 }

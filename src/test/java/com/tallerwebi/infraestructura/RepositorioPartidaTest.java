@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
@@ -34,6 +35,53 @@ public class RepositorioPartidaTest {
     @BeforeEach
     public void init() {
         this.repositorioPartida = new RepositorioPartidaImpl(sessionFactory);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void devuelveNullCuandoNoHayPartidasActivasNiJugadorConElIdBuscado() {
+        assertThat(repositorioPartida.buscarPartidaActiva(), is(nullValue()));
+        assertThat(repositorioPartida.buscarJugadorPorId(-1L), is(nullValue()));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraUnJugadorPorIdSinAlterarSusDatos() {
+        Jugador jugador = new Jugador();
+        jugador.setApodo("Jugador de prueba");
+        jugador.setDinero(700);
+        sessionFactory.getCurrentSession().persist(jugador);
+
+        Jugador encontrado = repositorioPartida.buscarJugadorPorId(jugador.getId());
+
+        assertThat(encontrado.getId(), is(jugador.getId()));
+        assertThat(encontrado.getDinero(), is(700));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void ambasBusquedasDePartidaActivaExcluyenLasFinalizadas() {
+        Usuario creador = new Usuario();
+        creador.setEmail("busqueda@test.com");
+        creador.setPassword("Clave123!");
+        creador.setUsername("HostBusqueda");
+        sessionFactory.getCurrentSession().persist(creador);
+        Partida finalizada = new Partida();
+        finalizada.setCodigoUnico("BUSQUEDA");
+        finalizada.setCreador(creador);
+        finalizada.setEstado(EstadoPartida.FINALIZADA);
+        repositorioPartida.guardarPartida(finalizada);
+        Partida activa = new Partida();
+        activa.setCodigoUnico("BUSQUEDA");
+        activa.setCreador(creador);
+        activa.setEstado(EstadoPartida.EN_CURSO);
+        repositorioPartida.guardarPartida(activa);
+
+        assertThat(repositorioPartida.buscarPartidaActiva().getId(), is(activa.getId()));
+        assertThat(repositorioPartida.buscarPartidaActivaPorCodigoUnico("BUSQUEDA").getId(), is(activa.getId()));
     }
 
     @Test

@@ -40,6 +40,22 @@ public class ServicioRegistroTest {
   }
 
   @Test
+  public void unUsuarioRecienRegistradoPuedeAutenticarseConUnaContraseniaUnicode() throws Exception {
+    RegistroDTO registro = crearRegistroValido();
+    registro.setPassword("MatanzaÑ1!");
+    registro.setPasswordRepetido("MatanzaÑ1!");
+    servicioRegistro.registrar(registro);
+    ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+    verify(repositorioUsuarioMock).guardar(captor.capture());
+    Usuario registrado = captor.getValue();
+    when(repositorioUsuarioMock.buscarUsuarioPorCredencial(USERNAME_VALIDO)).thenReturn(registrado);
+    com.tallerwebi.dominio.servicios.ServicioLogin login =
+        new com.tallerwebi.dominio.servicios.ServicioLoginImpl(repositorioUsuarioMock);
+
+    assertThat(login.autenticar(USERNAME_VALIDO, "MatanzaÑ1!"), equalTo(registrado));
+  }
+
+  @Test
   public void deberiaRegistrarUnUsuarioConDatosValidos() throws Exception {
     RegistroDTO registro = crearRegistroValido();
 

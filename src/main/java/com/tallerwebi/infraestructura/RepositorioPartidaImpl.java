@@ -1,22 +1,21 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-
-import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import jakarta.persistence.NoResultException;
 import java.util.List;
 import org.hibernate.SessionFactory;
+import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
+/** Persiste jugadores y consulta partidas que todavía no finalizaron. */
 @Repository("repositorioPartida")
 public class RepositorioPartidaImpl implements RepositorioPartida {
+
+    private static final String CONSULTA_PARTIDAS_ACTIVAS =
+        "FROM Partida WHERE estado != :finalizada";
 
     private final SessionFactory sessionFactory;
 
@@ -37,56 +36,41 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
     @Override
     public Jugador buscarJugadorPorId(Long idJugador) {
-        try {
-            return this.sessionFactory.getCurrentSession()
-                    .createQuery("FROM Jugador WHERE id = :idJugador", Jugador.class)
-                    .setParameter("idJugador", idJugador)
-                    .getSingleResult();
-        } catch (NoResultException ex) {
-            return null;
-        }
+        Query<Jugador> consulta = this.sessionFactory.getCurrentSession()
+            .createQuery("FROM Jugador WHERE id = :idJugador", Jugador.class)
+            .setParameter("idJugador", idJugador);
+        return obtenerResultadoUnicoONull(consulta);
     }
 
     @Override
     public Partida buscarPartidaActiva() {
-        String hql = "FROM Partida WHERE estado != :finalizada";
-        try {
-            return this.sessionFactory
-                .getCurrentSession()
-                .createQuery(hql, Partida.class)
-                .setParameter("finalizada", EstadoPartida.FINALIZADA)
-                .setMaxResults(1)
-                .getSingleResult();
-        } catch (NoResultException e) {
-            return null;
-        }
+        return obtenerResultadoUnicoONull(
+            crearConsultaPartidasActivas(CONSULTA_PARTIDAS_ACTIVAS).setMaxResults(1)
+        );
     }
 
     @Override
     public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-        String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
-
-        List<Partida> partidas = this.sessionFactory
-            .getCurrentSession()
-            .createQuery(hql, Partida.class)
+        List<Partida> partidas = crearConsultaPartidasActivas(
+            CONSULTA_PARTIDAS_ACTIVAS + " AND codigoUnico = :codigo"
+        )
             .setParameter("codigo", codigoUnico)
-            .setParameter("finalizada", EstadoPartida.FINALIZADA)
             .getResultList();
 
         return partidas.isEmpty() ? null : partidas.get(0);
     }
 
-    /*@Override
-  public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-    String hql = "FROM Partida WHERE codigoUnico = :codigo AND estado != :finalizada";
-    try {
-      return this.sessionFactory.getCurrentSession()
-        .createQuery(hql, Partida.class)
-        .setParameter("codigo", codigoUnico)
-        .setParameter("finalizada", EstadoPartida.FINALIZADA)
-        .getSingleResult();
-    } catch (NoResultException e) {
-      return null;
+    private Query<Partida> crearConsultaPartidasActivas(String hql) {
+        return this.sessionFactory.getCurrentSession()
+            .createQuery(hql, Partida.class)
+            .setParameter("finalizada", EstadoPartida.FINALIZADA);
     }
-  }*/
+
+    private <T> T obtenerResultadoUnicoONull(Query<T> consulta) {
+        try {
+            return consulta.getSingleResult();
+        } catch (NoResultException ex) {
+            return null;
+        }
+    }
 }

@@ -4,9 +4,6 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import jakarta.transaction.Transactional;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -51,27 +48,18 @@ public class ServicioLoginImpl implements ServicioLogin {
         }
     }
 
-    private boolean esInvalido(String dato) {
+    private Boolean esInvalido(String dato) {
         return dato == null || dato.isBlank();
     }
 
     private void validarPassword(String passwordIngresada, String passwordAlmacenada)
         throws CredencialesInvalidasException {
-        String passwordHasheada = hashearContrasenia(passwordIngresada);
+        String passwordHasheada = HashContrasenia.generar(passwordIngresada);
         if (!passwordHasheada.equals(passwordAlmacenada)) {
             throw new CredencialesInvalidasException(ERROR_CREDENCIALES);
         }
     }
 
-    private String hashearContrasenia(String password) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            return java.util.HexFormat.of().formatHex(hashBytes);
-        } catch (NoSuchAlgorithmException excepcion) {
-            throw new IllegalArgumentException("Algoritmo de hash no soportado", excepcion);
-        }
-    }
 
     @Override
     public Usuario buscarPorId(Long id) {

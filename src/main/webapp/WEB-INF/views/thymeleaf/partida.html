@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>El Matancero – Partida</title>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css"/>
-    <link rel="stylesheet" th:href="@{/css/partida.css(v=players-together-4)}" href="../../../resources/core/css/partida.css?v=players-together-4"/>
+    <link rel="stylesheet" th:href="@{/css/partida.css(v=turno-13)}" href="../../../resources/core/css/partida.css?v=turno-13"/>
 </head>
 <body class="pagina-partida">
 <!-- Barra superior: contador + jugadores -->
@@ -61,7 +61,7 @@
         <div class="tablero-wrap">
             <ol class="tablero">
                 <li class="casillero casillero--esquina" style="--col: 12; --fila: 5" data-casillero="0">
-                    <span class="casillero__nombre">Inicio</span>
+                    <span class="casillero__nombre">INICIO</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 0}"
@@ -100,7 +100,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 9; --fila: 5" data-casillero="3">
-                    <span class="casillero__nombre">EVENTO 1</span>
+                    <span class="casillero__nombre">EVENTOS</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 3}" class="ficha"
@@ -148,7 +148,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 5; --fila: 5" data-casillero="7">
-                    <span class="casillero__nombre">Villa Palito</span>
+                    <span class="casillero__nombre">San Justo Shopping</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 7}" class="ficha"
@@ -160,7 +160,7 @@
                 </li>
 
                 <li class="casillero" style="--col: 4; --fila: 5" data-casillero="8">
-                    <span class="casillero__nombre">Cárcel / Comisaría</span>
+                    <span class="casillero__nombre">COMISARÍA</span>
                     <div class="fichas-en-casillero">
                         <th:block th:each="jugador : ${partida.jugadores}">
                             <div th:if="${jugador.posicionActual == 8}" class="ficha"
@@ -185,7 +185,7 @@
 
                 <li class="casillero" style="--col: 2; --fila: 5" data-casillero="10">
 
-                    <span class="casillero__nombre">EVENTO 2</span>
+                    <span class="casillero__nombre">EVENTOS</span>
 
                     <div class="fichas-en-casillero">
 
@@ -221,7 +221,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 4" data-casillero="12">
 
-                    <span class="casillero__nombre">Parada 96</span>
+                    <span class="casillero__nombre">Colectivo 96</span>
 
                     <div class="fichas-en-casillero">
 
@@ -239,7 +239,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 3" data-casillero="13">
 
-                    <span class="casillero__nombre">Villa San Pete</span>
+                    <span class="casillero__nombre">Plaza Hipólito Yrigoyen</span>
 
                     <div class="fichas-en-casillero">
 
@@ -257,7 +257,7 @@
 
                 <li class="casillero" style="--col: 1; --fila: 2" data-casillero="14">
 
-                    <span class="casillero__nombre">EVENTO 3</span>
+                    <span class="casillero__nombre">EVENTOS</span>
 
                     <div class="fichas-en-casillero">
 
@@ -311,7 +311,7 @@
 
                 <li class="casillero" style="--col: 3; --fila: 1" data-casillero="17">
 
-                    <span class="casillero__nombre">Parada 621</span>
+                    <span class="casillero__nombre">Colectivo 621</span>
 
                     <div class="fichas-en-casillero">
 
@@ -364,7 +364,7 @@
 
                 <li class="casillero" style="--col: 6; --fila: 1" data-casillero="20">
 
-                    <span class="casillero__nombre">EVENTO 4</span>
+                    <span class="casillero__nombre">EVENTOS</span>
 
                     <div class="fichas-en-casillero">
 
@@ -509,7 +509,7 @@
 
                 <li class="casillero" style="--col: 12; --fila: 3" data-casillero="28">
 
-                    <span class="casillero__nombre">EVENTO 5</span>
+                    <span class="casillero__nombre">EVENTOS</span>
 
                     <div class="fichas-en-casillero">
 
@@ -738,7 +738,7 @@
 
 <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=turno-sync-5)}" src="../../../resources/core/js/partida.js?v=turno-sync-5" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=alineacion-12)}" src="../../../resources/core/js/partida.js?v=alineacion-12" charset="UTF-8" defer></script>
 
 </body>
 
