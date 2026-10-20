@@ -43,11 +43,14 @@ Docker es una plataforma de contenedores que permite empaquetar aplicaciones con
 * Para instalar sobre Linux, alcanza con instalar `Docker Engine` siguiendo esta [guía](https://docs.docker.com/engine/install/ubuntu/). También es posible instalar `Docker Desktop` (incluye Docker Engine).
 
 ## 1. ¿Cómo iniciar el proyecto?
-> Necesitamos previamente una base de datos mysql en el puerto 3306.
+
+Guía para el equipo: [PostgreSQL y Docker, paso a paso](docs/postgresql.md).
+
+> Usamos PostgreSQL 17 en el puerto 5432. Docker Compose lee las variables DB_NAME, DB_USER y DB_PASSWORD de .env.
 ```shell
 # Levantamos un BBDD con docker
-docker build -f DockerfileSQL -t mysql .
-docker run --env-file .env --name tallerwebi-mysql -d -p 3306:3306 mysql
+docker compose build postgres
+docker compose up -d postgres
 
 # Iniciamos el proyecto
 $ mvn clean jetty:run
@@ -76,7 +79,7 @@ $ mvn clean jetty:run
 $ mvn clean jetty:run
 
 # Opción 2 -- ver seccion 10 docker-compose
-$ docker-compose up --build
+$ docker compose up --build
 ```
 ### Correr las pruebas en otra terminal
 ```shell
@@ -145,11 +148,9 @@ docker rm <containerId>
 # Elimina una imagen.
 docker rmi <imageId>
 
-# Crear una imagen con el nombre "mysql".
-docker build -f DockerfileSQL -t mysql .
+docker compose build postgres
 
-# Instancia un contendor en base a la imagen mysql.
-docker run --env-file .env --name tallerwebi-mysql -d -p 3306:3306 mysql # sudo apt install mysql-client
+docker compose up -d postgres
 ```
 
 ## 10. docker-compose
@@ -158,11 +159,10 @@ Docker Compose es una herramienta que permite definir y ejecutar aplicaciones mu
 ```shell
 mvn clean package
 # Invoco a docker-compose para que me genere contenedores de todos los servicios especificadas
-docker-compose up --build
+docker compose up --build
 
 # Invoco a docker para que elimine los contenedores creados
-# --rmi local indica que debe borrar los volumenes 
-docker-compose down --rmi local
+docker compose down --rmi local
 ```
 ## 11. Comandos de Maven
 Para ejecutar comandos de Maven, ya sea en el terminal integrado al IDE, o en otro terminal como el de Linux o Windows (CMD), se debe utilizar el comando principal `mvn` seguido del comando o fase del ciclo de vida a ejecutar. Ejemplo: `mvn clean`.
@@ -309,7 +309,7 @@ rd /s /q .calidad-de-codigo\jacoco & mvn clean test
 * Hamcrest 2.2
 * JUnit 6.1.2
 * Hibernate 6.6.54.Final (org.hibernate.orm)
-* MySQL Connector/J 9.7.0
+* PostgreSQL JDBC 42.7.10
 * Mockito 5.23.0
 * Playwright 1.61.0
 * PMD 7.26.0 (plugin 3.28.0) & CPD
