@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Copia del estado de una sala, independiente de entidades y DTO de presentación. */
 public record EventoSalaActualizada(
     String codigo,
     List<String> usernames,

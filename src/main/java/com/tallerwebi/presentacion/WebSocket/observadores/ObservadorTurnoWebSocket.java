@@ -6,7 +6,7 @@ import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import org.springframework.stereotype.Component;
 
-/** Adapta el cambio de turno al mensaje WebSocket existente. */
+/** Envío los cambios de turno por WebSocket. */
 @Component
 public class ObservadorTurnoWebSocket implements Observador<EventoTurnoCambiado> {
 

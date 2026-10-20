@@ -23,10 +23,12 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.dominio.servicios.GestorTemporizadorPartida;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.ServicioDado;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
+import com.tallerwebi.dominio.servicios.ServicioInicioPartidaImpl;
+import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
@@ -62,9 +64,10 @@ public class ServicioPartidaTest {
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            repositorioSalaDeEsperaMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
             servicioDadoMock,
             gestorTemporizadorMock,
+            new ServicioTurnoImpl(),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
         );
     }
@@ -274,8 +277,10 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
-            repositorioPartidaMock, repositorioSalaDeEsperaMock, servicioDadoMock,
-            gestorTemporizadorMock, null);
+            repositorioPartidaMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
+            servicioDadoMock,
+            gestorTemporizadorMock, new ServicioTurnoImpl(), null);
 
         servicioSinNotificador.avanzarTurno(codigo);
 

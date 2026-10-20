@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-/** Publicador Observer: registra suscriptores y les entrega eventos del mismo tipo. */
+/** Aviso a los observadores cuando recibo un evento. */
 public class PublicadorEventos<T> {
 
     private final Set<Observador<T>> observadores = new CopyOnWriteArraySet<>();

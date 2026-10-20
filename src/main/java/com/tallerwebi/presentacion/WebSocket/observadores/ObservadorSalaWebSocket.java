@@ -6,7 +6,7 @@ import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import org.springframework.stereotype.Component;
 
-/** Adapta un evento de sala al mensaje WebSocket que ya esperan los clientes. */
+/** Envío los cambios de la sala por WebSocket. */
 @Component
 public class ObservadorSalaWebSocket implements Observador<EventoSalaActualizada> {
 

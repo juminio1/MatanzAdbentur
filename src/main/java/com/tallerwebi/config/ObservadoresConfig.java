@@ -8,7 +8,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Suscribe los observadores de cada evento al construir los publicadores. */
+/** Registro los observadores de sala y turno. */
 @Configuration
 public class ObservadoresConfig {
 

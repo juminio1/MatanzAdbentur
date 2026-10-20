@@ -1,4 +1,3 @@
--- Conserva las propiedades y sus dueños; actualiza únicamente los nombres anteriores.
 UPDATE Propiedad
 SET nombre = CASE nombre
     WHEN 'Villa Palito' THEN 'San Justo Shopping'

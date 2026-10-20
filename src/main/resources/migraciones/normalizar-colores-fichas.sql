@@ -1,4 +1,3 @@
--- Amplía la columna antes de convertir los nombres anteriores, sin eliminar registros.
 ALTER TABLE SalaDeEspera_fichasOcupadas
     ALTER COLUMN fichasOcupadas TYPE VARCHAR(20);
 

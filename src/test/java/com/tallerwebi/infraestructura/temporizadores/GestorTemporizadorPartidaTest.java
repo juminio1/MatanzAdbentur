@@ -1,11 +1,10 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.infraestructura.temporizadores;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.tallerwebi.dominio.servicios.GestorTemporizadorPartida;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
