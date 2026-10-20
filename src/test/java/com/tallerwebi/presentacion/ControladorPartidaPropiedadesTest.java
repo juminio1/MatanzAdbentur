@@ -6,6 +6,9 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
+import com.tallerwebi.dominio.excepcion.PartidaSinJugadoresException;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
@@ -114,7 +117,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void compraLaPropiedadDelJugadorActivoYNotificaElSiguienteTurno() {
+    void compraLaPropiedadDelJugadorActivoYNotificaElSiguienteTurno() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, 1);
         Jugador siguiente = crearJugador(2L, "Luna", 1000, 0);
@@ -143,7 +146,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() {
+    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 1000, 2);
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
@@ -188,7 +191,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void devuelveElTurnoVigenteParaLaSincronizacionDeLasPantallas() {
+    void devuelveElTurnoVigenteParaLaSincronizacionDeLasPantallas() throws PartidaIniciadaException {
         Partida partida = crearPartida();
         Jugador actual = crearJugador(2L, "Luna", 900, 1);
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);

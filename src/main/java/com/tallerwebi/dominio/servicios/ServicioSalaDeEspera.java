@@ -4,12 +4,8 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.excepcion.UsuarioYaEstaEnPartidaException;
-import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
-import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.*;
-import com.tallerwebi.presentacion.DTO.SalaActualizadaDTO;
 
 public interface ServicioSalaDeEspera {
 

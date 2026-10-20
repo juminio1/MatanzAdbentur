@@ -24,7 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Transactional
 public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
-    private static final int LIMITE_JUGADORES = 4;
+    private static final Integer LIMITE_JUGADORES = 4;
 
     private final RepositorioSalaDeEspera repositorioSalaDeEspera;
     private final RepositorioUsuario repositorioUsuario;
@@ -71,7 +71,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
 
-        boolean yaEstaEnSala = sala
+        Boolean yaEstaEnSala = sala
             .getUsuarios()
             .stream()
             .anyMatch(u -> u.getId() != null && u.getId().equals(usuario.getId()));
@@ -113,7 +113,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             repositorioUsuario.modificar(usuario);
         }
 
-        boolean removido = sala
+        Boolean removido = sala
             .getUsuarios()
             .removeIf(u -> u.getId() != null && u.getId().equals(usuario.getId()));
 

@@ -1,5 +1,9 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.PartidaSinJugadoresException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import org.junit.jupiter.api.Test;
@@ -14,7 +18,7 @@ public class ControladorPosicionesWebSocketTest {
     // Verifica que el controlador obtenga las posiciones
     // del servicio y las envíe al canal WebSocket correcto.
     @Test
-    public void dadoQueSeSolicitanLasPosicionesQuieroEnviarlasPorWebSocket() {
+    public void dadoQueSeSolicitanLasPosicionesQuieroEnviarlasPorWebSocket() throws PartidaIniciadaException, PartidaNoEncontradaException, EstadoPartidaInvalidoException, PartidaSinJugadoresException {
 
         ServicioPartida servicioPartida = mock(ServicioPartida.class);
         SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);

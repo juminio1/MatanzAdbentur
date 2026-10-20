@@ -7,23 +7,23 @@ import jakarta.persistence.*;
 public class Evento {
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Enumerated(EnumType.STRING)
     private TipoEvento tipoEvento;
     private Integer monto;
 
-    public Evento(Integer id, TipoEvento tipoEvento, Integer monto) {
+    public Evento(Long id, TipoEvento tipoEvento, Integer monto) {
         this.id = id;
         this.tipoEvento = tipoEvento;
         this.monto = monto;
     }
 
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

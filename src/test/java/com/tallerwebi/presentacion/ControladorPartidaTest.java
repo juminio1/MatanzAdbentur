@@ -16,8 +16,11 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.PartidaSinJugadoresException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
@@ -66,21 +69,21 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoHayCodigoCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() {
+    public void dadoQueNoHayCodigoCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() throws PartidaIniciadaException {
         ModelAndView mav = controladorPartida.verTablero(null, request);
 
         assertEquals("redirect:/home", mav.getViewName());
     }
 
     @Test
-    public void dadoQueElCodigoEsVacioCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() {
+    public void dadoQueElCodigoEsVacioCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() throws PartidaIniciadaException {
         ModelAndView mav = controladorPartida.verTablero("   ", request);
 
         assertEquals("redirect:/home", mav.getViewName());
     }
 
     @Test
-    public void dadoQueLaPartidaNoExisteCuandoSeIntentaVerElTableroDaComoResultadoRedireccionASala() {
+    public void dadoQueLaPartidaNoExisteCuandoSeIntentaVerElTableroDaComoResultadoRedireccionASala() throws PartidaIniciadaException {
         String codigoPrueba = "MATANZA123";
 
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(null);
@@ -93,7 +96,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoHayUsuarioEnSesionCuandoSeIntentaVerElTableroDaComoResultadoRedireccionALogin() {
+    public void dadoQueNoHayUsuarioEnSesionCuandoSeIntentaVerElTableroDaComoResultadoRedireccionALogin() throws PartidaIniciadaException {
         String codigoPrueba = "MATANZA123";
         Partida partidaMock = new Partida();
 
@@ -105,7 +108,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueExisteUnUsuarioEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() {
+    public void dadoQueExisteUnUsuarioEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() throws PartidaIniciadaException {
         String codigoPrueba = "MATANZA123";
         Long usuarioId = 10L;
 
@@ -131,7 +134,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElCodigoYUsuarioEstanEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() {
+    public void dadoQueElCodigoYUsuarioEstanEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() throws PartidaIniciadaException {
         String codigoEnSesion = "MATANZA999";
         Long usuarioIdFallback = 25L;
 
@@ -150,20 +153,17 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() {
+    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPartida = "PARTIDA123";
 
-        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-                codigoPartida,
-                request
-        );
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida,request);
 
         assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
         verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() {
+    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 99L);
@@ -185,7 +185,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() {
+    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 1L);
@@ -225,7 +225,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElCodigoEnSesionEsVacioCuandoSeConsultaElTableroDaComoResultadoRedireccionAHome() {
+    public void dadoQueElCodigoEnSesionEsVacioCuandoSeConsultaElTableroDaComoResultadoRedireccionAHome() throws PartidaIniciadaException {
         session.setAttribute("codigoSala", "   ");
 
         ModelAndView mav = controladorPartida.verTablero(null, request);
@@ -234,7 +234,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElUsuarioSeIdentificaPorNombreCuandoConsultaElTableroDaComoResultadoSuJugador() {
+    public void dadoQueElUsuarioSeIdentificaPorNombreCuandoConsultaElTableroDaComoResultadoSuJugador() throws PartidaIniciadaException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("NOMBRE", "MESSI");
 
@@ -254,7 +254,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueLaListaDeJugadoresEsNulaCuandoSeConsultaElTableroDaComoResultadoElUsuarioEnSesion() {
+    public void dadoQueLaListaDeJugadoresEsNulaCuandoSeConsultaElTableroDaComoResultadoElUsuarioEnSesion() throws PartidaIniciadaException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("id", 14L);
 
@@ -270,7 +270,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoSeObtieneElTurnoActualCuandoSeConsultaElTableroDaComoResultadoElJugadorAleatorio() {
+    public void dadoQueNoSeObtieneElTurnoActualCuandoSeConsultaElTableroDaComoResultadoElJugadorAleatorio() throws PartidaIniciadaException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("id", 4L);
 
@@ -292,7 +292,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() {
+    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("id", 1L);
 
@@ -308,7 +308,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() {
+    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("NOMBRE", "PEPITO");
 
@@ -346,7 +346,7 @@ public class ControladorPartidaTest {
 
 
     @Test
-    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException, PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 
@@ -374,7 +374,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException, PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 

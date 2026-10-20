@@ -2,6 +2,9 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
+import com.tallerwebi.dominio.excepcion.PartidaSinJugadoresException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
@@ -14,14 +17,14 @@ final class CoordinadorTurnoPartida {
         this.servicioPartida = servicioPartida;
     }
 
-    TurnoDTO obtenerTurnoActual(String codigoPartida) {
+    TurnoDTO obtenerTurnoActual(String codigoPartida) throws PartidaIniciadaException {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         Jugador jugadorActual = servicioPartida.obtenerJugadorActual(codigoPartida);
         if (partida == null || jugadorActual == null) return null;
         return crearTurno(codigoPartida, partida, jugadorActual);
     }
 
-    TurnoDTO avanzarYObtenerTurno(String codigoPartida) {
+    TurnoDTO avanzarYObtenerTurno(String codigoPartida) throws PartidaIniciadaException, PartidaSinJugadoresException, EstadoPartidaInvalidoException {
         servicioPartida.avanzarTurno(codigoPartida);
         return obtenerTurnoActual(codigoPartida);
     }
