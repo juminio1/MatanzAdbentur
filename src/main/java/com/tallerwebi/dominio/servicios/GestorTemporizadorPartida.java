@@ -53,7 +53,7 @@ public class GestorTemporizadorPartida {
      */
     public void programarTemporizador(
         String codigoUnico,
-        int duracionSegundos,
+        Integer duracionSegundos,
         Runnable accionExpiracion
     ) {
         // 1. Si ya había una cuenta regresiva previa para esta partida, la cancelamos primero
@@ -61,9 +61,7 @@ public class GestorTemporizadorPartida {
 
         // 2. Agendamos la tarea en un hilo secundario del scheduler para dentro de 'duracionSegundos'
         ScheduledFuture<?> tarea = scheduler.schedule(
-            () -> {
-                ejecutarAccionConTransaccion(accionExpiracion);
-            },
+            () -> ejecutarAccionConTransaccion(accionExpiracion),
             duracionSegundos,
             TimeUnit.SECONDS
         );
@@ -73,9 +71,9 @@ public class GestorTemporizadorPartida {
     }
 
     /** Inicia el reloj solo si la partida todavía no tiene un turno temporizado. */
-    public synchronized boolean programarTemporizadorSiNoExiste(
+    public synchronized Boolean programarTemporizadorSiNoExiste(
         String codigoUnico,
-        int duracionSegundos,
+        Integer duracionSegundos,
         Runnable accionExpiracion
     ) {
         ScheduledFuture<?> tareaExistente = temporizadores.get(codigoUnico);
@@ -127,7 +125,8 @@ public class GestorTemporizadorPartida {
             return null;
         }
         if (tarea.isDone()) return 0;
-        long milisegundos = tarea.getDelay(TimeUnit.MILLISECONDS);
-        return (int) Math.max(0, (milisegundos + 999) / 1000);
+        Long milisegundos = tarea.getDelay(TimeUnit.MILLISECONDS);
+        Long segundos = Math.max(0, (milisegundos + 999) / 1000);
+        return segundos.intValue();
     }
 }

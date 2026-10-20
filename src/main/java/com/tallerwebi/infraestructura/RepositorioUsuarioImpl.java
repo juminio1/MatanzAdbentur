@@ -32,11 +32,7 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
 
     @Override
     public void modificar(Usuario usuario) {
-        Usuario existente = sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where id = :id", Usuario.class)
-            .setParameter("id", usuario.getId())
-            .uniqueResult();
+        Usuario existente = buscarUsuarioPorId(usuario.getId());
         if (existente == null) {
             throw new UsuarioNoEncontradoException();
         }
@@ -54,23 +50,11 @@ public class RepositorioUsuarioImpl implements RepositorioUsuario {
 
     @Override
     public Boolean verificarEmailExistente(String email) {
-         Usuario existente = sessionFactory
-            .getCurrentSession()
-            .createQuery("from Usuario where email = :email", Usuario.class)
-            .setParameter("email", email)
-            .uniqueResult();
-            return existente != null;
-
+        return buscarUsuarioPorEmail(email) != null;
     }
     @Override
   public Boolean verificarUsernameExistente(String username) {
-    Usuario existente = sessionFactory
-      .getCurrentSession()
-      .createQuery("from Usuario where username = :username", Usuario.class)
-      .setParameter("username", username)
-      .uniqueResult();
-
-    return existente != null;
+    return buscarUsuarioPorUsername(username) != null;
   }
 
 

@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import jakarta.servlet.http.HttpServletRequest;
 
+/** Resuelve la identidad de sesión y su pertenencia a una partida. */
 final class ResolutorJugadorSesion {
 
     private ResolutorJugadorSesion() {
@@ -18,6 +19,16 @@ final class ResolutorJugadorSesion {
     static Long resolverUsuarioSesionId(HttpServletRequest request) {
         Long id = (Long) request.getSession().getAttribute("id");
         return id != null ? id : (Long) request.getSession().getAttribute("IDUSUARIO");
+    }
+
+    static Long resolver(Partida partida, HttpServletRequest request) {
+        return resolver(partida, resolverUsuarioSesionId(request),
+                (String) request.getSession().getAttribute("NOMBRE"));
+    }
+
+    static Boolean pertenece(Partida partida, Long idJugador) {
+        return idJugador != null && partida.getJugadores() != null
+                && partida.getJugadores().stream().anyMatch(jugador -> idJugador.equals(jugador.getId()));
     }
 
     static Long resolver(Partida partida, Long usuarioSesionId, String nombreSesion) {

@@ -291,8 +291,11 @@ function actualizarBotonTirada() {
 }
 
 function guardarAvisoAlquiler(aviso) {
-    if (String(aviso.idJugadorPagador) !== String(window.usuarioSesionId)) return;
     const idJugador = String(aviso.idJugadorPagador);
+    if (!movimientosDeJugadoresEnCurso.has(idJugador)) {
+        mostrarAvisoAlquiler(aviso);
+        return;
+    }
     const avisos = avisosAlquilerPendientes.get(idJugador) || [];
     avisos.push(aviso);
     avisosAlquilerPendientes.set(idJugador, avisos);
@@ -310,7 +313,7 @@ function mostrarAvisoPartida(mensaje) {
 }
 
 function mostrarAvisoAlquiler(aviso) {
-    mostrarAvisoPartida(`Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`);
+    agregarAlHistorial(`${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`, aviso.idJugadorPagador);
 }
 
 function mostrarAvisosAlquilerDelJugador(idJugador) {
@@ -326,7 +329,7 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
     const nombreJugador = document.getElementById(String(idJugador))
         ?.querySelector(".nombre-jugador")?.textContent.trim()
         || `Jugador ${idJugador}`;
-    agregarAlHistorial(`${nombreJugador} cay\u00f3 en ${nombreCasillero}.`);
+    agregarAlHistorial(`${nombreJugador} cay\u00f3 en ${nombreCasillero}.`, idJugador);
 }
 
 async function procesarMovimiento(movimiento) {
@@ -561,20 +564,20 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
     if (anterior && anterior.propietarioId !== propietarioId) {
         if (anterior.propietarioId == null && propietarioId != null) {
             const comprador = obtenerNombreJugadorHistorial(propietarioId);
-            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} por $${propiedad.precioCompra}.`);
+            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} por $${propiedad.precioCompra}.`, propietarioId);
         } else if (propietarioId == null) {
             const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
             const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
-            agregarAlHistorial(`${vendedor} vendi\u00f3 ${propiedad.nombre} al banco por $${precio}.`);
+            agregarAlHistorial(`${vendedor} vendi\u00f3 ${propiedad.nombre} al banco por $${precio}.`, anterior.propietarioId);
         } else {
             const comprador = obtenerNombreJugadorHistorial(propietarioId);
             const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
             const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
-            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} a ${vendedor} por $${precio}.`);
+            agregarAlHistorial(`${comprador} compr\u00f3 ${propiedad.nombre} a ${vendedor} por $${precio}.`, propietarioId);
         }
     } else if (anterior && nivel > anterior.nivel) {
         const propietario = obtenerNombreJugadorHistorial(propietarioId);
-        agregarAlHistorial(`${propietario} aument\u00f3 el alquiler de ${propiedad.nombre} a $${propiedad.alquiler}.`);
+        agregarAlHistorial(`${propietario} aument\u00f3 el alquiler de ${propiedad.nombre} a $${propiedad.alquiler}.`, propietarioId);
     }
 
     estadoPropiedadesConocido.set(posicion, { propietarioId, nivel });
@@ -739,9 +742,11 @@ async function comprarPropiedadActual() {
     }
 }
 
-function agregarAlHistorial(texto) {
+function agregarAlHistorial(texto, idJugador) {
     const item = document.createElement("li");
     item.textContent = texto;
+    const color = obtenerColorFichaJugador(idJugador);
+    if (color) item.dataset.color = color;
     const lista = document.querySelector(".historial__lista");
     if (!lista) return;
     lista.querySelector(".historial__vacio")?.remove();
@@ -872,7 +877,7 @@ function crearTarjetaPropiedad(propiedad) {
     titulo.textContent = propiedad.nombre;
     const ubicacion = document.createElement("p");
     const nombreLocalidad = posicionesParadas.has(Number(propiedad.posicion))
-        ? "Parada / colectivo"
+        ? "Parada de bondi"
         : (nombresLocalidades[propiedad.grupo] || propiedad.descripcion || "Localidad");
     ubicacion.textContent = `${nombreLocalidad} \u00b7 Casillero #${propiedad.posicion}`;
     const datos = document.createElement("dl");
@@ -1163,8 +1168,33 @@ function desbloquearControles() {
     actualizarBotonTirada();
 }
 
+function alinearHistorialConTablero() {
+    const tablero = document.querySelector(".tablero");
+    const lateral = document.querySelector(".partida__lateral");
+    if (!tablero || !lateral) return;
+
+    const actualizar = () => {
+        if (window.matchMedia("(max-width: 780px)").matches) {
+            lateral.style.removeProperty("--historial-alto");
+            lateral.style.removeProperty("--historial-desplazamiento");
+            return;
+        }
+        const limites = tablero.getBoundingClientRect();
+        const desplazamiento = Math.max(0, limites.top - lateral.getBoundingClientRect().top);
+        lateral.style.setProperty("--historial-alto", `${limites.height}px`);
+        lateral.style.setProperty("--historial-desplazamiento", `${desplazamiento}px`);
+    };
+
+    const observador = new ResizeObserver(actualizar);
+    observador.observe(tablero);
+    observador.observe(document.querySelector(".partida__main"));
+    window.addEventListener("resize", actualizar);
+    actualizar();
+}
+
     // Arranque inicial al cargar la página
 window.addEventListener("DOMContentLoaded", () => {
+    alinearHistorialConTablero();
     // El servidor ya renderiza cada ficha en su casillero; no hay que esperar
     // el primer viaje de ida y vuelta al WebSocket para habilitar la partida.
     posicionesInicialesSincronizadas = true;

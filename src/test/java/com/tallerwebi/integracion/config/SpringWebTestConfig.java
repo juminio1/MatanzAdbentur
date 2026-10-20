@@ -6,6 +6,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import com.tallerwebi.config.ObservadoresConfig;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -17,6 +19,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 
 @EnableWebMvc
 @Configuration
+@Import(ObservadoresConfig.class)
 @ComponentScan({
     "com.tallerwebi.presentacion",
     "com.tallerwebi.dominio",

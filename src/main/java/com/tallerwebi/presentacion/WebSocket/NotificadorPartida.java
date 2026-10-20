@@ -46,7 +46,7 @@ public class NotificadorPartida {
     }
 
     public static void notificarAlquiler(SimpMessagingTemplate template, String codigoPartida, Jugador pagador,
-                                         Jugador propietario, String nombrePropiedad, int monto) {
+                                         Jugador propietario, String nombrePropiedad, Integer monto) {
         Map<String, Object> aviso = new HashMap<>();
         aviso.put("idJugadorPagador", pagador.getId());
         aviso.put("pagador", pagador.getApodo());
