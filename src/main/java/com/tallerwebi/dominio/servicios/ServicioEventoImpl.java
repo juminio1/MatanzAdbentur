@@ -13,9 +13,11 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.infraestructura.RepositorioEvento;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,9 +29,13 @@ public class ServicioEventoImpl implements ServicioEvento {
     private final Random random;
     private static final Integer RONDAS_ENTRE_EVENTOS = 5;
     private final ServicioDado servicioDado;
+    private static final Integer CANTIDAD_CASILLEROS = 30;
+    private static final Integer CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS =1;
 
     private final Map<String, Map<Long, Integer>> tiradasPorPartida = new ConcurrentHashMap<>();
     private final Map<String, EventoGlobal> eventosActivosPorPartida = new ConcurrentHashMap<>();
+    private final Map<String, Set<Long>> participantesDesempatePorPartida = new ConcurrentHashMap<>();
+    private final Map<String, Integer> ultimaRondaConEventoPorPartida = new ConcurrentHashMap<>();
 
     @Autowired
     public ServicioEventoImpl(RepositorioEvento repositorioEvento, ServicioDado servicioDado) {
@@ -72,20 +78,17 @@ public class ServicioEventoImpl implements ServicioEvento {
                 jugador.setPosicionActual(evento.getValor());
                 break;
             default:
-                // código si no hay coincidencias
-
+            // código si no hay coincidencias
         }
     }
 
     @Override
     public void iniciarEventoGlobal(Partida partida, EventoGlobal eventoGlobal)
-        throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException {
-        if (esEventoInvalido(eventoGlobal) || eventoGlobal.getTipoEventoGlobal() == null) {
-            throw new EventoGlobalInvalidoException("El evento global es inválido");
-        }
-        if (partida == null || partida.getCodigoUnico() == null) {
-            throw new PartidaNoEncontradaException();
-        }
+    throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException {
+
+        validarEventoGlobal(eventoGlobal);
+        validarPartida(partida);
+        validarJugadores(partida);
 
         if (requiereTiradaDeDados(eventoGlobal)) {
             this.prepararTiradasEventoGlobal(partida, eventoGlobal);
@@ -95,19 +98,42 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public void verificarActivacionEventoGlobal(Partida partida) {
-        if (this.activarEventoGlobalPorRondas(partida.getRondaActual())) {
+    public synchronized void verificarActivacionEventoGlobal(Partida partida) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException {
+
+        validarPartidaParaActivacion(partida);
+
+        Integer rondaActual = partida.getRondaActual();
+
+        if (!activarEventoGlobalPorRondas(rondaActual)) {
+            return;
         }
+
+        String codigoPartida = partida.getCodigoUnico();
+
+        if (yaSeActivoEventoEnEstaRonda(codigoPartida, rondaActual)) {
+            return;
+        }
+
+        validarQueNoExistaEventoActivo(codigoPartida);
+
+        EventoGlobal eventoGlobal = obtenerEventoGlobalValido();
+
+        iniciarEventoGlobal(partida, eventoGlobal);
+
+        ultimaRondaConEventoPorPartida.put(codigoPartida, rondaActual);
     }
 
     @Override
-    public ResultadoTiradaDTO realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal) throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException {
-        
+    public synchronized  ResultadoTiradaDTO realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal)
+        throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException {
+
         this.validarDatosEventoGlobal(partida, jugador, eventoGlobal);
 
         this.validarJugadorEnPartida(partida, jugador);
 
         this.validarEventoActivo(partida, eventoGlobal);
+
+        this.validarJugadorHabilitado(partida, jugador);
 
         Map<Long, Integer> tiradas = obtenerTiradasDePartida(partida);
 
@@ -117,11 +143,114 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         this.registrarTiradaEventoGlobal(tiradas, jugador, resultado.sumarDados());
 
+        this.intentarResolverEventoGlobal(partida);
+
         return resultado;
     }
 
+    @Override
+    public Boolean hayEventoGlobalActivo(String codigoUnico) {
+        return codigoUnico != null&& eventosActivosPorPartida.containsKey(codigoUnico);
+    }
+
+    private void validarEventoGlobal(EventoGlobal eventoGlobal) throws EventoGlobalInvalidoException {
+
+        if (esEventoInvalido(eventoGlobal) || eventoGlobal.getTipoEventoGlobal() == null) {
+
+            throw new EventoGlobalInvalidoException("El evento global es inválido");
+        }
+    }
+
+    private void validarPartida(Partida partida) throws PartidaNoEncontradaException {
+
+        if (partida == null || partida.getCodigoUnico() == null) {
+            throw new PartidaNoEncontradaException();
+        }
+    }
+
+    private void validarJugadores(Partida partida)throws JugadorNoEncontradoException {
+
+        if (partida.getJugadores() == null || partida.getJugadores().isEmpty()) {
+
+            throw new JugadorNoEncontradoException( "No hay jugadores para participar del evento global");
+        }
+    }
+
+    private void validarPartidaParaActivacion(Partida partida) throws PartidaNoEncontradaException {
+
+        if (partida == null || partida.getCodigoUnico() == null || partida.getCodigoUnico().isBlank()) {
+            throw new PartidaNoEncontradaException();
+        }
+    }
+
+    private boolean yaSeActivoEventoEnEstaRonda(String codigoPartida, Integer rondaActual) {
+
+        Integer ultimaRonda = ultimaRondaConEventoPorPartida.get(codigoPartida);
+        return rondaActual.equals(ultimaRonda);
+    }
+
+    private void validarQueNoExistaEventoActivo(String codigoPartida) throws EventoGlobalActivoException {
+
+        if (eventosActivosPorPartida.containsKey(codigoPartida)) {
+            throw new EventoGlobalActivoException("Ya existe un evento global pendiente de resolución");
+        }
+    }
+
+    private EventoGlobal obtenerEventoGlobalValido() throws EventoGlobalInvalidoException {
+
+        Evento eventoAleatorio = obtenerEventosGlobalesAleatorio();
+
+        if (!(eventoAleatorio instanceof EventoGlobal)) { //jeje creo q ta mal
+            throw new EventoGlobalInvalidoException("No se encontró un evento global válido");
+        }
+
+        return (EventoGlobal) eventoAleatorio;
+    }
+
+    private void intentarResolverEventoGlobal(Partida partida)throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException {
+
+        String codigoPartida = partida.getCodigoUnico();
+
+        EventoGlobal eventoActivo = eventosActivosPorPartida.get(codigoPartida);
+
+        if (eventoActivo == null) {
+            throw new DatosEnventoInvalidoExceptions("No existe un evento global activo para esta partida");
+        }
+
+        Map<Long, Integer> tiradas = obtenerTiradasDePartida(partida);
+
+        List<Jugador> participantes = obtenerParticipantesHabilitados(partida);
+
+        if (participantes.isEmpty()) {
+            throw new JugadorNoEncontradoException("No hay jugadores habilitados para participar");
+        }
+
+        Boolean faltanTiradas = participantes.stream().anyMatch(jugador -> !tiradas.containsKey(jugador.getId()));
+
+        if (faltanTiradas) {
+            return;
+        }
+
+        List<Jugador> jugadoresElegidos =
+            obtenerJugadoresConResultadoElegido(participantes, tiradas, eventoActivo.getTipoEventoGlobal());
+
+        if (jugadoresElegidos.isEmpty()) {
+            throw new JugadorNoEncontradoException("No se pudo determinar un jugador para resolver el evento");
+        }
+
+        if (jugadoresElegidos.size() > CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS) {
+            prepararDesempate(partida, jugadoresElegidos);
+            return;
+        }
+
+        aplicarConsecuenciaEventoGlobal(partida, jugadoresElegidos.get(0), eventoActivo);
+
+        finalizarEventoGlobal(partida);
+    }
+
     private void validarDatosEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal) throws DatosEnventoInvalidoExceptions {
-        if (partida == null || jugador == null || esEventoInvalido(eventoGlobal) || eventoGlobal.getTipoEventoGlobal() == null) {
+        
+        if (partida == null ||jugador == null || esEventoInvalido(eventoGlobal) || eventoGlobal.getTipoEventoGlobal() == null) {
             throw new DatosEnventoInvalidoExceptions("Datos del evento inválidos");
         }
 
@@ -166,7 +295,11 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
     }
 
-    private void registrarTiradaEventoGlobal(Map<Long, Integer> tiradas, Jugador jugador, Integer sumaDados) throws TiradaDadoInvalidaException {
+    private void registrarTiradaEventoGlobal(
+        Map<Long, Integer> tiradas,
+        Jugador jugador,
+        Integer sumaDados
+    ) throws TiradaDadoInvalidaException {
         if (sumaDados == null || sumaDados < 2 || sumaDados > 12) {
             throw new TiradaDadoInvalidaException("La tirada de dados es inválida");
         }
@@ -179,17 +312,20 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private void moverCasilleros(Jugador jugador, Evento evento) {
-        int nuevaPosicion = jugador.getPosicionActual() + evento.getValor();
-        if (nuevaPosicion < 0) {
-            nuevaPosicion = 30 + nuevaPosicion;
-        }
+
+        Integer nuevaPosicion = Math.floorMod(jugador.getPosicionActual() + evento.getValor(),CANTIDAD_CASILLEROS);
+
         jugador.setPosicionActual(nuevaPosicion);
     }
 
-    private void prepararTiradasEventoGlobal(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalActivoException {
+    private void prepararTiradasEventoGlobal(Partida partida, EventoGlobal eventoGlobal)
+        throws EventoGlobalActivoException {
         String codigoPartida = partida.getCodigoUnico();
 
-        EventoGlobal eventoAnterior = eventosActivosPorPartida.putIfAbsent(codigoPartida, eventoGlobal);
+        EventoGlobal eventoAnterior = eventosActivosPorPartida.putIfAbsent(
+            codigoPartida,
+            eventoGlobal
+        );
 
         if (eventoAnterior != null) {
             throw new EventoGlobalActivoException("Ya existe un evento global activo");
@@ -216,15 +352,19 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         Boolean elKevin = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.EL_KEVIN);
         Boolean fiat600 = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.FIAT_600);
-        Boolean sarmiento = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
+        Boolean sarmiento = eventoGlobal
+            .getTipoEventoGlobal()
+            .equals(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
 
         if (elKevin || fiat600 || sarmiento) {
             this.seleccionarJugadorYAplicarEvento(jugadores, eventoGlobal);
         }
     }
 
-    private void seleccionarJugadorYAplicarEvento(List<Jugador> jugadores, EventoGlobal eventoGlobal) throws JugadorNoEncontradoException {
-
+    private void seleccionarJugadorYAplicarEvento(
+        List<Jugador> jugadores,
+        EventoGlobal eventoGlobal
+    ) throws JugadorNoEncontradoException {
         if (jugadores == null || jugadores.isEmpty()) {
             throw new JugadorNoEncontradoException("No hay jugadores en la partida");
         }
@@ -241,13 +381,79 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private Boolean activarEventoGlobalPorRondas(Integer rondaActual) {
-        return rondaActual % RONDAS_ENTRE_EVENTOS == 0;
+        return rondaActual != null && rondaActual > 0 && rondaActual % RONDAS_ENTRE_EVENTOS == 0;
     }
+
+    private List<Jugador> obtenerJugadoresConResultadoElegido( List<Jugador> participantes, Map<Long, Integer> tiradas, TipoEventoGlobal tipoEvento) {
+        //El map relaciona el id de cada jugador con el resultado de la tirada
+
+        if (tiradas.isEmpty()) {
+            return List.of();
+        }
+
+        Integer resultadoElegido = tipoEvento == TipoEventoGlobal.PIQUETE ? Collections.min(tiradas.values()): Collections.max(tiradas.values()); //Buscan el número más grande o más chico de una colección
+
+        return participantes.stream().filter(jugador -> resultadoElegido.equals(tiradas.get(jugador.getId()))).toList();
+    }
+
+    private void prepararDesempate(Partida partida, List<Jugador> jugadoresEmpatados) {
+    
+        String codigoPartida = partida.getCodigoUnico();
+
+        Set<Long> jugadoresHabilitados = ConcurrentHashMap.newKeySet(); //se guarda los ids de los jugadores que empataron
+
+        for (Jugador jugador : jugadoresEmpatados) {
+            jugadoresHabilitados.add(jugador.getId());
+        }
+
+        participantesDesempatePorPartida.put(codigoPartida, jugadoresHabilitados);
+
+        tiradasPorPartida.get(codigoPartida).clear();
+    }
+
+    private List<Jugador> obtenerParticipantesHabilitados(Partida partida) {
+    
+        Set<Long> idsHabilitados =participantesDesempatePorPartida.get(partida.getCodigoUnico());
+
+        if (idsHabilitados == null) {
+            return partida.getJugadores();
+        }
+
+        return partida.getJugadores().stream().filter(jugador -> idsHabilitados.contains(jugador.getId())).toList(); //solo devuelve los jugadores que pueden tirar
+    }
+
+    private void validarJugadorHabilitado(Partida partida, Jugador jugador ) throws TiradaDadoInvalidaException { //valida que un jugador pueda tirar durante el desempate
+
+        Set<Long> idsHabilitados = participantesDesempatePorPartida.get(partida.getCodigoUnico());
+
+        if (idsHabilitados != null && !idsHabilitados.contains(jugador.getId())) {
+
+            throw new TiradaDadoInvalidaException("El jugador no participa del desempate");
+        }
+    }
+
+    private void aplicarConsecuenciaEventoGlobal(Partida partida, Jugador jugadorElegido, EventoGlobal eventoGlobal) {
+        
+        if (eventoGlobal.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP) {
+
+            Integer posicionMasAdelantada = partida.getJugadores().stream().mapToInt(Jugador::getPosicionActual).max().orElse(jugadorElegido.getPosicionActual());
+
+            jugadorElegido.setPosicionActual(posicionMasAdelantada);
+            return; //Se utiliza un return así porque no se necesita volver a ejecutar el aplicarEvento() nuevamente.
+        }
+
+        this.aplicarEvento(jugadorElegido, eventoGlobal);
+    }
+
+    private void finalizarEventoGlobal(Partida partida) {
+
+        String codigoPartida = partida.getCodigoUnico();
+
+        eventosActivosPorPartida.remove(codigoPartida); 
+
+        tiradasPorPartida.remove(codigoPartida);
+
+        participantesDesempatePorPartida.remove(codigoPartida);
+    }
+
 }
-/*
-intentarResolverEventoGlobal(partida);
-obtenerJugadoresConResultadoElegido(...);
-prepararDesempate(...);
-aplicarConsecuenciaEventoGlobal(...);
-finalizarEventoGlobal(...);
-*/

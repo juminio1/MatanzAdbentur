@@ -2,6 +2,7 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
@@ -21,7 +22,7 @@ final class CoordinadorTurnoPartida {
         return crearTurno(codigoPartida, partida, jugadorActual);
     }
 
-    TurnoDTO avanzarYObtenerTurno(String codigoPartida) {
+    TurnoDTO avanzarYObtenerTurno(String codigoPartida) throws ActivacionEventoInvalidoException {
         servicioPartida.avanzarTurno(codigoPartida);
         return obtenerTurnoActual(codigoPartida);
     }

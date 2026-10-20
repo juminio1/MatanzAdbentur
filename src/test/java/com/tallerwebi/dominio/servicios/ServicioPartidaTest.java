@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.servicios;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,7 +72,7 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
         );
-    }}
+    }
 
     @Test
     public void dadoQueHayDosJugadoresCuandoSeInicializanTurnosDaComoResultadoUnOrdenParaCadaUno() {
@@ -887,12 +887,10 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
 
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
 
-        // Si usas JUnit 5:
         assertThrows(FichaNoDisponibleException.class, () -> {
             servicioPartida.iniciarPartida(codigo, 1L);
         });
 
-        // (Si tu proyecto usa JUnit 4 con @Test(expected = ...), puedes usar esa anotación en lugar de assertThrows)
     }
 
     @Test

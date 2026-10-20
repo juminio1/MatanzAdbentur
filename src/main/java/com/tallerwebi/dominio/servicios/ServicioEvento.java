@@ -16,7 +16,8 @@ public interface ServicioEvento {
     void aplicarEvento(Jugador jugador, Evento evento);
     Evento obtenerEventoAleatorio();
     void iniciarEventoGlobal(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException;
-    void verificarActivacionEventoGlobal(Partida partida);
+    void verificarActivacionEventoGlobal(Partida partida) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException;
     Evento obtenerEventosGlobalesAleatorio();
    ResultadoTiradaDTO realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal) throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException;
+    Boolean hayEventoGlobalActivo(String codigoUnico);
 }

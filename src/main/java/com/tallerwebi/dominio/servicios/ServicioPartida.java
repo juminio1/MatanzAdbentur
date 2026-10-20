@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -25,7 +26,7 @@ public interface ServicioPartida {
     Integer obtenerSegundosRestantesTurno(String codigoUnico);
     void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico);
     Jugador obtenerJugadorPorId(Long idJugador);
-    void avanzarTurno(String codigoUnico);
+    void avanzarTurno(String codigoUnico) throws ActivacionEventoInvalidoException;
     ResultadoTiradaDTO tirarDados();
     void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros);
     List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo);
