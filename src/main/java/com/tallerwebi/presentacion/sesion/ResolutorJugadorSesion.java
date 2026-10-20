@@ -1,37 +1,37 @@
-package com.tallerwebi.presentacion;
+package com.tallerwebi.presentacion.sesion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import jakarta.servlet.http.HttpServletRequest;
 
-/** Resuelve la identidad de sesión y su pertenencia a una partida. */
-final class ResolutorJugadorSesion {
+/** Identifico al jugador desde la sesión. */
+public final class ResolutorJugadorSesion {
 
     private ResolutorJugadorSesion() {
     }
 
-    static String resolverCodigoPartida(String codigoUnico, HttpServletRequest request) {
+    public static String resolverCodigoPartida(String codigoUnico, HttpServletRequest request) {
         if (codigoUnico != null && !codigoUnico.isBlank()) return codigoUnico;
         String codigoSala = (String) request.getSession().getAttribute("codigoSala");
         return codigoSala != null && !codigoSala.isBlank() ? codigoSala : null;
     }
 
-    static Long resolverUsuarioSesionId(HttpServletRequest request) {
+    public static Long resolverUsuarioSesionId(HttpServletRequest request) {
         Long id = (Long) request.getSession().getAttribute("id");
         return id != null ? id : (Long) request.getSession().getAttribute("IDUSUARIO");
     }
 
-    static Long resolver(Partida partida, HttpServletRequest request) {
+    public static Long resolver(Partida partida, HttpServletRequest request) {
         return resolver(partida, resolverUsuarioSesionId(request),
                 (String) request.getSession().getAttribute("NOMBRE"));
     }
 
-    static Boolean pertenece(Partida partida, Long idJugador) {
+    public static Boolean pertenece(Partida partida, Long idJugador) {
         return idJugador != null && partida.getJugadores() != null
                 && partida.getJugadores().stream().anyMatch(jugador -> idJugador.equals(jugador.getId()));
     }
 
-    static Long resolver(Partida partida, Long usuarioSesionId, String nombreSesion) {
+    public static Long resolver(Partida partida, Long usuarioSesionId, String nombreSesion) {
         if (partida == null || partida.getJugadores() == null) return usuarioSesionId;
         for (Jugador jugador : partida.getJugadores()) {
             if (nombreSesion != null && nombreSesion.equalsIgnoreCase(jugador.getApodo())) {

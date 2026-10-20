@@ -1,5 +1,9 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.presentacion.coordinadores.CoordinadorTurnoPartida;
+
+import com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion;
+
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
@@ -37,7 +41,7 @@ import org.springframework.web.servlet.ModelAndView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Presenta la partida y coordina las acciones de turnos y propiedades. */
+/** Atiendo las acciones de la partida y sus propiedades. */
 @Controller
 public class ControladorPartida {
 
@@ -364,8 +368,7 @@ public class ControladorPartida {
         Map<String, Object> dto = new HashMap<>();
         List<String> datosCatalogo = CATALOGO_PROPIEDADES.get(casillero.getPosicion());
         Jugador propietario = propiedad.getPropietario();
-        // La posición del tablero es el identificador canónico: evita que registros
-        // viejos de la base muestren o vendan con el nombre de otro casillero.
+        // Uso la posición para identificar el casillero.
         dto.put("posicion", casillero.getPosicion());
         dto.put("nombre", datosCatalogo == null ? casillero.getNombre() : datosCatalogo.get(0));
         dto.put("descripcion", datosCatalogo == null ? casillero.getDescripcion() : datosCatalogo.get(1));
@@ -502,13 +505,11 @@ public class ControladorPartida {
 
         RespuestaMovimientoDTO respuesta = crearRespuestaMovimiento(jugadorActual, posicionAnterior, resultado);
 
-        // Solo una propiedad libre espera la decisión de compra. En eventos, cárcel,
-        // salida y propiedades ya vendidas el servidor avanza el turno por sí mismo.
+        // Espero la decisión de compra solo si la propiedad está libre.
         CasilleroPropiedad casilleroDestino = buscarOCrearPropiedadEnPosicion(partida,
                 jugadorActual.getPosicionActual());
         Boolean requiereCompra = resolverPropiedadDestino(casilleroDestino, jugadorActual, codigoUnico);
-        // Publica el movimiento antes del nuevo turno, así los clientes bloquean
-        // la tirada siguiente hasta terminar la animación de la ficha.
+        // Envío el movimiento antes de cambiar el turno.
         notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta);
         if (!requiereCompra) {
             coordinadorTurno.avanzarYObtenerTurno(codigoUnico);

@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap');
 
 .pagina-partida {
-    /* Superficies oscuras; los colores de localidades y fichas siguen siendo acentos. */
+
     --p-fondo: #111820;
     --p-superficie: #1b2632;
     --p-superficie-2: #25313e;
@@ -23,18 +23,15 @@
     --p-crema: #2a3541;
     --p-beige: #323e4a;
 
-    /* Estilo "neo-brutalista" del proyecto */
     --p-borde-grueso: 2px solid #080d13;
     --p-borde-tablero: 3px solid #080d13;
     --p-sombra: 4px 4px 0 #080d13;
     --p-sombra-hover: 6px 6px 0 #080d13;
     --p-sombra-suave: 3px 3px 0 #080d13;
 
-    /* Bordes y separación */
     --p-radio: 12px;
     --p-gap: 16px;
 
-    /* Tipografía */
     --font-texto: 'Montserrat', sans-serif;
     --font-titulos: 'Montserrat', sans-serif;
 
@@ -56,12 +53,10 @@
     overflow: hidden;
 }
 
-/* Que botones y outputs hereden Montserrat (los navegadores no lo hacen solos) */
 .pagina-partida button,
 .pagina-partida output {
     font-family: inherit;
 }
-
 
 .pagina-partida h1,
 .pagina-partida h2,
@@ -73,9 +68,6 @@
     padding: 0;
 }
 
-
-/* ---------- Estructura general ---------- */
-
 .pagina-partida {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -86,12 +78,9 @@
     box-sizing: border-box;
 }
 
-
 .barra-superior { grid-column: 1 / -1; }
 .partida__main { min-width: 0; min-height: 0; }
 .partida__lateral { min-width: 0; min-height: 0; }
-
-/* ---------- Header: contador + jugadores ---------- */
 
 .barra-superior {
     display: flex;
@@ -123,7 +112,6 @@
 }
 .contenedor-cronometro-icono { width: 32px; height: 32px; color: var(--p-dorado); }
 .cronometro-nro { font-size: 12px; }
-
 
 .contenedor-cronometro-icono {
     width: 2rem;
@@ -186,7 +174,6 @@
     border-bottom: var(--p-borde-grueso);
 }
 
-
 .nombre-jugador {
     margin-left: 4rem;
     font-family: var(--font-titulos), sans-serif;
@@ -194,7 +181,6 @@
     font-weight: 800;
     color: #ffffff;
 }
-
 
 .datos-jugador {
     margin-left: 3rem;
@@ -211,14 +197,9 @@
     font-weight: 800;
 }
 
-
 .indicador-turno {
     display: none;
 }
-
-
-
-/* ---------- Zona del tablero ---------- */
 
 .zona-tablero {
     display: flex;
@@ -237,7 +218,6 @@
     display: grid;
 }
 
-/* Tablero: 12 columnas x 5 filas, proporción fija 12:5 */
 .tablero {
     --columnas: 12;
     --filas: 5;
@@ -257,7 +237,6 @@
     overflow: hidden;
 }
 
-/* Cada casillero se ubica por columna y fila (Casillero.columna / Casillero.fila) */
 .casillero {
     grid-column: var(--col);
     grid-row: var(--fila);
@@ -276,7 +255,6 @@
     overflow: hidden;
 }
 
-/* Los casilleros de colores claros conservan tinta oscura y buen contraste. */
 .casillero[data-grupo-localidad] { color: #17212b; }
 
 .casillero--esquina {
@@ -293,7 +271,6 @@
     font-weight: 800;
 }
 
-/* Centro: columnas 2 a 11, filas 2 a 4 */
 .tablero__centro {
     grid-column: 2 / span 10;
     grid-row: 2 / span 3;
@@ -315,7 +292,6 @@
     text-shadow: 3px 3px 0 #111;
 }
 
-/* ---------- Barra de acciones ---------- */
 .acciones {
     display: flex;
     align-items: center;
@@ -412,7 +388,6 @@
     outline-offset: 2px;
 }
 
-/* ---------- Panel lateral ---------- */
 .partida__lateral {
     display: flex;
     flex-direction: column;
@@ -455,7 +430,6 @@
     text-align: left;
 }
 
-/* En columnas estrechas, separa controles y dados para que nada se salga del área. */
 @media (max-width: 1250px) {
     .pagina-partida {
         grid-template-columns: minmax(0, 1fr) minmax(250px, 31vw);
@@ -480,7 +454,6 @@
     .btn-tirar { margin-left: auto; }
 }
 
-/* En vista móvil/tablet, apila partida e historial y permite scroll vertical. */
 @media (max-width: 780px) {
     .pagina-partida {
         height: auto;
@@ -839,8 +812,6 @@
     opacity: 0.65;
 }
 
-/* ---------- Fichas de jugadores ---------- */
-
 .casillero {
     position: relative;
 }
@@ -877,7 +848,6 @@
 .casillero__precio[data-color="verde"] { background: #12B981; color: #FFFFFF; border-color: #0B865D; }
 .casillero__precio[data-color="amarillo"] { background: #F5C400; color: #b00000; border-color: #B79100; }
 
-/* Contenedor para las fichas dentro decada casillero */
 .fichas-en-casillero {
     position: absolute;
     top: 4px;
@@ -895,7 +865,6 @@
     z-index: 5;
 }
 
-/* Estilo general de las fichas */
 .ficha {
     position: static;
 
@@ -913,8 +882,6 @@
     transition: transform 0.15s ease;
 }
 
-/* Colores de las fichas */
-
 .ficha-rojo {
     background-color: #e74c5b;
 }
@@ -931,8 +898,6 @@
     background-color: #ffd24c;
 }
 
-
-
 .historial__cabecera { display: flex; justify-content: space-between; align-items: center; }
 .historial__cabecera h2 {
     font-family: var(--font-titulos);
@@ -948,7 +913,7 @@
     gap: 8px;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;        /* scroll solo dentro del historial */
+    overflow-y: auto;
 }
 .historial__lista li {
     padding: 8px 10px;
@@ -964,7 +929,7 @@
 .historial__lista li[data-color="verde"] { color: #43dba6; }
 .historial__lista li[data-color="amarillo"] { color: #ffd24c; }
 
-/* Los botones amarillos conservan texto negro, sin contorno. */
+/* Mantengo el texto negro en los botones amarillos. */
 .btn-tirar,
 .btn-casillero--principal {
     color: #000000;
@@ -1002,60 +967,52 @@
     color: var(--p-dorado);
 }
 
-/* Estilos para indicar el jugador activo */
-
-/* 1. Transición base: se la sumamos a tu clase .jugador actual para que los cambios de tamaño sean fluidos */
 .jugador {
     transition: all 0.3s ease-in-out;
     border: 2px solid transparent;
 }
 
-/* 2. El jugador que TIENE el turno: crece, brilla en dorado y se pone por encima */
 .jugador.turno-activo {
     transform: scale(1.08);
     border: 2px solid var(--p-dorado);
-    box-shadow: 0 0 20px rgba(196, 166, 47, 0.5); /* Sombra basada en --p-dorado */
+    box-shadow: 0 0 20px rgba(196, 166, 47, 0.5);
     z-index: 10;
 }
 
-/* El avatar del jugador activo también recibe un borde dorado */
 .jugador.turno-activo .avatar-jugador {
     border: 3px solid var(--p-dorado);
     box-shadow: 0 0 10px rgba(196, 166, 47, 0.8);
 }
 
-/* 3. Los jugadores que NO tienen el turno: se achican, se opacan y se ponen en escala de grises */
 .jugadores:has(.turno-activo) .jugador:not(.turno-activo) {
     opacity: 0.5;
     filter: grayscale(60%);
     transform: scale(0.95);
 }
 
-/* 4. Revivimos tu clase .indicador-turno (que tenías en display: none) y la convertimos en un badge flotante animado */
 .jugador.turno-activo .indicador-turno {
     display: flex;
     align-items: center;
     justify-content: center;
     position: absolute;
-    top: calc(100% + 2px);          /* justo debajo del borde de la tarjeta */
+    top: calc(100% + 2px);
     right: 24px;
     padding: 3px 16px 4px;
     background-color: var(--p-dorado);
     color: #000000;
     border: 2px solid #111;
-    border-top: none;               /* se "pega" a la tarjeta */
+    border-top: none;
     border-radius: 0 0 12px 12px;
     box-shadow: 3px 3px 0 #111;
     font-family: var(--font-titulos, sans-serif);
     font-weight: 800;
     font-size: 12px;
     white-space: nowrap;
-    pointer-events: none;           /* no tapa clics del tablero */
-    transform-origin: top center;   /* el latido crece hacia abajo, sin despegarse */
+    pointer-events: none;
+    transform-origin: top center;
     animation: latido-turno 1.5s infinite ease-in-out;
 }
 
-/* Animación para que el badge del turno palpite */
 @keyframes latido-turno {
     0% { transform: scale(1); }
     50% { transform: scale(1.1); }

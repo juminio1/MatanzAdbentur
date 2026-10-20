@@ -2,9 +2,6 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.SalaDeEspera;
-import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -12,33 +9,28 @@ import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
-import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
-import java.time.Instant;
 import java.util.List;
-import java.util.Random;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Gestiona el inicio de partidas, los jugadores y el avance de sus turnos. */
+/** Coordino las operaciones de la partida. */
 @Service("servicioPartida")
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
-    private static final Integer CANTIDAD_MAXIMA_DE_JUGADORES = 4;
-    private static final Integer CANTIDAD_MINIMA_DE_JUGADORES = 2;
-    private static final Integer CANTIDAD_INICIAL_DINERO = 2000;
     private static final Integer LIMITE_BANCARROTA = 250;
     private static final Integer POSICION_INICIAL = 0;
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
 
     private final RepositorioPartida repositorioPartida;
-    private final RepositorioSalaDeEspera repositorioSalaDeEspera;
-    private final Random random = new Random();
+    private final ServicioInicioPartida servicioInicioPartida;
+    private final ServicioTurno servicioTurno;
     private final ServicioDado servicioDado;
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
@@ -46,14 +38,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Autowired
     public ServicioPartidaImpl(
         RepositorioPartida repositorioPartida,
-        RepositorioSalaDeEspera repositorioSalaDeEspera,
+        ServicioInicioPartida servicioInicioPartida,
         ServicioDado servicioDado,
         GestorTemporizadorPartida gestorTemporizador,
+        ServicioTurno servicioTurno,
         @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno
     ) {
         this.repositorioPartida = repositorioPartida;
-        this.repositorioSalaDeEspera = repositorioSalaDeEspera;
+        this.servicioInicioPartida = servicioInicioPartida;
         this.servicioDado = servicioDado;
+        this.servicioTurno = servicioTurno;
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
     }
@@ -89,26 +83,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void incrementarRondas(Partida partida) {
-        Integer ronda = partida.getRondaActual() == null ? 1 : partida.getRondaActual();
-        Integer turnosFinalizados =
-            partida.getTurnosFinalizadosEnRonda() == null
-                ? 0
-                : partida.getTurnosFinalizadosEnRonda();
-
-        Long jugadoresActivos = partida.getJugadores().stream()
-            .filter(jugador -> !jugador.getEnBancarrota())
-            .count();
-        if (jugadoresActivos == 0) return;
-
-        turnosFinalizados++;
-
-        if (turnosFinalizados >= jugadoresActivos) {
-            ronda++;
-            turnosFinalizados = 0;
-        }
-
-        partida.setRondaActual(ronda);
-        partida.setTurnosFinalizadosEnRonda(turnosFinalizados);
+        servicioTurno.incrementarRondas(partida);
     }
 
     @Override
@@ -123,9 +98,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return;
         }
 
-        asignarOrdenInicialJugadores(partida);
+        servicioTurno.asignarOrdenInicialJugadores(partida);
         partida.getJugadores().forEach(jugador -> jugador.setEnBancarrota(false));
-        partida.setIndiceTurnoActual(obtenerIndiceTurnoActual(partida));
+        partida.setIndiceTurnoActual(servicioTurno.obtenerIndiceTurnoActual(partida));
         repositorioPartida.guardarPartida(partida);
     }
 
@@ -141,9 +116,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             inicializarTurnos(codigoUnico);
         }
 
-        Integer indiceActual = obtenerIndiceTurnoActual(partida);
-        Jugador jugadorActual = buscarJugadorPorTurno(partida.getJugadores(), indiceActual);
-        return esJugadorActivo(jugadorActual) ? jugadorActual : null;
+        return servicioTurno.obtenerJugadorActual(partida);
     }
 
     @Override
@@ -169,15 +142,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return repositorioPartida.buscarJugadorPorId(idJugador);
     }
 
-    private Jugador buscarJugadorPorTurno(List<Jugador> jugadores, Integer indice) {
-        for (Jugador jugador : jugadores) {
-            if (indice.equals(jugador.getOrden())) {
-                return jugador;
-            }
-        }
-        return jugadores.get(0);
-    }
-
     @Override
     public void avanzarTurno(String codigoUnico) {
         gestorTemporizador.cancelarTemporizador(codigoUnico);
@@ -187,10 +151,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return;
         }
 
-        Integer indiceActual = obtenerIndiceTurnoActual(partida);
+        Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
         incrementarRondas(partida);
 
-        Jugador candidato = resolverSiguienteJugador(partida, indiceActual);
+        Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
         if (candidato == null) {
             repositorioPartida.guardarPartida(partida);
             gestorTemporizador.cancelarTemporizador(codigoUnico);
@@ -202,158 +166,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
         notificarTurnoActual(partida, true);
     }
 
-    private Integer obtenerIndiceTurnoActual(Partida partida) {
-        return partida.getIndiceTurnoActual() == null ? 0 : partida.getIndiceTurnoActual();
-    }
-
-    private Jugador resolverSiguienteJugador(Partida partida, Integer indiceActual) {
-        Jugador candidato = buscarSiguienteJugadorActivo(partida, indiceActual, false);
-        if (candidato != null) {
-            return candidato;
-        }
-        // Una segunda vuelta permite continuar si todos los activos perdían el turno.
-        candidato = buscarSiguienteJugadorActivo(partida, indiceActual, true);
-        if (candidato != null) {
-            candidato.setPierdeTurno(false);
-        }
-        return candidato;
-    }
-
-    private Jugador buscarSiguienteJugadorActivo(Partida partida, Integer indiceActual,
-                                                 Boolean incluirJugadoresPenalizados) {
-        Integer cantidadJugadores = partida.getJugadores().size();
-        for (Integer desplazamiento = 1; desplazamiento <= cantidadJugadores; desplazamiento++) {
-            Integer siguienteIndice = (indiceActual + desplazamiento) % cantidadJugadores;
-            Jugador candidato = buscarJugadorPorTurno(partida.getJugadores(), siguienteIndice);
-            if (!esJugadorActivo(candidato)) {
-                continue;
-            }
-            if (Boolean.TRUE.equals(candidato.getPierdeTurno()) && !incluirJugadoresPenalizados) {
-                candidato.setPierdeTurno(false);
-            } else {
-                return candidato;
-            }
-        }
-        return null;
-    }
-
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
-        SalaDeEspera sala = repositorioSalaDeEspera.buscarPorCodigo(codigo);
-        validarSalaYPermisos(sala, idUsuario);
-        validarFichasSeleccionadas(sala);
-
-        Partida partida = prepararYCrearPartida(codigo, sala);
-
-        validarCantidadDeJugadores(partida);
-        inicializarAtributosDeCadaJugador(partida);
-        asignarOrdenInicialJugadores(partida);
-
-        partida.setEstado(EstadoPartida.EN_CURSO);
-        partida.setTiempoInicio(Instant.now());
-
-        seleccionarAleatoriamenteElPrimerTurnoDelJugador(partida);
-        repositorioPartida.guardarPartida(partida);
-
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
+        CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
+        SalaNoEncontradaException, FichaNoDisponibleException {
+        Partida partida = servicioInicioPartida.iniciarPartida(codigo, idUsuario);
         gestorTemporizador.cancelarTemporizador(codigo);
         notificarTurnoActual(partida, false);
-    }
-
-    private Partida prepararYCrearPartida(String codigo, SalaDeEspera sala)
-        throws PartidaIniciadaException {
-        Partida partida = obtenerPartida(codigo);
-        if (partida != null && EstadoPartida.EN_CURSO.equals(partida.getEstado())) {
-            throw new PartidaIniciadaException();
-        }
-
-        if (partida == null) {
-            return crearPartidaDesdeSala(sala);
-        }
-
-        if (partida.getJugadores().isEmpty()) {
-            agregarJugadoresDesdeSala(partida, sala);
-        }
-        return partida;
-    }
-
-    private void validarSalaYPermisos(SalaDeEspera sala, Long idUsuario)
-        throws SalaNoEncontradaException {
-        if (sala == null) {
-            throw new SalaNoEncontradaException("La sala no existe");
-        }
-        if (!sala.getCreador().getId().equals(idUsuario)) {
-            throw new IllegalArgumentException(
-                "Solo el creador de la sala puede iniciar la partida"
-            );
-        }
-    }
-
-    private Partida crearPartidaDesdeSala(SalaDeEspera sala) {
-        Partida partida = new Partida();
-        partida.setCodigoUnico(sala.getCodigoUnico());
-        partida.setCreador(sala.getCreador());
-        partida.setEstado(EstadoPartida.EN_ESPERA);
-        agregarJugadoresDesdeSala(partida, sala);
-        return partida;
-    }
-
-    private void agregarJugadoresDesdeSala(Partida partida, SalaDeEspera sala) {
-        if (sala.getUsuarios() == null) {
-            return;
-        }
-        for (Usuario usuario : sala.getUsuarios()) {
-            partida.getJugadores().add(crearJugador(usuario));
-        }
-    }
-
-    private Jugador crearJugador(Usuario usuario) {
-        Jugador jugador = new Jugador();
-        jugador.setApodo(usuario.getUsername());
-        jugador.setFicha(usuario.getFicha());
-        return jugador;
-    }
-
-    private void validarCantidadDeJugadores(Partida partida)
-        throws CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException {
-        Integer total = partida.getJugadores().size();
-        if (total < CANTIDAD_MINIMA_DE_JUGADORES) {
-            throw new CantidadJugadoresInsuficienteException("Cantidad de jugadores insuficientes");
-        }
-        if (total > CANTIDAD_MAXIMA_DE_JUGADORES) {
-            throw new CantidadMaximaJugadoresSuperadaException("Máxima de jugadores superados");
-        }
-    }
-
-    private void seleccionarAleatoriamenteElPrimerTurnoDelJugador(Partida partida) {
-        if (esListaDeJugadoresVacia(partida.getJugadores())) {
-            return;
-        }
-        Jugador seleccionado = partida
-            .getJugadores()
-            .get(random.nextInt(partida.getJugadores().size()));
-        partida.setJugadorTurnoAleatorio(seleccionado);
-        partida.setIndiceTurnoActual(seleccionado.getOrden());
-    }
-
-    private void inicializarAtributosDeCadaJugador(Partida partida) {
-        if (esListaDeJugadoresVacia(partida.getJugadores())) {
-            return;
-        }
-        for (Jugador jugador : partida.getJugadores()) {
-            jugador.setDinero(CANTIDAD_INICIAL_DINERO);
-            jugador.setPosicionActual(POSICION_INICIAL);
-            jugador.setEnBancarrota(false);
-        }
-    }
-
-    private void asignarOrdenInicialJugadores(Partida partida) {
-        Integer orden = 0;
-        for (Jugador jugador : partida.getJugadores()) {
-            jugador.setOrden(orden);
-            jugador.setPierdeTurno(false);
-            orden++;
-        }
     }
 
     @Override
@@ -406,20 +226,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return jugadores == null || jugadores.isEmpty();
     }
 
-    private Boolean esJugadorActivo(Jugador jugador) {
-        return jugador != null && !jugador.getEnBancarrota();
-    }
-
     private String obtenerNombreFichaSegura(Jugador jugador) {
         return jugador.getFicha() == null ? null : jugador.getFicha().name();
     }
 
-
-    private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
-        for (Usuario usuario : sala.getUsuarios()) {
-            if (usuario.getFicha() == null) {
-                throw new FichaNoDisponibleException("No se puede iniciar: Todos los jugadores deben seleccionar una ficha.");
-            }
-        }
-    }
 }
