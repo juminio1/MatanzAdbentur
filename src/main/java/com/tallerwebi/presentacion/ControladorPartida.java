@@ -6,6 +6,7 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
@@ -177,7 +178,7 @@ public class ControladorPartida {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> comprarPropiedad(
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
-            @PathVariable(PARAM_POSICION) Integer posicion) {
+            @PathVariable(PARAM_POSICION) Integer posicion) throws ActivacionEventoInvalidoException {
         try {
             return validarYProcesarCompra(codigoPartida, posicion);
         } catch (RuntimeException ex) {
@@ -230,7 +231,7 @@ public class ControladorPartida {
         return ResponseEntity.ok(actualizado);
     }
 
-    private ResponseEntity<Map<String, Object>> validarYProcesarCompra(String codigoPartida, Integer posicion) {
+    private ResponseEntity<Map<String, Object>> validarYProcesarCompra(String codigoPartida, Integer posicion) throws ActivacionEventoInvalidoException {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (!existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
         Jugador jugador = servicioPartida.obtenerJugadorActual(codigoPartida);
@@ -261,7 +262,7 @@ public class ControladorPartida {
     }
 
     private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(Partida partida,
-                                                                         Integer posicion, Jugador jugador) {
+                                                                         Integer posicion, Jugador jugador) throws ActivacionEventoInvalidoException {
         String codigoPartida = partida.getCodigoUnico();
         CasilleroPropiedad casillero = buscarOCrearPropiedadEnPosicion(partida, posicion);
         try {
@@ -451,7 +452,7 @@ public class ControladorPartida {
     public ResponseEntity<TurnoDTO> avanzarTurno(
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
             HttpServletRequest request
-    ) {
+    ) throws ActivacionEventoInvalidoException {
         Long usuarioSesionId = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
         String nombreSesion = (String) request.getSession().getAttribute("NOMBRE");
 
@@ -481,7 +482,7 @@ public class ControladorPartida {
     public RespuestaMovimientoDTO tirarDados(
         @RequestParam("codigoUnico") String codigoUnico,
         @RequestParam("idJugador") Long idJugador
-    ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    ) throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException {
         Partida partida = obtenerPartidaParaTirada(codigoUnico);
         Jugador jugadorActual = obtenerJugadorParaTirada(partida, idJugador);
         validarTurnoDeTirada(codigoUnico, idJugador, jugadorActual);

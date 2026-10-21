@@ -18,17 +18,13 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.dominio.servicios.GestorTemporizadorPartida;
-import com.tallerwebi.dominio.servicios.ServicioDado;
-import com.tallerwebi.dominio.servicios.ServicioEvento;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
@@ -70,7 +66,7 @@ public class ServicioPartidaTest {
             repositorioSalaDeEsperaMock,
             servicioDadoMock,
             gestorTemporizadorMock,
-            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
+            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))), servicioEventoMock
         );
     }
 
@@ -184,7 +180,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueEsTurnoDelPrimerJugadorCuandoSeAvanzaTurnoDaComoResultadoElSegundoJugador() {
+    public void dadoQueEsTurnoDelPrimerJugadorCuandoSeAvanzaTurnoDaComoResultadoElSegundoJugador() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
         partidaSimulada.setCodigoUnico(codigoPrueba);
@@ -206,7 +202,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void lasOperacionesDeTurnoIgnoranPartidasSinJugadores() {
+    public void lasOperacionesDeTurnoIgnoranPartidasSinJugadores() throws ActivacionEventoInvalidoException {
         String codigo = "SIN-JUGADORES";
         Partida sinLista = new Partida();
         sinLista.setJugadores(null);
@@ -228,7 +224,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void alAvanzarTurnoSeOmiteAlJugadorEnBancarrota() {
+    public void alAvanzarTurnoSeOmiteAlJugadorEnBancarrota() throws ActivacionEventoInvalidoException {
         String codigo = "BANCARROTA";
         Partida partida = new Partida();
         partida.setCodigoUnico(codigo);
@@ -291,7 +287,7 @@ public class ServicioPartidaTest {
     }*/
 
     @Test
-    public void alAvanzarConTodosPenalizadosSeRestablecenPenalizacionesYContinuaLaPartida() {
+    public void alAvanzarConTodosPenalizadosSeRestablecenPenalizacionesYContinuaLaPartida() throws ActivacionEventoInvalidoException {
         String codigo = "TODOS-PENALIZADOS";
         Partida partida = new Partida();
         partida.setCodigoUnico(codigo);
@@ -318,7 +314,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void alAvanzarConTodosEnBancarrotaSeGuardaSinCambiarTurnoNiProgramarTemporizador() {
+    public void alAvanzarConTodosEnBancarrotaSeGuardaSinCambiarTurnoNiProgramarTemporizador() throws ActivacionEventoInvalidoException {
         String codigo = "TODOS-EN-BANCARROTA";
         Partida partida = new Partida();
         partida.setCodigoUnico(codigo);
@@ -350,7 +346,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueSeAvanzaTurnoSeNotificaNuevoTurnoConDuracion() {
+    public void dadoQueSeAvanzaTurnoSeNotificaNuevoTurnoConDuracion() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
         partidaSimulada.setCodigoUnico(codigoPrueba);
@@ -383,7 +379,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueEsElUltimoJugadorCuandoSeAvanzaTurnoDaComoResultadoElPrimero() {
+    public void dadoQueEsElUltimoJugadorCuandoSeAvanzaTurnoDaComoResultadoElPrimero() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
         partidaSimulada.setCodigoUnico(codigoPrueba);
@@ -407,7 +403,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueElSiguienteJugadorPierdeTurnoCuandoSeAvanzaDaComoResultadoQueSeLoSaltea() {
+    public void dadoQueElSiguienteJugadorPierdeTurnoCuandoSeAvanzaDaComoResultadoQueSeLoSaltea() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
         partidaSimulada.setCodigoUnico(codigoPrueba);
@@ -656,7 +652,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() {
+    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
 
         Jugador jugadorUno = new Jugador();

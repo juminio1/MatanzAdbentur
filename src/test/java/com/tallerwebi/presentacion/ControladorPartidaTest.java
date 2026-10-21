@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
@@ -150,7 +151,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() {
+    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() throws ActivacionEventoInvalidoException {
         String codigoPartida = "PARTIDA123";
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
@@ -163,7 +164,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() {
+    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 99L);
@@ -185,7 +186,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() {
+    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() throws ActivacionEventoInvalidoException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 1L);
@@ -292,7 +293,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() {
+    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("id", 1L);
 
@@ -308,7 +309,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() {
+    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() throws ActivacionEventoInvalidoException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("NOMBRE", "PEPITO");
 
@@ -346,7 +347,7 @@ public class ControladorPartidaTest {
 
 
     @Test
-    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 
@@ -374,7 +375,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 

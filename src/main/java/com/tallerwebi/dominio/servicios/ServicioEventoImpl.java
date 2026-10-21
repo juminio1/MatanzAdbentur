@@ -294,8 +294,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
     }
 
-    private void registrarTiradaEventoGlobal(Map<Long, Integer> tiradas,Jugador jugador, Integer sumaDados
-    ) throws TiradaDadoInvalidaException {
+    private void registrarTiradaEventoGlobal(Map<Long, Integer> tiradas,Jugador jugador, Integer sumaDados) throws TiradaDadoInvalidaException {
         if (sumaDados == null || sumaDados < 2 || sumaDados > 12) {
             throw new TiradaDadoInvalidaException("La tirada de dados es inválida");
         }
@@ -309,7 +308,7 @@ public class ServicioEventoImpl implements ServicioEvento {
 
     private void moverCasilleros(Jugador jugador, Evento evento) {
 
-        Integer nuevaPosicion = Math.floorMod(jugador.getPosicionActual() + evento.getValor(),CANTIDAD_CASILLEROS);
+        Integer nuevaPosicion = Math.floorMod(jugador.getPosicionActual() + evento.getValor(), CANTIDAD_CASILLEROS);
 
         jugador.setPosicionActual(nuevaPosicion);
     }
