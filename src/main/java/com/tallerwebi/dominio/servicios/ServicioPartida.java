@@ -21,6 +21,7 @@ public interface ServicioPartida {
     void actualizarJugador(Jugador jugador);
     void incrementarRondas(Partida partida);
     void inicializarTurnos(String codigoUnico);
+    void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException;
     Jugador obtenerJugadorActual(String codigoUnico);
     Integer obtenerSegundosRestantesTurno(String codigoUnico);
     void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico);

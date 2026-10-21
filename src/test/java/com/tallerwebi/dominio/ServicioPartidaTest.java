@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -17,6 +18,7 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -51,6 +53,8 @@ public class ServicioPartidaTest {
     private NotificadorPartida notificadorPartidaMock;
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
+    private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
+    
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -61,6 +65,7 @@ public class ServicioPartidaTest {
         servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
+        publicadorAbandonoMock = mock(PublicadorEventos.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -68,7 +73,8 @@ public class ServicioPartidaTest {
             servicioDadoMock,
             gestorTemporizadorMock,
             new ServicioTurnoImpl(),
-            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
+            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
+            publicadorAbandonoMock
         );
     }
 
@@ -280,7 +286,7 @@ public class ServicioPartidaTest {
             repositorioPartidaMock,
             new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
             servicioDadoMock,
-            gestorTemporizadorMock, new ServicioTurnoImpl(), null);
+            gestorTemporizadorMock, new ServicioTurnoImpl(), null, publicadorAbandonoMock);
 
         servicioSinNotificador.avanzarTurno(codigo);
 
@@ -946,6 +952,43 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         assertThrows(PartidaIniciadaException.class, () -> {
             servicioPartida.iniciarPartida(codigo, 1L);
         });
+    }
+
+    @Test
+    public void dadoQueUnJugadorAbandonaLaPartidaSeNotificaElEventoYSeActualizaElJugador() throws PartidaNoEncontradaException {
+        String codigoPrueba = "MATANZA123";
+        Long idJugador = 1L;
+
+        Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
+
+        Jugador jugadorSimulado = new Jugador();
+        jugadorSimulado.setId(idJugador);
+        jugadorSimulado.setAbandono(false);
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
+        when(repositorioPartidaMock.buscarJugadorPorId(idJugador)).thenReturn(jugadorSimulado);
+
+        servicioPartida.abandonarPartida(codigoPrueba, idJugador);
+
+        assertTrue(jugadorSimulado.getAbandono());
+        verify(repositorioPartidaMock).actualizarJugador(jugadorSimulado);
+        verify(publicadorAbandonoMock).notificar(any(EventoJugadorAbandonado.class));
+    }
+
+    @Test
+    public void dadoQueLaPartidaNoExisteCuandoUnJugadorIntentaAbandonarSeLanzaExcepcion() {
+        String codigoInexistente = "ERROR404";
+        Long idJugador = 1L;
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoInexistente)).thenReturn(null);
+
+        assertThrows(PartidaNoEncontradaException.class, () -> {
+            servicioPartida.abandonarPartida(codigoInexistente, idJugador);
+        });
+
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+        verify(publicadorAbandonoMock, never()).notificar(any());
     }
 
 
