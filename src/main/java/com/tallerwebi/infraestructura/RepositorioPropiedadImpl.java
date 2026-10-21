@@ -1,5 +1,6 @@
 package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import jakarta.persistence.NoResultException;
@@ -51,6 +52,14 @@ private final SessionFactory sessionFactory;
                 .createQuery(hql, Propiedad.class)
                 .setParameter("grupo", grupo) //asigna el grupo recibido a la consulta
                 .getResultList();//devuelve la lista con las propiedades encontradas.
+    }
+
+    @Override
+    public List<Propiedad> buscarPropiedadesPorPropietario(Jugador propietario) {
+        // Por ahora retornamos null solo para que el código compile y se vaya el rojo.
+        // Como estamos haciendo TDD y usando un Mock en el test, esto alcanza.
+        // Más adelante le agregamos la consulta real a la base de datos (Hibernate/JPA).
+        return null;
     }
 
 }
