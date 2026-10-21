@@ -1,22 +1,17 @@
-// Determina la ruta base y construye la URL correcta.
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 
-// Obtiene los elementos del HTML por su ID.
 const dado1 = document.getElementById("dado-1");
 const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
 if (botonTirar) botonTirar.disabled = true;
 
-// Evita enviar varias peticiones simultáneas.
 let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
 
-// Registra si el jugador actual ya tiró en este turno.
 let yaTiroEnEsteTurno = false;
 
-// Une el frontend con el backend de dados.
 async function obtenerResultadoDados() {
     const idJugador = window.usuarioSesionId;
     if (idJugador == null || !codigoPartida) {
@@ -50,7 +45,6 @@ async function obtenerResultadoDados() {
     return resultado;
 }
 
-// Escucha el clic y ejecuta la tirada.
 if (botonTirar) {
     botonTirar.addEventListener("click", async () => {
         if (estaTirando || yaTiroEnEsteTurno || botonTirar.disabled) {
@@ -69,10 +63,8 @@ if (botonTirar) {
 
             console.log("Resultado completo:", resultado);
 
-            // No permitir otra tirada hasta que cambie el turno.
             yaTiroEnEsteTurno = true;
 
-            // El movimiento de la ficha lo realiza el WebSocket.
             console.log("Nueva posición:", resultado.nuevaPosicion);
             await procesarMovimiento(resultado);
 
@@ -89,18 +81,15 @@ if (botonTirar) {
             return;
         }
 
-        // El turno termina cuando se resuelve la compra, se pasa o vence el plazo.
     });
 }
 
-// Busca la ficha del jugador y el casillero al que debe avanzar.
 function moverFichaEnTablero(idJugador, nuevaPosicion) {
     const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
     const casilleroDestino = document.querySelector(
         `.casillero[data-casillero="${nuevaPosicion}"] .fichas-en-casillero`,
     );
 
-    // Verifica que existan la ficha y el casillero destino.
     if (!ficha || !casilleroDestino) {
         console.error("No se encontró la ficha o el casillero destino.", {
             idJugador,
@@ -110,7 +99,6 @@ function moverFichaEnTablero(idJugador, nuevaPosicion) {
         });
         return false;
     }
-    //Mueve la ficha al nuevo casillero en el HTML.
     casilleroDestino.appendChild(ficha);
     return true;
 }
@@ -123,7 +111,6 @@ async function animarMovimientoFicha(idJugador, cantidadPasos, posicionAnterior)
         return;
     }
 
-    // Busca el casillero donde está actualmente la ficha.
     let casilleroActual = ficha.closest(".casillero");
 
     if (posicionAnterior != null && Number.isInteger(Number(posicionAnterior))) {
@@ -141,7 +128,6 @@ async function animarMovimientoFicha(idJugador, cantidadPasos, posicionAnterior)
         return;
     }
 
-    // Obtiene los casilleros en el orden en que aparecen en el tablero.
     const casilleros = Array.from(document.querySelectorAll(".casillero[data-casillero]"));
 
     let indiceActual = casilleros.indexOf(casilleroActual);
@@ -151,26 +137,22 @@ async function animarMovimientoFicha(idJugador, cantidadPasos, posicionAnterior)
         return;
     }
 
-    // Avanza un casillero por vez.
     for (let paso = 0; paso < cantidadPasos; paso++) {
         indiceActual = (indiceActual + 1) % casilleros.length;
 
         const siguienteCasillero = casilleros[indiceActual];
         const posicionDestino = siguienteCasillero.dataset.casillero;
 
-        // Mueve la ficha al siguiente casillero.
         const movimientoRealizado = moverFichaEnTablero(idJugador, posicionDestino);
 
         if (!movimientoRealizado) {
             return;
         }
 
-        // Pequeña pausa para que se vea el avance.
         await new Promise((resolve) => setTimeout(resolve, 250));
     }
 }
 
-// GESTIÓN DE TURNOS: SINCRONIZACIÓN WEBSOCKET.
 let consultaTurnoEnCurso = false;
 let clienteWebSocketPartida = null;
 function iniciarSincronizacionTurno(base, codigo) {
@@ -220,20 +202,16 @@ function conectarWebSocketTurnos(base, codigo) {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
 
-            //CANAL 1: cambios de turnos y rondas.
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
                 const turnoDTO = JSON.parse(mensaje.body);
                 aplicarTurnoDTO(turnoDTO);
             });
 
-            //CANAL 2: recibe el resultado de la tirada y el movimiento.
             stompClient.subscribe(`/topic/partida/${codigo}`, async (mensaje) => {
-                //Esta ruta tiene que coincidir con la que esta controladorPartida. notificadorWebSocket.convertAndSend
                 const movimiento = JSON.parse(mensaje.body);
                 await procesarMovimiento(movimiento);
             });
 
-            // 3. Escuchar la respuesta con las posiciones actuales.
             stompClient.subscribe(`/topic/partida/${codigo}/posiciones`, (mensaje) => {
                 const posiciones = JSON.parse(mensaje.body);
                 sincronizarPosicionesFichas(posiciones);
@@ -262,8 +240,7 @@ function conectarWebSocketTurnos(base, codigo) {
                 const aviso = JSON.parse(mensaje.body);
                 guardarAvisoAlquiler(aviso);
             });
-            // Primero nos suscribimos al canal y después solicitamos
-            // las posiciones actuales al backend.
+            // Pido las posiciones después de suscribirme al canal.
             solicitarPosicionesPartida();
         },
         (error) => {
@@ -290,6 +267,7 @@ function actualizarBotonTirada() {
         || String(window.turnoActualId) !== String(window.usuarioSesionId);
 }
 
+// Espero el final del movimiento para registrar el alquiler.
 function guardarAvisoAlquiler(aviso) {
     const idJugador = String(aviso.idJugadorPagador);
     if (!movimientosDeJugadoresEnCurso.has(idJugador)) {
@@ -385,18 +363,15 @@ function actualizarTurnoEnPantalla(turnoDTO) {
     const idJugadorActual = String(turnoDTO.idJugadorActual);
     const usuarioSesionId = String(window.usuarioSesionId);
 
-    // Si cambia el jugador activo, comienza un nuevo turno.
     if (window.idJugadorTurnoAnterior !== idJugadorActual) {
         yaTiroEnEsteTurno = false;
         window.idJugadorTurnoAnterior = idJugadorActual;
     }
 
-    // Limpiar indicadores de turno previos.
     document.querySelectorAll(".contenedor-turno").forEach((contenedor) => {
         contenedor.innerHTML = "";
     });
 
-    // Mostrar a quién le toca jugar.
     const cardJugador = document.getElementById(idJugadorActual);
     if (cardJugador) {
         const contenedorTurno = cardJugador.querySelector(".contenedor-turno");
@@ -411,19 +386,15 @@ function actualizarTurnoEnPantalla(turnoDTO) {
         }
     }
 
-    // --- MAGIA VISUAL: ACTUALIZAR TARJETAS ---
-    // 1. Le sacamos la clase 'turno-activo' a todos los jugadores
     document.querySelectorAll(".jugador").forEach((card) => {
         card.classList.remove("turno-activo");
     });
 
-    // 2. Se la agregamos únicamente al contenedor (article) del jugador que le toca
     const cardJugadorActivo = document.getElementById(idJugadorActual);
     if (cardJugadorActivo) {
         cardJugadorActivo.classList.add("turno-activo");
     }
 
-    // Bloquear o habilitar TODOS los botones según el jugador actual.
     if (usuarioSesionId === idJugadorActual) {
         desbloquearControles();
     } else {
@@ -454,7 +425,6 @@ function aplicarTurnoDTO(turnoDTO) {
     actualizarRondaActual(turnoDTO.rondaActual);
 }
 
-// GESTIÓN DE RONDAS: solo se actualiza la visualización.
 function actualizarRondaActual(rondaActual) {
     const contadorRonda = document.getElementById("ronda-actual");
 
@@ -773,8 +743,6 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
     let propiedad;
     try {
         propiedad = await cargarInfoPropiedad(posicion);
-        // Los casilleros especiales no tienen ficha de propiedad: no abren modal.
-        // El backend avanza el turno automáticamente en esos casilleros.
         if (!propiedad) {
             return;
         }
@@ -784,8 +752,6 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
         return;
     }
 
-    // El diálogo de compra se abre solo tras confirmar que está libre y que
-    // quien cayó sigue siendo el jugador del turno en esta sesión.
     if (propiedad.disponible !== true || String(window.turnoActualId) !== String(idJugador)) return;
 
     const saldoActual = document.getElementById(String(idJugador))?.querySelector(".dinero")?.textContent ?? "0";
@@ -1069,7 +1035,6 @@ async function responderOfertaVenta(aceptar) {
 
 window.setInterval(revisarOfertasPendientes, 2500);
 
-// Finalizar turno después de avanzar la ficha.
 async function finalizarTurno() {
     console.log("Intentando avanzar el turno...");
 
@@ -1092,7 +1057,6 @@ async function finalizarTurno() {
     return turnoDTO;
 }
 
-// gestor turno-contador
 let intervaloReloj = null;
 let tiempoRestante = 30;
 
@@ -1109,7 +1073,6 @@ function iniciarRelojLocal(segundos) {
         if (tiempoRestante < 0) tiempoRestante = 0;
         actualizarTextoReloj(elementoReloj);
 
-        // Feedback visual en rojo
         if (tiempoRestante <= 5 && tiempoRestante > 0) {
             elementoReloj.style.color = "#d9534f";
             elementoReloj.style.fontWeight = "bold";
@@ -1119,7 +1082,6 @@ function iniciarRelojLocal(segundos) {
         }
         sincronizarTiempoPopupCompra();
 
-        // Acciones al llegar a cero
         if (tiempoRestante === 0) {
             clearInterval(intervaloReloj);
             bloquearControles();
@@ -1168,6 +1130,7 @@ function desbloquearControles() {
     actualizarBotonTirada();
 }
 
+// Alineo el historial con el tamaño del tablero.
 function alinearHistorialConTablero() {
     const tablero = document.querySelector(".tablero");
     const lateral = document.querySelector(".partida__lateral");
@@ -1192,11 +1155,8 @@ function alinearHistorialConTablero() {
     actualizar();
 }
 
-    // Arranque inicial al cargar la página
 window.addEventListener("DOMContentLoaded", () => {
     alinearHistorialConTablero();
-    // El servidor ya renderiza cada ficha en su casillero; no hay que esperar
-    // el primer viaje de ida y vuelta al WebSocket para habilitar la partida.
     posicionesInicialesSincronizadas = true;
     pintarLocalidadesTablero();
     if (Array.isArray(window.propiedadesIniciales)) {
@@ -1207,7 +1167,6 @@ window.addEventListener("DOMContentLoaded", () => {
     iniciarSincronizacionTurno(basePath, codigoPartida);
     iniciarSincronizacionPosiciones();
     revisarOfertasPendientes();
-    // 1. Aplicamos el efecto visual al jugador activo según Thymeleaf
     if (window.turnoActualId) {
         const cardActiva = document.getElementById(window.turnoActualId);
         if (cardActiva) {
@@ -1215,13 +1174,11 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 2. Iniciamos el reloj visual
     window.turnoActualId = window.turnoActualId || null;
     window.idJugadorTurnoAnterior = window.turnoActualId == null
         ? undefined
         : String(window.turnoActualId);
     if (!window.turnoInicialSincronizado) prepararRelojSinIniciar();
-    // 3. Bloqueamos si no es nuestro turno
     if (String(window.turnoActualId) !== String(window.usuarioSesionId)) {
         bloquearControles();
     } else if (window.usuarioEnBancarrota) {

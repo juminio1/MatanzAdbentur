@@ -150,7 +150,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
                 new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        //ejecuta esta notificación después de que la transacción se haya confirmado correctamente
+                        // Aviso después de confirmar la transacción.
                         publicadorSala.notificar(estadoActualizado);
                     }
                 }

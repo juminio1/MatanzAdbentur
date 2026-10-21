@@ -1,45 +1,39 @@
 package com.tallerwebi.punta_a_punta;
 
-import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class ReiniciarDB {
 
   public static void limpiarBaseDeDatos() {
-    try {
-      String dbHost = System.getenv("DB_HOST") != null ? System.getenv("DB_HOST") : "localhost";
-      String dbPort = System.getenv("DB_PORT") != null ? System.getenv("DB_PORT") : "3306";
-      String dbName = System.getenv("DB_NAME") != null ? System.getenv("DB_NAME") : "tallerwebi";
-      String dbUser = System.getenv("DB_USER") != null ? System.getenv("DB_USER") : "user";
-      String dbPassword = System.getenv("DB_PASSWORD") != null
-        ? System.getenv("DB_PASSWORD")
-        : "user";
+    String dbHost = variable("DB_HOST", "localhost");
+    String dbPort = variable("DB_PORT", "5432");
+    String dbName = variable("DB_NAME", "tallerwebi");
+    String url = String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, dbName);
 
-      String sqlCommands =
-        "DELETE FROM Usuario;\n" +
-        "ALTER TABLE Usuario AUTO_INCREMENT = 1;\n" +
-        "INSERT INTO Usuario(id, email, password, rol, activo) VALUES(null, 'test@unlam.edu.ar', 'test', 'ADMIN', true);";
-
-      String comando = String.format(
-        "docker exec tallerwebi-mysql mysql -h %s -P %s -u %s -p%s %s -e \"%s\"",
-        dbHost,
-        dbPort,
-        dbUser,
-        dbPassword,
-        dbName,
-        sqlCommands
-      );
-
-      Process process = Runtime.getRuntime().exec(new String[] { "/bin/bash", "-c", comando });
-      int exitCode = process.waitFor();
-
-      if (exitCode == 0) {
-        System.out.println("Base de datos limpiada exitosamente");
-      } else {
-        System.err.println("Error al limpiar la base de datos. Exit code: " + exitCode);
+    try (Connection connection = DriverManager.getConnection(
+        url, variable("DB_USER", "user"), variable("DB_PASSWORD", "user"))) {
+      connection.setAutoCommit(false);
+      try (Statement statement = connection.createStatement()) {
+        statement.executeUpdate("DELETE FROM Usuario");
+        statement.execute("ALTER TABLE Usuario ALTER COLUMN id RESTART WITH 1");
+        statement.executeUpdate(
+            "INSERT INTO Usuario(email, username, password, rol, activo) "
+                + "VALUES ('test@unlam.edu.ar', 'test123', 'test', 'ADMIN', true)");
+        connection.commit();
+      } catch (SQLException e) {
+        connection.rollback();
+        throw e;
       }
-    } catch (IOException | InterruptedException e) {
-      System.err.println("Error ejecutando script de limpieza: " + e.getMessage());
-      e.printStackTrace();
+    } catch (SQLException e) {
+      throw new IllegalStateException("No se pudo reiniciar la base de datos de pruebas", e);
     }
+  }
+
+  private static String variable(String nombre, String valorPredeterminado) {
+    String valor = System.getenv(nombre);
+    return valor != null ? valor : valorPredeterminado;
   }
 }

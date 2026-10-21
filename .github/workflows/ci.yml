@@ -13,6 +13,28 @@ jobs:
   Explore-GitHub-Actions:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: tallerwebi_test
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: user
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d tallerwebi_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      RUN_POSTGRES_TESTS: "true"
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: tallerwebi_test
+      DB_USER: user
+      DB_PASSWORD: user
+
     steps:
       - run: echo "🎉 Esta tarea (job) fue lanzada automaticamente por el evento ${{ github.event_name }}"
 

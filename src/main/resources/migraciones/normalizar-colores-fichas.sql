@@ -1,6 +1,5 @@
--- Amplía la columna antes de convertir los nombres anteriores, sin eliminar registros.
 ALTER TABLE SalaDeEspera_fichasOcupadas
-    MODIFY COLUMN fichasOcupadas VARCHAR(20) NULL;
+    ALTER COLUMN fichasOcupadas TYPE VARCHAR(20);
 
 UPDATE SalaDeEspera_fichasOcupadas
 SET fichasOcupadas = CASE fichasOcupadas

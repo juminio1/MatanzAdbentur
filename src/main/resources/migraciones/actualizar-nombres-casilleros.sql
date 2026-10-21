@@ -1,4 +1,3 @@
--- Conserva las propiedades y sus dueños; actualiza únicamente los nombres anteriores.
 UPDATE Propiedad
 SET nombre = CASE nombre
     WHEN 'Villa Palito' THEN 'San Justo Shopping'
@@ -17,10 +16,10 @@ descripcion = 'Parada de bondi'
 WHERE posicion IN (6, 12, 17, 24);
 
 UPDATE Propiedad p
-JOIN CasilleroPropiedad cp ON cp.propiedad_id = p.id
+SET nombre = c.nombre, grupo = NULL
+FROM CasilleroPropiedad cp
 JOIN Casillero c ON c.id = cp.id
-SET p.nombre = c.nombre, p.grupo = NULL
-WHERE c.posicion IN (6, 12, 17, 24);
+WHERE cp.propiedad_id = p.id AND c.posicion IN (6, 12, 17, 24);
 
 UPDATE Casillero
 SET nombre = 'EVENTOS'

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -25,7 +24,7 @@ import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.infraestructura.RepositorioCasillero;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
@@ -48,12 +47,10 @@ public class ServicioPartidaTest {
     private NotificadorPartida notificadorPartidaMock;
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
-    private ServicioEvento servicioEventoMock;
-    private RepositorioCasillero repositorioCasilleroMock;
 
     private static final int TOTAL_CASILLEROS = 30;
 
-     @BeforeEach
+    @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
@@ -63,10 +60,11 @@ public class ServicioPartidaTest {
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            repositorioSalaDeEsperaMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
             servicioDadoMock,
             gestorTemporizadorMock,
-            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))), servicioEventoMock
+            new ServicioTurnoImpl(),
+            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
         );
     }
 
@@ -263,8 +261,8 @@ public class ServicioPartidaTest {
         verifyNoInteractions(notificadorPartidaMock);
     }
 
-   /* @Test
-    public void alAvanzarTurnoSinNotificadorSeProgramaElTemporizadorIgualmente() {
+    @Test
+    public void alAvanzarTurnoSinNotificadorSeProgramaElTemporizadorIgualmente() throws ActivacionEventoInvalidoException {
         String codigo = "SIN-NOTIFICADOR";
         Partida partida = new Partida();
         partida.setCodigoUnico(codigo);
@@ -275,8 +273,10 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
-            repositorioPartidaMock, repositorioSalaDeEsperaMock, servicioDadoMock,
-            gestorTemporizadorMock, null,null, null );
+            repositorioPartidaMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
+            servicioDadoMock,
+            gestorTemporizadorMock, new ServicioTurnoImpl(), null);
 
         servicioSinNotificador.avanzarTurno(codigo);
 
@@ -284,7 +284,7 @@ public class ServicioPartidaTest {
         verify(gestorTemporizadorMock).programarTemporizador(
             eq(codigo), eq(30), any(Runnable.class));
         verify(repositorioPartidaMock).guardarPartida(partida);
-    }*/
+    }
 
     @Test
     public void alAvanzarConTodosPenalizadosSeRestablecenPenalizacionesYContinuaLaPartida() throws ActivacionEventoInvalidoException {
@@ -652,7 +652,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() throws ActivacionEventoInvalidoException {
+    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() {
         String codigoPrueba = "MATANZA123";
 
         Jugador jugadorUno = new Jugador();
@@ -883,10 +883,12 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
 
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
 
+        // Si usas JUnit 5:
         assertThrows(FichaNoDisponibleException.class, () -> {
             servicioPartida.iniciarPartida(codigo, 1L);
         });
 
+        // (Si tu proyecto usa JUnit 4 con @Test(expected = ...), puedes usar esa anotación en lugar de assertThrows)
     }
 
     @Test
@@ -941,4 +943,6 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
             servicioPartida.iniciarPartida(codigo, 1L);
         });
     }
+
+
 }

@@ -5,7 +5,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
-/** Mantiene el mismo formato de contraseña entre registro y autenticación. */
 final class HashContrasenia {
 
     private HashContrasenia() {}

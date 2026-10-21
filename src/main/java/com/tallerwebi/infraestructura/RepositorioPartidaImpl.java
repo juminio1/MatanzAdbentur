@@ -10,7 +10,6 @@ import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-/** Persiste jugadores y consulta partidas que todavía no finalizaron. */
 @Repository("repositorioPartida")
 public class RepositorioPartidaImpl implements RepositorioPartida {
 

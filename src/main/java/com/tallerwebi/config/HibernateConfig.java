@@ -1,6 +1,7 @@
 package com.tallerwebi.config;
 
 import java.util.Properties;
+import java.util.TimeZone;
 import javax.sql.DataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,8 +14,13 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement
 public class HibernateConfig {
 
+    private static final String ZONA_BUENOS_AIRES_ANTERIOR = "America/Buenos_Aires";
+
     @Bean
     public DataSource dataSource() {
+        if (ZONA_BUENOS_AIRES_ANTERIOR.equals(TimeZone.getDefault().getID())) {
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Argentina/Buenos_Aires"));
+        }
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
 
         String dbHost = System.getenv("DB_HOST");
@@ -24,13 +30,13 @@ public class HibernateConfig {
         String dbPassword = System.getenv("DB_PASSWORD");
 
         if (dbHost == null) dbHost = "localhost";
-        if (dbPort == null) dbPort = "3306";
+        if (dbPort == null) dbPort = "5432";
         if (dbName == null) dbName = "tallerwebi"; //Nombre de la base de datos
         if (dbUser == null) dbUser = "user"; //Usuario
         if (dbPassword == null) dbPassword = "user"; //Password
 
         String url = String.format(
-            "jdbc:mysql://%s:%s/%s?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
+            "jdbc:postgresql://%s:%s/%s",
             dbHost,
             dbPort,
             dbName
@@ -39,7 +45,7 @@ public class HibernateConfig {
         dataSource.setUrl(url);
         dataSource.setUsername(dbUser);
         dataSource.setPassword(dbPassword);
-        dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        dataSource.setDriverClassName("org.postgresql.Driver");
         return dataSource;
     }
 
@@ -59,13 +65,10 @@ public class HibernateConfig {
 
     private Properties hibernateProperties() {
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         properties.setProperty("hibernate.show_sql", "true");
         properties.setProperty("hibernate.format_sql", "true");
-        properties.setProperty("hibernate.hbm2ddl.auto", "create"); 
-        properties.setProperty("hibernate.connection.characterEncoding", "utf8");
-        properties.setProperty("hibernate.connection.CharSet", "utf8");
-        properties.setProperty("hibernate.connection.useUnicode", "true");
+        properties.setProperty("hibernate.hbm2ddl.auto", "update"); // Actualiza la estructura de las tablas existentes sin recrearlas en cada ejecución/levantar el proyecto.
         return properties;
     }
 }
