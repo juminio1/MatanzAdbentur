@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ObservadorVictoria implements Observador<EventoJugadorAbandonado> {
 
+    private static final long CANTIDAD_JUGADORES_VICTORIA = 1L;
     private final RepositorioPartida repositorioPartida;
 
     public ObservadorVictoria(RepositorioPartida repositorioPartida) {
@@ -23,7 +24,7 @@ public class ObservadorVictoria implements Observador<EventoJugadorAbandonado> {
                 .filter(jugador -> !jugador.getAbandono() && !jugador.getEnBancarrota())
                 .count();
 
-        if (jugadoresActivos == 1) {
+        if (jugadoresActivos == CANTIDAD_JUGADORES_VICTORIA) {
             partida.setEstado(EstadoPartida.FINALIZADA);
             repositorioPartida.guardarPartida(partida);
         }

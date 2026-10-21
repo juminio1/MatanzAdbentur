@@ -96,6 +96,6 @@ public class ServicioTurnoImpl implements ServicioTurno {
     }
 
     private Boolean esJugadorActivo(Jugador jugador) {
-        return jugador != null && !jugador.getEnBancarrota();
+        return jugador != null && !jugador.getEnBancarrota() && !jugador.getAbandono();
     }
 }
