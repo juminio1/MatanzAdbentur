@@ -56,10 +56,12 @@ private final SessionFactory sessionFactory;
 
     @Override
     public List<Propiedad> buscarPropiedadesPorPropietario(Jugador propietario) {
-        // Por ahora retornamos null solo para que el código compile y se vaya el rojo.
-        // Como estamos haciendo TDD y usando un Mock en el test, esto alcanza.
-        // Más adelante le agregamos la consulta real a la base de datos (Hibernate/JPA).
-        return null;
+        String hql = "FROM Propiedad WHERE propietario = :propietario";
+
+        return sessionFactory.getCurrentSession()
+                .createQuery(hql, Propiedad.class)
+                .setParameter("propietario", propietario)
+                .getResultList();
     }
 
 }
