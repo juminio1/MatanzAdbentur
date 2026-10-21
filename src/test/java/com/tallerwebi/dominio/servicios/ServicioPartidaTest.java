@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -15,8 +16,11 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.TipoEfecto;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
@@ -41,12 +45,19 @@ import org.junit.jupiter.api.Test;
 
 public class ServicioPartidaTest {
 
+    private static final String CODIGO = "MATANZA123";
     private RepositorioPartida repositorioPartidaMock;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
     private ServicioDado servicioDadoMock;
     private NotificadorPartida notificadorPartidaMock;
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
+    private ServicioEvento servicioEventoMock;
+
+    private Partida partida;
+    private Jugador jugadorUno;
+    private Jugador jugadorDos;
+    private EventoGlobal piquete;
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -57,6 +68,7 @@ public class ServicioPartidaTest {
         servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
+        servicioEventoMock = mock(ServicioEventoImpl.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -65,7 +77,9 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new ServicioTurnoImpl(),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
+
         );
+
     }
 
     @Test
@@ -652,7 +666,7 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() {
+    public void dadoQueHayCuatroJugadoresCuandoTodosFinalizanSuTurnoDaComoResultadoNuevaRonda() throws ActivacionEventoInvalidoException {
         String codigoPrueba = "MATANZA123";
 
         Jugador jugadorUno = new Jugador();
@@ -944,5 +958,98 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         });
     }
 
+    //TEST DE PAUSAR LA PARTIDA CUANDO COMIENZA UN EVENTO GLOBAL
+    @Test
+    public void dadoQueComienzaUnEventoGlobalCuandoFinalizaLaRondaDaComoResultadoLaPartidaPausada()
+        throws Exception {
+
+        // Preparación
+        String codigo = "MATANZA123";
+
+        Jugador jugadorUno = new Jugador();
+        jugadorUno.setOrden(0);
+        jugadorUno.setEnBancarrota(false);
+
+        Jugador jugadorDos = new Jugador();
+        jugadorDos.setOrden(1);
+        jugadorDos.setEnBancarrota(false);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(1);
+        partida.setIndiceTurnoActual(0);
+        partida.setJugadores(List.of(jugadorUno, jugadorDos));
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+
+        when(servicioEventoMock.hayEventoGlobalActivo(codigo)).thenReturn(true);
+
+        // Ejecución
+        this.servicioPartida.avanzarTurno(codigo);
+
+        // Comprobación
+        assertEquals(5, partida.getRondaActual());
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        verify(servicioEventoMock).verificarActivacionEventoGlobal(partida);
+
+        verify(gestorTemporizadorMock, never()).programarTemporizador(eq(codigo),eq(30),any(Runnable.class));
+    }
+
+    //TEST IMPEDIR AVANZAR TURNOS DURANTE UN EVENTO GLOBAL
+    @Test
+    public void dadoQueHayUnEventoGlobalActivoCuandoSeIntentaAvanzarTurnoDaComoResultadoQueLaPartidaNoAvance()
+        throws Exception {
+        // Preparación
+        String codigo = "MATANZA123";
+
+        Jugador jugadorUno = new Jugador();
+        jugadorUno.setOrden(0);
+        jugadorUno.setEnBancarrota(false);
+
+        Jugador jugadorDos = new Jugador();
+        jugadorDos.setOrden(1);
+        jugadorDos.setEnBancarrota(false);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setRondaActual(5);
+        partida.setTurnosFinalizadosEnRonda(0);
+        partida.setIndiceTurnoActual(0);
+        partida.setJugadores(List.of(jugadorUno, jugadorDos));
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+
+        when(servicioEventoMock.hayEventoGlobalActivo(codigo)).thenReturn(true);
+
+        // Ejecución
+        this.servicioPartida.avanzarTurno(codigo);
+
+        // Comprobación
+        assertEquals(5, partida.getRondaActual());
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+
+        verify(repositorioPartidaMock, never()).guardarPartida(partida);
+    }
+
+    @Test
+    public void dadoQueLaPartidaEstaEnUnEventoGlobalCuandoSeIntentaIniciarElTemporizadorDaComoResultadoQueNoSeInicie() {
+
+        String codigo = "MATANZA123";
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+        when(servicioEventoMock.hayEventoGlobalActivo(codigo)).thenReturn(true);
+
+        this.servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+
+        verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigo),eq(30),any(Runnable.class));
+
+
+    }
 
 }

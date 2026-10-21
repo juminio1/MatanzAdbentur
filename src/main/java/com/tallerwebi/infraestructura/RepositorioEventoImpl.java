@@ -27,7 +27,7 @@ public class RepositorioEventoImpl implements RepositorioEvento {
         final Session session = sessionFactory.getCurrentSession();
 
         // Traemos únicamente los eventos comunes, excluyendo los globales.
-        List<Evento> eventos = session.createQuery("FROM Evento e WHERE TYPE(e) = Evento", Evento.class).list();
+        List<Evento> eventos = session.createQuery("SELECT COUNT(e) FROM Evento e WHERE TYPE(e) = Evento", Evento.class).list();
 
         if (eventos.isEmpty()) {
             return null;

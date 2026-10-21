@@ -5,12 +5,15 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
+import com.tallerwebi.dominio.excepcion.TiradasFaltantesException;
 import com.tallerwebi.infraestructura.RepositorioEvento;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import java.util.Collections;
@@ -26,9 +29,9 @@ import org.springframework.stereotype.Service;
 public class ServicioEventoImpl implements ServicioEvento {
 
     private final RepositorioEvento repositorioEvento;
+    private final ServicioDado servicioDado;
     private final Random random;
     private static final Integer RONDAS_ENTRE_EVENTOS = 5;
-    private final ServicioDado servicioDado;
     private static final Integer CANTIDAD_CASILLEROS = 30;
     private static final Integer CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS =1;
 
@@ -55,9 +58,9 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public void aplicarEvento(Jugador jugador, Evento evento) {
+    public void aplicarEvento(Jugador jugador, Evento evento) throws EventoInexistenteException {
         if (this.esEventoInvalido(evento)) {
-            return;
+            throw new EventoInexistenteException("El evento no existe");
         }
 
         switch (evento.getTipoEfecto()) {
@@ -77,14 +80,13 @@ public class ServicioEventoImpl implements ServicioEvento {
             case VOLVER_INICIO:
                 jugador.setPosicionActual(evento.getValor());
                 break;
-            default:
-            // código si no hay coincidencias
+            
         }
     }
 
     @Override
     public void iniciarEventoGlobal(Partida partida, EventoGlobal eventoGlobal)
-    throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException {
+    throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         validarEventoGlobal(eventoGlobal);
         validarPartida(partida);
@@ -98,22 +100,15 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public synchronized void verificarActivacionEventoGlobal(Partida partida) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException {
+    public synchronized void verificarActivacionEventoGlobal(Partida partida) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, ActivacionEventoInvalidoException, EventoInexistenteException {
 
         validarPartidaParaActivacion(partida);
 
         Integer rondaActual = partida.getRondaActual();
-
-        if (!activarEventoGlobalPorRondas(rondaActual)) {
-            return;
-        }
-
         String codigoPartida = partida.getCodigoUnico();
 
-        if (yaSeActivoEventoEnEstaRonda(codigoPartida, rondaActual)) {
-            return;
-        }
-
+        if (!activarEventoGlobalPorRondas(rondaActual) && !yaSeActivoEventoEnEstaRonda(codigoPartida, rondaActual)) {
+             
         validarQueNoExistaEventoActivo(codigoPartida);
 
         EventoGlobal eventoGlobal = obtenerEventoGlobalValido();
@@ -121,11 +116,12 @@ public class ServicioEventoImpl implements ServicioEvento {
         iniciarEventoGlobal(partida, eventoGlobal);
 
         ultimaRondaConEventoPorPartida.put(codigoPartida, rondaActual);
+        }
     }
 
     @Override
     public synchronized  ResultadoTiradaDTO realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal)
-        throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException {
+        throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException {
 
         this.validarDatosEventoGlobal(partida, jugador, eventoGlobal); //valida los datos del evento que sean validos
 
@@ -207,7 +203,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         return (EventoGlobal) eventoAleatorio;
     }
 
-    private void resolverEventoGlobal(Partida partida) throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException {
+    private void resolverEventoGlobal(Partida partida) throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException {
 
         String codigoPartida = partida.getCodigoUnico();
 
@@ -225,11 +221,11 @@ public class ServicioEventoImpl implements ServicioEvento {
             throw new JugadorNoEncontradoException("No hay jugadores habilitados para participar");
         }
 
-        /*Boolean faltanTiradas = participantes.stream().anyMatch(jugador -> !tiradas.containsKey(jugador.getId()));
+        Boolean faltanTiradas = participantes.stream().anyMatch(jugador -> !tiradas.containsKey(jugador.getId()));
 
         if (faltanTiradas) {
-            return;
-        }*/
+            throw new TiradasFaltantesException("Faltan completarse tiradas");
+        }
 
         List<Jugador> jugadoresElegidos =
             obtenerJugadoresConResultadoElegido(participantes, tiradas, eventoActivo.getTipoEventoGlobal());
@@ -339,7 +335,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     //Eventos con jugador aleatorio
 
     private void eventosDeSeleccionDeJugadorAleatorio(Partida partida, EventoGlobal eventoGlobal)
-        throws JugadorNoEncontradoException {
+        throws JugadorNoEncontradoException, EventoInexistenteException {
         List<Jugador> jugadores = partida.getJugadores();
 
         Boolean elKevin = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.EL_KEVIN);
@@ -351,7 +347,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
     }
 
-    private void seleccionarJugadorYAplicarEvento(List<Jugador> jugadores, EventoGlobal eventoGlobal) throws JugadorNoEncontradoException {
+    private void seleccionarJugadorYAplicarEvento(List<Jugador> jugadores, EventoGlobal eventoGlobal) throws JugadorNoEncontradoException, EventoInexistenteException {
         if (jugadores == null || jugadores.isEmpty()) {
             throw new JugadorNoEncontradoException("No hay jugadores en la partida");
         }
@@ -419,7 +415,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
     }
 
-    private void aplicarConsecuenciaEventoGlobal(Partida partida, Jugador jugadorElegido, EventoGlobal eventoGlobal) {
+    private void aplicarConsecuenciaEventoGlobal(Partida partida, Jugador jugadorElegido, EventoGlobal eventoGlobal) throws EventoInexistenteException {
         
         if (eventoGlobal.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP) {
 
