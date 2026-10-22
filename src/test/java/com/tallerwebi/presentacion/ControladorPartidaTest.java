@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,8 @@ import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
+import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -50,7 +53,7 @@ public class ControladorPartidaTest {
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-        servicioCasilleroMock = mock(ServicioCasillero.class);
+        servicioCasilleroMock = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedadMock = mock(ServicioPropiedad.class);
 
         controladorPartida = new ControladorPartida(

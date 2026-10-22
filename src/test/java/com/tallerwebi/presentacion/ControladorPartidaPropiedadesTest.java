@@ -7,13 +7,18 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
+import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
+import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -46,7 +52,7 @@ class ControladorPartidaPropiedadesTest {
     void inicializar() {
         servicioPartida = mock(ServicioPartida.class);
         notificador = mock(SimpMessagingTemplate.class);
-        servicioCasillero = mock(ServicioCasillero.class);
+        servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedad = mock(ServicioPropiedad.class);
         controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
     }
@@ -229,7 +235,138 @@ class ControladorPartidaPropiedadesTest {
         assertEquals(false, respuesta.getBody().get("disponible"));
         verify(servicioPartida).avanzarTurno(CODIGO);
         verify(servicioPartida, times(2)).obtenerJugadorActual(CODIGO);
+        verify(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, comprador.getId());
+        verify(servicioCasillero, never()).guardarCasillero(any());
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
+    }
+
+    @Test
+    void lasConsultasDelTableroNoMaterializanPropiedades() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 0);
+        partida.setJugadores(List.of(jugador));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", jugador.getId());
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorPorId(jugador.getId())).thenReturn(jugador);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
+
+        assertEquals(HttpStatus.OK, controlador.obtenerInfoPropiedad(CODIGO, 1).getStatusCode());
+        ResponseEntity<?> catalogo = controlador.obtenerPropiedadesTablero(CODIGO, request);
+        assertEquals(HttpStatus.OK, catalogo.getStatusCode());
+        assertEquals(23, ((List<?>) catalogo.getBody()).size());
+        var vista = controlador.verTablero(CODIGO, request);
+        assertEquals("partida", vista.getViewName());
+        assertEquals(catalogo.getBody(), vista.getModel().get("propiedadesTablero"));
+
+        verify(servicioCasillero, never()).guardarCasillero(any());
+        verify(servicioPropiedad, never()).comprarPropiedadParaJugador(any(), any());
+        verify(servicioPartida, never()).actualizarJugador(any());
+    }
+
+    @Test
+    void laCompraMaterializaUnaPropiedadComunConLosDatosDelCatalogo() {
+        comprobarCreacionEnCompra(1, "Plaza Barrio Marina", "Villa Luzuriaga", 50,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+    }
+
+    @Test
+    void laCompraMaterializaUnaParadaSinGrupoYConAlquilerBaseVeinte() {
+        comprobarCreacionEnCompra(6, "Colectivo 242", "Parada de bondi", 20, null);
+    }
+
+    @Test
+    void laCompraUsaLaPropiedadDeSuPartidaAunqueOtraOcupeLaMismaPosicion() {
+        Partida partida = crearPartida();
+        Jugador comprador = crearJugador(1L, "Ana", 1000, 4);
+        partida.setJugadores(List.of(comprador));
+        Propiedad propia = crearPropiedad(null);
+        Propiedad ajena = crearPropiedad(null);
+        ajena.setId(99L);
+        CasilleroPropiedad casilleroAjeno = crearCasillero(ajena);
+        casilleroAjeno.setPartidaId(99L);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(comprador);
+        when(servicioPartida.obtenerJugadorPorId(comprador.getId())).thenReturn(comprador);
+        when(servicioCasillero.obtenerTodosLosCasilleros())
+                .thenReturn(List.of(casilleroAjeno, crearCasillero(propia)));
+        when(servicioPropiedad.obtenerPropiedadExistente(ID_PROPIEDAD)).thenReturn(propia);
+
+        assertEquals(HttpStatus.OK, controlador.comprarPropiedad(CODIGO, 4).getStatusCode());
+
+        verify(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, comprador.getId());
+        verify(servicioPropiedad, never()).comprarPropiedadParaJugador(eq(99L), any());
+        verify(servicioCasillero, never()).guardarCasillero(any());
+    }
+
+    @Test
+    void laTiradaMaterializaLaPropiedadDelDestinoYEsperaLaCompra() throws Exception {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 1000, 0);
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(jugador);
+        when(servicioPartida.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 2));
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
+        doAnswer(invocacion -> {
+            jugador.setPosicionActual(4);
+            return null;
+        }).when(servicioPartida).moverJugador(jugador, 4, 30);
+        when(servicioPropiedad.estaDisponible(any(Propiedad.class))).thenReturn(true);
+
+        RespuestaMovimientoDTO respuesta = controlador.tirarDados(CODIGO, jugador.getId());
+
+        ArgumentCaptor<Casillero> captor = ArgumentCaptor.forClass(Casillero.class);
+        verify(servicioCasillero).guardarCasillero(captor.capture());
+        CasilleroPropiedad creado = (CasilleroPropiedad) captor.getValue();
+        assertEquals(4, creado.getPosicion());
+        assertEquals(ID_PARTIDA, creado.getPartidaId());
+        assertNull(creado.getPropiedad().getPropietario());
+        verify(servicioPropiedad).estaDisponible(creado.getPropiedad());
+        assertEquals(0, respuesta.getPosicionAnterior());
+        assertEquals(4, respuesta.getNuevaPosicion());
+        verify(notificador).convertAndSend("/topic/partida/" + CODIGO, respuesta);
+        verify(servicioPartida, never()).avanzarTurno(any());
+        verify(servicioPropiedad, never()).pagarAlquiler(any(), any(), any());
+    }
+
+    private void comprobarCreacionEnCompra(Integer posicion, String nombre, String descripcion,
+                                           Integer alquilerBase, GrupoPropiedades grupo) {
+        Partida partida = crearPartida();
+        Jugador comprador = crearJugador(1L, "Ana", 1000, posicion);
+        partida.setJugadores(List.of(comprador));
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(comprador);
+        when(servicioPartida.obtenerJugadorPorId(comprador.getId())).thenReturn(comprador);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
+        doAnswer(invocacion -> {
+            CasilleroPropiedad creado = invocacion.getArgument(0);
+            assertNull(creado.getId());
+            Propiedad propiedad = creado.getPropiedad();
+            assertNull(propiedad.getId());
+            assertNull(propiedad.getPropietario());
+            propiedad.setId(ID_PROPIEDAD);
+            when(servicioPropiedad.obtenerPropiedadExistente(ID_PROPIEDAD)).thenReturn(propiedad);
+            return null;
+        }).when(servicioCasillero).guardarCasillero(any());
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.comprarPropiedad(CODIGO, posicion);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        ArgumentCaptor<Casillero> captor = ArgumentCaptor.forClass(Casillero.class);
+        verify(servicioCasillero).guardarCasillero(captor.capture());
+        CasilleroPropiedad creado = (CasilleroPropiedad) captor.getValue();
+        assertEquals(ID_PARTIDA, creado.getPartidaId());
+        assertEquals(posicion, creado.getPosicion());
+        assertEquals(nombre, creado.getNombre());
+        assertEquals(descripcion, creado.getDescripcion());
+        Propiedad propiedad = creado.getPropiedad();
+        assertEquals(nombre, propiedad.getNombre());
+        assertEquals(300, propiedad.getPrecioCompra());
+        assertEquals(alquilerBase, propiedad.getPrecioAlquiler());
+        assertEquals(grupo, propiedad.getGrupo());
+        assertEquals(0, propiedad.getNivelMejora());
+        verify(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, comprador.getId());
     }
 
     @Test
