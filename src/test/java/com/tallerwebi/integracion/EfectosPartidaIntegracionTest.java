@@ -7,17 +7,19 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
-import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
-import com.tallerwebi.dominio.servicios.ServicioDado;
-import com.tallerwebi.dominio.servicios.ServicioEventoCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl;
-import com.tallerwebi.dominio.servicios.ServicioInicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
-import com.tallerwebi.dominio.servicios.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
 import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.infraestructura.RepositorioCasilleroImpl;
@@ -87,6 +89,9 @@ class EfectosPartidaIntegracionTest {
         ServicioInicioPartida servicioInicioPartida() { return mock(ServicioInicioPartida.class); }
         @Bean
         GestorTemporizadorPartida gestorTemporizadorPartida() { return mock(GestorTemporizadorPartida.class); }
+
+        @Bean
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono() { return new PublicadorEventos<>(List.of()); }
     }
 
     @Autowired private SessionFactory sesiones;

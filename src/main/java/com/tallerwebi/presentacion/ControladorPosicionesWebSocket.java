@@ -1,6 +1,6 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import java.util.List;
 import org.slf4j.Logger;

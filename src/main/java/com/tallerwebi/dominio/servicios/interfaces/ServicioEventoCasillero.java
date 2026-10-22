@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.servicios;
+package com.tallerwebi.dominio.servicios.interfaces;
 
 import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;

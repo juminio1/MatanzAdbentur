@@ -1056,3 +1056,130 @@
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
+
+
+/* Modal para abandonar partida */
+
+.modal-abandono {
+    width: min(450px, calc(100vw - 32px));
+    border: 2px solid var(--p-rojo);
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 #080d13;
+}
+
+.modal-abandono::backdrop {
+    background: rgba(0, 0, 0, 0.80);
+    backdrop-filter: blur(4px);
+}
+
+.modal-abandono__contenido {
+    padding: 30px;
+    gap: 18px;
+    text-align: center;
+    justify-items: center;
+}
+
+.modal-abandono__icono {
+    display: grid;
+    place-items: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: rgba(231, 76, 91, 0.15);
+    border: 3px solid var(--p-rojo);
+    color: var(--p-rojo);
+    font-size: 42px;
+    font-weight: 900;
+}
+
+.modal-abandono h2 {
+    color: var(--p-texto);
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.modal-abandono p {
+    color: var(--p-texto-suave);
+    line-height: 1.5;
+}
+
+#mensaje-abandono {
+    color: var(--p-rojo);
+    font-weight: 700;
+}
+
+#mensaje-abandono:empty {
+    display: none;
+}
+
+.modal-abandono__acciones {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.btn-abandono {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #080d13;
+    border-radius: 10px;
+    font-family: var(--font-titulos);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #080d13;
+}
+
+.btn-abandono--cancelar {
+    background: var(--p-superficie-2);
+    color: var(--p-texto);
+}
+
+.btn-abandono--confirmar {
+    background: var(--p-rojo);
+    color: #fff;
+}
+
+.btn-abandono:hover:not(:disabled) {
+    filter: brightness(1.12);
+    transform: translateY(-2px);
+}
+
+.btn-abandono:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+@media (max-width: 480px) {
+    .modal-abandono__acciones {
+        flex-direction: column;
+    }
+}
+
+
+.modal-victoria {
+    border: 3px solid #f3c44e;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.modal-victoria::backdrop {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+}
+
+.modal-victoria h2 {
+    color: #f3c44e;
+    font-size: 28px;
+    font-weight: 900;
+}
+
+.btn-victoria {
+    display: inline-block;
+    padding: 12px 25px;
+    border-radius: 10px;
+    background: #f3c44e;
+    color: #111;
+    font-weight: bold;
+    text-decoration: none;
+}

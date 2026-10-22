@@ -1,5 +1,6 @@
 package com.tallerwebi.config;
 
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.observadores.Observador;
@@ -22,6 +23,13 @@ public class ObservadoresConfig {
     @Bean
     public PublicadorEventos<EventoTurnoCambiado> publicadorTurno(
         List<Observador<EventoTurnoCambiado>> observadores
+    ) {
+        return new PublicadorEventos<>(observadores);
+    }
+
+    @Bean
+    public PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono(
+        List<Observador<EventoJugadorAbandonado>> observadores
     ) {
         return new PublicadorEventos<>(observadores);
     }
