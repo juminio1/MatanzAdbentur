@@ -173,43 +173,38 @@ public class ControladorPartida {
             return ResponseEntity.notFound().build();
         }
         Long jugadorSesionId = ResolutorJugadorSesion.resolver(partida, request);
-        if (!puedeParticiparEnPartida(partida, jugadorSesionId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of(CLAVE_ERROR, "No perteneces a esta partida."));
+        CasilleroPropiedad casillero;
+        try {
+            casillero = servicioPropiedad.prepararVenta(partida, jugadorSesionId, posicion);
+        } catch (EstadoPartidaInvalidoException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(CLAVE_ERROR, ex.getMessage()));
         }
-        CasilleroPropiedad casillero = servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
         if (casillero == null) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of(CLAVE_ERROR, "La propiedad no está disponible para vender."));
         }
         try {
-            return procesarVentaPropiedad(codigoPartida, jugadorSesionId, casillero);
+            Integer precioVenta = servicioPropiedad.venderPropiedadParaJugador(
+                    casillero.getPropiedad().getId(), jugadorSesionId);
+            Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(jugadorSesionId);
+            Map<String, Object> actualizado = dtoPropiedad(casillero,
+                    servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId()));
+            actualizado.put("idJugador", jugadorSesionId);
+            actualizado.put("dineroJugador", vendedorActualizado.getDinero());
+            actualizado.put("precioVenta", precioVenta);
+            notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/propiedades", actualizado);
+            NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
+            return ResponseEntity.ok(actualizado);
         } catch (RuntimeException ex) {
             String mensaje = obtenerMensajeError(ex, "No se pudo vender la propiedad.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, mensaje));
         }
     }
 
-    private ResponseEntity<Map<String, Object>> procesarVentaPropiedad(
-            String codigoPartida, Long idJugador, CasilleroPropiedad casillero) {
-        Integer precioVenta = servicioPropiedad.venderPropiedadParaJugador(
-                casillero.getPropiedad().getId(), idJugador);
-        Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(idJugador);
-        Map<String, Object> actualizado = dtoPropiedad(casillero,
-                servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId()));
-        actualizado.put("idJugador", idJugador);
-        actualizado.put("dineroJugador", vendedorActualizado.getDinero());
-        actualizado.put("precioVenta", precioVenta);
-        notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/propiedades", actualizado);
-        NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
-        return ResponseEntity.ok(actualizado);
-    }
-
     private Boolean puedeParticiparEnPartida(Partida partida, Long idJugador) {
         if (idJugador == null) return false;
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
-        return jugador != null && !jugador.getEnBancarrota()
-                && ResolutorJugadorSesion.pertenece(partida, idJugador);
+        return partida.permiteAdministrarPropiedades(jugador, idJugador);
     }
 
 

@@ -116,13 +116,24 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     @Override
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
+    public CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
+            throws EstadoPartidaInvalidoException {
+        if (idJugador == null) {
+            throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
+        }
+        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
+        if (!partida.permiteAdministrarPropiedades(jugador, idJugador)) {
+            throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
+        }
+        return servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
+    }
+
+    @Override
     public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
         Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
-        validarPropietarioDeVenta(propiedad, idJugador);
-        Integer precioVenta = calcularPrecioVenta(propiedad);
-        propiedad.setPropietario(null);
-        propiedad.setNivelMejora(0);
+        Integer precioVenta = propiedad.venderAlBanco(idJugador);
         servicioPartida.sumarDinero(vendedor, precioVenta);
         repositorioPropiedad.guardarPropiedad(propiedad);
         servicioPartida.actualizarJugador(vendedor);
@@ -158,18 +169,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
-        Jugador propietario = propiedad.getPropietario();
-        if (propietario == null || !idJugador.equals(propietario.getId())) {
-            throw new PropiedadNoDisponibleException("Solo puedes vender una propiedad que te pertenece.");
-        }
-    }
-
-    private Integer calcularPrecioVenta(Propiedad propiedad) {
-        Integer precioCompra = propiedad.getPrecioCompra();
-        if (precioCompra == null || precioCompra < 0) {
-            throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
-        }
-        return precioCompra / 2;
+        propiedad.validarPropietarioDeVenta(idJugador);
     }
 
     @Override

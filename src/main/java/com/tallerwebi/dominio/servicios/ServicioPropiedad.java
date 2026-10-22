@@ -1,6 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 
@@ -12,6 +13,8 @@ public interface ServicioPropiedad {
     void comprarPropiedad(Long idPropiedad, Jugador jugador);
     void comprarPropiedadParaJugador(Long idPropiedad, Long idJugador);
     Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador);
+    CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
+            throws EstadoPartidaInvalidoException;
     void transferirPropiedadParaJugadores(Long idPropiedad, Long idVendedor, Long idComprador, Integer precio);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador);
     void pagarAlquiler(Propiedad propiedad, Jugador jugador, Integer montoAlquiler);

@@ -66,6 +66,9 @@ class ControladorPartidaPropiedadesTest {
         doAnswer(invocacion -> preparador.prepararCompra(
                 invocacion.getArgument(0), invocacion.getArgument(1)))
                 .when(servicioPropiedad).prepararCompra(any(), any());
+        doAnswer(invocacion -> preparador.prepararVenta(
+                invocacion.getArgument(0), invocacion.getArgument(1), invocacion.getArgument(2)))
+                .when(servicioPropiedad).prepararVenta(any(), any(), any());
         controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
     }
 
@@ -481,7 +484,7 @@ class ControladorPartidaPropiedadesTest {
     @Test
     void vendeLaPropiedadDelJugadorYActualizaSuSaldo() {
         Partida partida = crearPartida();
-        Jugador vendedor = crearJugador(1L, "Ana", 700, 4);
+        Jugador vendedor = crearJugador(1L, "Ana", 700, 9);
         partida.setJugadores(List.of(vendedor));
         Propiedad propiedad = crearPropiedad(vendedor);
         CasilleroPropiedad casillero = crearCasillero(propiedad);
@@ -508,6 +511,74 @@ class ControladorPartidaPropiedadesTest {
         assertNull(respuesta.getBody().get("propietarioId"));
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"), any(Map.class));
+        var orden = inOrder(notificador);
+        orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), eq(respuesta.getBody()));
+        orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"),
+                eq(Map.of("idJugador", vendedor.getId(), "dinero", 850, "enBancarrota", false)));
+        verify(servicioPartida, never()).obtenerJugadorActual(any());
+        verify(servicioPartida, never()).avanzarTurno(any());
+        verify(servicioCasillero, never()).guardarCasillero(any());
+    }
+
+    @Test
+    void ventaRechazaJugadorAjenoOInhabilitadoSinBuscarNiCrearLaPropiedad() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 700, 9);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", 1L);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorPorId(1L)).thenReturn(jugador);
+
+        var ajeno = controlador.venderPropiedad(CODIGO, 4, request);
+        assertEquals(HttpStatus.FORBIDDEN, ajeno.getStatusCode());
+        assertEquals(Map.of("error", "No perteneces a esta partida."), ajeno.getBody());
+        partida.setJugadores(List.of(jugador));
+        jugador.setEnBancarrota(true);
+        var inhabilitado = controlador.venderPropiedad(CODIGO, 4, request);
+        assertEquals(HttpStatus.FORBIDDEN, inhabilitado.getStatusCode());
+        assertEquals(ajeno.getBody(), inhabilitado.getBody());
+        verify(servicioCasillero, never()).obtenerTodosLosCasilleros();
+        verify(servicioCasillero, never()).guardarCasillero(any());
+        verify(servicioPropiedad, never()).venderPropiedadParaJugador(any(), any());
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void ventaSinCasilleroPropioDevuelveConflictoSinMaterializar() {
+        Partida partida = crearPartida();
+        Jugador jugador = crearJugador(1L, "Ana", 700, 9);
+        partida.setJugadores(List.of(jugador));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", 1L);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorPorId(1L)).thenReturn(jugador);
+        CasilleroPropiedad ajeno = crearCasillero(crearPropiedad(jugador));
+        ajeno.setPartidaId(99L);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(ajeno));
+
+        var respuesta = controlador.venderPropiedad(CODIGO, 4, request);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(Map.of("error", "La propiedad no está disponible para vender."), respuesta.getBody());
+        verify(servicioCasillero, never()).guardarCasillero(any());
+        verify(servicioPropiedad, never()).venderPropiedadParaJugador(any(), any());
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void errorDeVentaConservaElConflictoSinNotificarNiAvanzar() {
+        prepararCompraExistente();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession().setAttribute("id", 1L);
+        when(servicioPropiedad.venderPropiedadParaJugador(ID_PROPIEDAD, 1L))
+                .thenThrow(new IllegalStateException(" "));
+
+        var respuesta = controlador.venderPropiedad(CODIGO, 4, request);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(Map.of("error", "No se pudo vender la propiedad."), respuesta.getBody());
+        verifyNoInteractions(notificador);
+        verify(servicioPartida, never()).avanzarTurno(any());
     }
 
     @Test

@@ -6,6 +6,8 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.PropiedadNoMejorableException;
+import com.tallerwebi.dominio.excepcion.PropiedadNoDisponibleException;
+import com.tallerwebi.dominio.excepcion.PropiedadInvalidaException;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
@@ -52,6 +54,44 @@ class ServicioPropiedadOperacionesTest {
         verify(partidas).sumarDinero(vendedor, 150);
         verify(partidas).actualizarJugador(vendedor);
         verify(repositorio).guardarPropiedad(propiedad);
+    }
+
+    @Test
+    void ventaAjenaOSinPropietarioNoModificaPropiedadNiSaldos() {
+        propiedad.setNivelMejora(3);
+        var ajena = assertThrows(PropiedadNoDisponibleException.class,
+                () -> servicio.venderPropiedadParaJugador(10L, 2L));
+        assertEquals("Solo puedes vender una propiedad que te pertenece.", ajena.getMessage());
+        assertSame(vendedor, propiedad.getPropietario());
+        propiedad.setPropietario(null);
+        assertThrows(PropiedadNoDisponibleException.class,
+                () -> servicio.venderPropiedadParaJugador(10L, 1L));
+        assertEquals(3, propiedad.getNivelMejora());
+        verify(partidas, never()).sumarDinero(any(), any());
+        verify(partidas, never()).actualizarJugador(any());
+        verify(repositorio, never()).guardarPropiedad(any());
+    }
+
+    @Test
+    void precioDeVentaInvalidoNoEliminaDuenioNiMejoras() {
+        propiedad.setNivelMejora(3);
+        for (Integer precio : new Integer[]{null, -1}) {
+            propiedad.setPrecioCompra(precio);
+            var error = assertThrows(PropiedadInvalidaException.class,
+                    () -> servicio.venderPropiedadParaJugador(10L, 1L));
+            assertEquals("El precio de compra de la propiedad no es válido.", error.getMessage());
+            assertSame(vendedor, propiedad.getPropietario());
+            assertEquals(3, propiedad.getNivelMejora());
+        }
+        verify(partidas, never()).sumarDinero(any(), any());
+        verify(repositorio, never()).guardarPropiedad(any());
+    }
+
+    @Test
+    void ventaDePrecioImparConservaLaDivisionEntera() {
+        propiedad.setPrecioCompra(301);
+        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        verify(partidas).sumarDinero(vendedor, 150);
     }
 
     @Test
