@@ -36,7 +36,7 @@ Las pantallas, las reglas del juego y el registro de usuarios conservan su funci
 
 **No trasladamos los registros anteriores:** eran datos de prueba. El volumen anterior de MySQL queda separado y no se elimina al iniciar PostgreSQL.
 
-El tablero está definido en el código y las propiedades se crean por partida cuando se necesitan. Los casilleros de eventos de la pantalla no consultan actualmente un catálogo de eventos en la base. No hace falta importar estos datos desde MySQL para conservar el comportamiento actual.
+El tablero está definido en el código y las propiedades se crean por partida cuando se necesitan. `data.sql` carga el catálogo de eventos y los casilleros de evento. Al caer en un casillero, la partida identifica su tipo para decidir si resuelve una propiedad o aplica un evento.
 
 ## 3. ¿Para qué usamos Docker?
 

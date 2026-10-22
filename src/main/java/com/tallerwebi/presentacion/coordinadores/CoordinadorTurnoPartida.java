@@ -2,7 +2,7 @@ package com.tallerwebi.presentacion.coordinadores;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
 /** Armo la respuesta del turno para los controladores. */
@@ -31,6 +31,7 @@ public final class CoordinadorTurnoPartida {
                 jugadorActual.getOrden(), "Es el turno de " + jugadorActual.getApodo(),
                 servicioPartida.obtenerSegundosRestantesTurno(codigoPartida));
         turno.setRondaActual(partida.getRondaActual());
+        turno.setTurnosFinalizadosEnRonda(partida.getTurnosFinalizadosEnRonda());
         return turno;
     }
 }

@@ -23,6 +23,7 @@ public class ObservadorTurnoWebSocket implements Observador<EventoTurnoCambiado>
             evento.orden(), "Es el turno de " + evento.apodoJugadorActual(), evento.duracionSegundos()
         );
         turno.setRondaActual(evento.rondaActual());
+        turno.setTurnosFinalizadosEnRonda(evento.turnosFinalizadosEnRonda());
         notificadorPartida.notificarCambioDeTurno(evento.codigoPartida(), turno);
     }
 }

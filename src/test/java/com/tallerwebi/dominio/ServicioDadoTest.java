@@ -1,7 +1,8 @@
 package com.tallerwebi.dominio;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
-import com.tallerwebi.dominio.servicios.ServicioDado;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
