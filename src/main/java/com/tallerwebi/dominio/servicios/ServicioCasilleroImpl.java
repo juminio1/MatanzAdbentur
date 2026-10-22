@@ -1,6 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Casillero.Casillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
