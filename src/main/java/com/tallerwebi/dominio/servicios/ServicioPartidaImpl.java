@@ -12,8 +12,14 @@ import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +40,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final ServicioDado servicioDado;
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
+    private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
 
     @Autowired
     public ServicioPartidaImpl(
@@ -42,7 +49,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
         ServicioDado servicioDado,
         GestorTemporizadorPartida gestorTemporizador,
         ServicioTurno servicioTurno,
-        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno
+        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono 
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
@@ -50,6 +58,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.servicioTurno = servicioTurno;
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
+        this.publicadorAbandono = publicadorAbandono;
     }
 
     @Override
@@ -186,6 +195,25 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return partida.getJugadores().stream().map(this::mapearAJugadorPosicionDto).toList();
     }
 
+    @Override
+    public void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException {
+        Partida partida = obtenerPartida(codigoUnico);
+        if (partida == null) {
+            throw new PartidaNoEncontradaException();
+        }
+
+        Jugador jugador = obtenerJugadorPorId(idJugador);
+        if (jugador == null) {
+            throw new IllegalArgumentException("El jugador especificado no existe.");
+        }
+
+        jugador.setAbandono(true);
+        actualizarJugador(jugador);
+
+        // Disparamos el evento con la seguridad de que todo existe
+        publicadorAbandono.notificar(new EventoJugadorAbandonado(partida, jugador));
+    }
+
     private PosicionFichaDTO mapearAJugadorPosicionDto(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
         Integer posicion =
@@ -229,5 +257,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private String obtenerNombreFichaSegura(Jugador jugador) {
         return jugador.getFicha() == null ? null : jugador.getFicha().name();
     }
+
 
 }

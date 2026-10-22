@@ -11,6 +11,8 @@ import com.tallerwebi.dominio.excepcion.PropiedadInvalidaException;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import java.util.ArrayList;
 import java.util.List;

@@ -16,8 +16,8 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
-import com.tallerwebi.dominio.servicios.ServicioRegistro;
 import com.tallerwebi.dominio.servicios.ServicioRegistroImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioRegistro;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.DTO.RegistroDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +49,7 @@ public class ServicioRegistroTest {
     verify(repositorioUsuarioMock).guardar(captor.capture());
     Usuario registrado = captor.getValue();
     when(repositorioUsuarioMock.buscarUsuarioPorCredencial(USERNAME_VALIDO)).thenReturn(registrado);
-    com.tallerwebi.dominio.servicios.ServicioLogin login =
+    com.tallerwebi.dominio.servicios.interfaces.ServicioLogin login =
         new com.tallerwebi.dominio.servicios.ServicioLoginImpl(repositorioUsuarioMock);
 
     assertThat(login.autenticar(USERNAME_VALIDO, "MatanzaÑ1!"), equalTo(registrado));

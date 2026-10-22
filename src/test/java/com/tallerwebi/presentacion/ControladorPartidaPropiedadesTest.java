@@ -6,20 +6,15 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
-import com.tallerwebi.dominio.servicios.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
-import com.tallerwebi.infraestructura.RepositorioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPropiedad;
-import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
-import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
+import com.tallerwebi.dominio.servicios.*;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
-import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import java.util.List;
 import java.util.Map;
+
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,13 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -54,6 +44,7 @@ class ControladorPartidaPropiedadesTest {
     private ServicioCasillero servicioCasillero;
     private ServicioPropiedad servicioPropiedad;
     private ControladorPartida controlador;
+    private NotificadorPartida notificadorPartidaMock;
 
     @BeforeEach
     void inicializar() throws EstadoPartidaInvalidoException {
@@ -61,6 +52,8 @@ class ControladorPartidaPropiedadesTest {
         notificador = mock(SimpMessagingTemplate.class);
         servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedad = mock(ServicioPropiedad.class);
+        notificadorPartidaMock = mock(NotificadorPartida.class);
+        controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad, notificadorPartidaMock);
         ServicioPropiedad preparador = new ServicioPropiedadImpl(
                 mock(RepositorioPropiedad.class), servicioPartida, servicioCasillero);
         doAnswer(invocacion -> preparador.prepararCompra(
@@ -69,7 +62,6 @@ class ControladorPartidaPropiedadesTest {
         doAnswer(invocacion -> preparador.prepararVenta(
                 invocacion.getArgument(0), invocacion.getArgument(1), invocacion.getArgument(2)))
                 .when(servicioPropiedad).prepararVenta(any(), any(), any());
-        controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
     }
 
     @Test

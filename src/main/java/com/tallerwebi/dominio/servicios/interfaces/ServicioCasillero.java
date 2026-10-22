@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.servicios;
+package com.tallerwebi.dominio.servicios.interfaces;
 
 import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;

@@ -1,5 +1,6 @@
 package com.tallerwebi.infraestructura;
 
+import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import jakarta.persistence.NoResultException;
@@ -51,6 +52,16 @@ private final SessionFactory sessionFactory;
                 .createQuery(hql, Propiedad.class)
                 .setParameter("grupo", grupo) //asigna el grupo recibido a la consulta
                 .getResultList();//devuelve la lista con las propiedades encontradas.
+    }
+
+    @Override
+    public List<Propiedad> buscarPropiedadesPorPropietario(Jugador propietario) {
+        String hql = "FROM Propiedad WHERE propietario = :propietario";
+
+        return sessionFactory.getCurrentSession()
+                .createQuery(hql, Propiedad.class)
+                .setParameter("propietario", propietario)
+                .getResultList();
     }
 
 }
