@@ -10,10 +10,12 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.ServicioPropiedad.CompraPreparada;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -148,7 +150,11 @@ public class ControladorPartida {
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
             @PathVariable(PARAM_POSICION) Integer posicion) {
         try {
-            return validarYProcesarCompra(codigoPartida, posicion);
+            CompraPreparada compra = servicioPropiedad.prepararCompra(codigoPartida, posicion);
+            if (compra == null) return ResponseEntity.notFound().build();
+            return procesarCompraPropiedad(compra);
+        } catch (EstadoPartidaInvalidoException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
         } catch (RuntimeException ex) {
             LOGGER.error("Error interno al comprar la propiedad {} en la partida {}", posicion, codigoPartida, ex);
             String detalle = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
@@ -199,19 +205,6 @@ public class ControladorPartida {
         return ResponseEntity.ok(actualizado);
     }
 
-    private ResponseEntity<Map<String, Object>> validarYProcesarCompra(String codigoPartida, Integer posicion) {
-        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
-        Jugador jugador = servicioPartida.obtenerJugadorActual(codigoPartida);
-        String errorValidacion = validarJugadorActivoEnPosicion(jugador, posicion);
-        if (errorValidacion != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of(CLAVE_ERROR, errorValidacion));
-        }
-        return procesarCompraPropiedad(partida, posicion, jugador);
-    }
-
-
     private Boolean puedeParticiparEnPartida(Partida partida, Long idJugador) {
         if (idJugador == null) return false;
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
@@ -220,19 +213,10 @@ public class ControladorPartida {
     }
 
 
-    private String validarJugadorActivoEnPosicion(Jugador jugadorActual, Integer posicion) {
-        if (jugadorActual == null) return "No hay un jugador activo en esta partida.";
-        if (!posicion.equals(jugadorActual.getPosicionActual())) {
-            return "El jugador activo está en el casillero " + jugadorActual.getPosicionActual()
-                    + ", pero se intentó comprar el casillero " + posicion + ".";
-        }
-        return null;
-    }
-
-    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(Partida partida,
-                                                                         Integer posicion, Jugador jugador) {
-        String codigoPartida = partida.getCodigoUnico();
-        CasilleroPropiedad casillero = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida, posicion);
+    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(CompraPreparada compra) {
+        String codigoPartida = compra.codigoPartida();
+        Jugador jugador = compra.jugador();
+        CasilleroPropiedad casillero = compra.casillero();
         try {
             servicioPropiedad.comprarPropiedadParaJugador(casillero.getPropiedad().getId(), jugador.getId());
             Jugador compradorActualizado = servicioPartida.obtenerJugadorPorId(jugador.getId());

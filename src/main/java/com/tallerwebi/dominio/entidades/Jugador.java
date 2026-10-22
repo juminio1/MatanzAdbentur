@@ -64,6 +64,10 @@ private ColorFicha ficha;
         return posicionActual;
     }
 
+    public Boolean estaEnPosicion(Integer posicion) {
+        return posicion.equals(posicionActual);
+    }
+
     public void setPosicionActual(Integer posicionActual) {
         this.posicionActual = posicionActual;
     }

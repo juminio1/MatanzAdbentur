@@ -11,6 +11,10 @@ import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
+import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
+import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -35,6 +39,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class ControladorPartidaPropiedadesTest {
 
@@ -49,11 +56,16 @@ class ControladorPartidaPropiedadesTest {
     private ControladorPartida controlador;
 
     @BeforeEach
-    void inicializar() {
+    void inicializar() throws EstadoPartidaInvalidoException {
         servicioPartida = mock(ServicioPartida.class);
         notificador = mock(SimpMessagingTemplate.class);
         servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedad = mock(ServicioPropiedad.class);
+        ServicioPropiedad preparador = new ServicioPropiedadImpl(
+                mock(RepositorioPropiedad.class), servicioPartida, servicioCasillero);
+        doAnswer(invocacion -> preparador.prepararCompra(
+                invocacion.getArgument(0), invocacion.getArgument(1)))
+                .when(servicioPropiedad).prepararCompra(any(), any());
         controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
     }
 
@@ -226,6 +238,14 @@ class ControladorPartidaPropiedadesTest {
             propiedad.setPropietario(comprador);
             return null;
         }).when(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, comprador.getId());
+        doAnswer(invocacion -> {
+            Map<?, ?> publicado = invocacion.getArgument(1);
+            assertEquals(comprador.getId(), publicado.get("idJugadorPropietario"));
+            assertEquals(1000, publicado.get("dineroJugador"));
+            assertEquals(false, publicado.get("enBancarrota"));
+            assertTrue(!publicado.containsKey("idJugadorActual"));
+            return null;
+        }).when(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
 
         ResponseEntity<Map<String, Object>> respuesta = controlador.comprarPropiedad(CODIGO, 1);
 
@@ -238,6 +258,82 @@ class ControladorPartidaPropiedadesTest {
         verify(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, comprador.getId());
         verify(servicioCasillero, never()).guardarCasillero(any());
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
+        var orden = inOrder(notificador, servicioPartida);
+        orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
+        orden.verify(notificador, times(2)).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"), any(Map.class));
+        orden.verify(servicioPartida).avanzarTurno(CODIGO);
+    }
+
+    @Test
+    void compraSinFondosConservaElCodigoDeErrorYNoNotificaNiAvanza() {
+        prepararCompraExistente();
+        doThrow(new DineroInsuficienteException("Fondos insuficientes"))
+                .when(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, 1L);
+
+        var respuesta = controlador.comprarPropiedad(CODIGO, 4);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(Map.of("codigoError", "DINERO_INSUFICIENTE", "error", "Fondos insuficientes"),
+                respuesta.getBody());
+        verifyNoInteractions(notificador);
+        verify(servicioPartida, never()).avanzarTurno(any());
+    }
+
+    @Test
+    void errorDeMaterializacionConservaElErrorInternoSinComprar() {
+        prepararCompraExistente();
+        when(servicioCasillero.buscarOCrearPropiedadEnPosicion(any(), eq(4)))
+                .thenThrow(new IllegalStateException("Fallo de persistencia"));
+
+        var respuesta = controlador.comprarPropiedad(CODIGO, 4);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, respuesta.getStatusCode());
+        assertEquals(Map.of("error", "Error interno al comprar la propiedad: Fallo de persistencia"),
+                respuesta.getBody());
+        verify(servicioPropiedad, never()).comprarPropiedadParaJugador(any(), any());
+        verifyNoInteractions(notificador);
+        verify(servicioPartida, never()).avanzarTurno(any());
+    }
+
+    @Test
+    void errorDeCompraConMensajeVacioConservaElConflictoPredeterminado() {
+        prepararCompraExistente();
+        doThrow(new IllegalStateException(" "))
+                .when(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, 1L);
+
+        var respuesta = controlador.comprarPropiedad(CODIGO, 4);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(Map.of("error", "Error al guardar la compra de la propiedad."), respuesta.getBody());
+        verifyNoInteractions(notificador);
+        verify(servicioPartida, never()).avanzarTurno(any());
+    }
+
+    @Test
+    void falloAlNotificarLaCompraNoPublicaSaldosNiAvanzaElTurno() {
+        prepararCompraExistente();
+        doThrow(new IllegalStateException("Fallo de envio")).when(notificador)
+                .convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
+
+        var respuesta = controlador.comprarPropiedad(CODIGO, 4);
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(Map.of("error", "Fallo de envio"), respuesta.getBody());
+        verify(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, 1L);
+        verify(notificador, never()).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"), any(Map.class));
+        verify(servicioPartida, never()).avanzarTurno(any());
+    }
+
+    private void prepararCompraExistente() {
+        Partida partida = crearPartida();
+        Jugador comprador = crearJugador(1L, "Ana", 1000, 4);
+        partida.setJugadores(List.of(comprador));
+        Propiedad propiedad = crearPropiedad(null);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(comprador);
+        when(servicioPartida.obtenerJugadorPorId(1L)).thenReturn(comprador);
+        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(crearCasillero(propiedad)));
+        when(servicioPropiedad.obtenerPropiedadExistente(ID_PROPIEDAD)).thenReturn(propiedad);
     }
 
     @Test

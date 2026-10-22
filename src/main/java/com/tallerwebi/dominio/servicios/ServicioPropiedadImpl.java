@@ -1,6 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
@@ -61,6 +62,26 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public Boolean estaDisponible(Propiedad propiedad) {
         return propiedad != null && propiedad.getPropietario() == null;
+    }
+
+    @Override
+    @Transactional(Transactional.TxType.NOT_SUPPORTED)
+    public CompraPreparada prepararCompra(String codigoPartida, Integer posicion)
+            throws EstadoPartidaInvalidoException {
+        // Conservo las transacciones de consulta/materializacion y de compra separadas.
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return null;
+        Jugador jugador = servicioPartida.obtenerJugadorActual(codigoPartida);
+        if (jugador == null) {
+            throw new EstadoPartidaInvalidoException("No hay un jugador activo en esta partida.");
+        }
+        if (!jugador.estaEnPosicion(posicion)) {
+            throw new EstadoPartidaInvalidoException(
+                    "El jugador activo está en el casillero " + jugador.getPosicionActual()
+                            + ", pero se intentó comprar el casillero " + posicion + ".");
+        }
+        CasilleroPropiedad casillero = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida, posicion);
+        return new CompraPreparada(partida.getCodigoUnico(), jugador, casillero);
     }
 
     @Override
