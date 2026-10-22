@@ -160,12 +160,12 @@ let clienteWebSocketPartida = null;
 function iniciarSincronizacionTurno(base, codigo) {
     if (!codigo) return;
     actualizarTurnoDesdeServidor(base, codigo);
-    window.setInterval(() => actualizarTurnoDesdeServidor(base, codigo), 2000);
+    window.setInterval(() => actualizarTurnoDesdeServidor(base, codigo), 10000); //2000
 }
 
 function iniciarSincronizacionPosiciones() {
     solicitarPosicionesPartida();
-    window.setInterval(solicitarPosicionesPartida, 5000);
+    window.setInterval(solicitarPosicionesPartida, 10000); 5000
 }
 
 function solicitarPosicionesPartida() {
@@ -1210,7 +1210,7 @@ async function responderOfertaVenta(aceptar) {
     }
 }
 
-window.setInterval(revisarOfertasPendientes, 2500);
+window.setInterval(revisarOfertasPendientes, 10000); // 2500
 
 async function finalizarTurno() {
     console.log("Intentando avanzar el turno...");
