@@ -3,7 +3,7 @@ package com.tallerwebi.presentacion;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 //import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.*;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
 /** Coordina las consultas y notificaciones del turno vigente de una partida. */
