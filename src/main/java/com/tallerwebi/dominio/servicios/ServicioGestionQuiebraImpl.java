@@ -133,7 +133,13 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         }
 
         servicioPropiedad.venderPropiedadParaJugador(idPropiedad, idJugador);
-        return intentarResolverDeuda(codigoPartida, idJugador);
+
+        if (intentarResolverDeuda(codigoPartida, idJugador)) {
+            return true;
+        }
+
+        evaluarDeuda(codigoPartida, idJugador);
+        return false;
     }
 
     @Override
