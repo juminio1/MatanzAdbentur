@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>El Matancero – Partida</title>
     <link rel="stylesheet" th:href="@{/css/style.css}" href="../../../resources/core/css/style.css"/>
-    <link rel="stylesheet" th:href="@{/css/partida.css(v=turno-13)}" href="../../../resources/core/css/partida.css?v=turno-13"/>
+    <link rel="stylesheet" th:href="@{/css/partida.css(v=efectos-3)}" href="../../../resources/core/css/partida.css?v=efectos-3"/>
 </head>
 <body class="pagina-partida">
 <!-- Barra superior: contador + jugadores -->
@@ -708,6 +708,10 @@
 </dialog>
 
 <div id="aviso-alquiler" class="aviso-alquiler" role="status" aria-live="polite" aria-atomic="true"></div>
+<section id="aviso-evento" class="aviso-evento" role="status" aria-live="assertive" aria-atomic="true" aria-hidden="true">
+    <h2 id="aviso-evento-nombre"></h2>
+    <p id="aviso-evento-descripcion"></p>
+</section>
 
 <!-- Librerías de WebSocket -->
 
@@ -727,6 +731,10 @@
 
     window.turnoActualId = /*[[${turnoActualId}]]*/ null;
 
+    window.rondaActualInicial = /*[[${partida.rondaActual}]]*/ 1;
+    window.turnosFinalizadosIniciales = /*[[${partida.turnosFinalizadosEnRonda}]]*/ 0;
+    window.claveTurnoActual = `${window.turnoActualId}:${window.rondaActualInicial}:${window.turnosFinalizadosIniciales}`;
+
     window.codigoSala = /*[[${partida.codigoUnico}]]*/ "";
 
     window.propiedadesIniciales = /*[[${propiedadesTablero}]]*/ [];
@@ -738,7 +746,7 @@
 
 <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=alineacion-12)}" src="../../../resources/core/js/partida.js?v=alineacion-12" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=secuencia-5)}" src="../../../resources/core/js/partida.js?v=secuencia-5" charset="UTF-8" defer></script>
 
 </body>
 

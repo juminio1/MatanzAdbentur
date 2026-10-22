@@ -9,17 +9,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioPartida;
 import com.tallerwebi.dominio.servicios.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -27,6 +30,7 @@ import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -394,6 +398,61 @@ public class ControladorPartidaTest {
         controladorPartida.tirarDados(codigoPrueba, idJugador);
 
         verify(servicioPartidaMock, times(1)).moverJugador(jugador, 9, 30);
+    }
+
+    @Test
+    public void queAlPasarPorInicioSePaguenEInformenLosDoscientos() throws Exception {
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        Partida partida = new Partida();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("INICIO")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("INICIO")).thenReturn(jugador);
+        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 3));
+        doAnswer(invocacion -> {
+            jugador.setPosicionActual(3);
+            return null;
+        }).when(servicioPartidaMock).moverJugador(jugador, 5, 30);
+
+        RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados("INICIO", 1L);
+
+        assertEquals(200, respuesta.getDineroPorInicio());
+        assertEquals(3, respuesta.getNuevaPosicion());
+        verify(servicioPartidaMock, times(1)).sumarDinero(jugador, 200);
+        verify(notificadorWebSocketMock).convertAndSend("/topic/partida/INICIO", respuesta);
+    }
+
+    @Test
+    public void queElPremioPorCruzarInicioEnUnEventoSeInformeSinPagarloDeNuevo() throws Exception {
+        ServicioEventoCasillero servicioEvento = mock(ServicioEventoCasillero.class);
+        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
+                notificadorWebSocketMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(26);
+        Partida partida = new Partida();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("EVENTO")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("EVENTO")).thenReturn(jugador);
+        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(1, 1));
+        doAnswer(invocacion -> {
+            jugador.setPosicionActual(28);
+            return null;
+        }).when(servicioPartidaMock).moverJugador(jugador, 2, 30);
+        when(servicioEvento.aplicarSiCorresponde(jugador)).thenAnswer(invocacion -> {
+            jugador.setPosicionActual(0);
+            EventoCasillero evento = new EventoCasillero();
+            evento.setTipoEfecto(com.tallerwebi.dominio.enums.TipoEfectoEvento.AVANZA_CASILLEROS);
+            return Optional.of(evento);
+        });
+
+        RespuestaMovimientoDTO respuesta = controlador.tirarDados("EVENTO", 1L);
+
+        assertEquals(200, respuesta.getDineroPorInicio());
+        assertEquals(28, respuesta.getPosicionCaidaEvento());
+        assertEquals(0, respuesta.getNuevaPosicion());
+        verify(servicioPartidaMock, never()).sumarDinero(any(), any());
     }
 
     @Test

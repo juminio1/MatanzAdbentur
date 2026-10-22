@@ -24,6 +24,7 @@ public interface ServicioPartida {
     Jugador obtenerJugadorActual(String codigoUnico);
     Integer obtenerSegundosRestantesTurno(String codigoUnico);
     void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico);
+    void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico);
     ResultadoTiradaDTO tirarDados();

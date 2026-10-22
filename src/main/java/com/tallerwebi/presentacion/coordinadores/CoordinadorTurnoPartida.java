@@ -31,6 +31,7 @@ public final class CoordinadorTurnoPartida {
                 jugadorActual.getOrden(), "Es el turno de " + jugadorActual.getApodo(),
                 servicioPartida.obtenerSegundosRestantesTurno(codigoPartida));
         turno.setRondaActual(partida.getRondaActual());
+        turno.setTurnosFinalizadosEnRonda(partida.getTurnosFinalizadosEnRonda());
         return turno;
     }
 }

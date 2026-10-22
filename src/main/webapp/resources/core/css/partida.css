@@ -796,6 +796,44 @@
     transform: translate(-50%, 0);
 }
 
+.aviso-evento {
+    position: fixed;
+    z-index: 1200;
+    top: 50%;
+    left: 50%;
+    width: min(90vw, 480px);
+    box-sizing: border-box;
+    padding: 24px;
+    border: 2px solid var(--p-dorado);
+    border-radius: var(--p-radio);
+    background: var(--p-superficie);
+    color: var(--p-texto);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 55%);
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    pointer-events: none;
+}
+
+.aviso-evento--visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.aviso-evento h2 {
+    margin-bottom: 10px;
+    font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 28px;
+}
+
+.aviso-evento > p:last-child {
+    color: var(--p-texto-suave);
+    line-height: 1.5;
+}
+
 .estado-bancarrota {
     display: inline-block;
     margin-left: 8px;

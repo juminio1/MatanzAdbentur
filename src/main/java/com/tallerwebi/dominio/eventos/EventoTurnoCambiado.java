@@ -6,5 +6,6 @@ public record EventoTurnoCambiado(
     String apodoJugadorActual,
     Integer orden,
     Integer duracionSegundos,
-    Integer rondaActual
+    Integer rondaActual,
+    Integer turnosFinalizadosEnRonda
 ) {}

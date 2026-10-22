@@ -1,22 +1,32 @@
 package com.tallerwebi.dominio.entidades;
 
-import com.tallerwebi.dominio.enums.TipoEvento;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
 
 @Entity
-public class Evento {
+@Inheritance(strategy = InheritanceType.JOINED)
+@SuppressWarnings("PMD.AbstractClassWithoutAbstractMethod")
+public abstract class Evento {
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Enumerated(EnumType.STRING)
-    private TipoEvento tipoEvento;
-    private Integer monto;
+    @Column(unique = true)
+    private String nombre;
+    private String descripcion;
 
-    public Evento(Integer id, TipoEvento tipoEvento, Integer monto) {
+    public Evento() {
+    }
+
+    public Evento(Integer id, String nombre, String descripcion) {
         this.id = id;
-        this.tipoEvento = tipoEvento;
-        this.monto = monto;
+        this.nombre = nombre;
+        this.descripcion = descripcion;
     }
 
     public Integer getId() {
@@ -27,19 +37,19 @@ public class Evento {
         this.id = id;
     }
 
-    public TipoEvento getTipoEvento() {
-        return tipoEvento;
+    public String getNombre() {
+        return nombre;
     }
 
-    public void setTipoEvento(TipoEvento tipoEvento) {
-        this.tipoEvento = tipoEvento;
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
-    public Integer getMonto() {
-        return monto;
+    public String getDescripcion() {
+        return descripcion;
     }
 
-    public void setMonto(Integer monto) {
-        this.monto = monto;
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
     }
 }

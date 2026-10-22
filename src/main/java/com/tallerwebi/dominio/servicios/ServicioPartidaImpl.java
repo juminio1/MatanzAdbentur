@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
-    private static final Integer LIMITE_BANCARROTA = 250;
+    private static final Integer LIMITE_BANCARROTA = -2000;
     private static final Integer POSICION_INICIAL = 0;
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
 
@@ -143,6 +143,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion) {
+        Partida partida = obtenerPartida(codigoUnico);
+        if (partida == null) return;
+        notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
+    }
+
+    @Override
     public void avanzarTurno(String codigoUnico) {
         gestorTemporizador.cancelarTemporizador(codigoUnico);
 
@@ -194,6 +201,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador) {
+        notificarTurnoActual(partida, iniciarTemporizador, DURACION_TURNO_SEGUNDOS);
+    }
+
+    private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador, Integer segundosTotales) {
         Jugador jugadorActual = obtenerJugadorActual(partida.getCodigoUnico());
         if (jugadorActual == null) {
             return;
@@ -201,7 +212,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (iniciarTemporizador && partida.getCodigoUnico() != null) {
             gestorTemporizador.programarTemporizador(
                 partida.getCodigoUnico(),
-                DURACION_TURNO_SEGUNDOS,
+                segundosTotales,
                 () -> avanzarTurno(partida.getCodigoUnico())
             );
         }
@@ -212,7 +223,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
                 jugadorActual.getApodo(),
                 jugadorActual.getOrden(),
                 obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
-                partida.getRondaActual()
+                partida.getRondaActual(),
+                partida.getTurnosFinalizadosEnRonda()
             );
             publicadorTurno.notificar(evento);
         }
