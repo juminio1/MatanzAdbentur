@@ -1,7 +1,7 @@
 package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
-import com.tallerwebi.dominio.servicios.ServicioSalaDeEspera;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioSalaDeEspera;
 import com.tallerwebi.presentacion.DTO.SeleccionFichaDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;

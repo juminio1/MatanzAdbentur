@@ -12,7 +12,7 @@ import static org.hamcrest.Matchers.is;
 
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
-import com.tallerwebi.dominio.servicios.ServicioLogin;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
 
 import jakarta.servlet.http.HttpServletRequest;

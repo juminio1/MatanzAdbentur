@@ -3,8 +3,7 @@ package com.tallerwebi.dominio.observadores;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +13,7 @@ public class ObservadorTurnoAbandono implements Observador<EventoJugadorAbandona
     private final ServicioPartida servicioPartida;
 
     public ObservadorTurnoAbandono(@Lazy ServicioPartida servicioPartida) {
+        //Lazytown
         this.servicioPartida = servicioPartida;
     }
 
@@ -22,11 +22,9 @@ public class ObservadorTurnoAbandono implements Observador<EventoJugadorAbandona
         Partida partida = evento.partida();
         Jugador jugadorQueAbandona = evento.jugador();
 
-        // Validamos si el jugador que acaba de irse era el que estaba jugando actualmente
-        if (partida.getIndiceTurnoActual() != null && 
-            partida.getIndiceTurnoActual().equals(jugadorQueAbandona.getOrden())) {
-            
-            // Reutilizamos tu lógica existente para saltar el turno y reiniciar timers
+        long jugadoresRestantes = partida.getJugadores().stream().filter(jugador -> !jugador.getId().equals(jugadorQueAbandona.getId())).filter(jugador -> !Boolean.TRUE.equals(jugador.getAbandono())).count();
+
+        if (jugadoresRestantes > 1 && partida.getIndiceTurnoActual() != null && partida.getIndiceTurnoActual().equals(jugadorQueAbandona.getOrden())) {
             servicioPartida.avanzarTurno(partida.getCodigoUnico());
         }
     }

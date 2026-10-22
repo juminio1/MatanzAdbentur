@@ -6,10 +6,12 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
-import com.tallerwebi.dominio.servicios.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
+
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +43,7 @@ class ControladorPartidaPropiedadesTest {
     private ServicioCasillero servicioCasillero;
     private ServicioPropiedad servicioPropiedad;
     private ControladorPartida controlador;
+    private NotificadorPartida notificadorPartidaMock;
 
     @BeforeEach
     void inicializar() {
@@ -48,7 +51,8 @@ class ControladorPartidaPropiedadesTest {
         notificador = mock(SimpMessagingTemplate.class);
         servicioCasillero = mock(ServicioCasillero.class);
         servicioPropiedad = mock(ServicioPropiedad.class);
-        controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad);
+        notificadorPartidaMock = mock(NotificadorPartida.class);
+        controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad, notificadorPartidaMock);
     }
 
     @Test
