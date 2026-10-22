@@ -1,31 +1,16 @@
 package com.tallerwebi.integracion;
 
+import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
-import com.tallerwebi.dominio.entidades.Jugador;
-import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
-import com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
-import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
-import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
-import com.tallerwebi.infraestructura.RepositorioCasilleroImpl;
-import com.tallerwebi.infraestructura.RepositorioEventoCasilleroImpl;
-import com.tallerwebi.infraestructura.RepositorioPartidaImpl;
-import com.tallerwebi.infraestructura.RepositorioPropiedadImpl;
+import com.tallerwebi.dominio.servicios.*;
+import com.tallerwebi.dominio.servicios.interfaces.*;
+import com.tallerwebi.infraestructura.*;
 import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.ControladorPartida;
@@ -36,11 +21,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
+
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -55,9 +43,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
@@ -68,9 +54,19 @@ import static org.mockito.ArgumentMatchers.any;
 @ContextConfiguration(classes = EfectosPartidaIntegracionTest.Config.class)
 class EfectosPartidaIntegracionTest {
     @Configuration
-    @Import({ServicioPartidaImpl.class, ServicioTurnoImpl.class, ServicioEventoCasilleroImpl.class,
-            ServicioCasilleroImpl.class, ServicioPropiedadImpl.class, RepositorioPartidaImpl.class,
-            RepositorioCasilleroImpl.class, RepositorioPropiedadImpl.class, RepositorioEventoCasilleroImpl.class})
+    @Import({
+            ServicioPartidaImpl.class,
+            ServicioTurnoImpl.class,
+            ServicioEventoCasilleroImpl.class,
+            ServicioCasilleroImpl.class,
+            ServicioPropiedadImpl.class,
+            ServicioGestionQuiebraImpl.class,
+            RepositorioPartidaImpl.class,
+            RepositorioCasilleroImpl.class,
+            RepositorioPropiedadImpl.class,
+            RepositorioEventoCasilleroImpl.class,
+            RepositorioDeudaPendienteImpl.class
+    })
     static class Config extends HibernateInfraestructuraTestConfig {
         @Bean
         @Override
@@ -92,6 +88,11 @@ class EfectosPartidaIntegracionTest {
 
         @Bean
         PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono() { return new PublicadorEventos<>(List.of()); }
+
+        @Bean
+        PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra() {
+            return new PublicadorEventos<>(List.of());
+        }
     }
 
     @Autowired private SessionFactory sesiones;
@@ -102,6 +103,7 @@ class EfectosPartidaIntegracionTest {
     @Autowired private ServicioEventoCasillero servicioEvento;
     @Autowired private ServicioDado servicioDado;
     @Autowired private GestorTemporizadorPartida temporizador;
+    @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
     private TransactionTemplate transaccion;
     private ControladorPartida controlador;
     private String codigo;
@@ -113,8 +115,14 @@ class EfectosPartidaIntegracionTest {
     void preparar() {
         transaccion = new TransactionTemplate(transacciones);
         notificador = mock(SimpMessagingTemplate.class);
-        controlador = new ControladorPartida(servicioPartida, notificador,
-                servicioCasillero, servicioPropiedad, servicioEvento);
+        controlador = new ControladorPartida(
+                servicioPartida,
+                notificador,
+                servicioCasillero,
+                servicioPropiedad,
+                servicioEvento,
+                new NotificadorPartida(notificador),
+                servicioGestionQuiebra);
         codigo = UUID.randomUUID().toString();
         transaccion.executeWithoutResult(estado -> {
             sesiones.getCurrentSession().createMutationQuery("DELETE FROM EventoCasillero").executeUpdate();
@@ -169,6 +177,41 @@ class EfectosPartidaIntegracionTest {
         });
     }
 
+    @Test
+    void queUnEventoRestaRegistreDeudaSiElJugadorTienePropiedades() throws Exception{        cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
+
+        transaccion.executeWithoutResult(estado -> {
+            Jugador jugador = sesiones.getCurrentSession()
+                    .find(Jugador.class, idJugador);
+
+            jugador.setDinero(100);
+
+            Propiedad propiedad = new Propiedad(
+                    null, "Propiedad de Ana", 300, 50, jugador, null);
+
+            CasilleroPropiedad casillero = new CasilleroPropiedad(
+                    null, 4, "Propiedad de Ana", "Barrio", propiedad);
+
+            casillero.setPartidaId(
+                    servicioPartida.obtenerPartida(codigo).getId());
+
+            sesiones.getCurrentSession().persist(casillero);
+        });
+
+        controlador.tirarDados(codigo, idJugador);
+
+        Jugador jugadorActualizado =
+                servicioPartida.obtenerJugadorPorId(idJugador);
+
+        DeudaPendiente deuda = servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador);
+
+        assertEquals(100, jugadorActualizado.getDinero());
+        assertNotNull(deuda);
+        assertEquals(200, deuda.getMontoPendiente());
+        assertEquals("EVENTO_RESTA", deuda.getMotivo());
+        assertFalse(jugadorActualizado.getEnBancarrota());
+    }
     @RepeatedTest(3)
     void queElEventoQueDaPlataSeGuardeAlTerminarLaTirada(RepetitionInfo repeticion) throws Exception {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
@@ -277,23 +320,27 @@ class EfectosPartidaIntegracionTest {
         });
     }
 
-    @RepeatedTest(9)
-    void queLaQuiebraSeApliqueDesdeMenosDosMil(RepetitionInfo repeticion) throws Exception {
-        Integer caso = repeticion.getCurrentRepetition() - 1;
-        Integer cantidad = 2 + caso / 3;
-        Integer saldoFinal = List.of(-1999, -2000, -2001).get(caso % 3);
-        Boolean quiebra = List.of(false, true, true).get(caso % 3);
-        prepararCantidadJugadores(cantidad);
+    @Test
+    void queElJugadorQuiebreSiNoPuedePagarUnEventoYNoTienePropiedades() throws Exception {
         cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
+
         transaccion.executeWithoutResult(estado ->
-                sesiones.getCurrentSession().find(Jugador.class, idJugador).setDinero(saldoFinal + 200));
+                sesiones.getCurrentSession()
+                        .find(Jugador.class, idJugador)
+                        .setDinero(100));
+
         RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
-        assertEquals(saldoFinal, jugador.getDinero());
-        assertEquals(quiebra, jugador.getEnBancarrota());
-        assertEquals(quiebra, resultado.getSaldos().stream().filter(saldo -> saldo.idJugador().equals(idJugador))
-                .findFirst().orElseThrow().enBancarrota());
-        assertEquals(idPropietario, resultado.getTurnoSiguiente().getIdJugadorActual());
+
+        assertEquals(100, jugador.getDinero());
+        assertTrue(jugador.getEnBancarrota());
+
+        assertTrue(resultado.getSaldos().stream()
+                .filter(saldo -> saldo.idJugador().equals(idJugador))
+                .findFirst()
+                .orElseThrow()
+                .enBancarrota());
     }
 
     @RepeatedTest(3)

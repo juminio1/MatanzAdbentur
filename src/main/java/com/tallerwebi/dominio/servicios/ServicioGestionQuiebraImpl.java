@@ -3,6 +3,7 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
@@ -33,7 +34,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             RepositorioPartida repositorioPartida,
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
-            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra ) {
+            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra) {
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
         this.repositorioPartida = repositorioPartida;
@@ -135,7 +136,6 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return intentarResolverDeuda(codigoPartida, idJugador);
     }
 
-
     @Override
     public ResultadoDeuda evaluarDeuda(
             String codigoPartida, Long idJugador) {
@@ -159,13 +159,13 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return ResultadoDeuda.QUIEBRA;
     }
 
-
-
     @Override
     public void declararQuiebra(String codigoPartida, Long idJugador) {
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
-        if (deuda == null) {throw new IllegalStateException("El jugador no tiene un pago pendiente");}
+        if (deuda == null) {
+            throw new IllegalStateException("El jugador no tiene un pago pendiente");
+        }
         Jugador jugador = deuda.getJugadorDeudor();
 
         if (Boolean.TRUE.equals(jugador.getEnBancarrota())) {
@@ -180,7 +180,43 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         publicadorQuiebra.notificar(evento);
     }
 
+    //Conecta los alquileres con el sistema de deuda.
+    @Override
+    public ResultadoDeuda procesarAlquiler(
+            String codigoPartida,
+            Propiedad propiedad,
+            Jugador jugador,
+            Integer montoAlquiler) {
 
+        Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
+
+        if (pagador == null) {
+            throw new IllegalArgumentException("Jugador no encontrado");
+        }
+
+        if (obtenerDeudaPendiente(codigoPartida, pagador.getId()) != null) {
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
+        }
+
+        if (montoAlquiler == null || montoAlquiler < 0) {
+            throw new IllegalArgumentException("Alquiler inválido");
+        }
+
+        if (pagador.getDinero() >= montoAlquiler) {
+            servicioPropiedad.pagarAlquiler(propiedad, pagador, montoAlquiler);
+            return ResultadoDeuda.RESUELTA;
+        }
+
+        registrarDeuda(
+                codigoPartida,
+                pagador,
+                propiedad.getPropietario(),
+                montoAlquiler,
+                "ALQUILER"
+        );
+
+        return evaluarDeuda(codigoPartida, pagador.getId());
+    }
 
 
     //busca el pago pendiente del jugador. Consulta las propiedades y si tiene alguna devuelve true y sino false.

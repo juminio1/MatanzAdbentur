@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios.interfaces;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 
 public interface ServicioGestionQuiebra {
@@ -18,4 +19,7 @@ public interface ServicioGestionQuiebra {
     Boolean venderPropiedadYResolverDeuda(String codigoPartida,Long idJugador,Long idPropiedad);
     ResultadoDeuda evaluarDeuda(String codigoPartida,Long idJugador);
     void declararQuiebra( String codigoPartida, Long idJugador);
+    ResultadoDeuda procesarAlquiler(String codigoPartida, Propiedad propiedad, Jugador jugador, Integer montoAlquiler);
+
+
 }

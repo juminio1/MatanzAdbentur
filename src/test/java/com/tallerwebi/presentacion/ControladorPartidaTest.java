@@ -31,6 +31,7 @@ import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 
 import java.util.Collections;
 import java.util.List;
@@ -57,6 +58,7 @@ public class ControladorPartidaTest {
     private MockHttpServletRequest request;
     private MockHttpSession session;
     private NotificadorPartida notificadorPartidaMock;
+    private ServicioGestionQuiebra servicioGestionQuiebraMock;
 
     @BeforeEach
     public void init() {
@@ -65,12 +67,16 @@ public class ControladorPartidaTest {
         servicioCasilleroMock = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedadMock = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
+        servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
 
         controladorPartida = new ControladorPartida(
                 servicioPartidaMock,
                 notificadorWebSocketMock,
                 servicioCasilleroMock,
-                servicioPropiedadMock, notificadorPartidaMock
+                servicioPropiedadMock,
+                null,
+                notificadorPartidaMock,
+                servicioGestionQuiebraMock
         );
 
         request = new MockHttpServletRequest();
@@ -435,8 +441,15 @@ public class ControladorPartidaTest {
     @Test
     public void queElPremioPorCruzarInicioEnUnEventoSeInformeSinPagarloDeNuevo() throws Exception {
         ServicioEventoCasillero servicioEvento = mock(ServicioEventoCasillero.class);
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                notificadorWebSocketMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento);
+        ControladorPartida controlador = new ControladorPartida(
+                servicioPartidaMock,
+                notificadorWebSocketMock,
+                servicioCasilleroMock,
+                servicioPropiedadMock,
+                servicioEvento,
+                notificadorPartidaMock,
+                servicioGestionQuiebraMock
+        );
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setPosicionActual(26);
@@ -449,7 +462,7 @@ public class ControladorPartidaTest {
             jugador.setPosicionActual(28);
             return null;
         }).when(servicioPartidaMock).moverJugador(jugador, 2, 30);
-        when(servicioEvento.aplicarSiCorresponde(jugador)).thenAnswer(invocacion -> {
+        when(servicioEvento.aplicarSiCorresponde("EVENTO", jugador)).thenAnswer(invocacion -> {
             jugador.setPosicionActual(0);
             EventoCasillero evento = new EventoCasillero();
             evento.setTipoEfecto(com.tallerwebi.dominio.enums.TipoEfectoEvento.AVANZA_CASILLEROS);
