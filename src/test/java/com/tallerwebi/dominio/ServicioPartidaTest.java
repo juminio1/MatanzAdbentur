@@ -54,7 +54,7 @@ public class ServicioPartidaTest {
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
-    
+
 
     private static final int TOTAL_CASILLEROS = 30;
 

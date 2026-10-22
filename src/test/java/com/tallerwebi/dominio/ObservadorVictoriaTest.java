@@ -28,7 +28,7 @@ public class ObservadorVictoriaTest {
 
     @Test
     public void dadoQueUnJugadorAbandonaYQuedaUnSoloJugadorActivoCuandoElObservadorRevisaEntoncesLaPartidaFinaliza() {
-        // Preparación 
+        // Preparación
         Partida partida = new Partida();
         partida.setJugadores(new ArrayList<>());
         partida.setEstado(EstadoPartida.EN_CURSO);
@@ -55,7 +55,7 @@ public class ObservadorVictoriaTest {
 
     @Test
     public void dadoQueHayVariosJugadoresYUnoAbandonaCuandoElObservadorRevisaEntoncesLaPartidaNoFinaliza() {
-        // Preparación 
+        // Preparación
         Partida partida = new Partida();
         partida.setJugadores(new ArrayList<>());
         partida.setEstado(EstadoPartida.EN_CURSO);

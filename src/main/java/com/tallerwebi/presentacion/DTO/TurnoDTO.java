@@ -10,6 +10,7 @@ public class TurnoDTO {
     private String mensaje;
     private Integer rondaActual;
     private Integer duracionSegundos;
+    private Integer turnosFinalizadosEnRonda;
 
     // Constructor vacío (requerido por Jackson/Spring)
     public TurnoDTO() {}
@@ -85,5 +86,13 @@ public class TurnoDTO {
 
     public void setDuracionSegundos(Integer duracionSegundos) {
         this.duracionSegundos = duracionSegundos;
+    }
+
+    public Integer getTurnosFinalizadosEnRonda() {
+        return turnosFinalizadosEnRonda;
+    }
+
+    public void setTurnosFinalizadosEnRonda(Integer turnosFinalizadosEnRonda) {
+        this.turnosFinalizadosEnRonda = turnosFinalizadosEnRonda;
     }
 }

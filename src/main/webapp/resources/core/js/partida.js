@@ -9,6 +9,7 @@ if (botonTirar) botonTirar.disabled = true;
 
 let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
+const avisosPartidaPendientes = [];
 
 let yaTiroEnEsteTurno = false;
 
@@ -55,7 +56,7 @@ if (botonTirar) {
 
         estaTirando = true;
         botonTirar.disabled = true;
-        let tiradaExitosa = false;
+        const claveTurnoDeTirada = window.claveTurnoActual;
 
         try {
             const resultado = await obtenerResultadoDados();
@@ -65,23 +66,18 @@ if (botonTirar) {
 
             console.log("Resultado completo:", resultado);
 
-            yaTiroEnEsteTurno = true;
+            yaTiroEnEsteTurno = claveTurnoDeTirada === window.claveTurnoActual;
 
             console.log("Nueva posición:", resultado.nuevaPosicion);
             await procesarMovimiento(resultado);
 
-            tiradaExitosa = true;
         } catch (error) {
             console.error("Error al tirar los dados o mover la ficha:", error);
             if (notaModalInfo)
                 notaModalInfo.textContent = error.message || "No se pudo completar la tirada.";
         } finally {
             estaTirando = false;
-        }
-
-        if (!tiradaExitosa) {
             actualizarBotonTirada();
-            return;
         }
     });
 }
@@ -254,11 +250,6 @@ function conectarWebSocketTurnos(base, codigo) {
                 const saldo = JSON.parse(mensaje.body);
                 actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
             });
-            stompClient.subscribe(`/topic/partida/${codigo}/alquiler`, (mensaje) => {
-                const aviso = JSON.parse(mensaje.body);
-                guardarAvisoAlquiler(aviso);
-            });
-
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
 
@@ -291,7 +282,6 @@ function conectarWebSocketTurnos(base, codigo) {
 
 const movimientosEnCurso = new Set();
 const movimientosDeJugadoresEnCurso = new Set();
-const avisosAlquilerPendientes = new Map();
 const estadoPropiedadesConocido = new Map();
 let temporizadorAvisoAlquiler;
 
@@ -308,23 +298,54 @@ function actualizarBotonTirada() {
     }
 }
 
-// El servidor envía el alquiler antes del movimiento: lo muestro al terminar la animación.
-function guardarAvisoAlquiler(aviso) {
-    const idJugador = String(aviso.idJugadorPagador);
-    const avisos = avisosAlquilerPendientes.get(idJugador) || [];
-    avisos.push(aviso);
-    avisosAlquilerPendientes.set(idJugador, avisos);
+function mostrarAvisoPartida(mensaje) {
+    avisosPartidaPendientes.push(mensaje);
+    if (!temporizadorAvisoAlquiler) mostrarSiguienteAvisoPartida();
 }
 
-function mostrarAvisoPartida(mensaje) {
+function mostrarSiguienteAvisoPartida() {
+    const mensaje = avisosPartidaPendientes.shift();
+    if (!mensaje) return;
     const elemento = document.getElementById("aviso-alquiler");
     if (!elemento) return;
     elemento.textContent = mensaje;
     elemento.classList.add("aviso-alquiler--visible");
-    clearTimeout(temporizadorAvisoAlquiler);
     temporizadorAvisoAlquiler = setTimeout(() => {
         elemento.classList.remove("aviso-alquiler--visible");
+        temporizadorAvisoAlquiler = null;
+        mostrarSiguienteAvisoPartida();
     }, 5000);
+}
+
+async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
+    const popup = String(idJugador) === String(window.usuarioSesionId)
+        ? document.getElementById("aviso-evento") : null;
+    if (!popup) return;
+
+    const botonContinuar = document.getElementById("btn-continuar-evento");
+    document.getElementById("aviso-evento-nombre").textContent = nombreEvento;
+    document.getElementById("aviso-evento-descripcion").textContent = descripcionEvento;
+    popup.setAttribute("aria-hidden", "false");
+    popup.classList.add("aviso-evento--visible");
+    await new Promise((resolve) => {
+        botonContinuar.addEventListener("click", resolve, {once: true});
+        botonContinuar.focus();
+    });
+    popup.classList.remove("aviso-evento--visible");
+    popup.setAttribute("aria-hidden", "true");
+}
+
+function registrarPremioPorInicio(movimiento) {
+    const monto = Number(movimiento.dineroPorInicio ?? 0);
+    if (monto <= 0) return;
+
+    const nombreJugador = document.getElementById(String(movimiento.idJugador))
+        ?.querySelector(".nombre-jugador")?.textContent.trim()
+        || `Jugador ${movimiento.idJugador}`;
+    agregarAlHistorial(`${nombreJugador} recibió $${monto} por pasar por Inicio.`, movimiento.idJugador);
+    if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
+        mostrarAvisoPartida(`Recibiste $${monto} por pasar por Inicio.`);
+    }
 }
 
 function mostrarAvisoAlquiler(aviso) {
@@ -334,10 +355,10 @@ function mostrarAvisoAlquiler(aviso) {
     }
 }
 
-function mostrarAvisosAlquilerDelJugador(idJugador) {
-    const avisos = avisosAlquilerPendientes.get(String(idJugador)) || [];
-    avisosAlquilerPendientes.delete(String(idJugador));
-    avisos.forEach(mostrarAvisoAlquiler);
+function aplicarSaldosMovimiento(movimiento) {
+    (movimiento.saldos ?? []).forEach((saldo) => {
+        actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
+    });
 }
 
 function registrarCaidaEnHistorial(idJugador, posicion) {
@@ -354,16 +375,11 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
 }
 
 async function procesarMovimiento(movimiento) {
+    if (movimiento.turnoSiguiente) aplicarTurnoDTO(movimiento.turnoSiguiente);
     const clave = movimiento.idMovimiento
         ? String(movimiento.idMovimiento)
         : `${movimiento.idJugador}:${movimiento.posicionAnterior}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
-    if (movimientosEnCurso.has(clave)) {
-        // HTTP puede haber terminado la animación antes de recibir el movimiento por WebSocket.
-        if (!movimientosDeJugadoresEnCurso.has(String(movimiento.idJugador))) {
-            mostrarAvisosAlquilerDelJugador(movimiento.idJugador);
-        }
-        return;
-    }
+    if (movimientosEnCurso.has(clave)) return;
     movimientosEnCurso.add(clave);
     if (dado1) dado1.textContent = movimiento.dado1;
     if (dado2) dado2.textContent = movimiento.dado2;
@@ -372,10 +388,33 @@ async function procesarMovimiento(movimiento) {
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
         actualizarBotonTirada();
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
+        const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
+        if (Number.isInteger(posicionCaida)) {
+            moverFichaEnTablero(movimiento.idJugador, posicionCaida);
+            registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
+        }
+        if (movimiento.nombreEvento && movimiento.descripcionEvento) {
+            const nombreJugador = document.getElementById(String(movimiento.idJugador))
+                ?.querySelector(".nombre-jugador")?.textContent.trim()
+                || `Jugador ${movimiento.idJugador}`;
+            agregarAlHistorial(
+                `${nombreJugador} sacó el evento «${movimiento.nombreEvento}»: ${movimiento.descripcionEvento}`,
+                movimiento.idJugador,
+            );
+            await mostrarPopupEvento(movimiento.idJugador, movimiento.nombreEvento, movimiento.descripcionEvento);
+        }
         const posicionFinal = Number(movimiento.nuevaPosicion);
         if (Number.isInteger(posicionFinal)) {
-            moverFichaEnTablero(movimiento.idJugador, posicionFinal);
-            registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
+            if (posicionFinal !== posicionCaida) {
+                const cantidadCasilleros = document.querySelectorAll(".casillero[data-casillero]").length;
+                const pasosEvento = (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
+                await animarMovimientoFicha(movimiento.idJugador, pasosEvento, posicionCaida);
+                moverFichaEnTablero(movimiento.idJugador, posicionFinal);
+                registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
+            }
+            aplicarSaldosMovimiento(movimiento);
+            registrarPremioPorInicio(movimiento);
+            if (movimiento.alquiler) mostrarAvisoAlquiler(movimiento.alquiler);
             await atenderCaidaEnCasillero(movimiento.idJugador, posicionFinal);
         }
     } catch (error) {
@@ -383,7 +422,6 @@ async function procesarMovimiento(movimiento) {
     } finally {
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
         actualizarBotonTirada();
-        mostrarAvisosAlquilerDelJugador(movimiento.idJugador);
     }
 }
 
@@ -394,20 +432,10 @@ function sincronizarPosicionesFichas(posiciones) {
     }
 
 
-posiciones.forEach((jugador) => {
-
-    const idJugador = String(jugador.idJugador);
-
-    if (!jugadoresAbandonados.has(idJugador)
-            && !movimientosDeJugadoresEnCurso.has(idJugador)) {
-
-        if (jugador.posicion != null) {
-            moverFichaEnTablero(
-                jugador.idJugador,
-                jugador.posicion
-            );
-        }
-    }
+    posiciones.forEach((jugador) => {
+        const idJugador = String(jugador.idJugador);
+        if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador)) return;
+        if (jugador.posicion == null) return;
         moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
 
@@ -462,10 +490,16 @@ function actualizarTurnoEnPantalla(turnoDTO) {
 
 function aplicarTurnoDTO(turnoDTO) {
     if (!turnoDTO || turnoDTO.idJugadorActual == null) return;
-    const jugadorAnterior = window.idJugadorTurnoAnterior;
-    const cambioDeTurno = String(jugadorAnterior) !== String(turnoDTO.idJugadorActual);
-    const idJugadorReloj = String(turnoDTO.idJugadorActual);
-    const cambioDeTurnoDelReloj = String(window.idJugadorTurnoCronometro) !== idJugadorReloj;
+    const ronda = Number(turnoDTO.rondaActual ?? 0);
+    const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
+    const ultimo = window.ultimoTurnoRecibido;
+    if (ultimo && (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))) return;
+    window.ultimoTurnoRecibido = { ronda, finalizados };
+    const claveTurno = `${turnoDTO.idJugadorActual}:${turnoDTO.rondaActual}:${turnoDTO.turnosFinalizadosEnRonda}`;
+    const cambioDeTurno = window.claveTurnoActual !== claveTurno;
+    const cambioDeTurnoDelReloj = window.claveTurnoCronometro !== claveTurno;
+    if (cambioDeTurno) yaTiroEnEsteTurno = false;
+    window.claveTurnoActual = claveTurno;
 
     if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
@@ -473,9 +507,9 @@ function aplicarTurnoDTO(turnoDTO) {
     if (turnoDTO.duracionSegundos == null) {
         prepararRelojSinIniciar();
         window.turnoInicialSincronizado = true;
-    } else if (cambioDeTurnoDelReloj || !window.turnoInicialSincronizado) {
+    } else if (cambioDeTurnoDelReloj || !window.turnoInicialSincronizado || Number(turnoDTO.duracionSegundos) > 30) {
         iniciarRelojLocal(turnoDTO.duracionSegundos);
-        window.idJugadorTurnoCronometro = idJugadorReloj;
+        window.claveTurnoCronometro = claveTurno;
         window.turnoInicialSincronizado = true;
     }
     actualizarTurnoEnPantalla(turnoDTO);
@@ -1007,17 +1041,17 @@ function crearTarjetaPropiedad(propiedad) {
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
     const costoMejora = nivelesAlquiler[nivel];
-    botonSubir.disabled =
-        !localidadCompleta ||
-        nivel >= nivelesAlquiler.length ||
-        posicionesParadas.has(Number(propiedad.posicion)) ||
-        !esTurnoPropio ||
-        window.usuarioEnBancarrota ||
-        Number(window.dineroUsuarioSesion) < costoMejora;
-    botonSubir.textContent = esTurnoPropio ? "Subir alquiler" : "Disponible en tu turno";
-    botonSubir.addEventListener("click", () =>
-        subirAlquilerPropiedad(propiedad.posicion, botonSubir),
-    );
+    const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
+    if (puedeMejorarse) {
+        agregarDatoPropiedad(datos, "Costo de mejora", costoMejora);
+        agregarDatoPropiedad(datos, "Alquiler después de mejorar", costoMejora);
+    }
+    botonSubir.disabled = !localidadCompleta || nivel >= nivelesAlquiler.length
+        || posicionesParadas.has(Number(propiedad.posicion)) || !esTurnoPropio || window.usuarioEnBancarrota
+        || Number(window.dineroUsuarioSesion) < costoMejora;
+    botonSubir.textContent = esTurnoPropio && puedeMejorarse
+        ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}` : "Subir alquiler";
+    botonSubir.addEventListener("click", () => subirAlquilerPropiedad(propiedad.posicion, botonSubir));
     const botonVender = document.createElement("button");
     botonVender.type = "button";
     botonVender.className = "btn-casillero btn-casillero--principal";
@@ -1241,13 +1275,14 @@ function iniciarRelojLocal(segundos) {
     const elementoReloj = document.getElementById("cronometro-nro");
     if (!elementoReloj) return;
     const duracion = Number(segundos);
-    tiempoRestante = Number.isFinite(duracion) && duracion >= 0 ? duracion : 30;
+    let segundosTotalesRestantes = Number.isFinite(duracion) && duracion >= 0 ? duracion : 30;
+    tiempoRestante = Math.min(30, segundosTotalesRestantes);
     clearInterval(intervaloReloj); // Limpia cualquier reloj anterior
     actualizarTextoReloj(elementoReloj);
 
     intervaloReloj = setInterval(() => {
-        tiempoRestante--;
-        if (tiempoRestante < 0) tiempoRestante = 0;
+        segundosTotalesRestantes = Math.max(0, segundosTotalesRestantes - 1);
+        tiempoRestante = Math.min(30, segundosTotalesRestantes);
         actualizarTextoReloj(elementoReloj);
 
         if (tiempoRestante <= 5 && tiempoRestante > 0) {

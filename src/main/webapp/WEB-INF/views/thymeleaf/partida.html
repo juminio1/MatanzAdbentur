@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=turno-13)}"
-            href="../../../resources/core/css/partida.css?v=turno-13"
+            th:href="@{/css/partida.css(v=evento-manual-7)}"
+            href="../../../resources/core/css/partida.css?v=evento-manual-7"
         />
     </head>
     <body class="pagina-partida">
@@ -858,6 +858,11 @@
             aria-live="polite"
             aria-atomic="true"
         ></div>
+<section id="aviso-evento" class="aviso-evento" role="dialog" aria-labelledby="aviso-evento-nombre" aria-describedby="aviso-evento-descripcion" aria-hidden="true">
+    <h2 id="aviso-evento-nombre"></h2>
+    <p id="aviso-evento-descripcion"></p>
+    <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
+</section>
 
         <dialog
             id="modal-abandonar"
@@ -926,6 +931,10 @@
 
             window.turnoActualId = /*[[${turnoActualId}]]*/ null;
 
+            window.rondaActualInicial = /*[[${partida.rondaActual}]]*/ 1;
+            window.turnosFinalizadosIniciales = /*[[${partida.turnosFinalizadosEnRonda}]]*/ 0;
+            window.claveTurnoActual = `${window.turnoActualId}:${window.rondaActualInicial}:${window.turnosFinalizadosIniciales}`;
+
             window.codigoSala = /*[[${partida.codigoUnico}]]*/ "";
 
             window.propiedadesIniciales = /*[[${propiedadesTablero}]]*/ [];
@@ -936,7 +945,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=alerta-alquiler-13)}" src="../../../resources/core/js/partida.js?v=alerta-alquiler-13" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=evento-manual-7)}" src="../../../resources/core/js/partida.js?v=evento-manual-7" charset="UTF-8" defer></script>
 
 </body>
 

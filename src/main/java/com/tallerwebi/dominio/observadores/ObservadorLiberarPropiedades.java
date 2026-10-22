@@ -22,9 +22,9 @@ public class ObservadorLiberarPropiedades implements Observador<EventoJugadorAba
 
         if (propiedadesDelJugador != null) {
             for (Propiedad propiedad : propiedadesDelJugador) {
-                propiedad.setPropietario(null); 
-                propiedad.setNivelMejora(0);    
-                
+                propiedad.setPropietario(null);
+                propiedad.setNivelMejora(0);
+
                 repositorioPropiedad.guardarPropiedad(propiedad);
             }
         }

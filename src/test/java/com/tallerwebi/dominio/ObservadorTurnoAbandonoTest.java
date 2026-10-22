@@ -24,7 +24,7 @@ public class ObservadorTurnoAbandonoTest {
         observador = new ObservadorTurnoAbandono(servicioPartidaMock);
     }
 
-    
+
 @Test
 public void dadoQueHay3JugadoresYElDelMedioAbandonaEnSuTurnoCuandoElObservadorRevisaEntoncesAvanzaElTurno() {
     // Preparación

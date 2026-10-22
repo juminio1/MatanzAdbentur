@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
@@ -11,7 +12,10 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
+import com.tallerwebi.presentacion.DTO.SaldoJugadorDTO;
+import com.tallerwebi.presentacion.DTO.AlquilerMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
@@ -21,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -52,23 +57,43 @@ public class ControladorPartida {
     private final ServicioPartida servicioPartida;
     private final SimpMessagingTemplate notificadorWebSocket;
     private final ServicioCasillero servicioCasillero;
+    private final ServicioEventoCasillero servicioEventoCasillero;
     private final ServicioPropiedad servicioPropiedad;
     private final CoordinadorTurnoPartida coordinadorTurno;
     private final NotificadorPartida notificadorPartida;
 
     @Autowired
-    public ControladorPartida(
-        ServicioPartida servicioPartida,
-        SimpMessagingTemplate notificadorWebSocket,
-        ServicioCasillero servicioCasillero,
-        ServicioPropiedad servicioPropiedad, NotificadorPartida notificadorPartida
+    public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
+                              ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
+                              ServicioEventoCasillero servicioEventoCasillero, NotificadorPartida notificadorPartida
     ) {
         this.notificadorWebSocket = notificadorWebSocket;
         this.servicioPartida = servicioPartida;
         this.servicioCasillero = servicioCasillero;
+        this.servicioEventoCasillero = servicioEventoCasillero;
         this.servicioPropiedad = servicioPropiedad;
         this.coordinadorTurno = new CoordinadorTurnoPartida(servicioPartida);
         this.notificadorPartida = notificadorPartida;
+    }
+
+    public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
+                              ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad) {
+        this(servicioPartida, notificadorWebSocket, servicioCasillero, servicioPropiedad,
+                null, new NotificadorPartida(notificadorWebSocket));
+    }
+
+    public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
+                              ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
+                              ServicioEventoCasillero servicioEventoCasillero) {
+        this(servicioPartida, notificadorWebSocket, servicioCasillero, servicioPropiedad,
+                servicioEventoCasillero, new NotificadorPartida(notificadorWebSocket));
+    }
+
+    public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
+                              ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
+                              NotificadorPartida notificadorPartida) {
+        this(servicioPartida, notificadorWebSocket, servicioCasillero, servicioPropiedad,
+                null, notificadorPartida);
     }
 
     @GetMapping("/partida/{codigoPartida}/propiedades/{posicion}")
@@ -504,26 +529,32 @@ public class ControladorPartida {
         if (pasoPorInicio) {
             servicioPartida.sumarDinero(jugadorActual, 200);
         }
-        servicioPartida.actualizarJugador(jugadorActual);
-        if (pasoPorInicio) {
-            NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoUnico);
+
+        RespuestaMovimientoDTO respuesta = crearRespuestaMovimiento(jugadorActual, posicionAnterior, resultado);
+        Optional<EventoCasillero> evento = servicioEventoCasillero == null
+                ? Optional.empty() : servicioEventoCasillero.aplicarSiCorresponde(jugadorActual);
+        if (evento.isPresent()) {
+            EventoCasillero eventoAplicado = evento.get();
+            respuesta.setNombreEvento(eventoAplicado.getNombre());
+            respuesta.setDescripcionEvento(eventoAplicado.getDescripcion());
+            respuesta.setTipoEfectoEvento(eventoAplicado.getTipoEfecto().name());
+            respuesta.setNuevaPosicion(jugadorActual.getPosicionActual());
         }
-
-        RespuestaMovimientoDTO respuesta = crearRespuestaMovimiento(
-            jugadorActual,
-            posicionAnterior,
-            resultado
-        );
-
+        respuesta.informarDineroPorInicio(pasoPorInicio);
+        servicioPartida.actualizarJugador(jugadorActual);
         // Espero la decisión de compra solo si la propiedad está libre.
         CasilleroPropiedad casilleroDestino = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida,
                 jugadorActual.getPosicionActual());
-        Boolean requiereCompra = resolverPropiedadDestino(casilleroDestino, jugadorActual, codigoUnico);
-        // Envío el movimiento antes de cambiar el turno.
-        notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta);
+        Boolean requiereCompra = jugadorActual.getEnBancarrota() || Boolean.TRUE.equals(jugadorActual.getPierdeTurno())
+                ? false : resolverPropiedadDestino(casilleroDestino, jugadorActual, respuesta);
+        respuesta.setSaldos(servicioPartida.obtenerPartida(codigoUnico).getJugadores().stream()
+                .map(SaldoJugadorDTO::desdeJugador).toList());
         if (!requiereCompra) {
             coordinadorTurno.avanzarYObtenerTurno(codigoUnico);
         }
+        servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
+        respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
+        notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta);
         return respuesta;
     }
 
@@ -540,6 +571,7 @@ public class ControladorPartida {
         respuesta.setDado2(resultado.getDado2());
         respuesta.setSuma(resultado.sumarDados());
         respuesta.setNuevaPosicion(jugador.getPosicionActual());
+        respuesta.setPosicionCaidaEvento(jugador.getPosicionActual());
         return respuesta;
     }
 
@@ -573,11 +605,8 @@ public class ControladorPartida {
         }
     }
 
-    private Boolean resolverPropiedadDestino(
-        CasilleroPropiedad casillero,
-        Jugador jugador,
-        String codigoPartida
-    ) {
+    private Boolean resolverPropiedadDestino(CasilleroPropiedad casillero, Jugador jugador,
+                                             RespuestaMovimientoDTO respuesta) {
         if (casillero == null) return false;
         Propiedad propiedad = casillero.getPropiedad();
         if (servicioPropiedad.estaDisponible(propiedad)) return true;
@@ -585,16 +614,9 @@ public class ControladorPartida {
         Jugador propietario = propiedad.getPropietario();
         if (propietario != null && !propietario.getId().equals(jugador.getId())) {
             servicioPropiedad.pagarAlquiler(propiedad, jugador, alquiler);
-            NotificadorPartida.notificarAlquiler(
-                notificadorWebSocket,
-                codigoPartida,
-                jugador,
-                propietario,
-                propiedad.getNombre(),
-                alquiler
-            );
+            respuesta.setAlquiler(new AlquilerMovimientoDTO(jugador.getId(), jugador.getApodo(),
+                    propietario.getApodo(), propiedad.getNombre(), alquiler));
         }
-        NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
         return false;
     }
     @ExceptionHandler(JugadorNoEncontradoException.class)

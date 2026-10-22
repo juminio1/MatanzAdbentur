@@ -72,7 +72,7 @@ public class NotificadorPartida {
         Map<String, Object> datos = new HashMap<>();
 
         datos.put("idJugador", jugadorQueAbandona.getId());
-        datos.put("apodo", jugadorQueAbandona.getApodo()); //envia el id y el apodo de quien abandona 
+        datos.put("apodo", jugadorQueAbandona.getApodo()); //envia el id y el apodo de quien abandona
 
         Boolean victoriaPorAbandono = jugadoresRestantes.size() == UNICO_JUGADOR;
 

@@ -26,7 +26,7 @@ public class ObservadorLiberarPropiedadesTest {
     public void init() {
         // Simulamos el repositorio que maneja la base de datos de las propiedades
         repositorioPropiedadMock = mock(RepositorioPropiedad.class);
-        
+
         // Instanciamos el observador inyectándole el repositorio
         observador = new ObservadorLiberarPropiedades(repositorioPropiedadMock);
     }
@@ -56,14 +56,14 @@ public class ObservadorLiberarPropiedadesTest {
 
         // 2. Ejecución (Act)
         // Asumo que tu interfaz de observadores usa el método "actualizar" o "notificar"
-        observador.actualizar(evento); 
+        observador.actualizar(evento);
 
         // 3. Validación (Assert)
         assertNull(casaMatanza.getPropietario(), "La primera propiedad debería no tener dueño");
         assertEquals(0, casaMatanza.getNivelMejora(), "Las mejoras de la primera propiedad deberían resetearse a 0");
-        
+
         assertNull(deptoCasanova.getPropietario(), "La segunda propiedad debería no tener dueño");
-        
+
         // Verificamos que se haya mandado a guardar la actualización en la BD para ambas
         verify(repositorioPropiedadMock).guardarPropiedad(casaMatanza);
         verify(repositorioPropiedadMock).guardarPropiedad(deptoCasanova);
