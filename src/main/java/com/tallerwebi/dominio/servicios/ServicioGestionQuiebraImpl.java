@@ -135,22 +135,27 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return intentarResolverDeuda(codigoPartida, idJugador);
     }
 
+
     @Override
-    public ResultadoDeuda evaluarDeuda(String codigoPartida, Long idJugador) {
-        DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
+    public ResultadoDeuda evaluarDeuda(
+            String codigoPartida, Long idJugador) {
+
+        DeudaPendiente deuda =
+                obtenerDeudaPendiente(codigoPartida, idJugador);
 
         if (deuda == null) {
             return ResultadoDeuda.SIN_DEUDA;
         }
-        //se cobro el importe completo y se elimino la deuda
+
         if (intentarResolverDeuda(codigoPartida, idJugador)) {
             return ResultadoDeuda.RESUELTA;
         }
-        //no alcanza el dinero, pero puede vender propiedades
+
         if (tienePropiedadesVendibles(deuda.getJugadorDeudor())) {
             return ResultadoDeuda.PENDIENTE;
         }
-        //no alcanza el dinero y no tiene propiedades vendibles
+
+        declararQuiebra(codigoPartida, idJugador);
         return ResultadoDeuda.QUIEBRA;
     }
 
