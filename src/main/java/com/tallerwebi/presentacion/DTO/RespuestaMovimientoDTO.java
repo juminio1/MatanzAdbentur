@@ -144,9 +144,8 @@ public class RespuestaMovimientoDTO {
 
     public Integer calcularSegundosPresentacion() {
         Integer pasosEvento = (nuevaPosicion - posicionCaidaEvento + 30) % 30;
-        Integer segundosPopup = nombreEvento == null ? 0 : 7;
         Integer milisegundosAnimacion = (suma + pasosEvento) * 250;
-        return segundosPopup + (milisegundosAnimacion + 999) / 1000;
+        return (milisegundosAnimacion + 999) / 1000;
     }
 
 }

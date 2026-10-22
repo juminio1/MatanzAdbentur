@@ -818,6 +818,7 @@
 }
 
 .aviso-evento--visible {
+    pointer-events: auto;
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, -50%) scale(1);
@@ -829,7 +830,8 @@
     font-size: 28px;
 }
 
-.aviso-evento > p:last-child {
+.aviso-evento > p {
+    margin-bottom: 20px;
     color: var(--p-texto-suave);
     line-height: 1.5;
 }

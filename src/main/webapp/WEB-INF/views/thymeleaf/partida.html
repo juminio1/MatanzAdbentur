@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=integracion-6)}"
-            href="../../../resources/core/css/partida.css?v=integracion-6"
+            th:href="@{/css/partida.css(v=evento-manual-7)}"
+            href="../../../resources/core/css/partida.css?v=evento-manual-7"
         />
     </head>
     <body class="pagina-partida">
@@ -858,9 +858,10 @@
             aria-live="polite"
             aria-atomic="true"
         ></div>
-<section id="aviso-evento" class="aviso-evento" role="status" aria-live="assertive" aria-atomic="true" aria-hidden="true">
+<section id="aviso-evento" class="aviso-evento" role="dialog" aria-labelledby="aviso-evento-nombre" aria-describedby="aviso-evento-descripcion" aria-hidden="true">
     <h2 id="aviso-evento-nombre"></h2>
     <p id="aviso-evento-descripcion"></p>
+    <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
 </section>
 
         <dialog
@@ -944,7 +945,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=integracion-6)}" src="../../../resources/core/js/partida.js?v=integracion-6" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=evento-manual-7)}" src="../../../resources/core/js/partida.js?v=evento-manual-7" charset="UTF-8" defer></script>
 
 </body>
 

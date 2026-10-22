@@ -200,7 +200,7 @@ class EfectosPartidaIntegracionTest {
         assertEquals(3, resultado.getPosicionCaidaEvento());
         assertEquals(5, resultado.getNuevaPosicion());
         assertEquals(5, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verify(temporizador).programarTemporizador(eq(codigo), eq(38), any(Runnable.class));
+        verify(temporizador).programarTemporizador(eq(codigo), eq(31), any(Runnable.class));
     }
 
     @RepeatedTest(3)
@@ -210,7 +210,7 @@ class EfectosPartidaIntegracionTest {
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 22);
         controlador.tirarDados(codigo, idJugador);
         assertEquals(22, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verify(temporizador).programarTemporizador(eq(codigo), eq(43), any(Runnable.class));
+        verify(temporizador).programarTemporizador(eq(codigo), eq(36), any(Runnable.class));
     }
 
     @RepeatedTest(3)

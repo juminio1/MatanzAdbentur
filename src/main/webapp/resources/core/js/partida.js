@@ -320,17 +320,19 @@ function mostrarSiguienteAvisoPartida() {
 async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
     const popup = String(idJugador) === String(window.usuarioSesionId)
         ? document.getElementById("aviso-evento") : null;
-    if (popup) {
-        document.getElementById("aviso-evento-nombre").textContent = nombreEvento;
-        document.getElementById("aviso-evento-descripcion").textContent = descripcionEvento;
-        popup.setAttribute("aria-hidden", "false");
-        popup.classList.add("aviso-evento--visible");
-    }
-    await new Promise((resolve) => setTimeout(resolve, 7000));
-    if (popup) {
-        popup.classList.remove("aviso-evento--visible");
-        popup.setAttribute("aria-hidden", "true");
-    }
+    if (!popup) return;
+
+    const botonContinuar = document.getElementById("btn-continuar-evento");
+    document.getElementById("aviso-evento-nombre").textContent = nombreEvento;
+    document.getElementById("aviso-evento-descripcion").textContent = descripcionEvento;
+    popup.setAttribute("aria-hidden", "false");
+    popup.classList.add("aviso-evento--visible");
+    await new Promise((resolve) => {
+        botonContinuar.addEventListener("click", resolve, {once: true});
+        botonContinuar.focus();
+    });
+    popup.classList.remove("aviso-evento--visible");
+    popup.setAttribute("aria-hidden", "true");
 }
 
 function registrarPremioPorInicio(movimiento) {
