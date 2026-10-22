@@ -1,10 +1,11 @@
-package com.tallerwebi.dominio.servicios;
+package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import com.tallerwebi.infraestructura.RepositorioPartida;
