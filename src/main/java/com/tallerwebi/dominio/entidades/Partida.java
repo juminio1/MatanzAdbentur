@@ -122,6 +122,12 @@ public class Partida {
         return jugadores;
     }
 
+    public Boolean permiteAdministrarPropiedades(Jugador jugador, Long idJugador) {
+        return jugador != null && !jugador.getEnBancarrota()
+                && idJugador != null && jugadores != null
+                && jugadores.stream().anyMatch(participante -> idJugador.equals(participante.getId()));
+    }
+
     public void setJugadores(List<Jugador> jugadores) {
         this.jugadores = jugadores;
     }

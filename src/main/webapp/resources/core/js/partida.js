@@ -308,13 +308,9 @@ function actualizarBotonTirada() {
     }
 }
 
-// Espero el final del movimiento para registrar el alquiler.
+// El servidor envía el alquiler antes del movimiento: lo muestro al terminar la animación.
 function guardarAvisoAlquiler(aviso) {
     const idJugador = String(aviso.idJugadorPagador);
-    if (!movimientosDeJugadoresEnCurso.has(idJugador)) {
-        mostrarAvisoAlquiler(aviso);
-        return;
-    }
     const avisos = avisosAlquilerPendientes.get(idJugador) || [];
     avisos.push(aviso);
     avisosAlquilerPendientes.set(idJugador, avisos);
@@ -332,10 +328,10 @@ function mostrarAvisoPartida(mensaje) {
 }
 
 function mostrarAvisoAlquiler(aviso) {
-    agregarAlHistorial(
-        `${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`,
-        aviso.idJugadorPagador,
-    );
+    agregarAlHistorial(`${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`, aviso.idJugadorPagador);
+    if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
+        mostrarAvisoPartida(`Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`);
+    }
 }
 
 function mostrarAvisosAlquilerDelJugador(idJugador) {
@@ -361,7 +357,13 @@ async function procesarMovimiento(movimiento) {
     const clave = movimiento.idMovimiento
         ? String(movimiento.idMovimiento)
         : `${movimiento.idJugador}:${movimiento.posicionAnterior}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
-    if (movimientosEnCurso.has(clave)) return;
+    if (movimientosEnCurso.has(clave)) {
+        // HTTP puede haber terminado la animación antes de recibir el movimiento por WebSocket.
+        if (!movimientosDeJugadoresEnCurso.has(String(movimiento.idJugador))) {
+            mostrarAvisosAlquilerDelJugador(movimiento.idJugador);
+        }
+        return;
+    }
     movimientosEnCurso.add(clave);
     if (dado1) dado1.textContent = movimiento.dado1;
     if (dado2) dado2.textContent = movimiento.dado2;
@@ -391,7 +393,7 @@ function sincronizarPosicionesFichas(posiciones) {
         return;
     }
 
-   
+
 posiciones.forEach((jugador) => {
 
     const idJugador = String(jugador.idJugador);
