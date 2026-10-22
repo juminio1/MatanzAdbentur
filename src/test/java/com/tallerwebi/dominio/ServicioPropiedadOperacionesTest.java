@@ -4,20 +4,24 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.PropiedadNoMejorableException;
 import com.tallerwebi.dominio.excepcion.PropiedadNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PropiedadInvalidaException;
-import com.tallerwebi.dominio.servicios.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
+
 import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 

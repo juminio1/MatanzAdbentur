@@ -8,10 +8,9 @@ import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
-import com.tallerwebi.dominio.servicios.ServicioPartida;
-import com.tallerwebi.dominio.servicios.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.ServicioPropiedad;
-import com.tallerwebi.dominio.servicios.ServicioPropiedad.CompraPreparada;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -170,7 +169,7 @@ public class ControladorPartida {
         @PathVariable(PARAM_POSICION) Integer posicion
     ) {
         try {
-            CompraPreparada compra = servicioPropiedad.prepararCompra(codigoPartida, posicion);
+            ServicioPropiedad.CompraPreparada compra = servicioPropiedad.prepararCompra(codigoPartida, posicion);
             if (compra == null) return ResponseEntity.notFound().build();
             return procesarCompraPropiedad(compra);
         } catch (EstadoPartidaInvalidoException ex) {
@@ -279,7 +278,7 @@ public class ControladorPartida {
         return partida.permiteAdministrarPropiedades(jugador, idJugador);
     }
 
-    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(CompraPreparada compra) {
+    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) {
         String codigoPartida = compra.codigoPartida();
         Jugador jugador = compra.jugador();
         CasilleroPropiedad casillero = compra.casillero();
