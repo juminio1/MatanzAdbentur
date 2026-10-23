@@ -1,6 +1,7 @@
 package com.tallerwebi.dominio.excepcion;
 
 public class PropiedadInvalidaException extends RuntimeException {
+    @java.io.Serial
     private static final long serialVersionUID = 1L;
 
     public PropiedadInvalidaException(String message) {
