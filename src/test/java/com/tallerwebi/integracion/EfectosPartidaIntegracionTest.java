@@ -393,6 +393,97 @@ class EfectosPartidaIntegracionTest {
         assertEquals(true, controlador.obtenerInfoPropiedad(codigo, 2).getBody().get("disponible"));
     }
 
+
+    @Test
+    void queAlVenderUnaPropiedadSePagueLaDeudaPendiente() throws Exception {
+        cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
+
+        transaccion.executeWithoutResult(estado -> {
+            Jugador jugador = sesiones.getCurrentSession()
+                    .find(Jugador.class, idJugador);
+
+            jugador.setDinero(100);
+
+            Propiedad propiedad = new Propiedad(
+                    null, "Propiedad de Ana", 300, 50, jugador, null);
+
+            CasilleroPropiedad casillero = new CasilleroPropiedad(
+                    null, 4, "Propiedad de Ana", "Barrio", propiedad);
+
+            casillero.setPartidaId(
+                    servicioPartida.obtenerPartida(codigo).getId());
+
+            sesiones.getCurrentSession().persist(casillero);
+        });
+
+        controlador.tirarDados(codigo, idJugador);
+
+        assertNotNull(servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador));
+
+        var respuesta = controlador.venderPropiedad(
+                codigo, 4, sesion(idJugador));
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+
+        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
+
+        assertEquals(50, jugador.getDinero());
+        assertFalse(jugador.getEnBancarrota());
+
+        assertNull(servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador));
+    }
+
+
+    @Test
+    void queSePuedanVenderVariasPropiedadesParaPagarUnaDeuda() throws Exception {
+        cargarEvento(TipoEfectoEvento.RESTA, 400, null, null);
+
+        transaccion.executeWithoutResult(estado -> {
+            Jugador jugador = sesiones.getCurrentSession()
+                    .find(Jugador.class, idJugador);
+
+            jugador.setDinero(100);
+
+            Partida partida = servicioPartida.obtenerPartida(codigo);
+
+            for (Integer posicion : List.of(4, 5)) {
+                Propiedad propiedad = new Propiedad(
+                        null, "Propiedad " + posicion, 300, 50, jugador, null);
+
+                CasilleroPropiedad casillero = new CasilleroPropiedad(
+                        null, posicion, "Propiedad " + posicion, "Barrio", propiedad);
+
+                casillero.setPartidaId(partida.getId());
+                sesiones.getCurrentSession().persist(casillero);
+            }
+        });
+
+        controlador.tirarDados(codigo, idJugador);
+
+        assertNotNull(servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador));
+
+        var primeraVenta = controlador.venderPropiedad(
+                codigo, 4, sesion(idJugador));
+
+        assertEquals(HttpStatus.OK, primeraVenta.getStatusCode());
+        assertEquals(250, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertNotNull(servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador));
+        assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
+
+        var segundaVenta = controlador.venderPropiedad(
+                codigo, 5, sesion(idJugador));
+
+        assertEquals(HttpStatus.OK, segundaVenta.getStatusCode());
+        assertEquals(0, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertNull(servicioGestionQuiebra
+                .obtenerDeudaPendiente(codigo, idJugador));
+        assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
+    }
+
     private void cargarPropiedadDisponible(Integer posicion) {
         transaccion.executeWithoutResult(estado -> {
             Partida partida = servicioPartida.obtenerPartida(codigo);

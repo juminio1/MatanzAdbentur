@@ -265,6 +265,9 @@ public class ControladorPartida {
         try {
             Integer precioVenta = servicioPropiedad.venderPropiedadParaJugador(
                     casillero.getPropiedad().getId(), jugadorSesionId);
+            if (servicioGestionQuiebra.obtenerDeudaPendiente(codigoPartida, jugadorSesionId) != null) {
+                servicioGestionQuiebra.evaluarDeuda(codigoPartida, jugadorSesionId);
+            }
             Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(jugadorSesionId);
             Map<String, Object> actualizado = dtoPropiedad(casillero,
                     servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId()));
