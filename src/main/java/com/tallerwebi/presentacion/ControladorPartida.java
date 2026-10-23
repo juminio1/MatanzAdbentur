@@ -583,7 +583,10 @@ public class ControladorPartida {
 
         respuesta.setSaldos(servicioPartida.obtenerPartida(codigoUnico).getJugadores().stream()
                 .map(SaldoJugadorDTO::desdeJugador).toList());
-        if (!requiereDecision && !deudaPendiente) {
+
+        if (!requiereDecision
+                && !deudaPendiente
+                && !Boolean.TRUE.equals(jugadorActual.getEnBancarrota())) {
             coordinadorTurno.avanzarYObtenerTurno(codigoUnico);
         }
         servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());

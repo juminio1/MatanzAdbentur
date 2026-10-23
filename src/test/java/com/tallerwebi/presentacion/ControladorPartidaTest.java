@@ -46,6 +46,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
 
 public class ControladorPartidaTest {
@@ -773,5 +774,26 @@ public class ControladorPartidaTest {
         verify(notificadorPartidaMock, times(1)).notificarAbandonoPorWebSocket(partida, jugadorDos);
     }
 
+    @Test
+    void queUnJugadorEnQuiebraNoPuedaTirarDados() {
+        String codigo = "PARTIDA123";
 
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setEnBancarrota(true);
+
+        Partida partida = new Partida();
+        partida.setJugadores(List.of(jugador));
+
+        when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
+
+        ResponseStatusException excepcion = assertThrows(
+                ResponseStatusException.class,
+                () -> controladorPartida.tirarDados(codigo, jugador.getId())
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
+        verify(servicioPartidaMock, never()).tirarDados();
+    }
 }

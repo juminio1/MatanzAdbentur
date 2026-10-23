@@ -30,7 +30,7 @@ public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado>
                 .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()))
                 .count();
 
-        if (jugadoresActivos <= MINIMO_JUGADORES_PARA_CONTINUAR) {
+        if (jugadoresActivos < MINIMO_JUGADORES_PARA_CONTINUAR) {
             return;
         }
 

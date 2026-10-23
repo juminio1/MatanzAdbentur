@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
@@ -90,8 +91,17 @@ class EfectosPartidaIntegracionTest {
         PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono() { return new PublicadorEventos<>(List.of()); }
 
         @Bean
-        PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra() {
-            return new PublicadorEventos<>(List.of());
+        ObservadorTurnoQuiebra observadorTurnoQuiebra(
+                ServicioPartida servicioPartida) {
+            return new ObservadorTurnoQuiebra(servicioPartida);
+        }
+        @Bean
+        PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(
+                ObservadorTurnoQuiebra observadorTurnoQuiebra) {
+
+            return new PublicadorEventos<>(
+                    List.of(observadorTurnoQuiebra)
+            );
         }
     }
 
