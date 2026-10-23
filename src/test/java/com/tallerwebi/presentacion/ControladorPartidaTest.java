@@ -20,6 +20,8 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -819,5 +821,111 @@ public class ControladorPartidaTest {
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
 
         verify(servicioPartidaMock, never()).tirarDados();
+    }
+    @Test
+    void queElPostDeDeclararQuiebraRespondaJsonYUseLaSesion() throws Exception {
+        prepararSesionParaQuiebra("id", 1L);
+        org.springframework.test.web.servlet.MockMvc mvc =
+                org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controladorPartida).build();
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/partida/PARTIDA123/declarar-quiebra")
+                        .session(session).param("idJugador", "2"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentTypeCompatibleWith("application/json"))
+                .andExpect(resultado -> assertEquals("Te declaraste en quiebra.",
+                        new com.fasterxml.jackson.databind.ObjectMapper()
+                                .readTree(resultado.getResponse().getContentAsByteArray()).get("mensaje").asText()));
+        verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+        verify(servicioGestionQuiebraMock, never()).declararQuiebra(anyString(), eq(2L));
+    }
+
+    @Test
+    void queDeclararQuiebraUseElJugadorDeSesionAunqueLaPeticionIndiqueOtro() throws PartidaNoEncontradaException {
+        prepararSesionParaQuiebra("id", 1L);
+        request.addParameter("idJugador", "2");
+
+        ResponseEntity<Map<String, Object>> respuesta = controladorPartida.declararQuiebra("PARTIDA123", request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals("Te declaraste en quiebra.", respuesta.getBody().get("mensaje"));
+        verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+        verify(servicioGestionQuiebraMock, never()).declararQuiebra(anyString(), eq(2L));
+        verifyNoInteractions(servicioPropiedadMock, notificadorPartidaMock, notificadorWebSocketMock);
+        verify(servicioPartidaMock, never()).abandonarPartida(anyString(), anyLong());
+        verify(servicioPartidaMock, never()).avanzarTurno(anyString());
+    }
+
+    @Test
+    void queDeclararQuiebraResuelvaLaSesionConIDUSUARIO() {
+        prepararSesionParaQuiebra("IDUSUARIO", 1L);
+        assertEquals(HttpStatus.OK, controladorPartida.declararQuiebra("PARTIDA123", request).getStatusCode());
+        verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+    }
+
+    @Test
+    void queDeclararQuiebraResuelvaLaSesionConNombre() {
+        prepararSesionParaQuiebra("NOMBRE", "Ana");
+        assertEquals(HttpStatus.OK, controladorPartida.declararQuiebra("PARTIDA123", request).getStatusCode());
+        verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+    }
+
+    @Test
+    void queDeclararQuiebraSinSesionDevuelvaUnauthorized() {
+        assertEquals(HttpStatus.UNAUTHORIZED,
+                controladorPartida.declararQuiebra("PARTIDA123", request).getStatusCode());
+        verifyNoInteractions(servicioGestionQuiebraMock, servicioPartidaMock);
+    }
+
+    @Test
+    void queDeclararQuiebraEnPartidaInexistenteDevuelvaNotFound() {
+        session.setAttribute("id", 1L);
+        assertEquals(HttpStatus.NOT_FOUND,
+                controladorPartida.declararQuiebra("PARTIDA123", request).getStatusCode());
+        verifyNoInteractions(servicioGestionQuiebraMock);
+    }
+
+    @Test
+    void queDeclararQuiebraDeUnJugadorAjenoDevuelvaForbidden() {
+        prepararSesionParaQuiebra("id", 99L);
+        assertEquals(HttpStatus.FORBIDDEN,
+                controladorPartida.declararQuiebra("PARTIDA123", request).getStatusCode());
+        verifyNoInteractions(servicioGestionQuiebraMock);
+    }
+
+    @Test
+    void queUnaDeclaracionInvalidaDevuelvaConflictConElMotivo() {
+        prepararSesionParaQuiebra("id", 1L);
+        for (String motivo : List.of("La partida no está en curso.", "El jugador no tiene un pago pendiente.",
+                "El jugador ya abandonó o está en quiebra.")) {
+            doThrow(new DeclaracionQuiebraInvalidaException(motivo))
+                    .when(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+            ResponseEntity<Map<String, Object>> respuesta = controladorPartida.declararQuiebra("PARTIDA123", request);
+            assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+            assertEquals(motivo, respuesta.getBody().get("error"));
+        }
+    }
+
+    @Test
+    void queUnErrorInternoAlDeclararQuiebraNoSeConviertaEnConflict() {
+        prepararSesionParaQuiebra("id", 1L);
+        IllegalStateException fallo = new IllegalStateException("Fallo interno");
+        doThrow(fallo).when(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+        assertSame(fallo, assertThrows(IllegalStateException.class,
+                () -> controladorPartida.declararQuiebra("PARTIDA123", request)));
+    }
+
+    // Prepara la identidad de sesión y una partida para probar el endpoint.
+    private void prepararSesionParaQuiebra(String atributo, Object valor) {
+        session.setAttribute(atributo, valor);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setApodo("Ana");
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PARTIDA123");
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("PARTIDA123")).thenReturn(partida);
     }
 }

@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
@@ -166,25 +167,48 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return ResultadoDeuda.QUIEBRA;
     }
 
+    // Declara la quiebra del jugador cuando tiene una deuda pendiente.
     @Override
     public void declararQuiebra(String codigoPartida, Long idJugador) {
+        Partida partida = validarPartidaParaQuiebra(codigoPartida, idJugador);
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
         if (deuda == null) {
-            throw new IllegalStateException("El jugador no tiene un pago pendiente");
+            throw new DeclaracionQuiebraInvalidaException("El jugador no tiene un pago pendiente.");
         }
         Jugador jugador = deuda.getJugadorDeudor();
 
-        if (Boolean.TRUE.equals(jugador.getEnBancarrota())) {
-            return;
+        if (jugador.getAbandono() || jugador.getEnBancarrota()) {
+            throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
-        Partida partida = deuda.getPartida();
         jugador.setEnBancarrota(true);
         repositorioPartida.actualizarJugador(jugador);
         repositorioDeudaPendiente.eliminar(deuda);
         EventoJugadorQuebrado evento = new EventoJugadorQuebrado(partida, jugador);
         publicadorQuiebra.notificar(evento);
+    }
+
+    // Comprueba que la partida esté en curso y que el jugador participe en ella.
+    private Partida validarPartidaParaQuiebra(String codigoPartida, Long idJugador) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
+            throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
+        }
+        if (idJugador == null || partida.getJugadores() == null
+                || partida.getJugadores().stream().noneMatch(j -> idJugador.equals(j.getId()))) {
+            throw new DeclaracionQuiebraInvalidaException("El jugador no pertenece a esta partida.");
+        }
+        return partida;
+    }
+
+    // Distingue una solicitud inválida de un fallo interno al declarar la quiebra.
+    public static class DeclaracionQuiebraInvalidaException extends IllegalStateException {
+        private static final long serialVersionUID = 1L;
+
+        public DeclaracionQuiebraInvalidaException(String mensaje) {
+            super(mensaje);
+        }
     }
 
     //Conecta los alquileres con el sistema de deuda.

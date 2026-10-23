@@ -6,6 +6,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
+import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
@@ -280,6 +281,38 @@ public class ControladorPartida {
         } catch (RuntimeException ex) {
             String mensaje = obtenerMensajeError(ex, "No se pudo vender la propiedad.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, mensaje));
+        }
+    }
+
+    // Declara en quiebra al jugador identificado desde la sesión.
+    @PostMapping("/partida/{codigoPartida}/declarar-quiebra") // define la direccion a la que se envia la solicitud para declararse en quiebra.
+    @ResponseBody
+          //permite devolver una respuesta HTTP, en formato clave-valor
+    public ResponseEntity<Map<String, Object>> declararQuiebra(
+            //obtiene el codigo de la partida desde la URL           representa la solicitud HTTP que envia el usuario
+            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) {
+        //verifica que el usuario haya iniciado sesison. Si no se encuentra devuelve error.
+        if (ResolutorJugadorSesion.resolverUsuarioSesionId(request) == null
+                && request.getSession().getAttribute("NOMBRE") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    Map.of(CLAVE_ERROR, "Debés iniciar sesión."));
+        }
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    Map.of(CLAVE_ERROR, "La partida no existe o ya finalizó."));
+        }
+        Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
+        //verifica que el jugador pertenezca a la partida
+        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    Map.of(CLAVE_ERROR, "No pertenecés a esta partida."));
+        }
+        try {
+            servicioGestionQuiebra.declararQuiebra(codigoPartida, idJugador);
+            return ResponseEntity.ok(Map.of("mensaje", "Te declaraste en quiebra."));
+        } catch (DeclaracionQuiebraInvalidaException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
         }
     }
 
