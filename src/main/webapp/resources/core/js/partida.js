@@ -13,6 +13,117 @@ const avisosPartidaPendientes = [];
 
 let yaTiroEnEsteTurno = false;
 
+//guarda si se conoce el estado de la deuda, los datos de la deuda y posibles errores
+let estadoDeudaLocal = { estado: "desconocido", deuda: null, error: null };
+//indica si ya hay una consulta en el servidor.
+let consultaDeudaEnCurso = null;
+//indica si es necesario volver a consultar la deuda.
+let actualizacionDeudaPendiente = false;
+//detecta si hubo cambios mientras se consultaba la deuda
+let revisionDeudaLocal = 0;
+
+// comprueba que los datos enviados por el servidor sean correctos.
+function validarRespuestaDeuda(datos) {
+    //Comprueba que el servidor haya enviado los datos y q tieneDeudaPendeinte sea un valor booleano.
+    if (!datos || typeof datos.tieneDeudaPendiente !== "boolean") {
+        throw new Error("La respuesta de deuda no es válida.");
+    }
+    //verifica si el jugador NO tiene deuda
+    if (!datos.tieneDeudaPendiente) {
+        if (datos.montoPendiente !== null || datos.motivo !== null || datos.acreedor !== null) {
+            throw new Error("La respuesta sin deuda está incompleta o no es válida.");
+        }
+        return null; //no hay deuda pendiente
+    }
+    //verifica los datos de la deuda. Monto valido y mayor a 0, que el motivo sea un texto y q no este vacio.
+    if (
+        !Number.isSafeInteger(datos.montoPendiente) ||
+        datos.montoPendiente <= 0 ||
+        typeof datos.motivo !== "string" ||
+        !datos.motivo.trim()
+    ) {
+        throw new Error("Los datos de la deuda pendiente no son válidos.");
+    }
+    const acreedor = datos.acreedor;
+    //verifica los datos del acreedor. Si existe a quien le debe dinero, comprueba un id valido y q el apodo no este vacio.
+    if (
+        acreedor !== null &&
+        (!acreedor ||
+            !Number.isSafeInteger(acreedor.idJugador) ||
+            acreedor.idJugador <= 0 ||
+            typeof acreedor.apodo !== "string" ||
+            !acreedor.apodo.trim())
+    ) {
+        throw new Error("Los datos del acreedor no son válidos.");
+    }
+    //Devuelve la info. de la deuda ya validada.
+    return {
+        montoPendiente: datos.montoPendiente,
+        motivo: datos.motivo,
+        acreedor:
+            acreedor === null ? null : { idJugador: acreedor.idJugador, apodo: acreedor.apodo },
+    };
+}
+
+// consulta al servidor si el jugador tiene una deuda pendiente y actualiza el estado local.
+function consultarDeudaPendiente(huboCambio = false) {
+    if (!codigoPartida) return Promise.resolve();
+    //Comprueba si hubo un cambio en la partida. Ya que la info. anterior de la deuda podria dejar de ser valida.
+    if (huboCambio) {
+        revisionDeudaLocal++;
+        actualizacionDeudaPendiente = true;
+        estadoDeudaLocal.estado = "desconocido";
+        actualizarBotonTirada();
+    }
+    //si ya existe una consulta en curso, devuelve esa misma, en vez de iniciar otra.
+    if (consultaDeudaEnCurso) return consultaDeudaEnCurso;
+    actualizacionDeudaPendiente = true;
+    consultaDeudaEnCurso = Promise.resolve()
+        .then(async () => {
+            do {
+                actualizacionDeudaPendiente = false;
+                const revisionConsultada = revisionDeudaLocal;
+                try {
+                    //obtiene la deuda pendiente. Realiza la solicitud HTTP.
+                    const respuesta = await fetch(
+                        `${basePath}/partida/${encodeURIComponent(codigoPartida)}/deuda-pendiente`,
+                        {
+                            credentials: "same-origin",
+                            cache: "no-store",
+                            //indica que espera recibir un dato JSON
+                            headers: { Accept: "application/json" },
+                        },
+                    );
+                    //Si se devuelve un error en el HTTP, interrumpe el procesamiento y lanza excepcion
+                    if (!respuesta.ok)
+                        throw new Error(
+                            `No se pudo consultar la deuda (HTTP ${respuesta.status}).`,
+                        );
+                    //valida los datos recibidos
+                    const deuda = validarRespuestaDeuda(await respuesta.json());
+                    // Un cambio durante la petición exige consultar otra vez antes de habilitar los dados.
+                    if (revisionConsultada === revisionDeudaLocal) {
+                        estadoDeudaLocal = { estado: "actualizado", deuda, error: null };
+                    }
+                } catch (error) {
+                    if (revisionConsultada === revisionDeudaLocal) {
+                        if (estadoDeudaLocal.error?.message !== error.message) {
+                            console.warn("No se pudo sincronizar la deuda del jugador.", error);
+                        }
+                        estadoDeudaLocal = { ...estadoDeudaLocal, estado: "error", error };
+                    }
+                }
+                actualizarBotonTirada();
+            } while (actualizacionDeudaPendiente);
+        })
+        //Libera la consulta y comprueba si quedó otra pendiente
+        .finally(() => {
+            consultaDeudaEnCurso = null;
+            if (actualizacionDeudaPendiente) return consultarDeudaPendiente();
+        });
+    return consultaDeudaEnCurso;
+}
+
 async function obtenerResultadoDados() {
     const idJugador = window.usuarioSesionId;
     if (idJugador == null || !codigoPartida) {
@@ -70,7 +181,6 @@ if (botonTirar) {
 
             console.log("Nueva posición:", resultado.nuevaPosicion);
             await procesarMovimiento(resultado);
-
         } catch (error) {
             console.error("Error al tirar los dados o mover la ficha:", error);
             if (notaModalInfo)
@@ -161,7 +271,8 @@ function iniciarSincronizacionTurno(base, codigo) {
 
 function iniciarSincronizacionPosiciones() {
     solicitarPosicionesPartida();
-    window.setInterval(solicitarPosicionesPartida, 10000); 5000
+    window.setInterval(solicitarPosicionesPartida, 10000);
+    5000;
 }
 
 function solicitarPosicionesPartida() {
@@ -175,6 +286,7 @@ function solicitarPosicionesPartida() {
 }
 
 async function actualizarTurnoDesdeServidor(base, codigo) {
+    consultarDeudaPendiente();
     if (consultaTurnoEnCurso) return;
     consultaTurnoEnCurso = true;
     try {
@@ -203,6 +315,7 @@ function conectarWebSocketTurnos(base, codigo) {
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
+            consultarDeudaPendiente(true);
 
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
                 const turnoDTO = JSON.parse(mensaje.body);
@@ -244,6 +357,15 @@ function conectarWebSocketTurnos(base, codigo) {
                         propiedad.dineroJugador,
                         propiedad.enBancarrota,
                     );
+                }
+                if (
+                    [
+                        propiedad.idVendedor,
+                        propiedad.idJugadorPropietario,
+                        propiedad.idJugador,
+                    ].some((id) => id != null && String(id) === String(window.usuarioSesionId))
+                ) {
+                    consultarDeudaPendiente(true);
                 }
             });
             stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
@@ -293,6 +415,8 @@ function actualizarBotonTirada() {
             movimientosDeJugadoresEnCurso.size > 0 ||
             estaTirando ||
             yaTiroEnEsteTurno ||
+            estadoDeudaLocal.estado !== "actualizado" ||
+            estadoDeudaLocal.deuda !== null ||
             window.usuarioEnBancarrota ||
             String(window.turnoActualId) !== String(window.usuarioSesionId);
     }
@@ -318,8 +442,10 @@ function mostrarSiguienteAvisoPartida() {
 }
 
 async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
-    const popup = String(idJugador) === String(window.usuarioSesionId)
-        ? document.getElementById("aviso-evento") : null;
+    const popup =
+        String(idJugador) === String(window.usuarioSesionId)
+            ? document.getElementById("aviso-evento")
+            : null;
     if (!popup) return;
 
     const botonContinuar = document.getElementById("btn-continuar-evento");
@@ -328,7 +454,7 @@ async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
     popup.setAttribute("aria-hidden", "false");
     popup.classList.add("aviso-evento--visible");
     await new Promise((resolve) => {
-        botonContinuar.addEventListener("click", resolve, {once: true});
+        botonContinuar.addEventListener("click", resolve, { once: true });
         botonContinuar.focus();
     });
     popup.classList.remove("aviso-evento--visible");
@@ -339,19 +465,29 @@ function registrarPremioPorInicio(movimiento) {
     const monto = Number(movimiento.dineroPorInicio ?? 0);
     if (monto <= 0) return;
 
-    const nombreJugador = document.getElementById(String(movimiento.idJugador))
-        ?.querySelector(".nombre-jugador")?.textContent.trim()
-        || `Jugador ${movimiento.idJugador}`;
-    agregarAlHistorial(`${nombreJugador} recibió $${monto} por pasar por Inicio.`, movimiento.idJugador);
+    const nombreJugador =
+        document
+            .getElementById(String(movimiento.idJugador))
+            ?.querySelector(".nombre-jugador")
+            ?.textContent.trim() || `Jugador ${movimiento.idJugador}`;
+    agregarAlHistorial(
+        `${nombreJugador} recibió $${monto} por pasar por Inicio.`,
+        movimiento.idJugador,
+    );
     if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(`Recibiste $${monto} por pasar por Inicio.`);
     }
 }
 
 function mostrarAvisoAlquiler(aviso) {
-    agregarAlHistorial(`${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`, aviso.idJugadorPagador);
+    agregarAlHistorial(
+        `${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`,
+        aviso.idJugadorPagador,
+    );
     if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
-        mostrarAvisoPartida(`Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`);
+        mostrarAvisoPartida(
+            `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`,
+        );
     }
 }
 
@@ -394,20 +530,29 @@ async function procesarMovimiento(movimiento) {
             registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
         }
         if (movimiento.nombreEvento && movimiento.descripcionEvento) {
-            const nombreJugador = document.getElementById(String(movimiento.idJugador))
-                ?.querySelector(".nombre-jugador")?.textContent.trim()
-                || `Jugador ${movimiento.idJugador}`;
+            const nombreJugador =
+                document
+                    .getElementById(String(movimiento.idJugador))
+                    ?.querySelector(".nombre-jugador")
+                    ?.textContent.trim() || `Jugador ${movimiento.idJugador}`;
             agregarAlHistorial(
                 `${nombreJugador} sacó el evento «${movimiento.nombreEvento}»: ${movimiento.descripcionEvento}`,
                 movimiento.idJugador,
             );
-            await mostrarPopupEvento(movimiento.idJugador, movimiento.nombreEvento, movimiento.descripcionEvento);
+            await mostrarPopupEvento(
+                movimiento.idJugador,
+                movimiento.nombreEvento,
+                movimiento.descripcionEvento,
+            );
         }
         const posicionFinal = Number(movimiento.nuevaPosicion);
         if (Number.isInteger(posicionFinal)) {
             if (posicionFinal !== posicionCaida) {
-                const cantidadCasilleros = document.querySelectorAll(".casillero[data-casillero]").length;
-                const pasosEvento = (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
+                const cantidadCasilleros = document.querySelectorAll(
+                    ".casillero[data-casillero]",
+                ).length;
+                const pasosEvento =
+                    (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
                 await animarMovimientoFicha(movimiento.idJugador, pasosEvento, posicionCaida);
                 moverFichaEnTablero(movimiento.idJugador, posicionFinal);
                 registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
@@ -420,6 +565,9 @@ async function procesarMovimiento(movimiento) {
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
+            consultarDeudaPendiente(true);
+        }
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
         actualizarBotonTirada();
     }
@@ -431,10 +579,10 @@ function sincronizarPosicionesFichas(posiciones) {
         return;
     }
 
-
     posiciones.forEach((jugador) => {
         const idJugador = String(jugador.idJugador);
-        if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador)) return;
+        if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador))
+            return;
         if (jugador.posicion == null) return;
         moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
@@ -493,7 +641,11 @@ function aplicarTurnoDTO(turnoDTO) {
     const ronda = Number(turnoDTO.rondaActual ?? 0);
     const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
     const ultimo = window.ultimoTurnoRecibido;
-    if (ultimo && (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))) return;
+    if (
+        ultimo &&
+        (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))
+    )
+        return;
     window.ultimoTurnoRecibido = { ronda, finalizados };
     const claveTurno = `${turnoDTO.idJugadorActual}:${turnoDTO.rondaActual}:${turnoDTO.turnosFinalizadosEnRonda}`;
     const cambioDeTurno = window.claveTurnoActual !== claveTurno;
@@ -503,11 +655,16 @@ function aplicarTurnoDTO(turnoDTO) {
 
     if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
+    if (cambioDeTurno) consultarDeudaPendiente(true);
     if (cambioDeTurno && modalBonoPropiedades?.open) cargarPropiedadesPropias();
     if (turnoDTO.duracionSegundos == null) {
         prepararRelojSinIniciar();
         window.turnoInicialSincronizado = true;
-    } else if (cambioDeTurnoDelReloj || !window.turnoInicialSincronizado || Number(turnoDTO.duracionSegundos) > 30) {
+    } else if (
+        cambioDeTurnoDelReloj ||
+        !window.turnoInicialSincronizado ||
+        Number(turnoDTO.duracionSegundos) > 30
+    ) {
         iniciarRelojLocal(turnoDTO.duracionSegundos);
         window.claveTurnoCronometro = claveTurno;
         window.turnoInicialSincronizado = true;
@@ -1041,17 +1198,26 @@ function crearTarjetaPropiedad(propiedad) {
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
     const costoMejora = nivelesAlquiler[nivel];
-    const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
+    const puedeMejorarse =
+        !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
     if (puedeMejorarse) {
         agregarDatoPropiedad(datos, "Costo de mejora", costoMejora);
         agregarDatoPropiedad(datos, "Alquiler después de mejorar", costoMejora);
     }
-    botonSubir.disabled = !localidadCompleta || nivel >= nivelesAlquiler.length
-        || posicionesParadas.has(Number(propiedad.posicion)) || !esTurnoPropio || window.usuarioEnBancarrota
-        || Number(window.dineroUsuarioSesion) < costoMejora;
-    botonSubir.textContent = esTurnoPropio && puedeMejorarse
-        ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}` : "Subir alquiler";
-    botonSubir.addEventListener("click", () => subirAlquilerPropiedad(propiedad.posicion, botonSubir));
+    botonSubir.disabled =
+        !localidadCompleta ||
+        nivel >= nivelesAlquiler.length ||
+        posicionesParadas.has(Number(propiedad.posicion)) ||
+        !esTurnoPropio ||
+        window.usuarioEnBancarrota ||
+        Number(window.dineroUsuarioSesion) < costoMejora;
+    botonSubir.textContent =
+        esTurnoPropio && puedeMejorarse
+            ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}`
+            : "Subir alquiler";
+    botonSubir.addEventListener("click", () =>
+        subirAlquilerPropiedad(propiedad.posicion, botonSubir),
+    );
     const botonVender = document.createElement("button");
     botonVender.type = "button";
     botonVender.className = "btn-casillero btn-casillero--principal";
@@ -1139,6 +1305,7 @@ async function venderPropiedadBono(propiedad) {
         );
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
+        consultarDeudaPendiente(true);
         actualizarEtiquetaPrecioPropiedad(datos);
         actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
         modalVenderPropiedad.close();
@@ -1224,6 +1391,7 @@ async function responderOfertaVenta(aceptar) {
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo responder la oferta.");
         if (aceptar) {
+            consultarDeudaPendiente(true);
             actualizarEtiquetaPrecioPropiedad(datos);
             actualizarDineroJugador(datos.idJugador, datos.dineroJugador, datos.enBancarrota);
             actualizarDineroJugador(

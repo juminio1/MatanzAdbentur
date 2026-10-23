@@ -7,9 +7,7 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-//Detecta si debe avanzar el turno cuando quiebra un jugador.
-
-/** Avanza el turno del jugador quebrado si quedan suficientes jugadores activos. */
+// Avanza el turno del jugador quebrado si quedan suficientes jugadores activos.
 @Component
 //permite al spring registre el observador
 public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado> {
