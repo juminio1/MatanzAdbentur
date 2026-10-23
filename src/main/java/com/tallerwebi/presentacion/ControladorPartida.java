@@ -6,7 +6,6 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
-import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
@@ -52,6 +51,9 @@ public class ControladorPartida {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ControladorPartida.class);
     private static final String CLAVE_ERROR = "error";
+    private static final String SESION_NOMBRE = "NOMBRE";
+    private static final String CLAVE_ID_JUGADOR = "idJugador";
+    private static final String ERROR_JUGADOR_AJENO = "No pertenecés a esta partida.";
     private static final String PARAM_CODIGO_PARTIDA = "codigoPartida";
     private static final String PARAM_POSICION = "posicion";
     private static final String VISTA_PARTIDA = "partida";
@@ -148,7 +150,7 @@ public class ControladorPartida {
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
         if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    Map.of(CLAVE_ERROR, "No pertenecés a esta partida.")
+                    Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
         }
 
@@ -198,7 +200,7 @@ public class ControladorPartida {
             );
             Map<String, Object> dto = dtoPropiedad(casillero, propiedad);
             Jugador jugadorActualizado = servicioPartida.obtenerJugadorPorId(idJugador);
-            dto.put("idJugador", idJugador);
+            dto.put(CLAVE_ID_JUGADOR, idJugador);
             dto.put("dineroJugador", jugadorActualizado.getDinero());
             dto.put("enBancarrota", jugadorActualizado.getEnBancarrota());
             notificadorWebSocket.convertAndSend(
@@ -272,7 +274,7 @@ public class ControladorPartida {
             Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(jugadorSesionId);
             Map<String, Object> actualizado = dtoPropiedad(casillero,
                     servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId()));
-            actualizado.put("idJugador", jugadorSesionId);
+            actualizado.put(CLAVE_ID_JUGADOR, jugadorSesionId);
             actualizado.put("dineroJugador", vendedorActualizado.getDinero());
             actualizado.put("precioVenta", precioVenta);
             notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/propiedades", actualizado);
@@ -281,38 +283,6 @@ public class ControladorPartida {
         } catch (RuntimeException ex) {
             String mensaje = obtenerMensajeError(ex, "No se pudo vender la propiedad.");
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, mensaje));
-        }
-    }
-
-    // Declara en quiebra al jugador identificado desde la sesión.
-    @PostMapping("/partida/{codigoPartida}/declarar-quiebra") // define la direccion a la que se envia la solicitud para declararse en quiebra.
-    @ResponseBody
-          //permite devolver una respuesta HTTP, en formato clave-valor
-    public ResponseEntity<Map<String, Object>> declararQuiebra(
-            //obtiene el codigo de la partida desde la URL           representa la solicitud HTTP que envia el usuario
-            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) {
-        //verifica que el usuario haya iniciado sesison. Si no se encuentra devuelve error.
-        if (ResolutorJugadorSesion.resolverUsuarioSesionId(request) == null
-                && request.getSession().getAttribute("NOMBRE") == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                    Map.of(CLAVE_ERROR, "Debés iniciar sesión."));
-        }
-        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        if (partida == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                    Map.of(CLAVE_ERROR, "La partida no existe o ya finalizó."));
-        }
-        Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        //verifica que el jugador pertenezca a la partida
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    Map.of(CLAVE_ERROR, "No pertenecés a esta partida."));
-        }
-        try {
-            servicioGestionQuiebra.declararQuiebra(codigoPartida, idJugador);
-            return ResponseEntity.ok(Map.of("mensaje", "Te declaraste en quiebra."));
-        } catch (DeclaracionQuiebraInvalidaException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
         }
     }
 
@@ -332,7 +302,7 @@ public class ControladorPartida {
 
         if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    Map.of(CLAVE_ERROR, "No pertenecés a esta partida.")
+                    Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
         }
         Jugador jugador = partida.getJugadores().stream().filter(j -> idJugador.equals(j.getId())).findFirst().orElseThrow(()
@@ -492,7 +462,7 @@ public class ControladorPartida {
         }
 
         Long usuarioSesionId = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
-        String nombreSesion = (String) request.getSession().getAttribute("NOMBRE");
+        String nombreSesion = (String) request.getSession().getAttribute(SESION_NOMBRE);
 
         if (usuarioSesionId == null && nombreSesion == null) {
             return new ModelAndView("redirect:/login");
@@ -549,7 +519,7 @@ public class ControladorPartida {
             HttpServletRequest request
     ) {
         Long usuarioSesionId = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
-        String nombreSesion = (String) request.getSession().getAttribute("NOMBRE");
+        String nombreSesion = (String) request.getSession().getAttribute(SESION_NOMBRE);
 
         if (usuarioSesionId == null && nombreSesion == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -576,7 +546,7 @@ public class ControladorPartida {
     @ResponseBody
     public RespuestaMovimientoDTO tirarDados(
             @RequestParam("codigoUnico") String codigoUnico,
-            @RequestParam("idJugador") Long idJugador
+            @RequestParam(CLAVE_ID_JUGADOR) Long idJugador
     ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         Partida partida = obtenerPartidaParaTirada(codigoUnico);
         Jugador jugadorActual = obtenerJugadorParaTirada(partida, idJugador);
