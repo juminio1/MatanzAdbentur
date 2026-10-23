@@ -584,8 +584,16 @@ public class ControladorPartida {
         Boolean deudaPendiente = servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigoUnico, idJugador) != null;
 
-        respuesta.setSaldos(servicioPartida.obtenerPartida(codigoUnico).getJugadores().stream()
-                .map(SaldoJugadorDTO::desdeJugador).toList());
+        //Vuelve a consultar la partida actua. despues de que se realizaron los pagos.
+        Partida partidaActualizada = servicioPartida.obtenerPartida(codigoUnico);
+        //operador ternario. Busca partidas activas. Si la partidaActulizada es distinta a null, partidaSaldo toma partidaActualiza. Sino
+        Partida partidaParaSaldos = partidaActualizada != null
+                ? partidaActualizada
+                : partida;
+        //recorre los jugadores de la partida seleccionada, transforma cada uno en un SaldoJugadorDTO y los agrega a la respuesta que recibe el frontend.
+        respuesta.setSaldos(partidaParaSaldos.getJugadores().stream()
+                .map(SaldoJugadorDTO::desdeJugador)
+                .toList());
 
         if (!requiereDecision
                 && !deudaPendiente
@@ -638,9 +646,13 @@ public class ControladorPartida {
             throws ResponseStatusException {
         Jugador jugadorDelTurno = servicioPartida.obtenerJugadorActual(codigoUnico);
         if (jugador.getEnBancarrota() || !esTurnoDeJugador(jugadorDelTurno, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "No podés tirar los dados en este turno.");
+        }
+        if (servicioGestionQuiebra.obtenerDeudaPendiente(codigoUnico, idJugador) != null) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "No podés tirar los dados en este turno."
+                    "Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados."
             );
         }
     }

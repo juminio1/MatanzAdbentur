@@ -6,6 +6,8 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra;
+import com.tallerwebi.dominio.observadores.ObservadorVictoria;
+import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
@@ -25,11 +27,8 @@ import javax.sql.DataSource;
 
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import org.hibernate.SessionFactory;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
-import org.junit.jupiter.api.RepetitionInfo;
+import org.junit.jupiter.api.*;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -97,11 +96,21 @@ class EfectosPartidaIntegracionTest {
         }
         @Bean
         PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(
-                ObservadorTurnoQuiebra observadorTurnoQuiebra) {
+                ObservadorTurnoQuiebra observadorTurnoQuiebra,
+                ObservadorVictoriaQuiebra observadorVictoriaQuiebra) {
 
-            return new PublicadorEventos<>(
-                    List.of(observadorTurnoQuiebra)
-            );
+            return new PublicadorEventos<>(List.of(observadorTurnoQuiebra, observadorVictoriaQuiebra));
+        }
+        @Bean
+        ObservadorVictoria observadorVictoria(
+                RepositorioPartida repositorioPartida) {
+            return new ObservadorVictoria(repositorioPartida);
+        }
+
+        @Bean
+        ObservadorVictoriaQuiebra observadorVictoriaQuiebra(
+                ObservadorVictoria observadorVictoria) {
+            return new ObservadorVictoriaQuiebra(observadorVictoria);
         }
     }
 
@@ -351,6 +360,45 @@ class EfectosPartidaIntegracionTest {
                 .findFirst()
                 .orElseThrow()
                 .enBancarrota());
+
+        Partida partidaFinalizada = transaccion.execute(estado ->
+                sesiones.getCurrentSession()
+                        .createQuery(
+                                "FROM Partida WHERE codigoUnico = :codigo",
+                                Partida.class)
+                        .setParameter("codigo", codigo)
+                        .getSingleResult());
+
+        assertEquals(EstadoPartida.FINALIZADA, partidaFinalizada.getEstado());
+    }
+
+
+    @Test
+    void queLaPartidaContinueCuandoQuiebraUnJugadorYQuedanDosActivos() throws Exception {
+        prepararCantidadJugadores(3);
+        cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
+
+        transaccion.executeWithoutResult(estado ->
+                sesiones.getCurrentSession()
+                        .find(Jugador.class, idJugador)
+                        .setDinero(100));
+
+        controlador.tirarDados(codigo, idJugador);
+
+        Jugador jugadorQuebrado = servicioPartida.obtenerJugadorPorId(idJugador);
+        Jugador jugadorSiguiente = servicioPartida.obtenerJugadorActual(codigo);
+
+        assertTrue(jugadorQuebrado.getEnBancarrota());
+        assertNotNull(jugadorSiguiente);
+        assertEquals(idPropietario, jugadorSiguiente.getId());
+
+        Partida partidaActualizada = servicioPartida.obtenerPartida(codigo);
+        assertEquals(EstadoPartida.EN_CURSO, partidaActualizada.getEstado());
+    }
+
+    @AfterAll
+    static void afterAll() {
+
     }
 
     @RepeatedTest(3)

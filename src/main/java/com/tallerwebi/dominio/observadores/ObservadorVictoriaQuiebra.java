@@ -5,7 +5,7 @@ import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import org.springframework.stereotype.Component;
 
 @Component
-//Escucha EventoJugadorQuebrado.
+//cuando recibe EventoJugadorQuebrado, le pide a ObservadorVictoria que verifique si la partida debe finalizar..
 public class ObservadorVictoriaQuiebra
         implements Observador<EventoJugadorQuebrado> {
 

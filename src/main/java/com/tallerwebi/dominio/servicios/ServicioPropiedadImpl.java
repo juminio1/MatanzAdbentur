@@ -207,7 +207,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         servicioPartida.sumarDinero(propietario, montoAlquiler);
         servicioPartida.actualizarJugador(propietario);
     }
-
+//calcula el alquiler automáticamente
     @Override
     public Integer calcularAlquiler(Propiedad propiedad) {
         validarPropiedad(propiedad);
@@ -227,7 +227,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (nivelMejora == 0) return alquilerBase;
         return ALQUILERES_MEJORADOS.get(Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA) - 1);
     }
-
+//Recibe el importe ya calculado
     @Override
     public Integer calcularAlquiler(CasilleroPropiedad casillero, Propiedad propiedad) {
         Long idPartida = casillero.getPartidaId();
