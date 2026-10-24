@@ -51,7 +51,8 @@ class ControladorGestionQuiebraTest {
         servicioPropiedadMock = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-        controladorGestionQuiebra = new ControladorGestionQuiebra(servicioPartidaMock, servicioGestionQuiebraMock);
+        controladorGestionQuiebra = new ControladorGestionQuiebra(servicioPartidaMock,
+                servicioGestionQuiebraMock);
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
         request.setSession(session);
@@ -103,7 +104,8 @@ class ControladorGestionQuiebraTest {
         assertEquals("Te declaraste en quiebra.", respuesta.getBody().get("mensaje"));
         verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
         verify(servicioGestionQuiebraMock, never()).declararQuiebra(anyString(), eq(2L));
-        verifyNoInteractions(servicioPropiedadMock, notificadorPartidaMock, notificadorWebSocketMock);
+        verifyNoInteractions(notificadorPartidaMock);
+        verifyNoInteractions(servicioPropiedadMock, notificadorWebSocketMock);
         verify(servicioPartidaMock, never()).abandonarPartida(anyString(), anyLong());
         verify(servicioPartidaMock, never()).avanzarTurno(anyString());
     }
@@ -155,6 +157,7 @@ class ControladorGestionQuiebraTest {
             ResponseEntity<Map<String, Object>> respuesta = controladorGestionQuiebra.declararQuiebra("PARTIDA123", request);
             assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
             assertEquals(motivo, respuesta.getBody().get("error"));
+            verifyNoInteractions(notificadorPartidaMock);
         }
     }
 
@@ -165,6 +168,20 @@ class ControladorGestionQuiebraTest {
         doThrow(fallo).when(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
         assertSame(fallo, assertThrows(IllegalStateException.class,
                 () -> controladorGestionQuiebra.declararQuiebra("PARTIDA123", request)));
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+    @Test
+    void queElControladorNoDupliqueLaNotificacionDelObservador() {
+        prepararSesionParaQuiebra("id", 1L);
+        Partida confirmada = new Partida();
+        confirmada.setEstado(EstadoPartida.FINALIZADA);
+        when(servicioGestionQuiebraMock.declararQuiebra("PARTIDA123", 1L)).thenReturn(confirmada);
+
+        assertEquals(HttpStatus.OK, controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
+
+        verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
+        verifyNoInteractions(notificadorPartidaMock);
     }
 
     @Test
@@ -303,5 +320,6 @@ class ControladorGestionQuiebraTest {
         partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setJugadores(List.of(jugador));
         when(servicioPartidaMock.obtenerPartida("PARTIDA123")).thenReturn(partida);
+        when(servicioGestionQuiebraMock.declararQuiebra("PARTIDA123", 1L)).thenReturn(partida);
     }
 }

@@ -176,8 +176,9 @@ class ServicioGestionQuiebraImplTest {
         propiedad.setPropietario(jugador);
         deuda.getPartida().setIndiceTurnoActual(1);
 
-        servicio.declararQuiebra("PARTIDA123", 1L);
+        Partida resultado = servicio.declararQuiebra("PARTIDA123", 1L);
 
+        assertSame(deuda.getPartida(), resultado);
         assertTrue(jugador.getEnBancarrota());
         assertFalse(jugador.getAbandono());
         assertEquals(100, jugador.getDinero());
@@ -189,6 +190,21 @@ class ServicioGestionQuiebraImplTest {
         assertSame(jugador, evento.getValue().jugador());
         assertSame(deuda.getPartida(), evento.getValue().partida());
         verifyNoInteractions(servicioPropiedad, repositorioPropiedad);
+    }
+
+    @Test
+    void queDeclararQuiebraDevuelvaElEstadoDecididoPorLosObservadores() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        doAnswer(invocacion -> {
+            EventoJugadorQuebrado evento = invocacion.getArgument(0);
+            evento.partida().setEstado(EstadoPartida.FINALIZADA);
+            return null;
+        }).when(publicadorQuiebra).notificar(any(EventoJugadorQuebrado.class));
+
+        Partida resultado = servicio.declararQuiebra("PARTIDA123", 1L);
+
+        assertSame(deuda.getPartida(), resultado);
+        assertEquals(EstadoPartida.FINALIZADA, resultado.getEstado());
     }
 
     @Test

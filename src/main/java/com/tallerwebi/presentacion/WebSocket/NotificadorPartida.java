@@ -2,6 +2,7 @@ package com.tallerwebi.presentacion.WebSocket;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -63,6 +64,26 @@ public class NotificadorPartida {
         aviso.put("propiedad", nombrePropiedad);
         aviso.put("monto", monto);
         template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/alquiler", aviso);
+    }
+
+    // Reutiliza el canal de salida sin presentar la quiebra como un abandono.
+    public void notificarQuiebraPorWebSocket(Partida partida, Long idJugador) {
+        Jugador quebrado = partida.getJugadores().stream()
+                .filter(jugador -> idJugador.equals(jugador.getId())).findFirst().orElseThrow();
+        Map<String, Object> datos = new HashMap<>();
+        datos.put("motivo", "QUIEBRA");
+        datos.put("idJugador", idJugador);
+        datos.put("apodo", quebrado.getApodo());
+        datos.put("partidaFinalizada", partida.getEstado() == EstadoPartida.FINALIZADA);
+        if (partida.getEstado() == EstadoPartida.FINALIZADA) {
+            // Observer ya decidió la victoria; aquí solo identificamos al ganador para mostrarlo.
+            partida.getJugadores().stream()
+                    .filter(jugador -> !Boolean.TRUE.equals(jugador.getAbandono()))
+                    .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()))
+                    .filter(jugador -> !idJugador.equals(jugador.getId()))
+                    .findFirst().ifPresent(ganador -> datos.put("idGanador", ganador.getId()));
+        }
+        this.template.convertAndSend(TOPIC_PARTIDA_PREFIX + partida.getCodigoUnico() + "/abandono", datos);
     }
 
     public void notificarAbandonoPorWebSocket(Partida partida, Jugador jugadorQueAbandona) {

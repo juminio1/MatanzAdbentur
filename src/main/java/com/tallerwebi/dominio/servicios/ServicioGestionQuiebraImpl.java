@@ -167,9 +167,9 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return ResultadoDeuda.QUIEBRA;
     }
 
-    // Declara la quiebra del jugador cuando tiene una deuda pendiente.
+    // Declara la quiebra y devuelve la partida con los cambios realizados por los observadores.
     @Override
-    public void declararQuiebra(String codigoPartida, Long idJugador) {
+    public Partida declararQuiebra(String codigoPartida, Long idJugador) {
         Partida partida = validarPartidaParaQuiebra(codigoPartida, idJugador);
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
@@ -187,6 +187,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         repositorioDeudaPendiente.eliminar(deuda);
         EventoJugadorQuebrado evento = new EventoJugadorQuebrado(partida, jugador);
         publicadorQuiebra.notificar(evento);
+        return partida;
     }
 
     // Comprueba que la partida esté en curso y que el jugador participe en ella.

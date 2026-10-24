@@ -31,7 +31,8 @@ public class ControladorGestionQuiebra {
     private final ServicioPartida servicioPartida;
     private final ServicioGestionQuiebra servicioGestionQuiebra;
 
-    public ControladorGestionQuiebra(ServicioPartida servicioPartida, ServicioGestionQuiebra servicioGestionQuiebra) {
+    public ControladorGestionQuiebra(ServicioPartida servicioPartida,
+            ServicioGestionQuiebra servicioGestionQuiebra) {
         this.servicioPartida = servicioPartida;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
     }

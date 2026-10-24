@@ -10,6 +10,7 @@ if (botonTirar) botonTirar.disabled = true;
 let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
 const avisosPartidaPendientes = [];
+const quiebrasNotificadas = new Set();
 
 let yaTiroEnEsteTurno = false;
 
@@ -375,6 +376,10 @@ function conectarWebSocketTurnos(base, codigo) {
             });
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
+                if (datos.motivo === "QUIEBRA") {
+                    procesarNotificacionQuiebra(datos);
+                    return;
+                }
 
                 agregarAlHistorial(`${datos.apodo} abandonó la partida.`, datos.idJugador);
 
@@ -600,6 +605,7 @@ function sincronizarPosicionesFichas(posiciones) {
 }
 
 function actualizarTurnoEnPantalla(turnoDTO) {
+    if (partidaFinalizada) return;
     const idJugadorActual = String(turnoDTO.idJugadorActual);
     const usuarioSesionId = String(window.usuarioSesionId);
 
@@ -644,7 +650,7 @@ function actualizarTurnoEnPantalla(turnoDTO) {
 }
 
 function aplicarTurnoDTO(turnoDTO) {
-    if (!turnoDTO || turnoDTO.idJugadorActual == null) return;
+    if (partidaFinalizada || !turnoDTO || turnoDTO.idJugadorActual == null) return;
     const ronda = Number(turnoDTO.rondaActual ?? 0);
     const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
     const ultimo = window.ultimoTurnoRecibido;
@@ -813,7 +819,7 @@ async function confirmarQuiebra() {
         declarandoQuiebra = false;
         modalDeuda.close();
         actualizarAvisoDeuda();
-        await consultarDeudaPendiente(true);
+        window.location.assign(`${basePath}/home`);
     } catch (error) {
         mensajeAccionDeuda = error instanceof TypeError ?
             "No se pudo confirmar la declaración. Comprobá la conexión y actualizá la página antes de volver a intentarlo." :
@@ -1453,10 +1459,32 @@ function abrirOpcionesVenta(propiedad) {
     if (!modalVenderPropiedad.open) modalVenderPropiedad.showModal();
 }
 
+let ultimoTurnoSolicitadoPorPagoDeuda = null;
+
+// Solicita una sola vez el cierre del mismo turno propio cuando la venta terminó de pagar la deuda.
+async function finalizarTurnoTrasPagarDeuda(claveTurnoVenta) {
+    if (!claveTurnoVenta || claveTurnoVenta !== window.claveTurnoActual
+            || ultimoTurnoSolicitadoPorPagoDeuda === claveTurnoVenta
+            || window.usuarioSesionId == null
+            || String(window.turnoActualId) !== String(window.usuarioSesionId)
+            || tiempoRestante <= 0 || partidaFinalizada || window.usuarioEnBancarrota || declarandoQuiebra
+            || estadoDeudaLocal.estado !== "actualizado" || estadoDeudaLocal.deuda !== null) return;
+    // Reservamos el envío antes de esperar la respuesta para evitar solicitudes simultáneas.
+    ultimoTurnoSolicitadoPorPagoDeuda = claveTurnoVenta;
+    await finalizarTurno();
+}
+
 async function venderPropiedadBono(propiedad) {
     if (!propiedad) return;
     if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${propiedad.precioVenta}?`))
         return;
+    // El listado abierto desde deuda conserva ese contexto mientras se actualiza la consulta.
+    const ventaConDeudaConocida = estadoDeudaLocal.deuda !== null
+        && (estadoDeudaLocal.estado === "actualizado"
+            || (estadoDeudaLocal.estado === "desconocido" && regresoDesdePropiedadesDeuda));
+    const claveTurnoVenta = window.usuarioSesionId != null
+            && String(window.turnoActualId) === String(window.usuarioSesionId) && tiempoRestante > 0
+        ? window.claveTurnoActual : null;
     try {
         const respuesta = await fetch(
             `${basePath}/partida/${codigoPartida}/propiedades/${propiedad.posicion}/vender`,
@@ -1464,11 +1492,15 @@ async function venderPropiedadBono(propiedad) {
         );
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
-        consultarDeudaPendiente(true);
+        await consultarDeudaPendiente(true);
         actualizarEtiquetaPrecioPropiedad(datos);
         actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
         modalVenderPropiedad.close();
-        await cargarPropiedadesPropias();
+        try {
+            if (ventaConDeudaConocida) await finalizarTurnoTrasPagarDeuda(claveTurnoVenta);
+        } finally {
+            await cargarPropiedadesPropias();
+        }
     } catch (error) {
         mensajeBonoPropiedades.textContent = error.message || "No se pudo vender la propiedad.";
     }
@@ -1884,11 +1916,40 @@ async function sincronizarPropiedadesTrasAbandono(idJugador) {
 
 let partidaFinalizada = false;
 
-function mostrarVictoria(datos) {
+// Atiende la quiebra confirmada sin ejecutar las acciones ni los mensajes de abandono.
+function procesarNotificacionQuiebra(datos) {
+    // La declaración voluntaria conserva su redirección al recibir el POST exitoso.
+    if (String(datos.idJugador) === String(window.usuarioSesionId)) {
+        if (!declarandoQuiebra && !quiebrasNotificadas.has(String(datos.idJugador))) {
+            quiebrasNotificadas.add(String(datos.idJugador));
+            window.location.assign(`${basePath}/home`);
+        }
+        return;
+    }
+    if (partidaFinalizada) return;
+    if (!quiebrasNotificadas.has(String(datos.idJugador))) {
+        quiebrasNotificadas.add(String(datos.idJugador));
+        agregarAlHistorial(`${datos.apodo} se declaró en quiebra.`, datos.idJugador);
+        actualizarDineroJugador(datos.idJugador, null, true);
+        const tarjeta = document.getElementById(String(datos.idJugador));
+        tarjeta?.classList.remove("turno-activo");
+        tarjeta?.querySelector(".contenedor-turno")?.replaceChildren();
+    }
+    if (datos.partidaFinalizada === true) {
+        if (String(datos.idGanador) === String(window.usuarioSesionId)) mostrarVictoria(datos);
+        else detenerPartidaEnPantalla();
+    }
+}
+
+// Detiene la presentación y evita que respuestas anteriores reactiven el turno.
+function detenerPartidaEnPantalla() {
     partidaFinalizada = true;
     actualizarAvisoDeuda();
 
     clearInterval(intervaloReloj);
+    window.turnoActualId = null;
+    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => contenedor.replaceChildren());
+    document.querySelectorAll(".jugador.turno-activo").forEach((tarjeta) => tarjeta.classList.remove("turno-activo"));
 
     if (botonTirar) {
         botonTirar.disabled = true;
@@ -1898,9 +1959,15 @@ function mostrarVictoria(datos) {
         boton.disabled = true;
     });
 
+}
+
+function mostrarVictoria(datos) {
+    detenerPartidaEnPantalla();
     const mensaje = document.getElementById("mensaje-victoria");
 
-    mensaje.textContent = `${datos.apodo} abandonó la partida. ¡Sos el ganador!`;
+    mensaje.textContent = datos.motivo === "QUIEBRA"
+        ? `${datos.apodo} se declaró en quiebra. ¡Sos el ganador!`
+        : `${datos.apodo} abandonó la partida. ¡Sos el ganador!`;
 
     const modal = document.getElementById("modal-victoria");
 

@@ -17,6 +17,7 @@ import com.tallerwebi.infraestructura.*;
 import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.ControladorPartida;
+import com.tallerwebi.presentacion.ControladorGestionQuiebra;
 import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
@@ -42,11 +43,16 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 
@@ -109,8 +115,15 @@ class EfectosPartidaIntegracionTest {
 
         @Bean
         ObservadorVictoriaQuiebra observadorVictoriaQuiebra(
-                ObservadorVictoria observadorVictoria) {
-            return new ObservadorVictoriaQuiebra(observadorVictoria);
+                ObservadorVictoria observadorVictoria, SimpMessagingTemplate mensajeriaQuiebra) {
+            return new ObservadorVictoriaQuiebra(observadorVictoria,
+                    new com.tallerwebi.config.ObservadoresConfig()
+                            .notificacionQuiebra(new NotificadorPartida(mensajeriaQuiebra)));
+        }
+
+        @Bean
+        SimpMessagingTemplate mensajeriaQuiebra() {
+            return mock(SimpMessagingTemplate.class);
         }
     }
 
@@ -123,17 +136,18 @@ class EfectosPartidaIntegracionTest {
     @Autowired private ServicioDado servicioDado;
     @Autowired private GestorTemporizadorPartida temporizador;
     @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
+    @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
     private TransactionTemplate transaccion;
     private ControladorPartida controlador;
     private String codigo;
     private Long idJugador;
     private Long idPropietario;
-    private SimpMessagingTemplate notificador;
+    @Autowired private SimpMessagingTemplate notificador;
 
     @BeforeEach
     void preparar() {
         transaccion = new TransactionTemplate(transacciones);
-        notificador = mock(SimpMessagingTemplate.class);
+        reset(notificador);
         controlador = new ControladorPartida(
                 servicioPartida,
                 notificador,
@@ -171,6 +185,108 @@ class EfectosPartidaIntegracionTest {
         jugador.setOrden(orden);
         jugador.setDinero(2000);
         return jugador;
+    }
+
+    @Test
+    void quiebraVoluntariaNotificaLaVictoriaDespuesDelCommit() {
+        registrarDeudaVoluntaria();
+        transaccion.executeWithoutResult(estado -> {
+            var respuesta = controladorQuiebra().declararQuiebra(codigo, sesion(idJugador));
+            assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+            verifyNoInteractions(notificador);
+        });
+        assertNull(servicioPartida.obtenerPartida(codigo));
+        verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana",
+                        "partidaFinalizada", true, "idGanador", idPropietario));
+    }
+
+    @Test
+    void quiebraVoluntariaConTresJugadoresContinuaSinAnunciarVictoria() {
+        prepararCantidadJugadores(3);
+        registrarDeudaVoluntaria();
+
+        assertEquals(HttpStatus.OK, controladorQuiebra().declararQuiebra(codigo, sesion(idJugador)).getStatusCode());
+
+        assertEquals(EstadoPartida.EN_CURSO, servicioPartida.obtenerPartida(codigo).getEstado());
+        assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana", "partidaFinalizada", false));
+    }
+
+    @Test
+    void rollbackDeQuiebraVoluntariaNoEnviaNotificacion() {
+        registrarDeudaVoluntaria();
+        com.tallerwebi.dominio.observadores.Observador<EventoJugadorQuebrado> falloCommit = evento ->
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void beforeCommit(boolean readOnly) {
+                        throw new IllegalStateException("Fallo al confirmar");
+                    }
+                });
+        publicadorQuiebra.suscribir(falloCommit);
+        try {
+            assertThrows(IllegalStateException.class,
+                    () -> controladorQuiebra().declararQuiebra(codigo, sesion(idJugador)));
+        } finally {
+            publicadorQuiebra.desuscribir(falloCommit);
+        }
+
+        verifyNoInteractions(notificador);
+        assertEquals(EstadoPartida.EN_CURSO, servicioPartida.obtenerPartida(codigo).getEstado());
+        assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
+        assertNotNull(servicioGestionQuiebra.obtenerDeudaPendiente(codigo, idJugador));
+    }
+
+    private void registrarDeudaVoluntaria() {
+        servicioGestionQuiebra.registrarDeuda(codigo, servicioPartida.obtenerJugadorPorId(idJugador),
+                servicioPartida.obtenerJugadorPorId(idPropietario), 3000, "ALQUILER");
+    }
+
+    private ControladorGestionQuiebra controladorQuiebra() {
+        return new ControladorGestionQuiebra(servicioPartida, servicioGestionQuiebra);
+    }
+
+    @Test
+    void alquilerImpagableSinPropiedadesNotificaLaQuiebraSoloDespuesDelCommit() {
+        cargarPropiedadConDueno();
+        transaccion.executeWithoutResult(estado ->
+                sesiones.getCurrentSession().find(Jugador.class, idJugador).setDinero(3));
+
+        transaccion.executeWithoutResult(estado -> {
+            try {
+                controlador.tirarDados(codigo, idJugador);
+            } catch (Exception excepcion) {
+                throw new IllegalStateException(excepcion);
+            }
+            verify(notificador, never()).convertAndSend(
+                    eq("/topic/partida/" + codigo + "/abandono"), any(Map.class));
+        });
+
+        assertTrue(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
+        assertNull(servicioPartida.obtenerPartida(codigo));
+        assertNull(servicioGestionQuiebra.obtenerDeudaPendiente(codigo, idJugador));
+        verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana",
+                        "partidaFinalizada", true, "idGanador", idPropietario));
+    }
+
+    @Test
+    void rollbackDeQuiebraAutomaticaPorEventoNoEnviaNotificacion() {
+        cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
+        transaccion.executeWithoutResult(estado -> {
+            Jugador jugador = sesiones.getCurrentSession().find(Jugador.class, idJugador);
+            jugador.setPosicionActual(3);
+            jugador.setDinero(100);
+            servicioEvento.aplicarSiCorresponde(codigo, jugador);
+            assertTrue(jugador.getEnBancarrota());
+            verifyNoInteractions(notificador);
+            estado.setRollbackOnly();
+        });
+
+        assertEquals(EstadoPartida.EN_CURSO, servicioPartida.obtenerPartida(codigo).getEstado());
+        assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
+        verifyNoInteractions(notificador);
     }
 
     private void prepararCantidadJugadores(Integer cantidad) {
@@ -230,6 +346,8 @@ class EfectosPartidaIntegracionTest {
         assertEquals(200, deuda.getMontoPendiente());
         assertEquals("EVENTO_RESTA", deuda.getMotivo());
         assertFalse(jugadorActualizado.getEnBancarrota());
+        verify(notificador, never()).convertAndSend(
+                eq("/topic/partida/" + codigo + "/abandono"), any(Map.class));
     }
     @RepeatedTest(3)
     void queElEventoQueDaPlataSeGuardeAlTerminarLaTirada(RepetitionInfo repeticion) throws Exception {
@@ -370,6 +488,9 @@ class EfectosPartidaIntegracionTest {
                         .getSingleResult());
 
         assertEquals(EstadoPartida.FINALIZADA, partidaFinalizada.getEstado());
+        verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana",
+                        "partidaFinalizada", true, "idGanador", idPropietario));
     }
 
 
@@ -394,6 +515,8 @@ class EfectosPartidaIntegracionTest {
 
         Partida partidaActualizada = servicioPartida.obtenerPartida(codigo);
         assertEquals(EstadoPartida.EN_CURSO, partidaActualizada.getEstado());
+        verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana", "partidaFinalizada", false));
     }
 
     @AfterAll
