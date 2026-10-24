@@ -22,12 +22,17 @@ private ColorFicha ficha;
     private Boolean enBancarrota;
     private Boolean abandono;
 
+    @Embedded
+    private EstadoCarcel estadoCarcel = new EstadoCarcel();
+    
+
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
         this.pierdeTurno = false;
         this.enBancarrota = false;
         this.abandono = false;
+        
     }
 
     public Long getId() {
@@ -105,4 +110,33 @@ private ColorFicha ficha;
     public void setAbandono(Boolean abandono) {
         this.abandono = Boolean.TRUE.equals(abandono);
     }
+
+    public void encarcelar() {
+        this.estadoCarcel.encarcelar();
+    }
+
+    public void liberarDeCarcel() {
+        this.estadoCarcel.liberar();
+    }
+
+    public void registrarIntentoFallido() {
+        this.estadoCarcel.registrarIntentoFallido();
+    }
+
+    public Boolean getEncarcelado() {
+        return this.estadoCarcel.getEncarcelado();
+    }
+
+    public void setEncarcelado(Boolean encarcelado) {
+        this.estadoCarcel.setEncarcelado(encarcelado);
+    }
+
+    public Integer getIntentosSalirCarcel() {
+        return this.estadoCarcel.getIntentosSalirCarcel();
+    }
+
+    public void setIntentosSalirCarcel(Integer intentosSalirCarcel) {
+        this.estadoCarcel.setIntentosSalirCarcel(intentosSalirCarcel);
+    }
+
 }

@@ -16,4 +16,5 @@ public interface ServicioCasillero {
     CasilleroPropiedad buscarOCrearPropiedadEnPosicion(Partida partida, Integer posicion);
     Integer obtenerAlquilerBaseCatalogo(Integer posicion);
     List<String> obtenerDatosCatalogoPropiedad(Integer posicion);
+    Boolean esCasilleroCarcel(Integer posicion);
 }

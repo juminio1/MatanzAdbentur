@@ -401,10 +401,14 @@ class ControladorPartidaPropiedadesTest {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 1000, 0);
         partida.setJugadores(List.of(jugador));
+        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(2, 2);
+
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(jugador);
-        when(servicioPartida.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 2));
+        when(servicioPartida.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
+        when(servicioPartida.puedeJugadorAvanzar(eq(jugador), eq(resultadoEsperado))).thenReturn(true);
+        
         doAnswer(invocacion -> {
             jugador.setPosicionActual(4);
             return null;

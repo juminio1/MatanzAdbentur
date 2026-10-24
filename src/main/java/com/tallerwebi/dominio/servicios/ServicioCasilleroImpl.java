@@ -24,6 +24,8 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
             1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29
     );
 
+    private static final Integer POSICION_CARCEL = 8; 
+    
     private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
     private static final String DESCRIPCION_PARADA = "Parada de bondi";
     private static final String LOCALIDAD_SAN_JUSTO = "San Justo";
@@ -127,5 +129,10 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
     @Override
     public List<String> obtenerDatosCatalogoPropiedad(Integer posicion) {
         return CATALOGO_PROPIEDADES.get(posicion);
+    }
+
+    @Override
+    public Boolean esCasilleroCarcel(Integer posicion) {
+        return POSICION_CARCEL.equals(posicion);
     }
 }

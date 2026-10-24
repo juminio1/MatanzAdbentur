@@ -29,6 +29,7 @@ import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioInicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.infraestructura.RepositorioPartida;
@@ -54,6 +55,7 @@ public class ServicioPartidaTest {
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
+    private ServicioCasillero servicioCasilleroMock;
 
 
     private static final int TOTAL_CASILLEROS = 30;
@@ -66,6 +68,7 @@ public class ServicioPartidaTest {
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         publicadorAbandonoMock = mock(PublicadorEventos.class);
+        servicioCasilleroMock = mock(ServicioCasillero.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -73,6 +76,7 @@ public class ServicioPartidaTest {
             servicioDadoMock,
             gestorTemporizadorMock,
             new ServicioTurnoImpl(),
+            servicioCasilleroMock,
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
             publicadorAbandonoMock
         );
@@ -286,7 +290,7 @@ public class ServicioPartidaTest {
             repositorioPartidaMock,
             new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
             servicioDadoMock,
-            gestorTemporizadorMock, new ServicioTurnoImpl(), null, publicadorAbandonoMock);
+            gestorTemporizadorMock, new ServicioTurnoImpl(), servicioCasilleroMock, null, publicadorAbandonoMock);
 
         servicioSinNotificador.avanzarTurno(codigo);
 

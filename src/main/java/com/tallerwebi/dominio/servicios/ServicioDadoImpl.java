@@ -10,8 +10,10 @@ public class ServicioDadoImpl implements ServicioDado {
 
     private final Random random = new Random();
 
-    @Override
+     @Override
     public ResultadoTiradaDTO tirarDados() {
         return new ResultadoTiradaDTO(random.nextInt(6) + 1, random.nextInt(6) + 1);
-    }
+    }  
+
+       
 }

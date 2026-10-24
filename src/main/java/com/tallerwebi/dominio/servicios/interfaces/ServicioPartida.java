@@ -31,4 +31,5 @@ public interface ServicioPartida {
     ResultadoTiradaDTO tirarDados();
     void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros);
     List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo);
+    Boolean puedeJugadorAvanzar(Jugador jugador, ResultadoTiradaDTO resultado);
 }

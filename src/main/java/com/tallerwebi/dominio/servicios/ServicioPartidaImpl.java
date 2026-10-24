@@ -15,6 +15,7 @@ import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -33,6 +34,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private static final Integer LIMITE_BANCARROTA = -2000;
     private static final Integer POSICION_INICIAL = 0;
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
+    private static final Integer CANTIDAD_TIRADAS_SALIR_CARCEL = 3;
+    private static final Integer MULTA_SALIR_CARCEL = 100;
 
     private final RepositorioPartida repositorioPartida;
     private final ServicioInicioPartida servicioInicioPartida;
@@ -41,6 +44,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
+    private final ServicioCasillero servicioCasillero;
 
     @Autowired
     public ServicioPartidaImpl(
@@ -49,6 +53,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         ServicioDado servicioDado,
         GestorTemporizadorPartida gestorTemporizador,
         ServicioTurno servicioTurno,
+        ServicioCasillero servicioCasillero,
         @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
         PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
     ) {
@@ -59,6 +64,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
         this.publicadorAbandono = publicadorAbandono;
+        this.servicioCasillero = servicioCasillero;
     }
 
     @Override
@@ -69,7 +75,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
-        jugador.setPosicionActual((jugador.getPosicionActual() + cantidadAvance) % totalCasilleros);
+        Integer nuevaPosicion = (jugador.getPosicionActual() + cantidadAvance) % totalCasilleros;
+        jugador.setPosicionActual(nuevaPosicion);
+
+        if (servicioCasillero.esCasilleroCarcel(nuevaPosicion)) {
+            jugador.encarcelar(); 
+        }
+
+        actualizarJugador(jugador);
     }
 
     @Override
@@ -111,7 +124,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
         partida.getJugadores().forEach(jugador -> jugador.setEnBancarrota(false));
         partida.setIndiceTurnoActual(servicioTurno.obtenerIndiceTurnoActual(partida));
         repositorioPartida.guardarPartida(partida);
-    }
+    }  
+
+
 
     @Override
     @Transactional(readOnly = true)
@@ -268,6 +283,27 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private String obtenerNombreFichaSegura(Jugador jugador) {
         return jugador.getFicha() == null ? null : jugador.getFicha().name();
+    }
+
+    @Override
+    public Boolean puedeJugadorAvanzar(Jugador jugador, ResultadoTiradaDTO resultado) {
+        if (jugador.getEncarcelado() == null || !jugador.getEncarcelado()) {
+            return true; 
+        }
+        
+        if (resultado.getDado1().equals(resultado.getDado2())) {
+            jugador.liberarDeCarcel(); 
+            return true; 
+        }
+
+        jugador.registrarIntentoFallido();
+
+        if(jugador.getIntentosSalirCarcel() >= CANTIDAD_TIRADAS_SALIR_CARCEL) {
+            restarDinero(jugador, MULTA_SALIR_CARCEL);
+            jugador.liberarDeCarcel();
+            return true;
+        }
+        return false; 
     }
 
 

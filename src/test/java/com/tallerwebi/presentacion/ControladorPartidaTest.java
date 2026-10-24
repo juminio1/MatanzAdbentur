@@ -403,6 +403,7 @@ public class ControladorPartidaTest {
         when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
+        when(servicioPartidaMock.puedeJugadorAvanzar(eq(jugador), eq(resultadoEsperado))).thenReturn(true);
 
         controladorPartida.tirarDados(codigoPrueba, idJugador);
 
@@ -416,9 +417,14 @@ public class ControladorPartidaTest {
         jugador.setPosicionActual(28);
         Partida partida = new Partida();
         partida.setJugadores(List.of(jugador));
+
+        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(2, 3);
+
         when(servicioPartidaMock.obtenerPartida("INICIO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("INICIO")).thenReturn(jugador);
-        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 3));
+        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.puedeJugadorAvanzar(eq(jugador), eq(resultadoEsperado))).thenReturn(true);
+
         doAnswer(invocacion -> {
             jugador.setPosicionActual(3);
             return null;
@@ -442,9 +448,14 @@ public class ControladorPartidaTest {
         jugador.setPosicionActual(26);
         Partida partida = new Partida();
         partida.setJugadores(List.of(jugador));
+
+        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(1, 1);
+
         when(servicioPartidaMock.obtenerPartida("EVENTO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("EVENTO")).thenReturn(jugador);
-        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(1, 1));
+        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(servicioPartidaMock.puedeJugadorAvanzar(eq(jugador), eq(resultadoEsperado))).thenReturn(true);
+
         doAnswer(invocacion -> {
             jugador.setPosicionActual(28);
             return null;

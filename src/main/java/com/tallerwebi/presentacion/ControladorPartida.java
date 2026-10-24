@@ -522,7 +522,23 @@ public class ControladorPartida {
         servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigoUnico);
 
         Integer posicionAnterior = jugadorActual.getPosicionActual();
-        ResultadoTiradaDTO resultado = servicioPartida.tirarDados(); //Llama al servicio para generar la tirada
+        ResultadoTiradaDTO resultado = servicioPartida.tirarDados(); 
+
+        if (!servicioPartida.puedeJugadorAvanzar(jugadorActual, resultado)) {
+            servicioPartida.actualizarJugador(jugadorActual); 
+            
+            RespuestaMovimientoDTO respuesta = crearRespuestaMovimiento(jugadorActual, posicionAnterior, resultado);
+            
+            respuesta.setSaldos(servicioPartida.obtenerPartida(codigoUnico).getJugadores().stream()
+                .map(SaldoJugadorDTO::desdeJugador).toList());
+            
+            coordinadorTurno.avanzarYObtenerTurno(codigoUnico);
+            servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
+            respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
+            
+            notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta);
+            return respuesta; 
+        }
 
         servicioPartida.moverJugador(jugadorActual, resultado.sumarDados(), 30); //se mueve ficha
         Boolean pasoPorInicio = posicionAnterior + resultado.sumarDados() >= 30;
