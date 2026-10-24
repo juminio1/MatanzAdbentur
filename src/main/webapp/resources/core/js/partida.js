@@ -114,6 +114,7 @@ function consultarDeudaPendiente(huboCambio = false) {
                     }
                 }
                 actualizarBotonTirada();
+                actualizarAvisoDeuda();
             } while (actualizacionDeudaPendiente);
         })
         //Libera la consulta y comprueba si quedó otra pendiente
@@ -459,6 +460,7 @@ async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
     });
     popup.classList.remove("aviso-evento--visible");
     popup.setAttribute("aria-hidden", "true");
+    actualizarAvisoDeuda();
 }
 
 function registrarPremioPorInicio(movimiento) {
@@ -522,6 +524,10 @@ async function procesarMovimiento(movimiento) {
     try {
         const pasos = Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        if (modalDeuda?.open && !declarandoQuiebra) {
+            aperturaDeudaPendiente = true;
+            modalDeuda.close();
+        }
         actualizarBotonTirada();
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
@@ -570,6 +576,7 @@ async function procesarMovimiento(movimiento) {
         }
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
         actualizarBotonTirada();
+        actualizarAvisoDeuda();
     }
 }
 
@@ -693,6 +700,157 @@ const nombrePropiedadEnVenta = document.getElementById("vender-propiedad-nombre"
 const mensajeOfertaVenta = document.getElementById("oferta-venta-mensaje");
 const modalOfertaRecibida = document.getElementById("modal-oferta-recibida");
 const mensajeOfertaRecibida = document.getElementById("oferta-recibida-mensaje");
+const modalDeuda = document.getElementById("modal-deuda-pendiente");
+const botonDeuda = document.getElementById("btn-deuda-pendiente");
+let avisoDeudaPresentado = false;
+let aperturaDeudaPendiente = false;
+let regresoDesdePropiedadesDeuda = false;
+let confirmacionQuiebraVisible = false;
+let declarandoQuiebra = false;
+let mensajeAccionDeuda = "";
+
+// Actualiza el aviso con datos confirmados, sin borrar la deuda ante errores de consulta.
+function actualizarAvisoDeuda() {
+    if (!modalDeuda || !botonDeuda) return;
+    const { estado, deuda } = estadoDeudaLocal;
+    if ((estado === "actualizado" && deuda === null) || window.usuarioEnBancarrota || partidaFinalizada) {
+        botonDeuda.hidden = true;
+        avisoDeudaPresentado = false;
+        aperturaDeudaPendiente = false;
+        regresoDesdePropiedadesDeuda = false;
+        if (!declarandoQuiebra) {
+            mensajeAccionDeuda = "";
+            confirmacionQuiebraVisible = false;
+            if (modalDeuda.open) modalDeuda.close();
+        }
+        return;
+    }
+    botonDeuda.hidden = !deuda;
+    if (!deuda) return;
+    const importe = `$${deuda.montoPendiente.toLocaleString("es-AR")}`;
+    botonDeuda.textContent = `Deuda pendiente: ${importe}`;
+    document.getElementById("deuda-importe").textContent = importe;
+    document.getElementById("deuda-motivo").textContent =
+        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA" }[deuda.motivo] || deuda.motivo;
+    document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
+    document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
+    document.getElementById("deuda-opciones").hidden = confirmacionQuiebraVisible;
+    document.getElementById("deuda-confirmacion").hidden = !confirmacionQuiebraVisible;
+    document.getElementById("deuda-mensaje").textContent = mensajeAccionDeuda ||
+        (estado === "error" ? "No se pudo actualizar la deuda. Conservamos la última información disponible." :
+            estado === "desconocido" ? "Actualizando la información de la deuda…" : "");
+    document.getElementById("btn-cerrar-deuda").disabled = declarandoQuiebra;
+    document.getElementById("btn-vender-desde-deuda").disabled = declarandoQuiebra;
+    document.getElementById("btn-declarar-quiebra").disabled = declarandoQuiebra || estado !== "actualizado";
+    document.getElementById("btn-cancelar-quiebra").disabled = declarandoQuiebra;
+    document.getElementById("btn-confirmar-quiebra").disabled = declarandoQuiebra || estado !== "actualizado";
+    document.getElementById("btn-confirmar-quiebra").textContent =
+        declarandoQuiebra ? "Declarando quiebra…" : "Confirmar quiebra";
+    if (!avisoDeudaPresentado) aperturaDeudaPendiente = true;
+    abrirAvisoDeuda();
+}
+
+// Espera a que termine el movimiento y se cierren las otras ventanas antes de abrir el aviso.
+function abrirAvisoDeuda(solicitudManual = false) {
+    if (solicitudManual) aperturaDeudaPendiente = true;
+    if (!modalDeuda || !aperturaDeudaPendiente || !estadoDeudaLocal.deuda || declarandoQuiebra
+            || window.usuarioEnBancarrota || partidaFinalizada || regresoDesdePropiedadesDeuda
+            || movimientosDeJugadoresEnCurso.size > 0
+            || document.querySelector("dialog[open]:not(#modal-deuda-pendiente)")
+            || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")) return;
+    if (!solicitudManual && estadoDeudaLocal.estado !== "actualizado") return;
+    if (modalDeuda.open) return;
+    confirmacionQuiebraVisible = false;
+    document.getElementById("deuda-opciones").hidden = false;
+    document.getElementById("deuda-confirmacion").hidden = true;
+    aperturaDeudaPendiente = false;
+    avisoDeudaPresentado = true;
+    modalDeuda.showModal();
+    document.getElementById("btn-cerrar-deuda").focus();
+}
+
+// Reutiliza el listado y las ventas actuales, sin interrumpir ventas sucesivas.
+function abrirPropiedadesDesdeDeuda() {
+    if (declarandoQuiebra || !estadoDeudaLocal.deuda) return;
+    regresoDesdePropiedadesDeuda = true;
+    aperturaDeudaPendiente = false;
+    modalDeuda.close();
+    if (!modalBonoPropiedades.open) modalBonoPropiedades.showModal();
+    cargarPropiedadesPropias();
+}
+
+// Pide una confirmación dentro del mismo diálogo antes de enviar la decisión definitiva.
+function mostrarConfirmacionQuiebra() {
+    if (declarandoQuiebra || estadoDeudaLocal.estado !== "actualizado" || !estadoDeudaLocal.deuda) return;
+    confirmacionQuiebraVisible = true;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    document.getElementById("btn-cancelar-quiebra").focus();
+}
+
+// Declara la quiebra por sesión; los turnos y las propiedades siguen a cargo del servidor.
+async function confirmarQuiebra() {
+    if (declarandoQuiebra || !confirmacionQuiebraVisible || estadoDeudaLocal.estado !== "actualizado"
+            || !estadoDeudaLocal.deuda || window.usuarioEnBancarrota || partidaFinalizada) return;
+    declarandoQuiebra = true;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigoPartida)}/declarar-quiebra`, {
+            method: "POST", credentials: "same-origin", headers: { Accept: "application/json" },
+        });
+        const datos = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+            throw new Error(datos?.error || `No se pudo declarar la quiebra (HTTP ${respuesta.status}).`);
+        }
+        if (respuesta.redirected || typeof datos?.mensaje !== "string") {
+            throw new Error("El servidor no confirmó la declaración. Actualizá la página antes de volver a intentarlo.");
+        }
+        actualizarDineroJugador(window.usuarioSesionId, null, true);
+        window.usuarioEnBancarrota = true;
+        bloquearControles();
+        actualizarBotonTirada();
+        declarandoQuiebra = false;
+        modalDeuda.close();
+        actualizarAvisoDeuda();
+        await consultarDeudaPendiente(true);
+    } catch (error) {
+        mensajeAccionDeuda = error instanceof TypeError ?
+            "No se pudo confirmar la declaración. Comprobá la conexión y actualizá la página antes de volver a intentarlo." :
+            error.message || "No se pudo confirmar la declaración. Actualizá la página antes de volver a intentarlo.";
+        mostrarAvisoPartida(mensajeAccionDeuda);
+    } finally {
+        declarandoQuiebra = false;
+        actualizarAvisoDeuda();
+    }
+}
+
+botonDeuda?.addEventListener("click", () => abrirAvisoDeuda(true));
+document.getElementById("btn-cerrar-deuda")?.addEventListener("click", () => {
+    if (!declarandoQuiebra) modalDeuda.close();
+});
+document.getElementById("btn-vender-desde-deuda")?.addEventListener("click", abrirPropiedadesDesdeDeuda);
+document.getElementById("btn-declarar-quiebra")?.addEventListener("click", mostrarConfirmacionQuiebra);
+document.getElementById("btn-confirmar-quiebra")?.addEventListener("click", confirmarQuiebra);
+document.getElementById("btn-cancelar-quiebra")?.addEventListener("click", () => {
+    if (declarandoQuiebra) return;
+    confirmacionQuiebraVisible = false;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    document.getElementById("btn-declarar-quiebra").focus();
+});
+modalDeuda?.addEventListener("cancel", (evento) => {
+    if (declarandoQuiebra) evento.preventDefault();
+});
+modalBonoPropiedades?.addEventListener("close", () => {
+    if (regresoDesdePropiedadesDeuda) {
+        regresoDesdePropiedadesDeuda = false;
+        aperturaDeudaPendiente = true;
+    }
+});
+document.querySelectorAll("dialog").forEach((modal) => {
+    modal.addEventListener("close", actualizarAvisoDeuda);
+});
 const posicionesPropiedad = new Set([
     1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29,
 ]);
@@ -894,8 +1052,8 @@ function mostrarInfoPropiedad(propiedad) {
 function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
     const tarjeta = document.getElementById(String(idJugador));
     const saldo = tarjeta?.querySelector(".dinero");
-    if (saldo) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
-    if (String(idJugador) === String(window.usuarioSesionId)) {
+    if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
+    if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         window.dineroUsuarioSesion = Number(dinero);
     }
     if (!tarjeta || !enBancarrota) return;
@@ -914,6 +1072,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
         cerrarModalCompra();
         mostrarAvisoPartida("Llegaste a tu límite de deudas.");
     }
+    if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
 }
 
 async function cargarInfoPropiedad(posicion, abrirPopup = false) {
@@ -1727,6 +1886,7 @@ let partidaFinalizada = false;
 
 function mostrarVictoria(datos) {
     partidaFinalizada = true;
+    actualizarAvisoDeuda();
 
     clearInterval(intervaloReloj);
 
