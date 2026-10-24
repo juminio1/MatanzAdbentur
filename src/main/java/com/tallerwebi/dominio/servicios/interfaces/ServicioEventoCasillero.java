@@ -6,5 +6,7 @@ import java.util.Optional;
 
 @FunctionalInterface
 public interface ServicioEventoCasillero {
-    Optional<EventoCasillero> aplicarSiCorresponde(Jugador jugador);
+    Optional<EventoCasillero> aplicarSiCorresponde(
+            String codigoPartida,
+            Jugador jugador);
 }

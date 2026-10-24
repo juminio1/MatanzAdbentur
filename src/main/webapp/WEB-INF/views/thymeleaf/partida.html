@@ -603,6 +603,12 @@
                             Propiedades
                         </button>
 
+                        <button type="button" class="btn-casillero btn-casillero--principal deuda-acceso"
+                                id="btn-deuda-pendiente" aria-haspopup="dialog"
+                                aria-controls="modal-deuda-pendiente" hidden>
+                            Deuda pendiente
+                        </button>
+
                         <button type="button" class="btn-accion">Mercado Pago</button>
 
                         <button type="button" class="btn-accion">Recomendación</button>
@@ -643,6 +649,44 @@
                 </ol>
             </section>
         </aside>
+
+        <dialog id="modal-deuda-pendiente" class="modal-propiedad modal-deuda"
+                aria-labelledby="deuda-titulo" aria-describedby="deuda-descripcion">
+            <div class="modal-propiedad__contenido">
+                <header class="modal-info-propiedad__cabecera">
+                    <h2 id="deuda-titulo">Tenés una deuda pendiente</h2>
+                    <button type="button" id="btn-cerrar-deuda" class="modal-info-propiedad__cerrar"
+                            aria-label="Cerrar aviso de deuda" autofocus>×</button>
+                </header>
+                <p id="deuda-descripcion" class="modal-info-propiedad__descripcion">
+                    Tu saldo no alcanzó para realizar este pago. Podés resolverlo aunque ya no sea tu turno.
+                </p>
+                <dl class="modal-info-propiedad__datos">
+                    <div><dt>Deuda pendiente</dt><dd id="deuda-importe"></dd></div>
+                    <div><dt>Motivo</dt><dd id="deuda-motivo"></dd></div>
+                    <div id="deuda-acreedor-contenedor"><dt>Acreedor</dt><dd id="deuda-acreedor"></dd></div>
+                </dl>
+                <div id="deuda-opciones" class="deuda-acciones">
+                    <button type="button" id="btn-vender-desde-deuda"
+                            class="btn-casillero btn-casillero--principal">Vender propiedades</button>
+                    <button type="button" id="btn-declarar-quiebra"
+                            class="btn-casillero btn-casillero--secundario">Declararme en quiebra</button>
+                </div>
+                <section id="deuda-confirmacion" aria-labelledby="deuda-confirmacion-titulo" hidden>
+                    <h3 id="deuda-confirmacion-titulo">¿Seguro que querés declararte en quiebra?</h3>
+                    <p>Vas a quedar fuera de la partida y tus propiedades restantes volverán al tablero.
+                        Esta decisión es definitiva.</p>
+                    <div class="deuda-acciones">
+                        <button type="button" id="btn-cancelar-quiebra"
+                                class="btn-casillero btn-casillero--secundario">Cancelar</button>
+                        <button type="button" id="btn-confirmar-quiebra"
+                                class="btn-casillero btn-casillero--principal">Confirmar quiebra</button>
+                    </div>
+                </section>
+                <p id="deuda-mensaje" class="modal-info-propiedad__descripcion" role="status"
+                   aria-live="polite" aria-atomic="true"></p>
+            </div>
+        </dialog>
 
         <dialog
             id="modal-bono-propiedades"
