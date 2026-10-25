@@ -14,6 +14,8 @@ import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.dominio.excepcion.TiradasFaltantesException;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.infraestructura.RepositorioEvento;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import java.util.Collections;

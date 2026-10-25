@@ -43,14 +43,15 @@ class ObservadoresConfigTest {
                     && estado.getFichasAsignadas().equals(Map.of("Ana", "ROJO"))));
             verifyNoInteractions(partida);
 
-            publicadores.turno.notificar(new EventoTurnoCambiado("ABC123", 1L, "Ana", 0, 30, 2));
+            publicadores.turno.notificar(new EventoTurnoCambiado("ABC123", 1L, "Ana", 0, 30, 2, 1));
 
             verify(partida).notificarCambioDeTurno(eq("ABC123"), argThat(turno ->
                     "ABC123".equals(turno.getCodigoPartida()) && Long.valueOf(1L).equals(turno.getIdJugadorActual())
                     && "Ana".equals(turno.getApodoJugadorActual()) && Integer.valueOf(0).equals(turno.getOrden())
                     && "Es el turno de Ana".equals(turno.getMensaje())
                     && Integer.valueOf(30).equals(turno.getDuracionSegundos())
-                    && Integer.valueOf(2).equals(turno.getRondaActual())));
+                    && Integer.valueOf(2).equals(turno.getRondaActual())
+                    && Integer.valueOf(1).equals(turno.getTurnosFinalizadosEnRonda())));
         }
     }
 

@@ -22,13 +22,21 @@ import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
@@ -58,8 +66,10 @@ public class ServicioPartidaTest {
     private Jugador jugadorUno;
     private Jugador jugadorDos;
     private EventoGlobal piquete;
+    private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
 
-    private static final int TOTAL_CASILLEROS = 30;
+
+    private static final Integer TOTAL_CASILLEROS = 30;
 
     @BeforeEach
     public void init() {
@@ -68,7 +78,8 @@ public class ServicioPartidaTest {
         servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
-        servicioEventoMock = mock(ServicioEventoImpl.class);
+        servicioEventoMock = mock(ServicioEvento.class);
+        publicadorAbandonoMock = mock(PublicadorEventos.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -76,8 +87,8 @@ public class ServicioPartidaTest {
             servicioDadoMock,
             gestorTemporizadorMock,
             new ServicioTurnoImpl(),
-            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock)))
-
+            new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
+            publicadorAbandonoMock
         );
 
     }
@@ -290,7 +301,7 @@ public class ServicioPartidaTest {
             repositorioPartidaMock,
             new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
             servicioDadoMock,
-            gestorTemporizadorMock, new ServicioTurnoImpl(), null);
+            gestorTemporizadorMock, new ServicioTurnoImpl(), null, publicadorAbandonoMock);
 
         servicioSinNotificador.avanzarTurno(codigo);
 
@@ -958,11 +969,46 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         });
     }
 
+    @Test
+    public void dadoQueUnJugadorAbandonaLaPartidaSeNotificaElEventoYSeActualizaElJugador() throws PartidaNoEncontradaException {
+        String codigoPrueba = "MATANZA123";
+        Long idJugador = 1L;
+
+        Partida partidaSimulada = new Partida();
+        partidaSimulada.setCodigoUnico(codigoPrueba);
+
+        Jugador jugadorSimulado = new Jugador();
+        jugadorSimulado.setId(idJugador);
+        jugadorSimulado.setAbandono(false);
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
+        when(repositorioPartidaMock.buscarJugadorPorId(idJugador)).thenReturn(jugadorSimulado);
+
+        servicioPartida.abandonarPartida(codigoPrueba, idJugador);
+
+        assertTrue(jugadorSimulado.getAbandono());
+        verify(repositorioPartidaMock).actualizarJugador(jugadorSimulado);
+        verify(publicadorAbandonoMock).notificar(any(EventoJugadorAbandonado.class));
+    }
+
+    @Test
+    public void dadoQueLaPartidaNoExisteCuandoUnJugadorIntentaAbandonarSeLanzaExcepcion() {
+        String codigoInexistente = "ERROR404";
+        Long idJugador = 1L;
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoInexistente)).thenReturn(null);
+
+        assertThrows(PartidaNoEncontradaException.class, () -> {
+            servicioPartida.abandonarPartida(codigoInexistente, idJugador);
+        });
+
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+        verify(publicadorAbandonoMock, never()).notificar(any());
+    }
+
     //TEST DE PAUSAR LA PARTIDA CUANDO COMIENZA UN EVENTO GLOBAL
     @Test
-    public void dadoQueComienzaUnEventoGlobalCuandoFinalizaLaRondaDaComoResultadoLaPartidaPausada()
-        throws Exception {
-
+    public void dadoQueComienzaUnEventoGlobalCuandoFinalizaLaRondaDaComoResultadoLaPartidaPausada() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException  {
         // Preparación
         String codigo = "MATANZA123";
 

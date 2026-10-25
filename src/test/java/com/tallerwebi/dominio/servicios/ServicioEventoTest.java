@@ -9,9 +9,12 @@ import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.infraestructura.RepositorioEvento;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import java.util.List;
@@ -128,7 +131,7 @@ public class ServicioEventoTest {
 
     //Tests de aplicar los efectos de los eventos
     @Test
-    public void dadoQueUnJugadorTieneMilQuinientosCuandoGanaMilDaComoResultadoDosMilQuinientos() {
+    public void dadoQueUnJugadorTieneMilQuinientosCuandoGanaMilDaComoResultadoDosMilQuinientos() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 0);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.GANAR_PLATA, 1000));
@@ -137,7 +140,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorTieneMilQuinientosCuandoPierdeQuinientosDaComoResultadoMil() {
+    public void dadoQueUnJugadorTieneMilQuinientosCuandoPierdeQuinientosDaComoResultadoMil() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 0);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.PERDER_PLATA, 500));
@@ -146,7 +149,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorNoPierdeTurnoCuandoRecibeEseEventoDaComoResultadoTurnoPerdido() {
+    public void dadoQueUnJugadorNoPierdeTurnoCuandoRecibeEseEventoDaComoResultadoTurnoPerdido() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 0);
         assertFalse(jugador.getPierdeTurno());
 
@@ -156,7 +159,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorEstaEnCincoCuandoAvanzaDosDaComoResultadoSiete() {
+    public void dadoQueUnJugadorEstaEnCincoCuandoAvanzaDosDaComoResultadoSiete() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 5);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.MOVER_CASILLEROS, 2));
@@ -165,7 +168,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorEstaEnUnoCuandoRetrocedeDosDaComoResultadoVeintinueve() {
+    public void dadoQueUnJugadorEstaEnUnoCuandoRetrocedeDosDaComoResultadoVeintinueve() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 1);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.MOVER_CASILLEROS, -2));
@@ -174,7 +177,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorEstaEnVeintiochoCuandoAvanzaCincoDaComoResultadoTres() {
+    public void dadoQueUnJugadorEstaEnVeintiochoCuandoAvanzaCincoDaComoResultadoTres() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 28);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.MOVER_CASILLEROS, 5));
@@ -183,7 +186,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorEstaEnCincoCuandoDebeIrAlCasilleroQuinceDaComoResultadoQuince() {
+    public void dadoQueUnJugadorEstaEnCincoCuandoDebeIrAlCasilleroQuinceDaComoResultadoQuince() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 5);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.IR_A_CASILLERO, 15));
@@ -192,7 +195,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueUnJugadorEstaEnDiezCuandoDebeVolverAlInicioDaComoResultadoCero() {
+    public void dadoQueUnJugadorEstaEnDiezCuandoDebeVolverAlInicioDaComoResultadoCero() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 10);
 
         servicioEvento.aplicarEvento(jugador, crearEvento(TipoEfecto.VOLVER_INICIO, 0));
@@ -201,7 +204,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElEventoEsNullCuandoSeIntentaAplicarDaComoResultadoJugadorSinCambios() {
+    public void dadoQueElEventoEsNullCuandoSeIntentaAplicarDaComoResultadoJugadorSinCambios() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 10);
 
         servicioEvento.aplicarEvento(jugador, null);
@@ -211,7 +214,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeAplicaDaComoResultadoJugadorSinCambios() {
+    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeAplicaDaComoResultadoJugadorSinCambios() throws EventoInexistenteException {
         Jugador jugador = crearJugador(1L, 1500, 10);
         Evento evento = new Evento();
         evento.setValor(200);

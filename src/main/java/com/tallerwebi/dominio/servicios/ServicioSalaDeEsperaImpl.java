@@ -11,6 +11,8 @@ import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioSalaDeEspera;
+
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Locale;

@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import org.springframework.stereotype.Service;
 import java.util.Random;

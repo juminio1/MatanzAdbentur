@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.servicios;
+package com.tallerwebi.dominio.servicios.interfaces;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -22,9 +22,11 @@ public interface ServicioPartida {
     void actualizarJugador(Jugador jugador);
     void incrementarRondas(Partida partida);
     void inicializarTurnos(String codigoUnico);
+    void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException;
     Jugador obtenerJugadorActual(String codigoUnico);
     Integer obtenerSegundosRestantesTurno(String codigoUnico);
     void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico);
+    void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico) throws ActivacionEventoInvalidoException;
     ResultadoTiradaDTO tirarDados();

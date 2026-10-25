@@ -20,12 +20,14 @@ private ColorFicha ficha;
     private Integer orden;
     private Boolean pierdeTurno;
     private Boolean enBancarrota;
+    private Boolean abandono;
 
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
         this.pierdeTurno = false;
         this.enBancarrota = false;
+        this.abandono = false;
     }
 
     public Long getId() {
@@ -72,6 +74,10 @@ private ColorFicha ficha;
         return posicionActual;
     }
 
+    public Boolean estaEnPosicion(Integer posicion) {
+        return posicion.equals(posicionActual);
+    }
+
     public void setPosicionActual(Integer posicionActual) {
         this.posicionActual = posicionActual;
     }
@@ -98,5 +104,13 @@ private ColorFicha ficha;
 
     public void setEnBancarrota(Boolean enBancarrota) {
         this.enBancarrota = Boolean.TRUE.equals(enBancarrota);
+    }
+
+    public Boolean getAbandono() {
+        return Boolean.TRUE.equals(abandono);
+    }
+
+    public void setAbandono(Boolean abandono) {
+        this.abandono = Boolean.TRUE.equals(abandono);
     }
 }

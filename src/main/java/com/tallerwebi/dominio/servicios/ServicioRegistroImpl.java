@@ -7,6 +7,7 @@ import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.EmailInvalidoException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
 import com.tallerwebi.dominio.excepcion.UsuarioExistenteException;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioRegistro;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.DTO.RegistroDTO;
 import org.springframework.beans.factory.annotation.Autowired;

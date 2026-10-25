@@ -2,6 +2,8 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -91,6 +93,6 @@ public class ServicioTurnoImpl implements ServicioTurno {
     }
 
     private Boolean esJugadorActivo(Jugador jugador) {
-        return jugador != null && !jugador.getEnBancarrota();
+        return jugador != null && !jugador.getEnBancarrota() && !jugador.getAbandono();
     }
 }
