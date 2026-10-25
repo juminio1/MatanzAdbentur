@@ -10,8 +10,121 @@ if (botonTirar) botonTirar.disabled = true;
 let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
 const avisosPartidaPendientes = [];
+const quiebrasNotificadas = new Set();
 
 let yaTiroEnEsteTurno = false;
+
+//guarda si se conoce el estado de la deuda, los datos de la deuda y posibles errores
+let estadoDeudaLocal = { estado: "desconocido", deuda: null, error: null };
+//indica si ya hay una consulta en el servidor.
+let consultaDeudaEnCurso = null;
+//indica si es necesario volver a consultar la deuda.
+let actualizacionDeudaPendiente = false;
+//detecta si hubo cambios mientras se consultaba la deuda
+let revisionDeudaLocal = 0;
+
+// comprueba que los datos enviados por el servidor sean correctos.
+function validarRespuestaDeuda(datos) {
+    //Comprueba que el servidor haya enviado los datos y q tieneDeudaPendeinte sea un valor booleano.
+    if (!datos || typeof datos.tieneDeudaPendiente !== "boolean") {
+        throw new Error("La respuesta de deuda no es válida.");
+    }
+    //verifica si el jugador NO tiene deuda
+    if (!datos.tieneDeudaPendiente) {
+        if (datos.montoPendiente !== null || datos.motivo !== null || datos.acreedor !== null) {
+            throw new Error("La respuesta sin deuda está incompleta o no es válida.");
+        }
+        return null; //no hay deuda pendiente
+    }
+    //verifica los datos de la deuda. Monto valido y mayor a 0, que el motivo sea un texto y q no este vacio.
+    if (
+        !Number.isSafeInteger(datos.montoPendiente) ||
+        datos.montoPendiente <= 0 ||
+        typeof datos.motivo !== "string" ||
+        !datos.motivo.trim()
+    ) {
+        throw new Error("Los datos de la deuda pendiente no son válidos.");
+    }
+    const acreedor = datos.acreedor;
+    //verifica los datos del acreedor. Si existe a quien le debe dinero, comprueba un id valido y q el apodo no este vacio.
+    if (
+        acreedor !== null &&
+        (!acreedor ||
+            !Number.isSafeInteger(acreedor.idJugador) ||
+            acreedor.idJugador <= 0 ||
+            typeof acreedor.apodo !== "string" ||
+            !acreedor.apodo.trim())
+    ) {
+        throw new Error("Los datos del acreedor no son válidos.");
+    }
+    //Devuelve la info. de la deuda ya validada.
+    return {
+        montoPendiente: datos.montoPendiente,
+        motivo: datos.motivo,
+        acreedor:
+            acreedor === null ? null : { idJugador: acreedor.idJugador, apodo: acreedor.apodo },
+    };
+}
+
+// consulta al servidor si el jugador tiene una deuda pendiente y actualiza el estado local.
+function consultarDeudaPendiente(huboCambio = false) {
+    if (!codigoPartida) return Promise.resolve();
+    //Comprueba si hubo un cambio en la partida. Ya que la info. anterior de la deuda podria dejar de ser valida.
+    if (huboCambio) {
+        revisionDeudaLocal++;
+        actualizacionDeudaPendiente = true;
+        estadoDeudaLocal.estado = "desconocido";
+        actualizarBotonTirada();
+    }
+    //si ya existe una consulta en curso, devuelve esa misma, en vez de iniciar otra.
+    if (consultaDeudaEnCurso) return consultaDeudaEnCurso;
+    actualizacionDeudaPendiente = true;
+    consultaDeudaEnCurso = Promise.resolve()
+        .then(async () => {
+            do {
+                actualizacionDeudaPendiente = false;
+                const revisionConsultada = revisionDeudaLocal;
+                try {
+                    //obtiene la deuda pendiente. Realiza la solicitud HTTP.
+                    const respuesta = await fetch(
+                        `${basePath}/partida/${encodeURIComponent(codigoPartida)}/deuda-pendiente`,
+                        {
+                            credentials: "same-origin",
+                            cache: "no-store",
+                            //indica que espera recibir un dato JSON
+                            headers: { Accept: "application/json" },
+                        },
+                    );
+                    //Si se devuelve un error en el HTTP, interrumpe el procesamiento y lanza excepcion
+                    if (!respuesta.ok)
+                        throw new Error(
+                            `No se pudo consultar la deuda (HTTP ${respuesta.status}).`,
+                        );
+                    //valida los datos recibidos
+                    const deuda = validarRespuestaDeuda(await respuesta.json());
+                    // Un cambio durante la petición exige consultar otra vez antes de habilitar los dados.
+                    if (revisionConsultada === revisionDeudaLocal) {
+                        estadoDeudaLocal = { estado: "actualizado", deuda, error: null };
+                    }
+                } catch (error) {
+                    if (revisionConsultada === revisionDeudaLocal) {
+                        if (estadoDeudaLocal.error?.message !== error.message) {
+                            console.warn("No se pudo sincronizar la deuda del jugador.", error);
+                        }
+                        estadoDeudaLocal = { ...estadoDeudaLocal, estado: "error", error };
+                    }
+                }
+                actualizarBotonTirada();
+                actualizarAvisoDeuda();
+            } while (actualizacionDeudaPendiente);
+        })
+        //Libera la consulta y comprueba si quedó otra pendiente
+        .finally(() => {
+            consultaDeudaEnCurso = null;
+            if (actualizacionDeudaPendiente) return consultarDeudaPendiente();
+        });
+    return consultaDeudaEnCurso;
+}
 
 async function obtenerResultadoDados() {
     const idJugador = window.usuarioSesionId;
@@ -70,7 +183,6 @@ if (botonTirar) {
 
             console.log("Nueva posición:", resultado.nuevaPosicion);
             await procesarMovimiento(resultado);
-
         } catch (error) {
             console.error("Error al tirar los dados o mover la ficha:", error);
             if (notaModalInfo)
@@ -161,7 +273,8 @@ function iniciarSincronizacionTurno(base, codigo) {
 
 function iniciarSincronizacionPosiciones() {
     solicitarPosicionesPartida();
-    window.setInterval(solicitarPosicionesPartida, 10000); 5000
+    window.setInterval(solicitarPosicionesPartida, 10000);
+    5000;
 }
 
 function solicitarPosicionesPartida() {
@@ -175,6 +288,7 @@ function solicitarPosicionesPartida() {
 }
 
 async function actualizarTurnoDesdeServidor(base, codigo) {
+    consultarDeudaPendiente();
     if (consultaTurnoEnCurso) return;
     consultaTurnoEnCurso = true;
     try {
@@ -203,6 +317,7 @@ function conectarWebSocketTurnos(base, codigo) {
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
+            consultarDeudaPendiente(true);
 
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
                 const turnoDTO = JSON.parse(mensaje.body);
@@ -245,6 +360,15 @@ function conectarWebSocketTurnos(base, codigo) {
                         propiedad.enBancarrota,
                     );
                 }
+                if (
+                    [
+                        propiedad.idVendedor,
+                        propiedad.idJugadorPropietario,
+                        propiedad.idJugador,
+                    ].some((id) => id != null && String(id) === String(window.usuarioSesionId))
+                ) {
+                    consultarDeudaPendiente(true);
+                }
             });
             stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
                 const saldo = JSON.parse(mensaje.body);
@@ -252,6 +376,10 @@ function conectarWebSocketTurnos(base, codigo) {
             });
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
+                if (datos.motivo === "QUIEBRA") {
+                    procesarNotificacionQuiebra(datos);
+                    return;
+                }
 
                 agregarAlHistorial(`${datos.apodo} abandonó la partida.`, datos.idJugador);
 
@@ -293,6 +421,8 @@ function actualizarBotonTirada() {
             movimientosDeJugadoresEnCurso.size > 0 ||
             estaTirando ||
             yaTiroEnEsteTurno ||
+            estadoDeudaLocal.estado !== "actualizado" ||
+            estadoDeudaLocal.deuda !== null ||
             window.usuarioEnBancarrota ||
             String(window.turnoActualId) !== String(window.usuarioSesionId);
     }
@@ -318,8 +448,10 @@ function mostrarSiguienteAvisoPartida() {
 }
 
 async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
-    const popup = String(idJugador) === String(window.usuarioSesionId)
-        ? document.getElementById("aviso-evento") : null;
+    const popup =
+        String(idJugador) === String(window.usuarioSesionId)
+            ? document.getElementById("aviso-evento")
+            : null;
     if (!popup) return;
 
     const botonContinuar = document.getElementById("btn-continuar-evento");
@@ -328,30 +460,41 @@ async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
     popup.setAttribute("aria-hidden", "false");
     popup.classList.add("aviso-evento--visible");
     await new Promise((resolve) => {
-        botonContinuar.addEventListener("click", resolve, {once: true});
+        botonContinuar.addEventListener("click", resolve, { once: true });
         botonContinuar.focus();
     });
     popup.classList.remove("aviso-evento--visible");
     popup.setAttribute("aria-hidden", "true");
+    actualizarAvisoDeuda();
 }
 
 function registrarPremioPorInicio(movimiento) {
     const monto = Number(movimiento.dineroPorInicio ?? 0);
     if (monto <= 0) return;
 
-    const nombreJugador = document.getElementById(String(movimiento.idJugador))
-        ?.querySelector(".nombre-jugador")?.textContent.trim()
-        || `Jugador ${movimiento.idJugador}`;
-    agregarAlHistorial(`${nombreJugador} recibió $${monto} por pasar por Inicio.`, movimiento.idJugador);
+    const nombreJugador =
+        document
+            .getElementById(String(movimiento.idJugador))
+            ?.querySelector(".nombre-jugador")
+            ?.textContent.trim() || `Jugador ${movimiento.idJugador}`;
+    agregarAlHistorial(
+        `${nombreJugador} recibió $${monto} por pasar por Inicio.`,
+        movimiento.idJugador,
+    );
     if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(`Recibiste $${monto} por pasar por Inicio.`);
     }
 }
 
 function mostrarAvisoAlquiler(aviso) {
-    agregarAlHistorial(`${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`, aviso.idJugadorPagador);
+    agregarAlHistorial(
+        `${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`,
+        aviso.idJugadorPagador,
+    );
     if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
-        mostrarAvisoPartida(`Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`);
+        mostrarAvisoPartida(
+            `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`,
+        );
     }
 }
 
@@ -386,6 +529,10 @@ async function procesarMovimiento(movimiento) {
     try {
         const pasos = Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        if (modalDeuda?.open && !declarandoQuiebra) {
+            aperturaDeudaPendiente = true;
+            modalDeuda.close();
+        }
         actualizarBotonTirada();
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
@@ -394,20 +541,29 @@ async function procesarMovimiento(movimiento) {
             registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
         }
         if (movimiento.nombreEvento && movimiento.descripcionEvento) {
-            const nombreJugador = document.getElementById(String(movimiento.idJugador))
-                ?.querySelector(".nombre-jugador")?.textContent.trim()
-                || `Jugador ${movimiento.idJugador}`;
+            const nombreJugador =
+                document
+                    .getElementById(String(movimiento.idJugador))
+                    ?.querySelector(".nombre-jugador")
+                    ?.textContent.trim() || `Jugador ${movimiento.idJugador}`;
             agregarAlHistorial(
                 `${nombreJugador} sacó el evento «${movimiento.nombreEvento}»: ${movimiento.descripcionEvento}`,
                 movimiento.idJugador,
             );
-            await mostrarPopupEvento(movimiento.idJugador, movimiento.nombreEvento, movimiento.descripcionEvento);
+            await mostrarPopupEvento(
+                movimiento.idJugador,
+                movimiento.nombreEvento,
+                movimiento.descripcionEvento,
+            );
         }
         const posicionFinal = Number(movimiento.nuevaPosicion);
         if (Number.isInteger(posicionFinal)) {
             if (posicionFinal !== posicionCaida) {
-                const cantidadCasilleros = document.querySelectorAll(".casillero[data-casillero]").length;
-                const pasosEvento = (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
+                const cantidadCasilleros = document.querySelectorAll(
+                    ".casillero[data-casillero]",
+                ).length;
+                const pasosEvento =
+                    (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
                 await animarMovimientoFicha(movimiento.idJugador, pasosEvento, posicionCaida);
                 moverFichaEnTablero(movimiento.idJugador, posicionFinal);
                 registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
@@ -420,8 +576,12 @@ async function procesarMovimiento(movimiento) {
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
+            consultarDeudaPendiente(true);
+        }
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
         actualizarBotonTirada();
+        actualizarAvisoDeuda();
     }
 }
 
@@ -431,10 +591,10 @@ function sincronizarPosicionesFichas(posiciones) {
         return;
     }
 
-
     posiciones.forEach((jugador) => {
         const idJugador = String(jugador.idJugador);
-        if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador)) return;
+        if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador))
+            return;
         if (jugador.posicion == null) return;
         moverFichaEnTablero(jugador.idJugador, jugador.posicion);
     });
@@ -445,6 +605,7 @@ function sincronizarPosicionesFichas(posiciones) {
 }
 
 function actualizarTurnoEnPantalla(turnoDTO) {
+    if (partidaFinalizada) return;
     const idJugadorActual = String(turnoDTO.idJugadorActual);
     const usuarioSesionId = String(window.usuarioSesionId);
 
@@ -489,11 +650,15 @@ function actualizarTurnoEnPantalla(turnoDTO) {
 }
 
 function aplicarTurnoDTO(turnoDTO) {
-    if (!turnoDTO || turnoDTO.idJugadorActual == null) return;
+    if (partidaFinalizada || !turnoDTO || turnoDTO.idJugadorActual == null) return;
     const ronda = Number(turnoDTO.rondaActual ?? 0);
     const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
     const ultimo = window.ultimoTurnoRecibido;
-    if (ultimo && (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))) return;
+    if (
+        ultimo &&
+        (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))
+    )
+        return;
     window.ultimoTurnoRecibido = { ronda, finalizados };
     const claveTurno = `${turnoDTO.idJugadorActual}:${turnoDTO.rondaActual}:${turnoDTO.turnosFinalizadosEnRonda}`;
     const cambioDeTurno = window.claveTurnoActual !== claveTurno;
@@ -503,11 +668,16 @@ function aplicarTurnoDTO(turnoDTO) {
 
     if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
+    if (cambioDeTurno) consultarDeudaPendiente(true);
     if (cambioDeTurno && modalBonoPropiedades?.open) cargarPropiedadesPropias();
     if (turnoDTO.duracionSegundos == null) {
         prepararRelojSinIniciar();
         window.turnoInicialSincronizado = true;
-    } else if (cambioDeTurnoDelReloj || !window.turnoInicialSincronizado || Number(turnoDTO.duracionSegundos) > 30) {
+    } else if (
+        cambioDeTurnoDelReloj ||
+        !window.turnoInicialSincronizado ||
+        Number(turnoDTO.duracionSegundos) > 30
+    ) {
         iniciarRelojLocal(turnoDTO.duracionSegundos);
         window.claveTurnoCronometro = claveTurno;
         window.turnoInicialSincronizado = true;
@@ -536,6 +706,157 @@ const nombrePropiedadEnVenta = document.getElementById("vender-propiedad-nombre"
 const mensajeOfertaVenta = document.getElementById("oferta-venta-mensaje");
 const modalOfertaRecibida = document.getElementById("modal-oferta-recibida");
 const mensajeOfertaRecibida = document.getElementById("oferta-recibida-mensaje");
+const modalDeuda = document.getElementById("modal-deuda-pendiente");
+const botonDeuda = document.getElementById("btn-deuda-pendiente");
+let avisoDeudaPresentado = false;
+let aperturaDeudaPendiente = false;
+let regresoDesdePropiedadesDeuda = false;
+let confirmacionQuiebraVisible = false;
+let declarandoQuiebra = false;
+let mensajeAccionDeuda = "";
+
+// Actualiza el aviso con datos confirmados, sin borrar la deuda ante errores de consulta.
+function actualizarAvisoDeuda() {
+    if (!modalDeuda || !botonDeuda) return;
+    const { estado, deuda } = estadoDeudaLocal;
+    if ((estado === "actualizado" && deuda === null) || window.usuarioEnBancarrota || partidaFinalizada) {
+        botonDeuda.hidden = true;
+        avisoDeudaPresentado = false;
+        aperturaDeudaPendiente = false;
+        regresoDesdePropiedadesDeuda = false;
+        if (!declarandoQuiebra) {
+            mensajeAccionDeuda = "";
+            confirmacionQuiebraVisible = false;
+            if (modalDeuda.open) modalDeuda.close();
+        }
+        return;
+    }
+    botonDeuda.hidden = !deuda;
+    if (!deuda) return;
+    const importe = `$${deuda.montoPendiente.toLocaleString("es-AR")}`;
+    botonDeuda.textContent = `Deuda pendiente: ${importe}`;
+    document.getElementById("deuda-importe").textContent = importe;
+    document.getElementById("deuda-motivo").textContent =
+        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA" }[deuda.motivo] || deuda.motivo;
+    document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
+    document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
+    document.getElementById("deuda-opciones").hidden = confirmacionQuiebraVisible;
+    document.getElementById("deuda-confirmacion").hidden = !confirmacionQuiebraVisible;
+    document.getElementById("deuda-mensaje").textContent = mensajeAccionDeuda ||
+        (estado === "error" ? "No se pudo actualizar la deuda. Conservamos la última información disponible." :
+            estado === "desconocido" ? "Actualizando la información de la deuda…" : "");
+    document.getElementById("btn-cerrar-deuda").disabled = declarandoQuiebra;
+    document.getElementById("btn-vender-desde-deuda").disabled = declarandoQuiebra;
+    document.getElementById("btn-declarar-quiebra").disabled = declarandoQuiebra || estado !== "actualizado";
+    document.getElementById("btn-cancelar-quiebra").disabled = declarandoQuiebra;
+    document.getElementById("btn-confirmar-quiebra").disabled = declarandoQuiebra || estado !== "actualizado";
+    document.getElementById("btn-confirmar-quiebra").textContent =
+        declarandoQuiebra ? "Declarando quiebra…" : "Confirmar quiebra";
+    if (!avisoDeudaPresentado) aperturaDeudaPendiente = true;
+    abrirAvisoDeuda();
+}
+
+// Espera a que termine el movimiento y se cierren las otras ventanas antes de abrir el aviso.
+function abrirAvisoDeuda(solicitudManual = false) {
+    if (solicitudManual) aperturaDeudaPendiente = true;
+    if (!modalDeuda || !aperturaDeudaPendiente || !estadoDeudaLocal.deuda || declarandoQuiebra
+            || window.usuarioEnBancarrota || partidaFinalizada || regresoDesdePropiedadesDeuda
+            || movimientosDeJugadoresEnCurso.size > 0
+            || document.querySelector("dialog[open]:not(#modal-deuda-pendiente)")
+            || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")) return;
+    if (!solicitudManual && estadoDeudaLocal.estado !== "actualizado") return;
+    if (modalDeuda.open) return;
+    confirmacionQuiebraVisible = false;
+    document.getElementById("deuda-opciones").hidden = false;
+    document.getElementById("deuda-confirmacion").hidden = true;
+    aperturaDeudaPendiente = false;
+    avisoDeudaPresentado = true;
+    modalDeuda.showModal();
+    document.getElementById("btn-cerrar-deuda").focus();
+}
+
+// Reutiliza el listado y las ventas actuales, sin interrumpir ventas sucesivas.
+function abrirPropiedadesDesdeDeuda() {
+    if (declarandoQuiebra || !estadoDeudaLocal.deuda) return;
+    regresoDesdePropiedadesDeuda = true;
+    aperturaDeudaPendiente = false;
+    modalDeuda.close();
+    if (!modalBonoPropiedades.open) modalBonoPropiedades.showModal();
+    cargarPropiedadesPropias();
+}
+
+// Pide una confirmación dentro del mismo diálogo antes de enviar la decisión definitiva.
+function mostrarConfirmacionQuiebra() {
+    if (declarandoQuiebra || estadoDeudaLocal.estado !== "actualizado" || !estadoDeudaLocal.deuda) return;
+    confirmacionQuiebraVisible = true;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    document.getElementById("btn-cancelar-quiebra").focus();
+}
+
+// Declara la quiebra por sesión; los turnos y las propiedades siguen a cargo del servidor.
+async function confirmarQuiebra() {
+    if (declarandoQuiebra || !confirmacionQuiebraVisible || estadoDeudaLocal.estado !== "actualizado"
+            || !estadoDeudaLocal.deuda || window.usuarioEnBancarrota || partidaFinalizada) return;
+    declarandoQuiebra = true;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigoPartida)}/declarar-quiebra`, {
+            method: "POST", credentials: "same-origin", headers: { Accept: "application/json" },
+        });
+        const datos = await respuesta.json().catch(() => null);
+        if (!respuesta.ok) {
+            throw new Error(datos?.error || `No se pudo declarar la quiebra (HTTP ${respuesta.status}).`);
+        }
+        if (respuesta.redirected || typeof datos?.mensaje !== "string") {
+            throw new Error("El servidor no confirmó la declaración. Actualizá la página antes de volver a intentarlo.");
+        }
+        actualizarDineroJugador(window.usuarioSesionId, null, true);
+        window.usuarioEnBancarrota = true;
+        bloquearControles();
+        actualizarBotonTirada();
+        declarandoQuiebra = false;
+        modalDeuda.close();
+        actualizarAvisoDeuda();
+        window.location.assign(`${basePath}/home`);
+    } catch (error) {
+        mensajeAccionDeuda = error instanceof TypeError ?
+            "No se pudo confirmar la declaración. Comprobá la conexión y actualizá la página antes de volver a intentarlo." :
+            error.message || "No se pudo confirmar la declaración. Actualizá la página antes de volver a intentarlo.";
+        mostrarAvisoPartida(mensajeAccionDeuda);
+    } finally {
+        declarandoQuiebra = false;
+        actualizarAvisoDeuda();
+    }
+}
+
+botonDeuda?.addEventListener("click", () => abrirAvisoDeuda(true));
+document.getElementById("btn-cerrar-deuda")?.addEventListener("click", () => {
+    if (!declarandoQuiebra) modalDeuda.close();
+});
+document.getElementById("btn-vender-desde-deuda")?.addEventListener("click", abrirPropiedadesDesdeDeuda);
+document.getElementById("btn-declarar-quiebra")?.addEventListener("click", mostrarConfirmacionQuiebra);
+document.getElementById("btn-confirmar-quiebra")?.addEventListener("click", confirmarQuiebra);
+document.getElementById("btn-cancelar-quiebra")?.addEventListener("click", () => {
+    if (declarandoQuiebra) return;
+    confirmacionQuiebraVisible = false;
+    mensajeAccionDeuda = "";
+    actualizarAvisoDeuda();
+    document.getElementById("btn-declarar-quiebra").focus();
+});
+modalDeuda?.addEventListener("cancel", (evento) => {
+    if (declarandoQuiebra) evento.preventDefault();
+});
+modalBonoPropiedades?.addEventListener("close", () => {
+    if (regresoDesdePropiedadesDeuda) {
+        regresoDesdePropiedadesDeuda = false;
+        aperturaDeudaPendiente = true;
+    }
+});
+document.querySelectorAll("dialog").forEach((modal) => {
+    modal.addEventListener("close", actualizarAvisoDeuda);
+});
 const posicionesPropiedad = new Set([
     1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29,
 ]);
@@ -737,8 +1058,8 @@ function mostrarInfoPropiedad(propiedad) {
 function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
     const tarjeta = document.getElementById(String(idJugador));
     const saldo = tarjeta?.querySelector(".dinero");
-    if (saldo) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
-    if (String(idJugador) === String(window.usuarioSesionId)) {
+    if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
+    if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         window.dineroUsuarioSesion = Number(dinero);
     }
     if (!tarjeta || !enBancarrota) return;
@@ -757,6 +1078,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
         cerrarModalCompra();
         mostrarAvisoPartida("Llegaste a tu límite de deudas.");
     }
+    if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
 }
 
 async function cargarInfoPropiedad(posicion, abrirPopup = false) {
@@ -1041,17 +1363,26 @@ function crearTarjetaPropiedad(propiedad) {
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
     const costoMejora = nivelesAlquiler[nivel];
-    const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
+    const puedeMejorarse =
+        !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
     if (puedeMejorarse) {
         agregarDatoPropiedad(datos, "Costo de mejora", costoMejora);
         agregarDatoPropiedad(datos, "Alquiler después de mejorar", costoMejora);
     }
-    botonSubir.disabled = !localidadCompleta || nivel >= nivelesAlquiler.length
-        || posicionesParadas.has(Number(propiedad.posicion)) || !esTurnoPropio || window.usuarioEnBancarrota
-        || Number(window.dineroUsuarioSesion) < costoMejora;
-    botonSubir.textContent = esTurnoPropio && puedeMejorarse
-        ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}` : "Subir alquiler";
-    botonSubir.addEventListener("click", () => subirAlquilerPropiedad(propiedad.posicion, botonSubir));
+    botonSubir.disabled =
+        !localidadCompleta ||
+        nivel >= nivelesAlquiler.length ||
+        posicionesParadas.has(Number(propiedad.posicion)) ||
+        !esTurnoPropio ||
+        window.usuarioEnBancarrota ||
+        Number(window.dineroUsuarioSesion) < costoMejora;
+    botonSubir.textContent =
+        esTurnoPropio && puedeMejorarse
+            ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}`
+            : "Subir alquiler";
+    botonSubir.addEventListener("click", () =>
+        subirAlquilerPropiedad(propiedad.posicion, botonSubir),
+    );
     const botonVender = document.createElement("button");
     botonVender.type = "button";
     botonVender.className = "btn-casillero btn-casillero--principal";
@@ -1128,10 +1459,32 @@ function abrirOpcionesVenta(propiedad) {
     if (!modalVenderPropiedad.open) modalVenderPropiedad.showModal();
 }
 
+let ultimoTurnoSolicitadoPorPagoDeuda = null;
+
+// Solicita una sola vez el cierre del mismo turno propio cuando la venta terminó de pagar la deuda.
+async function finalizarTurnoTrasPagarDeuda(claveTurnoVenta) {
+    if (!claveTurnoVenta || claveTurnoVenta !== window.claveTurnoActual
+            || ultimoTurnoSolicitadoPorPagoDeuda === claveTurnoVenta
+            || window.usuarioSesionId == null
+            || String(window.turnoActualId) !== String(window.usuarioSesionId)
+            || tiempoRestante <= 0 || partidaFinalizada || window.usuarioEnBancarrota || declarandoQuiebra
+            || estadoDeudaLocal.estado !== "actualizado" || estadoDeudaLocal.deuda !== null) return;
+    // Reservamos el envío antes de esperar la respuesta para evitar solicitudes simultáneas.
+    ultimoTurnoSolicitadoPorPagoDeuda = claveTurnoVenta;
+    await finalizarTurno();
+}
+
 async function venderPropiedadBono(propiedad) {
     if (!propiedad) return;
     if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${propiedad.precioVenta}?`))
         return;
+    // El listado abierto desde deuda conserva ese contexto mientras se actualiza la consulta.
+    const ventaConDeudaConocida = estadoDeudaLocal.deuda !== null
+        && (estadoDeudaLocal.estado === "actualizado"
+            || (estadoDeudaLocal.estado === "desconocido" && regresoDesdePropiedadesDeuda));
+    const claveTurnoVenta = window.usuarioSesionId != null
+            && String(window.turnoActualId) === String(window.usuarioSesionId) && tiempoRestante > 0
+        ? window.claveTurnoActual : null;
     try {
         const respuesta = await fetch(
             `${basePath}/partida/${codigoPartida}/propiedades/${propiedad.posicion}/vender`,
@@ -1139,10 +1492,15 @@ async function venderPropiedadBono(propiedad) {
         );
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo vender la propiedad.");
+        await consultarDeudaPendiente(true);
         actualizarEtiquetaPrecioPropiedad(datos);
         actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
         modalVenderPropiedad.close();
-        await cargarPropiedadesPropias();
+        try {
+            if (ventaConDeudaConocida) await finalizarTurnoTrasPagarDeuda(claveTurnoVenta);
+        } finally {
+            await cargarPropiedadesPropias();
+        }
     } catch (error) {
         mensajeBonoPropiedades.textContent = error.message || "No se pudo vender la propiedad.";
     }
@@ -1224,6 +1582,7 @@ async function responderOfertaVenta(aceptar) {
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo responder la oferta.");
         if (aceptar) {
+            consultarDeudaPendiente(true);
             actualizarEtiquetaPrecioPropiedad(datos);
             actualizarDineroJugador(datos.idJugador, datos.dineroJugador, datos.enBancarrota);
             actualizarDineroJugador(
@@ -1557,10 +1916,40 @@ async function sincronizarPropiedadesTrasAbandono(idJugador) {
 
 let partidaFinalizada = false;
 
-function mostrarVictoria(datos) {
+// Atiende la quiebra confirmada sin ejecutar las acciones ni los mensajes de abandono.
+function procesarNotificacionQuiebra(datos) {
+    // La declaración voluntaria conserva su redirección al recibir el POST exitoso.
+    if (String(datos.idJugador) === String(window.usuarioSesionId)) {
+        if (!declarandoQuiebra && !quiebrasNotificadas.has(String(datos.idJugador))) {
+            quiebrasNotificadas.add(String(datos.idJugador));
+            window.location.assign(`${basePath}/home`);
+        }
+        return;
+    }
+    if (partidaFinalizada) return;
+    if (!quiebrasNotificadas.has(String(datos.idJugador))) {
+        quiebrasNotificadas.add(String(datos.idJugador));
+        agregarAlHistorial(`${datos.apodo} se declaró en quiebra.`, datos.idJugador);
+        actualizarDineroJugador(datos.idJugador, null, true);
+        const tarjeta = document.getElementById(String(datos.idJugador));
+        tarjeta?.classList.remove("turno-activo");
+        tarjeta?.querySelector(".contenedor-turno")?.replaceChildren();
+    }
+    if (datos.partidaFinalizada === true) {
+        if (String(datos.idGanador) === String(window.usuarioSesionId)) mostrarVictoria(datos);
+        else detenerPartidaEnPantalla();
+    }
+}
+
+// Detiene la presentación y evita que respuestas anteriores reactiven el turno.
+function detenerPartidaEnPantalla() {
     partidaFinalizada = true;
+    actualizarAvisoDeuda();
 
     clearInterval(intervaloReloj);
+    window.turnoActualId = null;
+    document.querySelectorAll(".contenedor-turno").forEach((contenedor) => contenedor.replaceChildren());
+    document.querySelectorAll(".jugador.turno-activo").forEach((tarjeta) => tarjeta.classList.remove("turno-activo"));
 
     if (botonTirar) {
         botonTirar.disabled = true;
@@ -1570,9 +1959,15 @@ function mostrarVictoria(datos) {
         boton.disabled = true;
     });
 
+}
+
+function mostrarVictoria(datos) {
+    detenerPartidaEnPantalla();
     const mensaje = document.getElementById("mensaje-victoria");
 
-    mensaje.textContent = `${datos.apodo} abandonó la partida. ¡Sos el ganador!`;
+    mensaje.textContent = datos.motivo === "QUIEBRA"
+        ? `${datos.apodo} se declaró en quiebra. ¡Sos el ganador!`
+        : `${datos.apodo} abandonó la partida. ¡Sos el ganador!`;
 
     const modal = document.getElementById("modal-victoria");
 

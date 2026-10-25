@@ -623,6 +623,24 @@
 .modal-propiedad__contenido h2 { font-family: var(--font-titulos, "Barlow Condensed", sans-serif); }
 .modal-propiedad__acciones { display: flex; gap: 10px; }
 
+.deuda-acceso[hidden],
+.modal-deuda [hidden],
+#deuda-confirmacion[hidden] { display: none; }
+.modal-deuda { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.modal-deuda .modal-info-propiedad__cabecera h2 { font-size: 24px; }
+.modal-deuda .modal-info-propiedad__datos dd { overflow-wrap: anywhere; }
+.deuda-acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+.deuda-acciones .btn-casillero { flex: 1 1 150px; white-space: normal; }
+#deuda-confirmacion { display: grid; gap: 14px; }
+#deuda-confirmacion h3 { color: var(--p-dorado); }
+#deuda-confirmacion p { line-height: 1.5; }
+#deuda-mensaje { margin: 0; }
+#deuda-mensaje:empty { display: none; }
+.modal-deuda button:focus-visible, .deuda-acceso:focus-visible {
+    outline: 3px solid var(--p-celeste);
+    outline-offset: 3px;
+}
+
 .modal-bono-propiedades {
     width: min(560px, calc(100vw - 32px));
 }
