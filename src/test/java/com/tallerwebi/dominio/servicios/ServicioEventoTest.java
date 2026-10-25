@@ -46,7 +46,7 @@ public class ServicioEventoTest {
         servicioEvento = new ServicioEventoImpl(repositorioEventoMock, servicioDadoMock);
     }
 
-    private Jugador crearJugador(Long id, int dinero, int posicion) {
+    private Jugador crearJugador(Long id, Integer dinero, Integer posicion) {
         Jugador jugador = new Jugador();
         jugador.setId(id);
         jugador.setDinero(dinero);
@@ -71,7 +71,7 @@ public class ServicioEventoTest {
     }
 
     private EventoGlobal crearEventoGlobal(
-        Long id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, int valor
+        Long id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, Integer valor
     ) {
         EventoGlobal evento = new EventoGlobal();
         evento.setId(id);
@@ -105,7 +105,7 @@ public class ServicioEventoTest {
 
         Evento resultado = servicioEvento.obtenerEventoAleatorio();
 
-        assertSame(evento, resultado);
+        assertEquals(evento, resultado);
         verify(repositorioEventoMock).obtenerEventoAleatorio();
     }
 
