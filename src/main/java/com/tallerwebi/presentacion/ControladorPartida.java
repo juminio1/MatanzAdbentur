@@ -1,5 +1,7 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -41,6 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 @Controller
 public class ControladorPartida {
+    private final ServicioParticipacion participacion;
+
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ControladorPartida.class);
     private static final String CLAVE_ERROR = "error";
@@ -65,7 +69,8 @@ public class ControladorPartida {
     public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
             ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
             NotificadorPartida notificadorPartida, ServicioGestionQuiebra servicioGestionQuiebra,
-            ServicioJugada servicioJugada) {
+            ServicioJugada servicioJugada, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.servicioPartida = servicioPartida;
         this.notificadorWebSocket = notificadorWebSocket;
         this.servicioCasillero = servicioCasillero;
@@ -101,7 +106,7 @@ public class ControladorPartida {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
@@ -172,11 +177,21 @@ public class ControladorPartida {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> comprarPropiedad(
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
-            @PathVariable(PARAM_POSICION) Integer posicion
+            @PathVariable(PARAM_POSICION) Integer posicion,
+            HttpServletRequest request
     ) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null || !servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
+        Long idSesion = resolverJugadorAutenticado(partida, request);
+        Jugador actual = servicioPartida.obtenerJugadorActual(codigoPartida);
+        if (actual == null) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, "No hay un jugador activo en esta partida."));
+        if (!esTurnoDeJugador(actual, idSesion)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(CLAVE_ERROR, "No podés comprar por otro jugador."));
+        }
         try {
             ServicioPropiedad.CompraPreparada compra = servicioPropiedad.prepararCompra(codigoPartida, posicion);
             if (compra == null) return ResponseEntity.notFound().build();
+            if (!java.util.Objects.equals(compra.jugador().getId(), idSesion)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             return procesarCompraPropiedad(compra);
         } catch (EstadoPartidaInvalidoException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
@@ -253,7 +268,7 @@ public class ControladorPartida {
 
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
 
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
@@ -285,7 +300,7 @@ public class ControladorPartida {
     private Boolean puedeParticiparEnPartida(Partida partida, Long idJugador) {
         if (idJugador == null) return false;
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
-        return com.tallerwebi.dominio.servicios.ReglasParticipacion.permiteAdministrarPropiedades(partida, jugador, idJugador);
+        return participacion.permiteAdministrarPropiedades(partida, jugador, idJugador);
     }
 
     private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) {
@@ -428,15 +443,11 @@ public class ControladorPartida {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        Boolean coincideId =
-                usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId());
-        Boolean coincideNombre =
-                nombreSesion != null && nombreSesion.equalsIgnoreCase(jugadorActual.getApodo());
-
-        if ((!coincideId && !coincideNombre) || jugadorActual.getEnBancarrota()) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        Long idSesion = ResolutorJugadorSesion.resolverAutenticado(partida, request);
+        if (idSesion == null || !esTurnoDeJugador(jugadorActual, idSesion) || !participacion.estaActivo(jugadorActual)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-
         return ResponseEntity.ok(coordinadorTurno.avanzarYObtenerTurno(codigoPartida));
     }
 
@@ -444,8 +455,15 @@ public class ControladorPartida {
     @ResponseBody
     public RespuestaMovimientoDTO tirarDados(
             @RequestParam("codigoUnico") String codigoUnico,
-            @RequestParam(CLAVE_ID_JUGADOR) Long idJugador
+            @RequestParam(CLAVE_ID_JUGADOR) Long idJugador,
+            HttpServletRequest request
     ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        Partida partida = servicioPartida.obtenerPartida(codigoUnico);
+        if (partida == null) throw new PartidaNoEncontradaException();
+        Long idSesion = resolverJugadorAutenticado(partida, request);
+        if (!java.util.Objects.equals(idSesion, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No podés tirar por otro jugador.");
+        }
         try {
             RespuestaMovimientoDTO respuesta = com.tallerwebi.presentacion.mapeadores.MapeadorMovimiento.desde(
                     servicioJugada.tirarYMover(codigoUnico, idJugador));
@@ -457,6 +475,18 @@ public class ControladorPartida {
         } catch (com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
         }
+    }
+
+    private Long resolverJugadorAutenticado(Partida partida, HttpServletRequest request) {
+        if (ResolutorJugadorSesion.resolverUsuarioSesionId(request) == null
+                && request.getSession().getAttribute(SESION_NOMBRE) == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debés iniciar sesión.");
+        }
+        Long idJugador = ResolutorJugadorSesion.resolverAutenticado(partida, request);
+        if (!participacion.pertenece(partida, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR_JUGADOR_AJENO);
+        }
+        return idJugador;
     }
 
     @ExceptionHandler(JugadorNoEncontradoException.class)

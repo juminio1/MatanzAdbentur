@@ -47,7 +47,7 @@ class ServicioPropiedadOperacionesTest {
                 partidas,
                 casilleros,
                 economia,
-                new ServicioTurnoImpl());
+                new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         vendedor = jugador(1L, 1000);
         comprador = jugador(2L, 800);
         propiedad = new Propiedad(10L, "Barrio Marina", 300, 50, vendedor,

@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 class ControladorGestionQuiebraTest {
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
     private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
 
@@ -59,7 +60,7 @@ class ControladorGestionQuiebraTest {
         notificadorPartidaMock = mock(NotificadorPartida.class);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
         controladorGestionQuiebra = new ControladorGestionQuiebra(servicioPartidaMock,
-                servicioGestionQuiebraMock);
+                servicioGestionQuiebraMock, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
         request.setSession(session);
@@ -73,7 +74,7 @@ class ControladorGestionQuiebraTest {
                 servicioPropiedadMock,
                 new com.tallerwebi.presentacion.WebSocket.NotificadorPartida(notificadorWebSocketMock),
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), servicioPropiedadMock, null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), servicioPropiedadMock, null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controladorPartida, controladorGestionQuiebra).build();
         RequestMappingHandlerMapping rutas = mvc.getDispatcherServlet().getWebApplicationContext()
                 .getBean(RequestMappingHandlerMapping.class);

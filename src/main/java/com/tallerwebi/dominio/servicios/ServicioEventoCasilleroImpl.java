@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BiConsumer;
+import java.util.function.ToIntBiFunction;
+import com.tallerwebi.dominio.resultados.ResultadoEvento;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     private final ServicioMovimiento movimiento;
     private final ServicioGestionQuiebra servicioGestionQuiebra;
 
-    private final Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> aplicadores;
+    private final Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> aplicadores;
 
     @Autowired
     public ServicioEventoCasilleroImpl(
@@ -53,7 +54,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     @Override
-    public Optional<EventoCasillero> aplicarSiCorresponde(
+    public Optional<ResultadoEvento> aplicarSiCorresponde(
             String codigoPartida,
             Jugador jugador) {
 
@@ -72,20 +73,21 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
         Integer indiceEvento = ThreadLocalRandom.current().nextInt(eventos.size());
         EventoCasillero evento = eventos.get(indiceEvento);
 
+        int premio = 0;
         if (evento.getTipoEfecto() == TipoEfectoEvento.RESTA) {
             procesarEventoResta(codigoPartida, evento, jugador);
         } else {
-            BiConsumer<EventoCasillero, Jugador> aplicador =
+            ToIntBiFunction<EventoCasillero, Jugador> aplicador =
                     aplicadores.get(evento.getTipoEfecto());
 
             if (aplicador == null) {
                 throw new TipoEfectoEventoNoSoportadoException(evento.getTipoEfecto());
             }
 
-            aplicador.accept(evento, jugador);
+            premio = aplicador.applyAsInt(evento, jugador);
         }
 
-        return Optional.of(evento);
+        return Optional.of(new ResultadoEvento(evento, premio));
     }
 
     private void procesarEventoResta(
@@ -128,15 +130,21 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
                 .anyMatch(posicion::equals);
     }
 
-    private Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> crearAplicadores() {
-        Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> resultado =
+    private Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> crearAplicadores() {
+        Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> resultado =
                 new EnumMap<>(TipoEfectoEvento.class);
 
         resultado.put(TipoEfectoEvento.SUMA,
-                (evento, jugador) -> economia.sumarDinero(jugador, evento.getMonto()));
+                (evento, jugador) -> {
+                    economia.sumarDinero(jugador, evento.getMonto());
+                    return 0;
+                });
 
         resultado.put(TipoEfectoEvento.PIERDE_TURNO,
-                (evento, jugador) -> jugador.setPierdeTurno(true));
+                (evento, jugador) -> {
+                    jugador.setPierdeTurno(true);
+                    return 0;
+                });
 
         resultado.put(TipoEfectoEvento.AVANZA_CASILLEROS, this::avanzarCasilleros);
 
@@ -145,10 +153,10 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
         return Map.copyOf(resultado);
     }
 
-    private void avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
-        movimiento.avanzar(jugador, evento.getCantidadCasilleros());
+    private int avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
+        return movimiento.avanzar(jugador, evento.getCantidadCasilleros());
     }
-    private void avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
-        movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
+    private int avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
+        return movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
     }
 }

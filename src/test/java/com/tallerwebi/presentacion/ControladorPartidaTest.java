@@ -56,6 +56,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
 
 public class ControladorPartidaTest {
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
     private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
 
@@ -84,7 +85,7 @@ public class ControladorPartidaTest {
                 servicioPropiedadMock,
                 notificadorPartidaMock,
                 servicioGestionQuiebraMock,
-                new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, null, servicioGestionQuiebraMock, movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, null, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
@@ -229,6 +230,7 @@ public class ControladorPartidaTest {
 
         Partida partidaActualizada = new Partida();
         partidaActualizada.setRondaActual(2);
+        partidaActualizada.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
                 .thenReturn(jugadorActual)
@@ -350,6 +352,7 @@ public class ControladorPartidaTest {
 
         Partida partida = new Partida();
         partida.setRondaActual(1);
+        partida.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
                 .thenReturn(jugadorActual)
@@ -383,11 +386,11 @@ public class ControladorPartidaTest {
 
         ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5); // Suma 9
 
-        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(dados.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
-        RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador);
+        RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador, solicitudJugador(codigoPrueba,  idJugador));
 
         assertThat(resultado, notNullValue());
         assertThat(resultado.getDado1(), equalTo(4));
@@ -395,7 +398,7 @@ public class ControladorPartidaTest {
         assertThat(resultado.getSuma(), equalTo(9));
 
         // SE VERIFICA SOBRE servicioPartidaMock
-        verify(servicioPartidaMock, times(1)).tirarDados();
+        verify(dados, times(1)).tirarDados();
     }
 
     @Test
@@ -412,11 +415,11 @@ public class ControladorPartidaTest {
 
         ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5); // Suma 9
 
-        when(servicioPartidaMock.tirarDados()).thenReturn(resultadoEsperado);
+        when(dados.tirarDados()).thenReturn(resultadoEsperado);
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
-        controladorPartida.tirarDados(codigoPrueba, idJugador);
+        controladorPartida.tirarDados(codigoPrueba, idJugador, solicitudJugador(codigoPrueba,  idJugador));
 
         verify(movimiento, times(1)).moverJugador(jugador, 9, 30);
     }
@@ -430,13 +433,13 @@ public class ControladorPartidaTest {
         partida.setJugadores(List.of(jugador));
         when(servicioPartidaMock.obtenerPartida("INICIO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("INICIO")).thenReturn(jugador);
-        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
+        when(dados.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
         doAnswer(invocacion -> {
             jugador.setPosicionActual(3);
             return null;
         }).when(movimiento).moverJugador(jugador, 5, 30);
 
-        RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados("INICIO", 1L);
+        RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados("INICIO", 1L, solicitudJugador("INICIO",  1L));
 
         assertEquals(200, respuesta.getDineroPorInicio());
         assertEquals(3, respuesta.getNuevaPosicion());
@@ -453,7 +456,7 @@ public class ControladorPartidaTest {
                 servicioPropiedadMock,
                 notificadorPartidaMock,
                 servicioGestionQuiebraMock,
-                new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento, servicioGestionQuiebraMock, movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setPosicionActual(26);
@@ -461,7 +464,7 @@ public class ControladorPartidaTest {
         partida.setJugadores(List.of(jugador));
         when(servicioPartidaMock.obtenerPartida("EVENTO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("EVENTO")).thenReturn(jugador);
-        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+        when(dados.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
         doAnswer(invocacion -> {
             jugador.setPosicionActual(28);
             return null;
@@ -471,10 +474,10 @@ public class ControladorPartidaTest {
             EventoCasillero evento = new EventoCasillero();
             evento.setTipoEfecto(com.tallerwebi.dominio.enums.TipoEfectoEvento.AVANZA_CASILLEROS);
             evento.setCantidadCasilleros(2);
-            return Optional.of(evento);
+            return Optional.of(new com.tallerwebi.dominio.resultados.ResultadoEvento(evento, 200));
         });
 
-        RespuestaMovimientoDTO respuesta = controlador.tirarDados("EVENTO", 1L);
+        RespuestaMovimientoDTO respuesta = controlador.tirarDados("EVENTO", 1L, solicitudJugador("EVENTO",  1L));
 
         assertEquals(200, respuesta.getDineroPorInicio());
         assertEquals(28, respuesta.getPosicionCaidaEvento());
@@ -483,19 +486,20 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void queLanceExcepcionSiElJugadorNoExisteEnLaPartida() {
+    public void queRechaceLaTiradaSiLaSesionNoPerteneceALaPartida() {
         String codigoPrueba = "MATANZA123";
         Long idJugadorInexistente = 99L;
 
         Partida partidaVacia = new Partida();
         partidaVacia.setJugadores(Collections.emptyList());
 
-        when(servicioPartidaMock.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
+        when(dados.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaVacia);
 
-        assertThrows(JugadorNoEncontradoException.class, () -> {
-            controladorPartida.tirarDados(codigoPrueba, idJugadorInexistente);
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> {
+            controladorPartida.tirarDados(codigoPrueba, idJugadorInexistente, solicitudJugador(codigoPrueba,  idJugadorInexistente));
         });
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
     }
 
     //test abandonar partida
@@ -513,7 +517,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         MockHttpServletRequest request = new MockHttpServletRequest();
 
@@ -546,7 +550,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(1L);
@@ -586,7 +590,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -629,7 +633,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -671,7 +675,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -713,7 +717,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -749,7 +753,7 @@ public class ControladorPartidaTest {
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
                 org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugadorUno = new Jugador();
         jugadorUno.setId(1L);
@@ -793,11 +797,11 @@ public class ControladorPartidaTest {
 
         ResponseStatusException excepcion = assertThrows(
                 ResponseStatusException.class,
-                () -> controladorPartida.tirarDados(codigo, jugador.getId())
+                () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId()))
         );
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
-        verify(servicioPartidaMock, never()).tirarDados();
+        verify(dados, never()).tirarDados();
     }
 
     // Verifica que una deuda pendiente impida tirar dados hasta resolverla.
@@ -823,11 +827,20 @@ public class ControladorPartidaTest {
 
         ResponseStatusException excepcion = assertThrows(
                 ResponseStatusException.class,
-                () -> controladorPartida.tirarDados(codigo, jugador.getId())
+                () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId()))
         );
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
 
-        verify(servicioPartidaMock, never()).tirarDados();
+        verify(dados, never()).tirarDados();
+    }
+    private org.springframework.mock.web.MockHttpServletRequest solicitudJugador(String codigo, Long idJugador) {
+        var request = new org.springframework.mock.web.MockHttpServletRequest();
+        Partida partida = servicioPartidaMock.obtenerPartida(codigo);
+        Jugador jugador = partida == null || partida.getJugadores() == null ? null : partida.getJugadores().stream()
+                .filter(j -> idJugador == null || idJugador.equals(j.getId())).findFirst().orElse(null);
+        if (jugador != null && jugador.getApodo() == null) jugador.setApodo("jugador" + jugador.getId());
+        request.getSession().setAttribute("NOMBRE", jugador == null ? "inexistente" : jugador.getApodo());
+        return request;
     }
 }

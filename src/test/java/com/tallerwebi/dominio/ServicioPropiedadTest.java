@@ -34,7 +34,7 @@ public class ServicioPropiedadTest {
                 servicioPartidaMock,
                 casilleros,
                 economia,
-                new ServicioTurnoImpl());
+                new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test

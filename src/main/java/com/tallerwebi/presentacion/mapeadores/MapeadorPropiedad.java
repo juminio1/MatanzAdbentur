@@ -20,7 +20,7 @@ public final class MapeadorPropiedad {
         dto.put("nombre", datos.get(0));
         dto.put("descripcion", datos.get(1));
         dto.put("precioCompra", com.tallerwebi.dominio.catalogo.CatalogoTablero.PRECIO_COMPRA);
-        dto.put("precioVenta", com.tallerwebi.dominio.catalogo.CatalogoTablero.PRECIO_COMPRA / 2);
+        dto.put("precioVenta", servicioPropiedad.calcularPrecioVenta(com.tallerwebi.dominio.catalogo.CatalogoTablero.PRECIO_COMPRA));
         Integer alquilerBase = servicioCasillero.obtenerAlquilerBaseCatalogo(posicion);
         dto.put("alquiler", alquilerBase);
         dto.put("alquilerBase", alquilerBase);
@@ -46,7 +46,7 @@ public final class MapeadorPropiedad {
         dto.put("precioCompra", propiedad.getPrecioCompra());
         dto.put(
                 "precioVenta",
-                propiedad.getPrecioCompra() == null ? 0 : propiedad.getPrecioCompra() / 2
+                servicioPropiedad.calcularPrecioVenta(propiedad.getPrecioCompra())
         );
         dto.put("alquiler", servicioPropiedad.calcularAlquiler(casillero, propiedad));
         dto.put("propietario", propietario == null ? null : propietario.getApodo());

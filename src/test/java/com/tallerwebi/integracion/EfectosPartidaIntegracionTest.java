@@ -1,4 +1,7 @@
 package com.tallerwebi.integracion;
+
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.times;
 import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
 import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
 import com.tallerwebi.dominio.servicios.ServicioJugadaImpl;
@@ -71,6 +74,7 @@ class EfectosPartidaIntegracionTest {
 
     @Configuration
     @Import({
+            com.tallerwebi.dominio.servicios.ServicioParticipacionImpl.class,
             ServicioPartidaImpl.class, ServicioEconomiaImpl.class, ServicioMovimientoImpl.class, ServicioJugadaImpl.class,
             ServicioTurnoImpl.class,
             ServicioEventoCasilleroImpl.class,
@@ -108,7 +112,7 @@ class EfectosPartidaIntegracionTest {
         @Bean
         ObservadorTurnoQuiebra observadorTurnoQuiebra(
                 ServicioPartida servicioPartida) {
-            return new ObservadorTurnoQuiebra(servicioPartida);
+            return new ObservadorTurnoQuiebra(servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         }
         @Bean
         PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(
@@ -120,7 +124,7 @@ class EfectosPartidaIntegracionTest {
         @Bean
         ObservadorVictoria observadorVictoria(
                 RepositorioPartida repositorioPartida) {
-            return new ObservadorVictoria(repositorioPartida);
+            return new ObservadorVictoria(repositorioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         }
 
         @Bean
@@ -165,7 +169,7 @@ class EfectosPartidaIntegracionTest {
                 servicioPropiedad,
                 new NotificadorPartida(notificador),
                 servicioGestionQuiebra,
-                servicioJugada);
+                servicioJugada, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         codigo = UUID.randomUUID().toString();
         transaccion.executeWithoutResult(estado -> {
             sesiones.getCurrentSession().createMutationQuery("DELETE FROM EventoCasillero").executeUpdate();
@@ -190,6 +194,79 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
+    void noPuedeRepetirLaTiradaMientrasDecideLaCompraPeroPuedeEnSuSiguienteTurno() throws Exception {
+        cargarPropiedadDisponible(2);
+        transaccion.executeWithoutResult(estado ->
+                sesiones.getCurrentSession().find(Jugador.class, idJugador).setPosicionActual(0));
+        clearInvocations(servicioDado);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo, idJugador));
+        assertTrue(servicioPartida.obtenerJugadorPorId(idJugador).getTiroEnTurno());
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo, idJugador)));
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
+        verify(servicioDado, times(1)).tirarDados();
+        assertEquals(2, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+
+        servicioPartida.avanzarTurno(codigo);
+        servicioPartida.avanzarTurno(codigo);
+        assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getTiroEnTurno());
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo, idJugador));
+        verify(servicioDado, times(2)).tirarDados();
+    }
+
+    @Test
+    void unaSesionAjenaNoPuedeTirarNiComprarAunqueEnvieElIdentificadorDelJugadorActual() {
+        cargarPropiedadDisponible(2);
+        MockHttpServletRequest request = solicitudJugador(codigo, idPropietario);
+        request.getSession().setAttribute("id", idJugador);
+        clearInvocations(servicioDado);
+
+        var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controlador.tirarDados(codigo, idJugador, request));
+        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, controlador.comprarPropiedad(codigo, 2, request).getStatusCode());
+        verify(servicioDado, never()).tirarDados();
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertNull(controlador.obtenerInfoPropiedad(codigo, 2).getBody().get("propietarioId"));
+    }
+
+    @Test
+    void comprarYTirarRequierenSesionAutenticada() {
+        cargarPropiedadDisponible(2);
+        var request = new MockHttpServletRequest();
+        var compra = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controlador.comprarPropiedad(codigo, 2, request));
+        var tirada = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controlador.tirarDados(codigo, idJugador, request));
+        assertEquals(HttpStatus.UNAUTHORIZED, compra.getStatusCode());
+        assertEquals(HttpStatus.UNAUTHORIZED, tirada.getStatusCode());
+    }
+
+    @Test
+    void avanzarTurnoUsaElJugadorDeSesionAunqueSuIdDeUsuarioSeaDiferente() {
+        MockHttpServletRequest request = solicitudJugador(codigo, idJugador);
+        request.getSession().setAttribute("id", idJugador + 1000);
+        var respuesta = controlador.avanzarTurno(codigo, request);
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
+    }
+
+    @Test
+    void unEventoDeDosVueltasInformaElPremioRealAunqueTermineEnLaMismaPosicion() throws Exception {
+        cargarEvento(TipoEfectoEvento.AVANZA_CASILLEROS, null, 60, null);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
+
+        assertEquals(3, resultado.getNuevaPosicion());
+        assertEquals(400, resultado.getDineroPorInicio());
+        assertEquals(2400, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2400, resultado.getSaldos().stream()
+                .filter(saldo -> saldo.idJugador().equals(idJugador))
+                .findFirst().orElseThrow().dinero());
+    }
+
+    @Test
     void unaJugadaFallidaRevierteMovimientoYPremioSinNotificar() {
         transaccion.executeWithoutResult(estado ->
                 sesiones.getCurrentSession().find(Jugador.class, idJugador).setPosicionActual(28));
@@ -197,11 +274,12 @@ class EfectosPartidaIntegracionTest {
         reset(temporizador, notificador);
 
         assertThrows(com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException.class,
-                () -> controlador.tirarDados(codigo, idJugador));
+                () -> controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador)));
 
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
         assertEquals(28, jugador.getPosicionActual());
         assertEquals(2000, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
         assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
         verifyNoInteractions(notificador, temporizador);
     }
@@ -212,7 +290,7 @@ class EfectosPartidaIntegracionTest {
         reset(temporizador, notificador);
         transaccion.executeWithoutResult(estado -> {
             try {
-                controlador.tirarDados(codigo, idJugador);
+                controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
             } catch (Exception ex) {
                 throw new IllegalStateException(ex);
             }
@@ -292,7 +370,7 @@ class EfectosPartidaIntegracionTest {
     }
 
     private ControladorGestionQuiebra controladorQuiebra() {
-        return new ControladorGestionQuiebra(servicioPartida, servicioGestionQuiebra);
+        return new ControladorGestionQuiebra(servicioPartida, servicioGestionQuiebra, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test
@@ -303,7 +381,7 @@ class EfectosPartidaIntegracionTest {
 
         transaccion.executeWithoutResult(estado -> {
             try {
-                controlador.tirarDados(codigo, idJugador);
+                controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
             } catch (Exception excepcion) {
                 throw new IllegalStateException(excepcion);
             }
@@ -381,7 +459,7 @@ class EfectosPartidaIntegracionTest {
             sesiones.getCurrentSession().persist(casillero);
         });
 
-        controlador.tirarDados(codigo, idJugador);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         Jugador jugadorActualizado =
                 servicioPartida.obtenerJugadorPorId(idJugador);
@@ -402,7 +480,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.SUMA, 500, null, null);
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(2500, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
         assertEquals(2500, resultado.getSaldos().stream().filter(saldo -> saldo.idJugador().equals(idJugador))
                 .findFirst().orElseThrow().dinero());
@@ -413,7 +491,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(1800, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
         assertEquals(1800, resultado.getSaldos().stream().filter(saldo -> saldo.idJugador().equals(idJugador))
                 .findFirst().orElseThrow().dinero());
@@ -424,7 +502,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.AVANZA_CASILLEROS, null, 2, null);
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(3, resultado.getPosicionCaidaEvento());
         assertEquals(5, resultado.getNuevaPosicion());
         assertEquals(5, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
@@ -436,7 +514,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 22);
-        controlador.tirarDados(codigo, idJugador);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(22, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
         verify(temporizador).programarTemporizador(eq(codigo), eq(36), any(Runnable.class));
     }
@@ -446,7 +524,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.PIERDE_TURNO, null, null, null);
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertTrue(servicioPartida.obtenerJugadorPorId(idJugador).getPierdeTurno());
         assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
         assertEquals(idPropietario, resultado.getTurnoSiguiente().getIdJugadorActual());
@@ -469,7 +547,7 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarPropiedadConDueno();
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(1950, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
         assertEquals(2050, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
         assertEquals(50, resultado.getAlquiler().monto());
@@ -486,7 +564,7 @@ class EfectosPartidaIntegracionTest {
         prepararCantidadJugadores(cantidad);
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 2);
         cargarPropiedadConDueno();
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(2, resultado.getNuevaPosicion());
         assertEquals(200, resultado.getDineroPorInicio());
         assertEquals(50, resultado.getAlquiler().monto());
@@ -514,7 +592,7 @@ class EfectosPartidaIntegracionTest {
                         .find(Jugador.class, idJugador)
                         .setDinero(100));
 
-        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador);
+        RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
 
@@ -551,7 +629,7 @@ class EfectosPartidaIntegracionTest {
                         .find(Jugador.class, idJugador)
                         .setDinero(100));
 
-        controlador.tirarDados(codigo, idJugador);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         Jugador jugadorQuebrado = servicioPartida.obtenerJugadorPorId(idJugador);
         Jugador jugadorSiguiente = servicioPartida.obtenerJugadorActual(codigo);
@@ -576,13 +654,13 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         ControladorOfertaPropiedad ofertas = new ControladorOfertaPropiedad(servicioPartida, servicioCasillero,
-                servicioPropiedad, notificador);
+                servicioPropiedad, notificador, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         List<Integer> posiciones = List.of(2, 4, 5);
         for (Integer orden = 1; orden < cantidad; orden++) {
             Integer posicion = posiciones.get(orden - 1);
             cargarPropiedadDisponible(posicion);
             assertEquals(true, controlador.obtenerInfoPropiedad(codigo, posicion).getBody().get("disponible"));
-            assertEquals(HttpStatus.OK, controlador.comprarPropiedad(codigo, posicion).getStatusCode());
+            assertEquals(HttpStatus.OK, controlador.comprarPropiedad(codigo, posicion, solicitudJugador(codigo, null)).getStatusCode());
             Long comprador = idDelOrden(orden);
             var oferta = ofertas.crearOferta(codigo, posicion,
                     Map.of("idJugadorComprador", comprador, "precio", 450), sesion(idJugador));
@@ -633,7 +711,7 @@ class EfectosPartidaIntegracionTest {
             sesiones.getCurrentSession().persist(casillero);
         });
 
-        controlador.tirarDados(codigo, idJugador);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         assertNotNull(servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigo, idJugador));
@@ -676,7 +754,7 @@ class EfectosPartidaIntegracionTest {
             }
         });
 
-        controlador.tirarDados(codigo, idJugador);
+        controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         assertNotNull(servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigo, idJugador));
@@ -715,6 +793,15 @@ class EfectosPartidaIntegracionTest {
     private MockHttpServletRequest sesion(Long id) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", id);
+        return request;
+    }
+    private org.springframework.mock.web.MockHttpServletRequest solicitudJugador(String codigo, Long idJugador) {
+        var request = new org.springframework.mock.web.MockHttpServletRequest();
+        Partida partida = servicioPartida.obtenerPartida(codigo);
+        Jugador jugador = idJugador == null ? servicioPartida.obtenerJugadorActual(codigo) : partida == null || partida.getJugadores() == null ? null : partida.getJugadores().stream()
+                .filter(j -> idJugador == null || idJugador.equals(j.getId())).findFirst().orElse(null);
+        if (jugador != null && jugador.getApodo() == null) jugador.setApodo("jugador" + jugador.getId());
+        request.getSession().setAttribute("NOMBRE", jugador == null ? "inexistente" : jugador.getApodo());
         return request;
     }
 }

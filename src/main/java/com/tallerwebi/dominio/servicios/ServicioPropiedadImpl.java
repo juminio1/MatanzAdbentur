@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
@@ -23,6 +25,8 @@ import java.util.Set;
 @Service("servicioPropiedad")
 @Transactional
 public class ServicioPropiedadImpl implements ServicioPropiedad {
+    private final ServicioParticipacion participacion;
+
     private final RepositorioPropiedad repositorioPropiedad;
     private final RepositorioPartida repositorioPartida;
     private final ServicioEconomia economia;
@@ -33,7 +37,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private static final List<Integer> ALQUILERES_POR_PARADAS = List.of(0, 20, 50, 100, 200);
     @Autowired
     public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, RepositorioPartida repositorioPartida,
-                                 ServicioCasillero servicioCasillero, ServicioEconomia economia, ServicioTurno turnos) {
+                                 ServicioCasillero servicioCasillero, ServicioEconomia economia, ServicioTurno turnos, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.repositorioPropiedad = repositorioPropiedad;
         this.repositorioPartida = repositorioPartida;
         this.servicioCasillero = servicioCasillero;
@@ -113,10 +118,18 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
         Jugador jugador = repositorioPartida.buscarJugadorPorId(idJugador);
-        if (!ReglasParticipacion.permiteAdministrarPropiedades(partida, jugador, idJugador)) {
+        if (!participacion.permiteAdministrarPropiedades(partida, jugador, idJugador)) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
         return servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
+    }
+
+    @Override
+    public Integer calcularPrecioVenta(Integer precioCompra) {
+        if (precioCompra == null || precioCompra < 0) {
+            throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
+        }
+        return precioCompra / 2;
     }
 
     @Override
@@ -124,9 +137,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
-        Integer precioCompra = propiedad.getPrecioCompra();
-        if (precioCompra == null || precioCompra < 0) throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
-        Integer precioVenta = precioCompra / 2;
+        Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
         propiedad.setPropietario(null);
         propiedad.setNivelMejora(0);
         economia.sumarDinero(vendedor, precioVenta);

@@ -1,5 +1,7 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion;
 
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
@@ -26,21 +28,20 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import static com.tallerwebi.dominio.catalogo.CatalogoTablero.POSICIONES_PROPIEDAD;
+import static com.tallerwebi.dominio.catalogo.CatalogoTablero.POSICIONES_PARADA;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
 public class ControladorOfertaPropiedad {
+    private final ServicioParticipacion participacion;
+
     private static final String CLAVE_ERROR = "error";
     private static final String TOPIC_PARTIDA_PREFIX = "/topic/partida/";
     private static final String POSICION = "posicion";
     private static final String ID_JUGADOR = "idJugador";
     private static final String DINERO_JUGADOR = "dineroJugador";
-    private static final Set<Integer> POSICIONES_PROPIEDAD = Set.of(
-            1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29
-    );
-    private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
 
     private final ServicioPartida servicioPartida;
     private final ServicioCasillero servicioCasillero;
@@ -50,7 +51,8 @@ public class ControladorOfertaPropiedad {
 
     public ControladorOfertaPropiedad(ServicioPartida servicioPartida, ServicioCasillero servicioCasillero,
                                       ServicioPropiedad servicioPropiedad,
-                                      SimpMessagingTemplate notificadorWebSocket) {
+                                      SimpMessagingTemplate notificadorWebSocket, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.servicioPartida = servicioPartida;
         this.servicioCasillero = servicioCasillero;
         this.servicioPropiedad = servicioPropiedad;
@@ -89,7 +91,7 @@ public class ControladorOfertaPropiedad {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
+        if (!participacion.pertenece(partida, idJugador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
         Instant ahora = Instant.now();
         List<Map<String, Object>> resultado = ofertas.values().stream()
                 .filter(oferta -> oferta.codigoPartida.equals(codigoPartida)
@@ -110,7 +112,7 @@ public class ControladorOfertaPropiedad {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
         Long idComprador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idComprador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
+        if (!participacion.pertenece(partida, idComprador)) return error(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
         OfertaVenta oferta = ofertas.get(idOferta);
         if (!esOfertaVigente(oferta, codigoPartida, idComprador)) {
             return error(HttpStatus.CONFLICT, "La oferta ya no está disponible.");
@@ -201,7 +203,7 @@ public class ControladorOfertaPropiedad {
 
     private Boolean puedeParticipar(Partida partida, Long idJugador) {
         Jugador jugador = idJugador == null ? null : servicioPartida.obtenerJugadorPorId(idJugador);
-        return jugador != null && !jugador.getEnBancarrota() && ResolutorJugadorSesion.pertenece(partida, idJugador);
+        return participacion.permiteAdministrarPropiedades(partida, jugador, idJugador);
     }
 
 

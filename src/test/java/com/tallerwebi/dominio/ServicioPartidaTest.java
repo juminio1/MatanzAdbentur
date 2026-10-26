@@ -30,7 +30,6 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioInicioPartidaImpl;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
@@ -49,7 +48,6 @@ public class ServicioPartidaTest {
 
     private RepositorioPartida repositorioPartidaMock;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
-    private ServicioDado servicioDadoMock;
     private NotificadorPartida notificadorPartidaMock;
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
@@ -61,17 +59,15 @@ public class ServicioPartidaTest {
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
-        servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         publicadorAbandonoMock = mock(PublicadorEventos.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
-            servicioDadoMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
             gestorTemporizadorMock,
-            new ServicioTurnoImpl(),
+            new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
             publicadorAbandonoMock
         );
@@ -283,9 +279,8 @@ public class ServicioPartidaTest {
             .thenReturn(partida);
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
-            servicioDadoMock,
-            gestorTemporizadorMock, new ServicioTurnoImpl(), null, publicadorAbandonoMock);
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
+            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock);
 
         servicioSinNotificador.avanzarTurno(codigo);
 
@@ -720,18 +715,6 @@ public class ServicioPartidaTest {
         assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
     }
 
-    @Test
-    public void queElServicioPartidaDevuelvaLaTiradaDeDadosCorrectamente() {
-        ResultadoTirada resultadoMock = new ResultadoTirada(4, 3);
-        when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
-
-        ResultadoTirada resultado = servicioPartida.tirarDados();
-
-        assertEquals(4, resultado.getDado1());
-        assertEquals(3, resultado.getDado2());
-        assertEquals(7, resultado.sumarDados());
-        verify(servicioDadoMock, times(1)).tirarDados();
-    }
 
     @Test
     public void dadoQueHayMasDeCuatroJugadoresCuandoSeIniciaLaPartidaDaComoResultadoCantidadMaximaSuperada() {

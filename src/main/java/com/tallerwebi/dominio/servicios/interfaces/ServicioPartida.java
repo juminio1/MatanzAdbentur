@@ -9,7 +9,6 @@ import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.resultados.PosicionFicha;
-import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
 
 public interface ServicioPartida {
@@ -26,6 +25,5 @@ public interface ServicioPartida {
     void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico);
-    ResultadoTirada tirarDados();
     List<PosicionFicha> obtenerPosicionesFichas(String codigo);
 }

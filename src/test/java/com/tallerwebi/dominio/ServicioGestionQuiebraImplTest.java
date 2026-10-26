@@ -41,7 +41,7 @@ class ServicioGestionQuiebraImplTest {
                 servicioPropiedad,
                 repositorioPropiedad,
                 publicadorQuiebra,
-                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl());
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test

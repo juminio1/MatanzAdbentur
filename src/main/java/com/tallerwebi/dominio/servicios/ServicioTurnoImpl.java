@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
@@ -10,11 +12,16 @@ import org.springframework.stereotype.Service;
 /** Resuelvo el orden de los jugadores y el avance de las rondas. */
 @Service("servicioTurno")
 public class ServicioTurnoImpl implements ServicioTurno {
+    private final ServicioParticipacion participacion;
+
+    public ServicioTurnoImpl(ServicioParticipacion participacion) {
+        this.participacion = participacion;
+    }
 
     @Override
     public Jugador obtenerJugadorActual(Partida partida) {
         Jugador jugador = buscarJugadorPorTurno(partida.getJugadores(), obtenerIndiceTurnoActual(partida));
-        return esJugadorActivo(jugador) ? jugador : null;
+        return participacion.estaActivo(jugador) ? jugador : null;
     }
 
     @Override
@@ -26,7 +33,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
                 : partida.getTurnosFinalizadosEnRonda();
 
         Long jugadoresActivos = partida.getJugadores().stream()
-            .filter(jugador -> !jugador.getEnBancarrota())
+            .filter(participacion::estaActivo)
             .count();
         if (jugadoresActivos == 0) return;
 
@@ -75,7 +82,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
         for (Integer desplazamiento = 1; desplazamiento <= cantidadJugadores; desplazamiento++) {
             Integer siguienteIndice = (indiceActual + desplazamiento) % cantidadJugadores;
             Jugador candidato = buscarJugadorPorTurno(partida.getJugadores(), siguienteIndice);
-            if (!esJugadorActivo(candidato)) {
+            if (!participacion.estaActivo(candidato)) {
                 continue;
             }
             if (Boolean.TRUE.equals(candidato.getPierdeTurno()) && !incluirJugadoresPenalizados) {
@@ -93,11 +100,9 @@ public class ServicioTurnoImpl implements ServicioTurno {
         for (Jugador jugador : partida.getJugadores()) {
             jugador.setOrden(orden);
             jugador.setPierdeTurno(false);
+            jugador.setTiroEnTurno(false);
             orden++;
         }
     }
 
-    private Boolean esJugadorActivo(Jugador jugador) {
-        return jugador != null && !jugador.getEnBancarrota() && !jugador.getAbandono();
-    }
 }

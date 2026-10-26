@@ -20,8 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 
 @Service("servicioSalaDeEspera")
 @Transactional
@@ -144,22 +143,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     private void notificarCambioDeSala(SalaDeEspera sala) {
         EventoSalaActualizada estadoActualizado = obtenerEstadoSala(sala);
 
-        if (
-            TransactionSynchronizationManager.isSynchronizationActive() &&
-            TransactionSynchronizationManager.isActualTransactionActive()
-        ) {
-            TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        // Aviso después de confirmar la transacción.
-                        publicadorSala.notificar(estadoActualizado);
-                    }
-                }
-            );
-        } else {
-            publicadorSala.notificar(estadoActualizado);
-        }
+        DespuesDeConfirmar.ejecutar(() -> publicadorSala.notificar(estadoActualizado));
     }
 
     private Usuario obtenerUsuarioExistente(Long idUsuario) {

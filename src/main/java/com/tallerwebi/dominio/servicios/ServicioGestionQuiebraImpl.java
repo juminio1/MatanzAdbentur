@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -21,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional//permite que la operación se realice dentro de una transacción de base de datos.
 public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
+    private final ServicioParticipacion participacion;
+
     //se necesitan dos repositorios:
     //guarda la deuda
     private final com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia;
@@ -38,7 +42,8 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
             PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra,
-            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia) {
+            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.economia = economia;
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
@@ -101,7 +106,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         if (deudor.getDinero() == null
                 || monto == null
                 || monto <= 0
-                || deudor.getDinero() < monto) {
+                || !economia.tieneDineroSuficiente(deudor, monto)) {
             return false;
         }
 
@@ -181,7 +186,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         }
         Jugador jugador = deuda.getJugadorDeudor();
 
-        if (jugador.getAbandono() || jugador.getEnBancarrota()) {
+        if (!participacion.estaActivo(jugador)) {
             throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
@@ -199,8 +204,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
-        if (idJugador == null || partida.getJugadores() == null
-                || partida.getJugadores().stream().noneMatch(j -> idJugador.equals(j.getId()))) {
+        if (!participacion.pertenece(partida, idJugador)) {
             throw new DeclaracionQuiebraInvalidaException("El jugador no pertenece a esta partida.");
         }
         return partida;

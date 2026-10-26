@@ -1,6 +1,8 @@
 
 package com.tallerwebi.dominio.observadores;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -11,11 +13,14 @@ import org.springframework.stereotype.Component;
 @Component
 //permite al spring registre el observador
 public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado> {
+    private final ServicioParticipacion participacion;
+
 
     private final ServicioPartida servicioPartida;
     private static final Long MINIMO_JUGADORES_PARA_CONTINUAR = 2L;
 
-    public ObservadorTurnoQuiebra(@Lazy ServicioPartida servicioPartida) {
+    public ObservadorTurnoQuiebra(@Lazy ServicioPartida servicioPartida, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.servicioPartida = servicioPartida;
     }
 
@@ -25,8 +30,7 @@ public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado>
         Partida partida = evento.partida();
 
         Long jugadoresActivos = partida.getJugadores().stream()
-                .filter(jugador -> !Boolean.TRUE.equals(jugador.getAbandono()))
-                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()))
+                .filter(participacion::estaActivo)
                 .count();
 
         if (jugadoresActivos < MINIMO_JUGADORES_PARA_CONTINUAR) {

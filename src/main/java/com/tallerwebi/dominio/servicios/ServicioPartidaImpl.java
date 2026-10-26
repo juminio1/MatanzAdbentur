@@ -11,11 +11,9 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.resultados.PosicionFicha;
-import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
@@ -27,9 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Coordino las operaciones de la partida.
- */
+//  Coordino las operaciones de la partida.
 @Service("servicioPartida")
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
@@ -40,7 +36,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final RepositorioPartida repositorioPartida;
     private final ServicioInicioPartida servicioInicioPartida;
     private final ServicioTurno servicioTurno;
-    private final ServicioDado servicioDado;
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
@@ -49,7 +44,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
             ServicioInicioPartida servicioInicioPartida,
-            ServicioDado servicioDado,
             GestorTemporizadorPartida gestorTemporizador,
             ServicioTurno servicioTurno,
             @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
@@ -57,7 +51,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
-        this.servicioDado = servicioDado;
         this.servicioTurno = servicioTurno;
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
@@ -78,11 +71,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void incrementarRondas(Partida partida) {
         servicioTurno.incrementarRondas(partida);
-    }
-
-    @Override
-    public ResultadoTirada tirarDados() {
-        return servicioDado.tirarDados();
     }
 
     @Override
@@ -161,6 +149,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return;
         }
 
+        candidato.setTiroEnTurno(false);
         partida.setIndiceTurnoActual(candidato.getOrden());
         repositorioPartida.guardarPartida(partida);
         notificarTurnoActual(partida, true);
@@ -207,8 +196,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private PosicionFicha mapearAJugadorPosicionDto(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
-        Integer posicion =
-                jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
+        Integer posicion = jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
         return new PosicionFicha(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
     }
 

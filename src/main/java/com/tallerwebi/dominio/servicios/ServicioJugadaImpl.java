@@ -1,4 +1,6 @@
 package com.tallerwebi.dominio.servicios;
+
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
@@ -14,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(rollbackFor = Exception.class)
 public class ServicioJugadaImpl implements ServicioJugada {
+    private final ServicioParticipacion participacion;
+
+    private final ServicioDado dados;
     private final ServicioPartida partidas;
     private final ServicioCasillero casilleros;
     private final ServicioPropiedad propiedades;
@@ -22,7 +27,9 @@ public class ServicioJugadaImpl implements ServicioJugada {
     private final ServicioMovimiento movimiento;
     public ServicioJugadaImpl(ServicioPartida partidas, ServicioCasillero casilleros,
             ServicioPropiedad propiedades, ServicioEventoCasillero eventos,
-            ServicioGestionQuiebra quiebras, ServicioMovimiento movimiento) {
+            ServicioGestionQuiebra quiebras, ServicioMovimiento movimiento, ServicioParticipacion participacion, ServicioDado dados) {
+        this.dados = dados;
+        this.participacion = participacion;
         this.partidas = partidas;
         this.casilleros = casilleros;
         this.propiedades = propiedades;
@@ -38,18 +45,19 @@ public class ServicioJugadaImpl implements ServicioJugada {
         Jugador jugador = obtenerJugador(partida, idJugador);
         validarTirada(codigo, jugador);
         Integer anterior = jugador.getPosicionActual();
-        ResultadoTirada tirada = partidas.tirarDados();
+        jugador.setTiroEnTurno(true);
+        ResultadoTirada tirada = dados.tirarDados();
         int premio = movimiento.avanzar(jugador, tirada.sumarDados());
         Integer caida = jugador.getPosicionActual();
-        Optional<EventoCasillero> evento = aplicarEvento(codigo, jugador);
-        premio += premioPorEvento(evento, caida, jugador.getPosicionActual());
+        Optional<ResultadoEvento> evento = aplicarEvento(codigo, jugador);
+        premio += evento.map(ResultadoEvento::dineroPorInicio).orElse(0);
         partidas.actualizarJugador(jugador);
         Destino destino = resolverDestino(partida, jugador);
         avanzarTurnoSiCorresponde(codigo, jugador, destino.requiereDecision());
         Partida actualizada = partidas.obtenerPartida(codigo);
         Partida paraSaldos = actualizada == null ? partida : actualizada;
         return new ResultadoJugada(idJugador, anterior, jugador.getPosicionActual(), caida, tirada,
-                evento.map(e -> new ResultadoJugada.EventoAplicado(e.getNombre(), e.getDescripcion(),
+                evento.map(ResultadoEvento::evento).map(e -> new ResultadoJugada.EventoAplicado(e.getNombre(), e.getDescripcion(),
                         e.getTipoEfecto().name())).orElse(null), premio,
                 paraSaldos.getJugadores().stream().map(SaldoJugador::desdeJugador).toList(), destino.alquiler());
     }
@@ -59,18 +67,21 @@ public class ServicioJugadaImpl implements ServicioJugada {
     }
     private void validarTirada(String codigo, Jugador jugador) {
         Jugador actual = partidas.obtenerJugadorActual(codigo);
-        if (!ReglasParticipacion.estaActivo(jugador) || actual == null || !Objects.equals(actual.getId(), jugador.getId())) {
+        if (!participacion.estaActivo(jugador) || actual == null || !Objects.equals(actual.getId(), jugador.getId())) {
             throw new TiradaNoPermitidaException("No podés tirar los dados en este turno.");
+        }
+        if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new TiradaNoPermitidaException("Ya tiraste los dados en este turno.");
         }
         if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) {
             throw new TiradaNoPermitidaException("Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados.");
         }
     }
-    private Optional<EventoCasillero> aplicarEvento(String codigo, Jugador jugador) {
+    private Optional<ResultadoEvento> aplicarEvento(String codigo, Jugador jugador) {
         return eventos == null ? Optional.empty() : eventos.aplicarSiCorresponde(codigo, jugador);
     }
     private Destino resolverDestino(Partida partida, Jugador jugador) {
-        if (!ReglasParticipacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno())) return new Destino(false, null);
+        if (!participacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno())) return new Destino(false, null);
         CasilleroPropiedad casillero = casilleros.buscarOCrearPropiedadEnPosicion(partida, jugador.getPosicionActual());
         if (casillero == null) return new Destino(false, null);
         Propiedad propiedad = casillero.getPropiedad();
@@ -83,17 +94,9 @@ public class ServicioJugadaImpl implements ServicioJugada {
                 jugador.getApodo(), propietario.getApodo(), propiedad.getNombre(), alquiler));
     }
     private void avanzarTurnoSiCorresponde(String codigo, Jugador jugador, boolean requiereDecision) {
-        if (requiereDecision || !ReglasParticipacion.estaActivo(jugador)) return;
+        if (requiereDecision || !participacion.estaActivo(jugador)) return;
         if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) return;
         partidas.avanzarTurno(codigo);
-    }
-    private int premioPorEvento(Optional<EventoCasillero> evento, int caida, int destino) {
-        if (evento.isEmpty()) return 0;
-        EventoCasillero efecto = evento.get();
-        if (efecto.getTipoEfecto() == com.tallerwebi.dominio.enums.TipoEfectoEvento.AVANZA_CASILLEROS) {
-            return movimiento.calcularPremioPorAvance(caida, efecto.getCantidadCasilleros());
-        }
-        return destino < caida ? ServicioMovimientoImpl.PREMIO_INICIO : 0;
     }
     private record Destino(boolean requiereDecision, AlquilerJugada alquiler) { }
 }
