@@ -19,7 +19,7 @@ implementan en servicios de dominio; no se agregó una capa de aplicación.
 | ServicioPropiedad | Compra, venta, transferencia, mejoras y cálculo/pago de alquiler. |
 | ServicioGestionQuiebra | Deudas pendientes y declaración de quiebra. |
 | ServicioEventoCasillero | Selección y aplicación de efectos. |
-| ReglasParticipacion | Participación y condición activa del jugador. |
+| ServicioParticipacion | Participación y condición activa del jugador. |
 | CatalogoTablero | Posiciones, grupos y valores iniciales del tablero. |
 | Infraestructura | Persistencia, temporizadores y ejecución de efectos después del commit. |
 
@@ -28,7 +28,8 @@ implementan en servicios de dominio; no se agregó una capa de aplicación.
 ```text
 ControladorPartida
   -> ServicioJugada (transacción)
-       -> ServicioPartida: cargar partida y consultar turno/dados
+       -> ServicioPartida: cargar partida y consultar turno
+       -> ServicioDado: generar tirada
        -> ServicioMovimiento -> ServicioEconomia
        -> ServicioEventoCasillero -> movimiento/economía/quiebra
        -> ServicioPropiedad / ServicioGestionQuiebra
@@ -50,7 +51,9 @@ eventos correspondientes. Así se elimina la segunda regla de quiebra que antes 
 ServicioPartida al llegar a -2000. Economía no persiste: el servicio que coordina la operación
 guarda los cambios dentro de su transacción.
 
-El premio por inicio se calcula en ServicioMovimiento, también para eventos. El DTO no
+El premio por inicio se calcula en ServicioMovimiento, también para eventos.
+ServicioEventoCasillero devuelve el premio acreditado en ResultadoEvento; ServicioJugada
+lo acumula sin recalcularlo. El precio de venta al banco se calcula en ServicioPropiedad. El DTO no
 acredita dinero ni decide el premio; sólo conserva el cálculo de duración de la animación.
 
 ServicioJugada revierte todos sus cambios cuando falla un paso. Los cambios de temporizador
@@ -59,6 +62,17 @@ Los observadores que cambian el estado del juego se ejecutan dentro de la transa
 la notificación de quiebra conserva su ejecución posterior a la confirmación.
 
 ## Criterios para próximas modificaciones
+
+Las acciones de compra, tirada y avance manual identifican al jugador usando el nombre
+autenticado de la sesión, que se copia al apodo al crear los participantes. No comparan
+el identificador de Usuario con el de Jugador. En la tirada se comprueba además que el
+identificador recibido corresponda a ese participante.
+
+Jugador conserva el dato persistido `tiroEnTurno`, sin reglas en la entidad.
+ServicioJugada comprueba y marca la tirada dentro de su transacción; ServicioPartida
+lo restablece al comenzar el siguiente turno y ServicioTurno al inicializar participantes.
+Este control impide repetir solicitudes sucesivas; la protección frente a operaciones
+simultáneas queda pendiente de la revisión de concurrencia.
 
 - Una regla compartida tiene un responsable único.
 - Usar validaciones y salidas tempranas para evitar anidamiento.
