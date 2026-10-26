@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     //se necesitan dos repositorios:
     //guarda la deuda
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia;
     private final RepositorioDeudaPendiente repositorioDeudaPendiente;
     //a comprobar que la partida existe y que los jugadores pertenecen a ella.
     private final RepositorioPartida repositorioPartida;
@@ -36,7 +37,9 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             RepositorioPartida repositorioPartida,
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
-            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra) {
+            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra,
+            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia) {
+        this.economia = economia;
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
         this.repositorioPartida = repositorioPartida;
@@ -102,12 +105,12 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return false;
         }
 
-        deudor.setDinero(deudor.getDinero() - monto);
+        economia.restarDinero(deudor, monto);
 
         Jugador acreedor = deuda.getJugadorAcreedor();
 
         if (acreedor != null) {
-            acreedor.setDinero(acreedor.getDinero() + monto);
+            economia.sumarDinero(acreedor, monto);
             repositorioPartida.actualizarJugador(acreedor);
         }
 
@@ -234,7 +237,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             throw new IllegalArgumentException("Alquiler inválido");
         }
 
-        if (pagador.getDinero() >= montoAlquiler) {
+        if (economia.tieneDineroSuficiente(pagador, montoAlquiler)) {
             servicioPropiedad.pagarAlquiler(propiedad, pagador, montoAlquiler);
             return ResultadoDeuda.RESUELTA;
         }
@@ -249,7 +252,6 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
-
 
     //busca el pago pendiente del jugador. Consulta las propiedades y si tiene alguna devuelve true y sino false.
     private Boolean tienePropiedadesVendibles(Jugador jugador) {

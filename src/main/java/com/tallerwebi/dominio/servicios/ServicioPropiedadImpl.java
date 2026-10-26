@@ -4,10 +4,12 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
-import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+import static com.tallerwebi.dominio.catalogo.CatalogoTablero.*;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import jakarta.transaction.Transactional;
@@ -15,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -23,33 +24,21 @@ import java.util.Set;
 @Transactional
 public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final RepositorioPropiedad repositorioPropiedad;
-    private final ServicioPartida servicioPartida;
+    private final RepositorioPartida repositorioPartida;
+    private final ServicioEconomia economia;
+    private final ServicioTurno turnos;
     private final ServicioCasillero servicioCasillero;
     private static final Integer NIVEL_MAXIMO_MEJORA = 5;
     private static final List<Integer> ALQUILERES_MEJORADOS = List.of(200, 300, 500, 1000, 1500);
     private static final List<Integer> ALQUILERES_POR_PARADAS = List.of(0, 20, 50, 100, 200);
-    private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
-    private static final Map<GrupoPropiedades, Set<Integer>> POSICIONES_LOCALIDADES = Map.of(
-            GrupoPropiedades.VILLA_LUZURIAGA, Set.of(1, 2),
-            GrupoPropiedades.SAN_JUSTO, Set.of(4, 5, 7),
-            GrupoPropiedades.ISIDRO_CASANOVA, Set.of(9, 11, 13),
-            GrupoPropiedades.RAFAEL_CASTILLO, Set.of(15, 16),
-            GrupoPropiedades.LAFERRERE, Set.of(18, 19),
-            GrupoPropiedades.CIUDAD_EVITA, Set.of(21, 22),
-            GrupoPropiedades.LA_TABLADA, Set.of(23, 25),
-            GrupoPropiedades.RAMOS_MEJIA, Set.of(26, 27, 29)
-    );
-
     @Autowired
-    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida,
-                                 ServicioCasillero servicioCasillero) {
+    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, RepositorioPartida repositorioPartida,
+                                 ServicioCasillero servicioCasillero, ServicioEconomia economia, ServicioTurno turnos) {
         this.repositorioPropiedad = repositorioPropiedad;
-        this.servicioPartida = servicioPartida;
+        this.repositorioPartida = repositorioPartida;
         this.servicioCasillero = servicioCasillero;
-    }
-
-    public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, ServicioPartida servicioPartida) {
-        this(repositorioPropiedad, servicioPartida, null);
+        this.economia = economia;
+        this.turnos = turnos;
     }
 
     @Override
@@ -68,17 +57,16 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     @Override
-    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public CompraPreparada prepararCompra(String codigoPartida, Integer posicion)
             throws EstadoPartidaInvalidoException {
-        // Conservo las transacciones de consulta/materializacion y de compra separadas.
-        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        // La consulta y la materialización participan de la transacción del servicio.
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return null;
-        Jugador jugador = servicioPartida.obtenerJugadorActual(codigoPartida);
+        Jugador jugador = turnos.obtenerJugadorActual(partida);
         if (jugador == null) {
             throw new EstadoPartidaInvalidoException("No hay un jugador activo en esta partida.");
         }
-        if (!jugador.estaEnPosicion(posicion)) {
+        if (!Objects.equals(jugador.getPosicionActual(), posicion)) {
             throw new EstadoPartidaInvalidoException(
                     "El jugador activo está en el casillero " + jugador.getPosicionActual()
                             + ", pero se intentó comprar el casillero " + posicion + ".");
@@ -90,7 +78,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public void comprarPropiedad(Long idPropiedad, Jugador jugador) {
         validarJugador(jugador);
-        Jugador comprador = jugador.getId() == null ? null : servicioPartida.obtenerJugadorPorId(jugador.getId());
+        Jugador comprador = jugador.getId() == null ? null : repositorioPartida.buscarJugadorPorId(jugador.getId());
         if (comprador == null) comprador = jugador;
         ejecutarCompra(idPropiedad, comprador);
         jugador.setDinero(comprador.getDinero());
@@ -108,25 +96,24 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throw new PropiedadNoDisponibleException("La propiedad no está disponible.");
         }
 
-        if (comprador.getDinero() < propiedadEncontrada.getPrecioCompra()) {
+        if (!economia.tieneDineroSuficiente(comprador, propiedadEncontrada.getPrecioCompra())) {
             throw new DineroInsuficienteException("El jugador no tiene dinero suficiente para realizar la operación.");
         }
 
-        servicioPartida.restarDinero(comprador, propiedadEncontrada.getPrecioCompra());
+        economia.restarDinero(comprador, propiedadEncontrada.getPrecioCompra());
         propiedadEncontrada.setPropietario(comprador);
         repositorioPropiedad.guardarPropiedad(propiedadEncontrada);
-        servicioPartida.actualizarJugador(comprador);
+        repositorioPartida.actualizarJugador(comprador);
     }
 
     @Override
-    @Transactional(Transactional.TxType.NOT_SUPPORTED)
     public CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
             throws EstadoPartidaInvalidoException {
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
-        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
-        if (!partida.permiteAdministrarPropiedades(jugador, idJugador)) {
+        Jugador jugador = repositorioPartida.buscarJugadorPorId(idJugador);
+        if (!ReglasParticipacion.permiteAdministrarPropiedades(partida, jugador, idJugador)) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
         return servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
@@ -136,10 +123,15 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
         Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
-        Integer precioVenta = propiedad.venderAlBanco(idJugador);
-        servicioPartida.sumarDinero(vendedor, precioVenta);
+        validarPropietarioDeVenta(propiedad, idJugador);
+        Integer precioCompra = propiedad.getPrecioCompra();
+        if (precioCompra == null || precioCompra < 0) throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
+        Integer precioVenta = precioCompra / 2;
+        propiedad.setPropietario(null);
+        propiedad.setNivelMejora(0);
+        economia.sumarDinero(vendedor, precioVenta);
         repositorioPropiedad.guardarPropiedad(propiedad);
-        servicioPartida.actualizarJugador(vendedor);
+        repositorioPartida.actualizarJugador(vendedor);
         return precioVenta;
     }
 
@@ -153,26 +145,28 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (Objects.equals(idVendedor, idComprador)) {
             throw new PropiedadInvalidaException("No podés comprarle una propiedad a vos mismo.");
         }
-        if (comprador.getDinero() < precio) {
+        if (!economia.tieneDineroSuficiente(comprador, precio)) {
             throw new DineroInsuficienteException("El comprador no tiene dinero suficiente para aceptar la oferta.");
         }
-        servicioPartida.restarDinero(comprador, precio);
-        servicioPartida.sumarDinero(vendedor, precio);
+        economia.restarDinero(comprador, precio);
+        economia.sumarDinero(vendedor, precio);
         propiedad.setPropietario(comprador);
-        servicioPartida.actualizarJugador(comprador);
-        servicioPartida.actualizarJugador(vendedor);
+        repositorioPartida.actualizarJugador(comprador);
+        repositorioPartida.actualizarJugador(vendedor);
         repositorioPropiedad.guardarPropiedad(propiedad);
     }
 
     private Jugador obtenerJugadorExistente(Long idJugador, String mensajeNoEncontrado) {
         if (idJugador == null) throw new JugadorInvalidoException("El jugador no puede ser nulo.");
-        Jugador vendedor = servicioPartida.obtenerJugadorPorId(idJugador);
+        Jugador vendedor = repositorioPartida.buscarJugadorPorId(idJugador);
         if (vendedor == null) throw new JugadorInvalidoException(mensajeNoEncontrado);
         return vendedor;
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
-        propiedad.validarPropietarioDeVenta(idJugador);
+        if (propiedad.getPropietario() == null || !Objects.equals(idJugador, propiedad.getPropietario().getId())) {
+            throw new PropiedadNoDisponibleException("Solo puedes vender una propiedad que te pertenece.");
+        }
     }
 
     @Override
@@ -199,13 +193,13 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (propietario == null || propietario.getId().equals(jugador.getId())) {
             return;
         }
-        Jugador pagador = servicioPartida.obtenerJugadorPorId(jugador.getId());
+        Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
         if (pagador == null) pagador = jugador;
-        servicioPartida.restarDinero(pagador, montoAlquiler);
+        economia.restarDinero(pagador, montoAlquiler);
         jugador.setDinero(pagador.getDinero());
-        servicioPartida.actualizarJugador(pagador);
-        servicioPartida.sumarDinero(propietario, montoAlquiler);
-        servicioPartida.actualizarJugador(propietario);
+        repositorioPartida.actualizarJugador(pagador);
+        economia.sumarDinero(propietario, montoAlquiler);
+        repositorioPartida.actualizarJugador(propietario);
     }
 //calcula el alquiler automáticamente
     @Override
@@ -233,7 +227,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Long idPartida = casillero.getPartidaId();
         if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
         Jugador propietario = propiedad.getPropietario();
-        if (propietario == null || servicioCasillero == null || idPartida == null) return 20;
+        if (propietario == null || idPartida == null) return 20;
         Long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroPropiedad.class::isInstance)
                 .map(CasilleroPropiedad.class::cast)
@@ -258,13 +252,13 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
         Integer nivelActual = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
         Integer costoMejora = ALQUILERES_MEJORADOS.get(nivelActual);
-        Jugador jugadorActualizado = jugador.getId() == null ? null : servicioPartida.obtenerJugadorPorId(jugador.getId());
+        Jugador jugadorActualizado = jugador.getId() == null ? null : repositorioPartida.buscarJugadorPorId(jugador.getId());
         if (jugadorActualizado == null) jugadorActualizado = jugador;
-        if (jugadorActualizado.getDinero() < costoMejora) {
+        if (!economia.tieneDineroSuficiente(jugadorActualizado, costoMejora)) {
             throw new DineroInsuficienteException("No tenés dinero suficiente para subir el alquiler.");
         }
-        servicioPartida.restarDinero(jugadorActualizado, costoMejora);
-        servicioPartida.actualizarJugador(jugadorActualizado);
+        economia.restarDinero(jugadorActualizado, costoMejora);
+        repositorioPartida.actualizarJugador(jugadorActualizado);
         jugador.setDinero(jugadorActualizado.getDinero());
         jugador.setEnBancarrota(jugadorActualizado.getEnBancarrota());
         propiedad.setNivelMejora(nivelActual + 1);
@@ -307,28 +301,24 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private Boolean esDuenioDeTodoElGrupo(Propiedad propiedad, Jugador jugador) {
-        Set<Integer> posiciones = POSICIONES_LOCALIDADES.get(propiedad.getGrupo());
-        if (posiciones == null) return false;
-        if (servicioCasillero == null) {
-            List<Propiedad> propiedadesGrupo = repositorioPropiedad.buscarPropiedadesPorGrupo(propiedad.getGrupo());
-            return !propiedadesGrupo.isEmpty() && propiedadesGrupo.stream().allMatch(propiedadGrupo ->
-                    propiedadGrupo.getPropietario() != null
-                            && Objects.equals(jugador.getId(), propiedadGrupo.getPropietario().getId()));
-        }
+        Set<Integer> posiciones = posicionesDelGrupo(propiedad.getGrupo());
+        if (posiciones.isEmpty()) return false;
         CasilleroPropiedad objetivo = buscarCasilleroDePropiedad(propiedad.getId());
         if (objetivo == null || objetivo.getPartidaId() == null
                 || !posiciones.contains(objetivo.getPosicion())) return false;
-        List<CasilleroPropiedad> propiedadesPartida = servicioCasillero.obtenerTodosLosCasilleros().stream()
+        Set<Integer> posicionesPropias = servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroPropiedad.class::isInstance)
                 .map(CasilleroPropiedad.class::cast)
                 .filter(casillero -> Objects.equals(objetivo.getPartidaId(), casillero.getPartidaId()))
-                .filter(casillero -> posiciones.contains(casillero.getPosicion()))
-                .toList();
-        return posiciones.stream().allMatch(posicion -> propiedadesPartida.stream()
-                .anyMatch(casillero -> posicion.equals(casillero.getPosicion())
-                        && casillero.getPropiedad() != null
-                        && casillero.getPropiedad().getPropietario() != null
-                        && Objects.equals(jugador.getId(), casillero.getPropiedad().getPropietario().getId())));
+                .filter(casillero -> perteneceAJugador(casillero.getPropiedad(), jugador))
+                .map(CasilleroPropiedad::getPosicion)
+                .collect(java.util.stream.Collectors.toSet());
+        return posicionesPropias.containsAll(posiciones);
+    }
+
+    private boolean perteneceAJugador(Propiedad propiedad, Jugador jugador) {
+        return propiedad != null && propiedad.getPropietario() != null
+                && Objects.equals(jugador.getId(), propiedad.getPropietario().getId());
     }
 
     private CasilleroPropiedad buscarCasilleroDePropiedad(Long idPropiedad) {
@@ -340,6 +330,5 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
                         && idPropiedad.equals(casillero.getPropiedad().getId()))
                 .findFirst().orElse(null);
     }
-
 
 }

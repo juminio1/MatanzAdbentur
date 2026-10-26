@@ -1,9 +1,12 @@
 package com.tallerwebi.dominio;
+import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
+import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,15 +20,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ServicioPropiedadTest {
+    private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
     private RepositorioPropiedad repositorioPropiedadMock;
-    private ServicioPartida servicioPartidaMock;
+    private RepositorioPartida servicioPartidaMock;
     private ServicioPropiedad servicioPropiedad;
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero casilleros = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero.class);
 
     @BeforeEach
     public void init() {
         repositorioPropiedadMock = mock(RepositorioPropiedad.class);
-        servicioPartidaMock = mock(ServicioPartida.class);
-        servicioPropiedad = new ServicioPropiedadImpl(repositorioPropiedadMock, servicioPartidaMock);
+        servicioPartidaMock = mock(RepositorioPartida.class);
+        servicioPropiedad = new ServicioPropiedadImpl(repositorioPropiedadMock,
+                servicioPartidaMock,
+                casilleros,
+                economia,
+                new ServicioTurnoImpl());
     }
 
     @Test
@@ -57,7 +66,7 @@ public class ServicioPropiedadTest {
             Integer monto = invocacion.getArgument(1);
             jugadorQuePaga.setDinero(jugadorQuePaga.getDinero() - monto);
             return null;
-        }).when(servicioPartidaMock).restarDinero(jugador, 500);
+        }).when(economia).restarDinero(jugador, 500);
         servicioPropiedad.comprarPropiedad(idPropiedad, jugador);
         assertFalse(servicioPropiedad.estaDisponible(propiedad));
         assertEquals(jugador, propiedad.getPropietario());
@@ -80,7 +89,7 @@ public class ServicioPropiedadTest {
             Integer monto = invocacion.getArgument(1);
             jugadorQuePaga.setDinero(jugadorQuePaga.getDinero() - monto);
             return null;
-        }).when(servicioPartidaMock).restarDinero(visitante, 100);
+        }).when(economia).restarDinero(visitante, 100);
 
         // Simula el ingreso del alquiler al propietario.
         org.mockito.Mockito.doAnswer(invocacion -> {
@@ -88,7 +97,7 @@ public class ServicioPropiedadTest {
             Integer monto = invocacion.getArgument(1);
             jugadorQueCobra.setDinero(jugadorQueCobra.getDinero() + monto);
             return null;
-        }).when(servicioPartidaMock).sumarDinero(propietario, 100);
+        }).when(economia).sumarDinero(propietario, 100);
         servicioPropiedad.pagarAlquiler(propiedad, visitante);
         assertEquals(900, visitante.getDinero());
         assertEquals(600, propietario.getDinero());
@@ -116,8 +125,14 @@ public class ServicioPropiedadTest {
         when(repositorioPropiedadMock.buscarPropiedadPorId(1L))
                 .thenReturn(propiedad1);
 
-        when(repositorioPropiedadMock.buscarPropiedadesPorGrupo(SAN_JUSTO))
-                .thenReturn(List.of(propiedad1, propiedad2));
+        Propiedad propiedad3 = new Propiedad(3L, "Shopping", 600, 120, jugador, SAN_JUSTO);
+        var c1 = new com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad(1L, 4, "Plaza", "", propiedad1);
+        var c2 = new com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad(2L, 5, "UNLaM", "", propiedad2);
+        var c3 = new com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad(3L, 7, "Shopping", "", propiedad3);
+        c1.setPartidaId(1L);
+        c2.setPartidaId(1L);
+        c3.setPartidaId(1L);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(c1, c2, c3));
 
         servicioPropiedad.mejorarPropiedad(1L, jugador);
 

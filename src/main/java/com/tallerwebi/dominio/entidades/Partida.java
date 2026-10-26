@@ -45,7 +45,6 @@ public class Partida {
     private Integer rondaActual;
     private Integer turnosFinalizadosEnRonda;
 
-
      public Partida() {
         this.jugadores = new ArrayList<>();
         this.estado = EstadoPartida.EN_ESPERA;
@@ -120,12 +119,6 @@ public class Partida {
 
     public List<Jugador> getJugadores() {
         return jugadores;
-    }
-
-    public Boolean permiteAdministrarPropiedades(Jugador jugador, Long idJugador) {
-        return jugador != null && !jugador.getEnBancarrota()
-                && idJugador != null && jugadores != null
-                && jugadores.stream().anyMatch(participante -> idJugador.equals(participante.getId()));
     }
 
     public void setJugadores(List<Jugador> jugadores) {

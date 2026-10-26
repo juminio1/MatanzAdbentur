@@ -1,4 +1,9 @@
 package com.tallerwebi.presentacion;
+import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
+import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
+import com.tallerwebi.dominio.servicios.ServicioJugadaImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -34,6 +39,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 class ControladorGestionQuiebraTest {
+    private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
 
     private ServicioPartida servicioPartidaMock;
     private ServicioGestionQuiebra servicioGestionQuiebraMock;
@@ -61,7 +68,12 @@ class ControladorGestionQuiebraTest {
     @Test
     void queSpringRegistreLasRutasDeDeudaYQuiebraUnaSolaVez() {
         ControladorPartida controladorPartida = new ControladorPartida(servicioPartidaMock,
-                notificadorWebSocketMock, mock(ServicioCasillero.class), servicioPropiedadMock);
+                notificadorWebSocketMock,
+                mock(ServicioCasillero.class),
+                servicioPropiedadMock,
+                new com.tallerwebi.presentacion.WebSocket.NotificadorPartida(notificadorWebSocketMock),
+                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
+                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), servicioPropiedadMock, null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controladorPartida, controladorGestionQuiebra).build();
         RequestMappingHandlerMapping rutas = mvc.getDispatcherServlet().getWebApplicationContext()
                 .getBean(RequestMappingHandlerMapping.class);

@@ -1,4 +1,11 @@
 package com.tallerwebi.integracion;
+import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
+import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
+import com.tallerwebi.dominio.servicios.ServicioJugadaImpl;
+import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
@@ -20,7 +27,7 @@ import com.tallerwebi.presentacion.ControladorPartida;
 import com.tallerwebi.presentacion.ControladorGestionQuiebra;
 import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -59,9 +66,12 @@ import static org.mockito.ArgumentMatchers.any;
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = EfectosPartidaIntegracionTest.Config.class)
 class EfectosPartidaIntegracionTest {
+    private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+
     @Configuration
     @Import({
-            ServicioPartidaImpl.class,
+            ServicioPartidaImpl.class, ServicioEconomiaImpl.class, ServicioMovimientoImpl.class, ServicioJugadaImpl.class,
             ServicioTurnoImpl.class,
             ServicioEventoCasilleroImpl.class,
             ServicioCasilleroImpl.class,
@@ -130,6 +140,7 @@ class EfectosPartidaIntegracionTest {
     @Autowired private SessionFactory sesiones;
     @Autowired private PlatformTransactionManager transacciones;
     @Autowired private ServicioPartida servicioPartida;
+    @Autowired private ServicioJugada servicioJugada;
     @Autowired private ServicioCasillero servicioCasillero;
     @Autowired private ServicioPropiedad servicioPropiedad;
     @Autowired private ServicioEventoCasillero servicioEvento;
@@ -148,14 +159,13 @@ class EfectosPartidaIntegracionTest {
     void preparar() {
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
-        controlador = new ControladorPartida(
-                servicioPartida,
+        controlador = new ControladorPartida(servicioPartida,
                 notificador,
                 servicioCasillero,
                 servicioPropiedad,
-                servicioEvento,
                 new NotificadorPartida(notificador),
-                servicioGestionQuiebra);
+                servicioGestionQuiebra,
+                servicioJugada);
         codigo = UUID.randomUUID().toString();
         transaccion.executeWithoutResult(estado -> {
             sesiones.getCurrentSession().createMutationQuery("DELETE FROM EventoCasillero").executeUpdate();
@@ -176,7 +186,45 @@ class EfectosPartidaIntegracionTest {
             idPropietario = propietario.getId();
             sesiones.getCurrentSession().persist(new CasilleroEvento(null, 3, "Eventos", "Eventos", null, null));
         });
-        when(servicioDado.tirarDados()).thenReturn(new ResultadoTiradaDTO(1, 1));
+        when(servicioDado.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+    }
+
+    @Test
+    void unaJugadaFallidaRevierteMovimientoYPremioSinNotificar() {
+        transaccion.executeWithoutResult(estado ->
+                sesiones.getCurrentSession().find(Jugador.class, idJugador).setPosicionActual(28));
+        when(servicioDado.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
+        reset(temporizador, notificador);
+
+        assertThrows(com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException.class,
+                () -> controlador.tirarDados(codigo, idJugador));
+
+        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(2000, jugador.getDinero());
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verifyNoInteractions(notificador, temporizador);
+    }
+
+    @Test
+    void rollbackDeJugadaNoPublicaMovimientoNiProgramaElSiguienteTurno() {
+        when(servicioDado.tirarDados()).thenReturn(new ResultadoTirada(3, 5));
+        reset(temporizador, notificador);
+        transaccion.executeWithoutResult(estado -> {
+            try {
+                controlador.tirarDados(codigo, idJugador);
+            } catch (Exception ex) {
+                throw new IllegalStateException(ex);
+            }
+            verifyNoInteractions(notificador);
+            verify(temporizador, never()).programarTemporizador(any(), any(), any());
+            estado.setRollbackOnly();
+        });
+        assertEquals(0, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verifyNoInteractions(notificador);
+        verify(temporizador, never()).programarTemporizador(any(), any(), any());
+        verify(temporizador, never()).cancelarTemporizador(any());
     }
 
     private Jugador crearJugador(String apodo, Integer orden) {
@@ -493,7 +541,6 @@ class EfectosPartidaIntegracionTest {
                         "partidaFinalizada", true, "idGanador", idPropietario));
     }
 
-
     @Test
     void queLaPartidaContinueCuandoQuiebraUnJugadorYQuedanDosActivos() throws Exception {
         prepararCantidadJugadores(3);
@@ -564,7 +611,6 @@ class EfectosPartidaIntegracionTest {
         assertEquals(true, controlador.obtenerInfoPropiedad(codigo, 2).getBody().get("disponible"));
     }
 
-
     @Test
     void queAlVenderUnaPropiedadSePagueLaDeudaPendiente() throws Exception {
         cargarEvento(TipoEfectoEvento.RESTA, 200, null, null);
@@ -605,7 +651,6 @@ class EfectosPartidaIntegracionTest {
         assertNull(servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigo, idJugador));
     }
-
 
     @Test
     void queSePuedanVenderVariasPropiedadesParaPagarUnaDeuda() throws Exception {

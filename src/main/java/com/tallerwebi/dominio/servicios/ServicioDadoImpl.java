@@ -1,7 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import org.springframework.stereotype.Service;
 import java.util.Random;
 
@@ -11,7 +11,7 @@ public class ServicioDadoImpl implements ServicioDado {
     private final Random random = new Random();
 
     @Override
-    public ResultadoTiradaDTO tirarDados() {
-        return new ResultadoTiradaDTO(random.nextInt(6) + 1, random.nextInt(6) + 1);
+    public ResultadoTirada tirarDados() {
+        return new ResultadoTirada(random.nextInt(6) + 1, random.nextInt(6) + 1);
     }
 }

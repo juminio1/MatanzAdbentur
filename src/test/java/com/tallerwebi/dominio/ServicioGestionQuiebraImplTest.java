@@ -36,13 +36,12 @@ class ServicioGestionQuiebraImplTest {
         servicioPropiedad = mock(ServicioPropiedad.class);
         publicadorQuiebra = mock(PublicadorEventos.class);
 
-        servicio = new ServicioGestionQuiebraImpl(
-                repositorioDeuda,
+        servicio = new ServicioGestionQuiebraImpl(repositorioDeuda,
                 repositorioPartida,
                 servicioPropiedad,
                 repositorioPropiedad,
-                publicadorQuiebra
-        );
+                publicadorQuiebra,
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl());
     }
 
     @Test
@@ -164,9 +163,6 @@ class ServicioGestionQuiebraImplTest {
         verify(repositorioDeuda).eliminar(deuda);
         verify(publicadorQuiebra).notificar(any(EventoJugadorQuebrado.class));
     }
-
-
-
 
     @Test
     void queSePuedaDeclararQuiebraConDeudaYPropiedadesSinTenerElTurno() {

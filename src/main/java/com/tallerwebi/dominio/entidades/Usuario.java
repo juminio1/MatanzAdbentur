@@ -66,10 +66,6 @@ public class Usuario {
         this.activo = activo;
     }
 
-    public void activar() {
-        activo = true;
-    }
-
     public String getUsername() {
         return username;
     }

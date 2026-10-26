@@ -1,4 +1,10 @@
 package com.tallerwebi.presentacion;
+import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
+import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
+import com.tallerwebi.dominio.servicios.ServicioJugadaImpl;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
@@ -15,7 +21,7 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import java.util.List;
@@ -41,6 +47,8 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 class ControladorPartidaPropiedadesTest {
+    private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
 
     private static final String CODIGO = "PARTIDA123";
     private static final Long ID_PARTIDA = 10L;
@@ -62,17 +70,20 @@ class ControladorPartidaPropiedadesTest {
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
-        controlador = new ControladorPartida(
-                servicioPartida,
+        controlador = new ControladorPartida(servicioPartida,
                 notificador,
                 servicioCasillero,
                 servicioPropiedad,
-                null,
                 notificadorPartidaMock,
-                servicioGestionQuiebraMock
-        );
+                servicioGestionQuiebraMock,
+                new ServicioJugadaImpl(servicioPartida, servicioCasillero, servicioPropiedad, null, servicioGestionQuiebraMock, movimiento));
+        RepositorioPartida consultas = mock(RepositorioPartida.class);
+        when(consultas.buscarPartidaActivaPorCodigoUnico(any())).thenAnswer(i -> servicioPartida.obtenerPartida(i.getArgument(0)));
+        when(consultas.buscarJugadorPorId(any())).thenAnswer(i -> servicioPartida.obtenerJugadorPorId(i.getArgument(0)));
+        var turnos = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioTurno.class);
+        when(turnos.obtenerJugadorActual(any())).thenAnswer(i -> servicioPartida.obtenerJugadorActual(((Partida)i.getArgument(0)).getCodigoUnico()));
         ServicioPropiedad preparador = new ServicioPropiedadImpl(
-                mock(RepositorioPropiedad.class), servicioPartida, servicioCasillero);
+                mock(RepositorioPropiedad.class), consultas, servicioCasillero, economia, turnos);
         doAnswer(invocacion -> preparador.prepararCompra(
                 invocacion.getArgument(0), invocacion.getArgument(1)))
                 .when(servicioPropiedad).prepararCompra(any(), any());
@@ -414,12 +425,12 @@ class ControladorPartidaPropiedadesTest {
         partida.setJugadores(List.of(jugador));
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(jugador);
-        when(servicioPartida.tirarDados()).thenReturn(new ResultadoTiradaDTO(2, 2));
+        when(servicioPartida.tirarDados()).thenReturn(new ResultadoTirada(2, 2));
         when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
         doAnswer(invocacion -> {
             jugador.setPosicionActual(4);
             return null;
-        }).when(servicioPartida).moverJugador(jugador, 4, 30);
+        }).when(movimiento).moverJugador(jugador, 4, 30);
         when(servicioPropiedad.estaDisponible(any(Propiedad.class))).thenReturn(true);
 
         RespuestaMovimientoDTO respuesta = controlador.tirarDados(CODIGO, jugador.getId());

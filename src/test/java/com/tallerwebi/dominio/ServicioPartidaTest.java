@@ -1,4 +1,6 @@
 package com.tallerwebi.dominio;
+import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,16 +30,14 @@ import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioInicioPartidaImpl;
-import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
-import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
 import java.util.Arrays;
 import java.util.List;
 
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
@@ -54,7 +54,6 @@ public class ServicioPartidaTest {
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
-
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -567,7 +566,6 @@ public class ServicioPartidaTest {
             repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
         ).thenReturn(null);
 
-
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         verify(repositorioPartidaMock).guardarPartida(any(Partida.class));
@@ -700,62 +698,6 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void queSePuedaSumarDineroAlJugador() {
-        Jugador jugador = new Jugador();
-        jugador.setDinero(1000);
-
-        servicioPartida.sumarDinero(jugador, 500);
-
-        assertEquals(1500, jugador.getDinero());
-    }
-
-    @Test
-    public void queSePuedaRestarDineroAlJugador() {
-        Jugador jugador = new Jugador();
-        jugador.setDinero(1000);
-
-        servicioPartida.restarDinero(jugador, 300);
-
-        assertEquals(700, jugador.getDinero());
-    }
-
-    @Test
-    public void queElJugadorActualiceSuPosicionAlMoverseUnEspacioValidoDentroDelTablero() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(5);
-        int avanceExacto = 7;
-        int totalCasilleros = 40;
-
-        servicioPartida.moverJugador(jugador, avanceExacto, totalCasilleros);
-
-        assertEquals(12, jugador.getPosicionActual());
-    }
-
-    @Test
-    public void queSiLaFichaSuperaElUltimoCasilleroDelTableroContinueDesdeElComienzo() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(28);
-        int avance = 5;
-        int totalCasilleros = 30;
-
-        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
-
-        assertEquals(3, jugador.getPosicionActual());
-    }
-
-    @Test
-    public void queAlCaerExactamenteEnElUltimoCasilleroElJugadorVuelvaALaPosicionCero() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(25);
-        int avance = 5;
-        int totalCasilleros = 30;
-
-        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
-
-        assertEquals(0, jugador.getPosicionActual());
-    }
-
-    @Test
     public void dadoQueHayJugadoresCuandoSeObtieneLaPartidaPorCodigoDaComoResultadoSusPosiciones() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
@@ -780,10 +722,10 @@ public class ServicioPartidaTest {
 
     @Test
     public void queElServicioPartidaDevuelvaLaTiradaDeDadosCorrectamente() {
-        ResultadoTiradaDTO resultadoMock = new ResultadoTiradaDTO(4, 3);
+        ResultadoTirada resultadoMock = new ResultadoTirada(4, 3);
         when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
 
-        ResultadoTiradaDTO resultado = servicioPartida.tirarDados();
+        ResultadoTirada resultado = servicioPartida.tirarDados();
 
         assertEquals(4, resultado.getDado1());
         assertEquals(3, resultado.getDado2());
@@ -822,7 +764,6 @@ public class ServicioPartidaTest {
 
     verify(repositorioPartidaMock, never()).guardarPartida(any());
 }
-
 
 @Test
 public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDaComoResultadoLasFichasConvertidas() {
@@ -990,6 +931,5 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         verify(repositorioPartidaMock, never()).actualizarJugador(any());
         verify(publicadorAbandonoMock, never()).notificar(any());
     }
-
 
 }

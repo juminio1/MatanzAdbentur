@@ -112,12 +112,6 @@ public class RespuestaMovimientoDTO {
         this.dineroPorInicio = dineroPorInicio;
     }
 
-    public void informarDineroPorInicio(Boolean pasoPorInicio) {
-        Integer dineroPorDados = pasoPorInicio ? 200 : 0;
-        Integer dineroPorEvento = nuevaPosicion < posicionCaidaEvento ? 200 : 0;
-        this.dineroPorInicio = dineroPorDados + dineroPorEvento;
-    }
-
     public List<SaldoJugadorDTO> getSaldos() {
         return saldos;
     }

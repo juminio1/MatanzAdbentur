@@ -9,7 +9,8 @@ import com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.TipoEfectoEventoNoSoportadoException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.infraestructura.RepositorioEventoCasillero;
 
@@ -28,12 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
 
-    private static final Integer TOTAL_CASILLEROS = 30;
-    private static final Integer DINERO_POR_PASAR_POR_INICIO = 200;
-
     private final RepositorioEventoCasillero repositorioEventoCasillero;
     private final ServicioCasillero servicioCasillero;
-    private final ServicioPartida servicioPartida;
+    private final ServicioEconomia economia;
+    private final ServicioMovimiento movimiento;
     private final ServicioGestionQuiebra servicioGestionQuiebra;
 
     private final Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> aplicadores;
@@ -42,12 +41,13 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     public ServicioEventoCasilleroImpl(
             RepositorioEventoCasillero repositorioEventoCasillero,
             ServicioCasillero servicioCasillero,
-            ServicioPartida servicioPartida,
+            ServicioEconomia economia, ServicioMovimiento movimiento,
             ServicioGestionQuiebra servicioGestionQuiebra) {
 
         this.repositorioEventoCasillero = repositorioEventoCasillero;
         this.servicioCasillero = servicioCasillero;
-        this.servicioPartida = servicioPartida;
+        this.economia = economia;
+        this.movimiento = movimiento;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
         this.aplicadores = crearAplicadores();
     }
@@ -104,8 +104,8 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
             throw new IllegalStateException("El jugador ya tiene un pago pendiente");
         }
 
-        if (jugador.getDinero() != null && jugador.getDinero() >= monto) {
-            servicioPartida.restarDinero(jugador, monto);
+        if (economia.tieneDineroSuficiente(jugador, monto)) {
+            economia.restarDinero(jugador, monto);
             return;
         }
 
@@ -133,7 +133,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
                 new EnumMap<>(TipoEfectoEvento.class);
 
         resultado.put(TipoEfectoEvento.SUMA,
-                (evento, jugador) -> servicioPartida.sumarDinero(jugador, evento.getMonto()));
+                (evento, jugador) -> economia.sumarDinero(jugador, evento.getMonto()));
 
         resultado.put(TipoEfectoEvento.PIERDE_TURNO,
                 (evento, jugador) -> jugador.setPierdeTurno(true));
@@ -146,33 +146,9 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     private void avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
-        Integer posicionAnterior = jugador.getPosicionActual();
-
-        servicioPartida.moverJugador(
-                jugador, evento.getCantidadCasilleros(), TOTAL_CASILLEROS);
-
-        sumarDineroSiPasoPorInicio(
-                jugador, posicionAnterior, jugador.getPosicionActual());
+        movimiento.avanzar(jugador, evento.getCantidadCasilleros());
     }
-
     private void avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
-        Integer posicionAnterior = jugador.getPosicionActual();
-        Integer posicionDestino = evento.getPosicionDestino();
-
-        jugador.setPosicionActual(posicionDestino);
-
-        sumarDineroSiPasoPorInicio(
-                jugador, posicionAnterior, posicionDestino);
-    }
-
-    private void sumarDineroSiPasoPorInicio(
-            Jugador jugador,
-            Integer posicionAnterior,
-            Integer posicionDestino) {
-
-        if (posicionDestino < posicionAnterior) {
-            servicioPartida.sumarDinero(
-                    jugador, DINERO_POR_PASAR_POR_INICIO);
-        }
+        movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
     }
 }
