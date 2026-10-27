@@ -23,7 +23,7 @@ public class ObservadorVictoriaTest {
     @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
-        observador = new ObservadorVictoria(repositorioPartidaMock);
+        observador = new ObservadorVictoria(repositorioPartidaMock, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test

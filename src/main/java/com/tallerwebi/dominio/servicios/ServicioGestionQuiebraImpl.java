@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -21,8 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional//permite que la operación se realice dentro de una transacción de base de datos.
 public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
+    private final ServicioParticipacion participacion;
+
     //se necesitan dos repositorios:
     //guarda la deuda
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia;
     private final RepositorioDeudaPendiente repositorioDeudaPendiente;
     //a comprobar que la partida existe y que los jugadores pertenecen a ella.
     private final RepositorioPartida repositorioPartida;
@@ -36,7 +41,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             RepositorioPartida repositorioPartida,
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
-            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra) {
+            PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra,
+            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia, ServicioParticipacion participacion) {
+        this.participacion = participacion;
+        this.economia = economia;
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
         this.repositorioPartida = repositorioPartida;
@@ -98,16 +106,16 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         if (deudor.getDinero() == null
                 || monto == null
                 || monto <= 0
-                || deudor.getDinero() < monto) {
+                || !economia.tieneDineroSuficiente(deudor, monto)) {
             return false;
         }
 
-        deudor.setDinero(deudor.getDinero() - monto);
+        economia.restarDinero(deudor, monto);
 
         Jugador acreedor = deuda.getJugadorAcreedor();
 
         if (acreedor != null) {
-            acreedor.setDinero(acreedor.getDinero() + monto);
+            economia.sumarDinero(acreedor, monto);
             repositorioPartida.actualizarJugador(acreedor);
         }
 
@@ -178,7 +186,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         }
         Jugador jugador = deuda.getJugadorDeudor();
 
-        if (jugador.getAbandono() || jugador.getEnBancarrota()) {
+        if (!participacion.estaActivo(jugador)) {
             throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
@@ -196,8 +204,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
-        if (idJugador == null || partida.getJugadores() == null
-                || partida.getJugadores().stream().noneMatch(j -> idJugador.equals(j.getId()))) {
+        if (!participacion.pertenece(partida, idJugador)) {
             throw new DeclaracionQuiebraInvalidaException("El jugador no pertenece a esta partida.");
         }
         return partida;
@@ -234,7 +241,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             throw new IllegalArgumentException("Alquiler inválido");
         }
 
-        if (pagador.getDinero() >= montoAlquiler) {
+        if (economia.tieneDineroSuficiente(pagador, montoAlquiler)) {
             servicioPropiedad.pagarAlquiler(propiedad, pagador, montoAlquiler);
             return ResultadoDeuda.RESUELTA;
         }
@@ -249,7 +256,6 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
-
 
     //busca el pago pendiente del jugador. Consulta las propiedades y si tiene alguna devuelve true y sino false.
     private Boolean tienePropiedadesVendibles(Jugador jugador) {

@@ -21,14 +21,18 @@ public final class ResolutorJugadorSesion {
         return id != null ? id : (Long) request.getSession().getAttribute("IDUSUARIO");
     }
 
+    /** Usa el nombre autenticado en sesión; los identificadores de usuario y jugador no son equivalentes. */
+    public static Long resolverAutenticado(Partida partida, HttpServletRequest request) {
+        String nombre = (String) request.getSession().getAttribute("NOMBRE");
+        if (nombre == null || partida == null || partida.getJugadores() == null) return null;
+        return partida.getJugadores().stream()
+                .filter(jugador -> nombre.equalsIgnoreCase(jugador.getApodo()))
+                .map(Jugador::getId).findFirst().orElse(null);
+    }
+
     public static Long resolver(Partida partida, HttpServletRequest request) {
         return resolver(partida, resolverUsuarioSesionId(request),
                 (String) request.getSession().getAttribute("NOMBRE"));
-    }
-
-    public static Boolean pertenece(Partida partida, Long idJugador) {
-        return idJugador != null && partida.getJugadores() != null
-                && partida.getJugadores().stream().anyMatch(jugador -> idJugador.equals(jugador.getId()));
     }
 
     public static Long resolver(Partida partida, Long usuarioSesionId, String nombreSesion) {

@@ -1,5 +1,7 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 /** Atiende las consultas de deuda y la declaración voluntaria de quiebra. */
 @Controller
 public class ControladorGestionQuiebra {
+    private final ServicioParticipacion participacion;
+
 
     private static final String CLAVE_ERROR = "error";
     private static final String SESION_NOMBRE = "NOMBRE";
@@ -32,7 +36,8 @@ public class ControladorGestionQuiebra {
     private final ServicioGestionQuiebra servicioGestionQuiebra;
 
     public ControladorGestionQuiebra(ServicioPartida servicioPartida,
-            ServicioGestionQuiebra servicioGestionQuiebra) {
+            ServicioGestionQuiebra servicioGestionQuiebra, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.servicioPartida = servicioPartida;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
     }
@@ -53,7 +58,7 @@ public class ControladorGestionQuiebra {
                     .body(Map.of(CLAVE_ERROR, "La partida no existe o ya finalizó."));
         }
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).cacheControl(CacheControl.noStore())
                     .body(Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO));
         }
@@ -89,7 +94,7 @@ public class ControladorGestionQuiebra {
                     Map.of(CLAVE_ERROR, "La partida no existe o ya finalizó."));
         }
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO));
         }

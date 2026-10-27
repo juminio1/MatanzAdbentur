@@ -1,7 +1,7 @@
 package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,13 +23,13 @@ public class ServicioDadoTest {
     @Test
     public void alTirarLosDadosDebeRetornarElResultadoEsperadoMockeado() {
         // 1. PREPARACIÓN (Given / Arrange)
-        ResultadoTiradaDTO resultadoEsperado = new ResultadoTiradaDTO(4, 5);
+        ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5);
 
         // Entrenamos el mock para que cuando se ejecute tirarDados(), devuelva nuestro objeto controlado
         when(servicioDadoMock.tirarDados()).thenReturn(resultadoEsperado);
 
         // 2. EJECUCIÓN (When / Act)
-        ResultadoTiradaDTO resultadoObtenido = servicioDadoMock.tirarDados();
+        ResultadoTirada resultadoObtenido = servicioDadoMock.tirarDados();
 
         // 3. VERIFICACIÓN (Then / Assert)
         assertNotNull(resultadoObtenido);

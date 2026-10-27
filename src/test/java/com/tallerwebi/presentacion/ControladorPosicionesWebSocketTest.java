@@ -1,7 +1,7 @@
 package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
-import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -24,14 +24,14 @@ public class ControladorPosicionesWebSocketTest {
 
         String codigoPartida = "ABC123";
 
-        PosicionFichaDTO posicion = new PosicionFichaDTO(
+        PosicionFicha posicion = new PosicionFicha(
                 59L,
                 "Jugador1",
                 "ROJO",
                 5
         );
 
-        List<PosicionFichaDTO> posiciones = List.of(posicion);
+        List<PosicionFicha> posiciones = List.of(posicion);
 
         when(servicioPartida.obtenerPosicionesFichas(codigoPartida))
                 .thenReturn(posiciones);
