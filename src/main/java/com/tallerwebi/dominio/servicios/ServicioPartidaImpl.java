@@ -21,11 +21,14 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
 
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Coordino las operaciones de la partida. */
+/**
+ * Coordino las operaciones de la partida.
+ */
 @Service("servicioPartida")
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
@@ -44,13 +47,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Autowired
     public ServicioPartidaImpl(
-        RepositorioPartida repositorioPartida,
-        ServicioInicioPartida servicioInicioPartida,
-        ServicioDado servicioDado,
-        GestorTemporizadorPartida gestorTemporizador,
-        ServicioTurno servicioTurno,
-        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
-        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
+            RepositorioPartida repositorioPartida,
+            ServicioInicioPartida servicioInicioPartida,
+            ServicioDado servicioDado,
+            GestorTemporizadorPartida gestorTemporizador,
+            ServicioTurno servicioTurno,
+            @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
@@ -70,6 +73,17 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
         jugador.setPosicionActual((jugador.getPosicionActual() + cantidadAvance) % totalCasilleros);
+    }
+
+    //verifica y responde si el jugador puede pagar.
+    @Override
+    public boolean tieneDineroSuficiente(Jugador jugador, Integer monto) {
+        if (jugador == null || monto == null || monto < 0) {
+            throw new IllegalArgumentException("Datos inválidos");
+        }
+
+        return jugador.getDinero() != null
+                && jugador.getDinero() >= monto;
     }
 
     @Override
@@ -139,9 +153,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
         Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
-            codigoUnico,
-            DURACION_TURNO_SEGUNDOS,
-            () -> avanzarTurno(codigoUnico)
+                codigoUnico,
+                DURACION_TURNO_SEGUNDOS,
+                () -> avanzarTurno(codigoUnico)
         );
         if (iniciado) notificarTurnoActual(partida, false);
     }
@@ -184,9 +198,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
-        CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
-        SalaNoEncontradaException, FichaNoDisponibleException {
+            throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
+            CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
+            SalaNoEncontradaException, FichaNoDisponibleException {
         Partida partida = servicioInicioPartida.iniciarPartida(codigo, idUsuario);
         gestorTemporizador.cancelarTemporizador(codigo);
         notificarTurnoActual(partida, false);
@@ -224,7 +238,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private PosicionFichaDTO mapearAJugadorPosicionDto(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
         Integer posicion =
-            jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
+                jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
         return new PosicionFichaDTO(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
     }
 
@@ -239,20 +253,20 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
         if (iniciarTemporizador && partida.getCodigoUnico() != null) {
             gestorTemporizador.programarTemporizador(
-                partida.getCodigoUnico(),
-                segundosTotales,
-                () -> avanzarTurno(partida.getCodigoUnico())
+                    partida.getCodigoUnico(),
+                    segundosTotales,
+                    () -> avanzarTurno(partida.getCodigoUnico())
             );
         }
         if (publicadorTurno != null) {
             EventoTurnoCambiado evento = new EventoTurnoCambiado(
-                partida.getCodigoUnico(),
-                jugadorActual.getId(),
-                jugadorActual.getApodo(),
-                jugadorActual.getOrden(),
-                obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
-                partida.getRondaActual(),
-                partida.getTurnosFinalizadosEnRonda()
+                    partida.getCodigoUnico(),
+                    jugadorActual.getId(),
+                    jugadorActual.getApodo(),
+                    jugadorActual.getOrden(),
+                    obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
+                    partida.getRondaActual(),
+                    partida.getTurnosFinalizadosEnRonda()
             );
             publicadorTurno.notificar(evento);
         }

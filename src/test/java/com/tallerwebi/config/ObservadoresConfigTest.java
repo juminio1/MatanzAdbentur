@@ -7,6 +7,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
+import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.observadores.ObservadorVictoria;
+import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
@@ -18,8 +23,39 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ObservadoresConfigTest {
+
+    @Test
+    void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() {
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        ObservadorVictoria victoria = mock(ObservadorVictoria.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(NotificadorPartida.class, () -> notificador);
+            contexto.registerBean(ObservadorVictoria.class, () -> victoria);
+            contexto.register(ObservadoresConfig.class, ObservadorVictoriaQuiebra.class, PublicadoresInyectados.class);
+            contexto.refresh();
+            Partida partida = new Partida();
+            Jugador jugador = new Jugador();
+            jugador.setId(1L);
+            TransactionSynchronizationManager.initSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(true);
+            try {
+                contexto.getBean(PublicadoresInyectados.class).quiebra
+                        .notificar(new EventoJugadorQuebrado(partida, jugador));
+                verify(victoria).verificarVictoria(partida);
+                verifyNoInteractions(notificador);
+                TransactionSynchronizationManager.getSynchronizations()
+                        .forEach(TransactionSynchronization::afterCommit);
+                verify(notificador).notificarQuiebraPorWebSocket(partida, 1L);
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+                TransactionSynchronizationManager.setActualTransactionActive(false);
+            }
+        }
+    }
 
     @Test
     void springConectaCadaPublicadorConSuObservadorYConservaLosMensajes() {
@@ -56,6 +92,8 @@ class ObservadoresConfigTest {
     }
 
     static class PublicadoresInyectados {
+        @Autowired
+        private PublicadorEventos<EventoJugadorQuebrado> quiebra;
         @Autowired
         private PublicadorEventos<EventoSalaActualizada> sala;
 

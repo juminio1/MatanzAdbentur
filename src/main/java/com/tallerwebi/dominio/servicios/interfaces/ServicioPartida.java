@@ -18,6 +18,7 @@ public interface ServicioPartida {
     void iniciarPartida(String codigo, Long idUsuario)
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException;
     void restarDinero(Jugador jugador, Integer monto);
+    boolean tieneDineroSuficiente(Jugador jugador, Integer monto);
     void sumarDinero(Jugador jugador, Integer monto);
     void actualizarJugador(Jugador jugador);
     void incrementarRondas(Partida partida);

@@ -3,6 +3,7 @@ package com.tallerwebi.presentacion.WebSocket;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
@@ -171,6 +172,41 @@ public class NotificadorPartidaTest {
         jugador.setId(id);
         jugador.setApodo(apodo);
         return jugador;
+    }
+
+    @Test
+    void quiebraFinalizadaNotificaAlGanadorSinConsiderarJugadoresInactivos() {
+        Jugador quebrado = jugador(1L, "Teo");
+        quebrado.setEnBancarrota(true);
+        Jugador abandonado = jugador(3L, "Ana");
+        abandonado.setAbandono(true);
+        Jugador otroQuebrado = jugador(4L, "Luna");
+        otroQuebrado.setEnBancarrota(true);
+        Partida partida = new Partida();
+        partida.setCodigoUnico("ABC123");
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        partida.setJugadores(List.of(quebrado, abandonado, otroQuebrado, jugador(2L, "Pepe")));
+
+        notificadorPartida.notificarQuiebraPorWebSocket(partida, 1L);
+
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", 1L, "apodo", "Teo",
+                        "partidaFinalizada", true, "idGanador", 2L));
+    }
+
+    @Test
+    void quiebraEnPartidaEnCursoNoAnunciaGanador() {
+        Jugador quebrado = jugador(1L, "Teo");
+        quebrado.setEnBancarrota(true);
+        Partida partida = new Partida();
+        partida.setCodigoUnico("ABC123");
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setJugadores(List.of(quebrado, jugador(2L, "Pepe"), jugador(3L, "Ana")));
+
+        notificadorPartida.notificarQuiebraPorWebSocket(partida, 1L);
+
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/abandono",
+                Map.of("motivo", "QUIEBRA", "idJugador", 1L, "apodo", "Teo", "partidaFinalizada", false));
     }
 
     private Jugador jugadorConSaldo(Long id, Integer dinero) {

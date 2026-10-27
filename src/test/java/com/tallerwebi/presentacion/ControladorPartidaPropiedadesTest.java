@@ -17,6 +17,7 @@ import com.tallerwebi.infraestructura.RepositorioCasillero;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,7 @@ class ControladorPartidaPropiedadesTest {
     private ServicioPropiedad servicioPropiedad;
     private ControladorPartida controlador;
     private NotificadorPartida notificadorPartidaMock;
+    private ServicioGestionQuiebra servicioGestionQuiebraMock;
 
     @BeforeEach
     void inicializar() throws EstadoPartidaInvalidoException {
@@ -59,7 +61,16 @@ class ControladorPartidaPropiedadesTest {
         servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
-        controlador = new ControladorPartida(servicioPartida, notificador, servicioCasillero, servicioPropiedad, notificadorPartidaMock);
+        servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
+        controlador = new ControladorPartida(
+                servicioPartida,
+                notificador,
+                servicioCasillero,
+                servicioPropiedad,
+                null,
+                notificadorPartidaMock,
+                servicioGestionQuiebraMock
+        );
         ServicioPropiedad preparador = new ServicioPropiedadImpl(
                 mock(RepositorioPropiedad.class), servicioPartida, servicioCasillero);
         doAnswer(invocacion -> preparador.prepararCompra(

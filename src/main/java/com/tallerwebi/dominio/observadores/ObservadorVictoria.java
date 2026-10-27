@@ -1,3 +1,4 @@
+
 package com.tallerwebi.dominio.observadores;
 
 import com.tallerwebi.dominio.entidades.Partida;
@@ -9,22 +10,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class ObservadorVictoria implements Observador<EventoJugadorAbandonado> {
 
-    private static final long CANTIDAD_JUGADORES_VICTORIA = 1L;
+    private static final Long CANTIDAD_JUGADORES_VICTORIA = 1L;
+
     private final RepositorioPartida repositorioPartida;
 
     public ObservadorVictoria(RepositorioPartida repositorioPartida) {
         this.repositorioPartida = repositorioPartida;
     }
 
+    //Se ejecuta cuando el jugador abandona. Y llama a verificarVictoria
     @Override
     public void actualizar(EventoJugadorAbandonado evento) {
-        Partida partida = evento.partida();
+        verificarVictoria(evento.partida());
+    }
 
-        long jugadoresActivos = partida.getJugadores().stream()
-                .filter(jugador -> !jugador.getAbandono() && !jugador.getEnBancarrota())
+    //cuenta cuantos jugadores siguen activos, excluyendo a los que abadonaron o entraron en quiebra.
+    //si queda uno solo finaliza la partida.
+    public void verificarVictoria(Partida partida) {
+
+        Long jugadoresActivos = partida.getJugadores().stream()
+                .filter(jugador -> !Boolean.TRUE.equals(jugador.getAbandono()))
+                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()))
                 .count();
 
-        if (jugadoresActivos == CANTIDAD_JUGADORES_VICTORIA) {
+        if (jugadoresActivos.equals(CANTIDAD_JUGADORES_VICTORIA)) {
             partida.setEstado(EstadoPartida.FINALIZADA);
             repositorioPartida.guardarPartida(partida);
         }
