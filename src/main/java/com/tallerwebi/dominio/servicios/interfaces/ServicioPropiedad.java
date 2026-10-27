@@ -12,6 +12,7 @@ public interface ServicioPropiedad {
             throws EstadoPartidaInvalidoException;
     void comprarPropiedad(Long idPropiedad, Jugador jugador);
     void comprarPropiedadParaJugador(Long idPropiedad, Long idJugador);
+    Integer calcularPrecioVenta(Integer precioCompra);
     Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador);
     CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
             throws EstadoPartidaInvalidoException;

@@ -122,7 +122,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public synchronized  ResultadoTiradaDTO realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal)
+    public synchronized  void realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal)
         throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException {
 
         this.validarDatosEventoGlobal(partida, jugador, eventoGlobal); //valida los datos del evento que sean validos
@@ -143,7 +143,7 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         this.resolverEventoGlobal(partida);
 
-        return resultado;
+       // return resultado;
     }
 
     @Override

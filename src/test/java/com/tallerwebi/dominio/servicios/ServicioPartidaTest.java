@@ -1,4 +1,6 @@
 package com.tallerwebi.dominio.servicios;
+import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,16 +36,16 @@ import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
+import com.tallerwebi.dominio.servicios.ServicioInicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
-import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
 import java.util.Arrays;
 import java.util.List;
 
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
@@ -56,7 +58,6 @@ public class ServicioPartidaTest {
     private static final String CODIGO = "MATANZA123";
     private RepositorioPartida repositorioPartidaMock;
     private RepositorioSalaDeEspera repositorioSalaDeEsperaMock;
-    private ServicioDado servicioDadoMock;
     private NotificadorPartida notificadorPartidaMock;
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
@@ -75,7 +76,6 @@ public class ServicioPartidaTest {
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);
         repositorioSalaDeEsperaMock = mock(RepositorioSalaDeEspera.class);
-        servicioDadoMock = mock(ServicioDado.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         servicioEventoMock = mock(ServicioEvento.class);
@@ -83,10 +83,9 @@ public class ServicioPartidaTest {
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
-            servicioDadoMock,
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
             gestorTemporizadorMock,
-            new ServicioTurnoImpl(),
+            new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
             publicadorAbandonoMock
         );
@@ -299,9 +298,8 @@ public class ServicioPartidaTest {
             .thenReturn(partida);
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
             repositorioPartidaMock,
-            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl()),
-            servicioDadoMock,
-            gestorTemporizadorMock, new ServicioTurnoImpl(), null, publicadorAbandonoMock);
+            new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
+            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock);
 
         servicioSinNotificador.avanzarTurno(codigo);
 
@@ -582,7 +580,6 @@ public class ServicioPartidaTest {
             repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico())
         ).thenReturn(null);
 
-
         servicioPartida.iniciarPartida(sala.getCodigoUnico(), 1L);
 
         verify(repositorioPartidaMock).guardarPartida(any(Partida.class));
@@ -715,62 +712,6 @@ public class ServicioPartidaTest {
     }
 
     @Test
-    public void queSePuedaSumarDineroAlJugador() {
-        Jugador jugador = new Jugador();
-        jugador.setDinero(1000);
-
-        servicioPartida.sumarDinero(jugador, 500);
-
-        assertEquals(1500, jugador.getDinero());
-    }
-
-    @Test
-    public void queSePuedaRestarDineroAlJugador() {
-        Jugador jugador = new Jugador();
-        jugador.setDinero(1000);
-
-        servicioPartida.restarDinero(jugador, 300);
-
-        assertEquals(700, jugador.getDinero());
-    }
-
-    @Test
-    public void queElJugadorActualiceSuPosicionAlMoverseUnEspacioValidoDentroDelTablero() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(5);
-        int avanceExacto = 7;
-        int totalCasilleros = 40;
-
-        servicioPartida.moverJugador(jugador, avanceExacto, totalCasilleros);
-
-        assertEquals(12, jugador.getPosicionActual());
-    }
-
-    @Test
-    public void queSiLaFichaSuperaElUltimoCasilleroDelTableroContinueDesdeElComienzo() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(28);
-        int avance = 5;
-        int totalCasilleros = 30;
-
-        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
-
-        assertEquals(3, jugador.getPosicionActual());
-    }
-
-    @Test
-    public void queAlCaerExactamenteEnElUltimoCasilleroElJugadorVuelvaALaPosicionCero() {
-        Jugador jugador = new Jugador();
-        jugador.setPosicionActual(25);
-        int avance = 5;
-        int totalCasilleros = 30;
-
-        servicioPartida.moverJugador(jugador, avance, totalCasilleros);
-
-        assertEquals(0, jugador.getPosicionActual());
-    }
-
-    @Test
     public void dadoQueHayJugadoresCuandoSeObtieneLaPartidaPorCodigoDaComoResultadoSusPosiciones() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
@@ -793,18 +734,6 @@ public class ServicioPartidaTest {
         assertEquals(7, partidaObtenida.getJugadores().get(1).getPosicionActual());
     }
 
-    @Test
-    public void queElServicioPartidaDevuelvaLaTiradaDeDadosCorrectamente() {
-        ResultadoTiradaDTO resultadoMock = new ResultadoTiradaDTO(4, 3);
-        when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
-
-        ResultadoTiradaDTO resultado = servicioPartida.tirarDados();
-
-        assertEquals(4, resultado.getDado1());
-        assertEquals(3, resultado.getDado2());
-        assertEquals(7, resultado.sumarDados());
-        verify(servicioDadoMock, times(1)).tirarDados();
-    }
 
     @Test
     public void dadoQueHayMasDeCuatroJugadoresCuandoSeIniciaLaPartidaDaComoResultadoCantidadMaximaSuperada() {
@@ -837,7 +766,6 @@ public class ServicioPartidaTest {
 
     verify(repositorioPartidaMock, never()).guardarPartida(any());
 }
-
 
 @Test
 public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDaComoResultadoLasFichasConvertidas() {

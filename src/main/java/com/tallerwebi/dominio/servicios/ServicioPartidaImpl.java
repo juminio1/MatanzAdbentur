@@ -10,37 +10,32 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
-import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
 
 import java.util.List;
+import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Coordino las operaciones de la partida.
- */
+//  Coordino las operaciones de la partida.
 @Service("servicioPartida")
 @Transactional
 public class ServicioPartidaImpl implements ServicioPartida {
 
-    private static final Integer LIMITE_BANCARROTA = -2000;
     private static final Integer POSICION_INICIAL = 0;
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
 
     private final RepositorioPartida repositorioPartida;
     private final ServicioInicioPartida servicioInicioPartida;
     private final ServicioTurno servicioTurno;
-    private final ServicioDado servicioDado;
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
@@ -49,7 +44,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
             ServicioInicioPartida servicioInicioPartida,
-            ServicioDado servicioDado,
             GestorTemporizadorPartida gestorTemporizador,
             ServicioTurno servicioTurno,
             @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
@@ -57,7 +51,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
-        this.servicioDado = servicioDado;
         this.servicioTurno = servicioTurno;
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
@@ -71,35 +64,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    public void moverJugador(Jugador jugador, Integer cantidadAvance, Integer totalCasilleros) {
-        jugador.setPosicionActual((jugador.getPosicionActual() + cantidadAvance) % totalCasilleros);
-    }
-
-    //verifica y responde si el jugador puede pagar.
-    @Override
-    public boolean tieneDineroSuficiente(Jugador jugador, Integer monto) {
-        if (jugador == null || monto == null || monto < 0) {
-            throw new IllegalArgumentException("Datos inválidos");
-        }
-
-        return jugador.getDinero() != null
-                && jugador.getDinero() >= monto;
-    }
-
-    @Override
-    public void restarDinero(Jugador jugador, Integer monto) {
-        jugador.setDinero(jugador.getDinero() - monto);
-        if (jugador.getDinero() <= LIMITE_BANCARROTA) {
-            jugador.setEnBancarrota(true);
-        }
-    }
-
-    @Override
-    public void sumarDinero(Jugador jugador, Integer monto) {
-        jugador.setDinero(jugador.getDinero() + monto);
-    }
-
-    @Override
     public void actualizarJugador(Jugador jugador) {
         repositorioPartida.actualizarJugador(jugador);
     }
@@ -107,11 +71,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void incrementarRondas(Partida partida) {
         servicioTurno.incrementarRondas(partida);
-    }
-
-    @Override
-    public ResultadoTiradaDTO tirarDados() {
-        return servicioDado.tirarDados();
     }
 
     @Override
@@ -128,7 +87,6 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Jugador obtenerJugadorActual(String codigoUnico) {
         Partida partida = obtenerPartida(codigoUnico);
         if (esPartidaConJugadoresInvalida(partida)) {
@@ -174,7 +132,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void avanzarTurno(String codigoUnico) {
-        gestorTemporizador.cancelarTemporizador(codigoUnico);
+        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
 
         Partida partida = obtenerPartida(codigoUnico);
         if (esPartidaConJugadoresInvalida(partida)) {
@@ -187,10 +145,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
         if (candidato == null) {
             repositorioPartida.guardarPartida(partida);
-            gestorTemporizador.cancelarTemporizador(codigoUnico);
+            DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
             return;
         }
 
+        candidato.setTiroEnTurno(false);
         partida.setIndiceTurnoActual(candidato.getOrden());
         repositorioPartida.guardarPartida(partida);
         notificarTurnoActual(partida, true);
@@ -202,13 +161,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
             CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
             SalaNoEncontradaException, FichaNoDisponibleException {
         Partida partida = servicioInicioPartida.iniciarPartida(codigo, idUsuario);
-        gestorTemporizador.cancelarTemporizador(codigo);
+        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigo));
         notificarTurnoActual(partida, false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PosicionFichaDTO> obtenerPosicionesFichas(String codigo) {
+    public List<PosicionFicha> obtenerPosicionesFichas(String codigo) {
         Partida partida = obtenerPartida(codigo);
         if (esPartidaConJugadoresInvalida(partida)) {
             return List.of();
@@ -235,11 +194,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
         publicadorAbandono.notificar(new EventoJugadorAbandonado(partida, jugador));
     }
 
-    private PosicionFichaDTO mapearAJugadorPosicionDto(Jugador jugador) {
+    private PosicionFicha mapearAJugadorPosicionDto(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
-        Integer posicion =
-                jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
-        return new PosicionFichaDTO(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
+        Integer posicion = jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
+        return new PosicionFicha(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
     }
 
     private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador) {
@@ -251,6 +209,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (jugadorActual == null) {
             return;
         }
+        DespuesDeConfirmar.ejecutar(() -> {
         if (iniciarTemporizador && partida.getCodigoUnico() != null) {
             gestorTemporizador.programarTemporizador(
                     partida.getCodigoUnico(),
@@ -270,6 +229,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             );
             publicadorTurno.notificar(evento);
         }
+        });
     }
 
     private Boolean esPartidaConJugadoresInvalida(Partida partida) {

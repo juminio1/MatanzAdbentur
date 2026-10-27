@@ -1,7 +1,7 @@
 package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
-import com.tallerwebi.presentacion.DTO.PosicionFichaDTO;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public class ControladorPosicionesWebSocket {
         }
 
         try {
-            List<PosicionFichaDTO> posiciones = servicioPartida.obtenerPosicionesFichas(codigo);
+            List<PosicionFicha> posiciones = servicioPartida.obtenerPosicionesFichas(codigo);
 
             if (posiciones.isEmpty() && LOGGER.isWarnEnabled()) {
                 LOGGER.warn("No se encontraron jugadores ni ficha para la partida: {}", codigo);

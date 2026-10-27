@@ -1,13 +1,13 @@
-package com.tallerwebi.presentacion.DTO;
+package com.tallerwebi.dominio.resultados;
 
-public class PosicionFichaDTO {
+public class PosicionFicha {
 
     private final Long idJugador;
     private final String apodo;
     private final String color;
     private final Integer posicion;
 
-    public PosicionFichaDTO(
+    public PosicionFicha(
         Long idJugador,
         String apodo,
         String color,

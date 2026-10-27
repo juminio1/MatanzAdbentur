@@ -1,20 +1,17 @@
 package com.tallerwebi.presentacion;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
-import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.*;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.SaldoJugadorDTO;
-import com.tallerwebi.presentacion.DTO.AlquilerMovimientoDTO;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.coordinadores.CoordinadorTurnoPartida;
@@ -24,8 +21,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -48,6 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 @Controller
 public class ControladorPartida {
+    private final ServicioParticipacion participacion;
+
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ControladorPartida.class);
     private static final String CLAVE_ERROR = "error";
@@ -58,11 +55,11 @@ public class ControladorPartida {
     private static final String PARAM_POSICION = "posicion";
     private static final String VISTA_PARTIDA = "partida";
     private static final String TOPIC_PARTIDA_PREFIX = "/topic/partida/";
-    private static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
+    private final com.tallerwebi.presentacion.mapeadores.MapeadorPropiedad mapeadorPropiedad;
     private final ServicioPartida servicioPartida;
     private final SimpMessagingTemplate notificadorWebSocket;
     private final ServicioCasillero servicioCasillero;
-    private final ServicioEventoCasillero servicioEventoCasillero;
+    private final ServicioJugada servicioJugada;
     private final ServicioPropiedad servicioPropiedad;
     private final CoordinadorTurnoPartida coordinadorTurno;
     private final NotificadorPartida notificadorPartida;
@@ -70,57 +67,19 @@ public class ControladorPartida {
 
     @Autowired
     public ControladorPartida(ServicioPartida servicioPartida, SimpMessagingTemplate notificadorWebSocket,
-                              ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
-                              ServicioEventoCasillero servicioEventoCasillero, NotificadorPartida notificadorPartida,
-                              ServicioGestionQuiebra servicioGestionQuiebra
-    ) {
-        this.notificadorWebSocket = notificadorWebSocket;
+            ServicioCasillero servicioCasillero, ServicioPropiedad servicioPropiedad,
+            NotificadorPartida notificadorPartida, ServicioGestionQuiebra servicioGestionQuiebra,
+            ServicioJugada servicioJugada, ServicioParticipacion participacion) {
+        this.participacion = participacion;
         this.servicioPartida = servicioPartida;
+        this.notificadorWebSocket = notificadorWebSocket;
         this.servicioCasillero = servicioCasillero;
-        this.servicioEventoCasillero = servicioEventoCasillero;
         this.servicioPropiedad = servicioPropiedad;
-        this.coordinadorTurno = new CoordinadorTurnoPartida(servicioPartida);
+        this.mapeadorPropiedad = new com.tallerwebi.presentacion.mapeadores.MapeadorPropiedad(servicioCasillero, servicioPropiedad);
         this.notificadorPartida = notificadorPartida;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
-    }
-
-    public ControladorPartida(
-            ServicioPartida servicioPartida,
-            SimpMessagingTemplate notificadorWebSocket,
-            ServicioCasillero servicioCasillero,
-            ServicioPropiedad servicioPropiedad) {
-
-        this(servicioPartida, notificadorWebSocket,
-                servicioCasillero, servicioPropiedad,
-                null, new NotificadorPartida(notificadorWebSocket),
-                null);
-    }
-
-    public ControladorPartida(
-            ServicioPartida servicioPartida,
-            SimpMessagingTemplate notificadorWebSocket,
-            ServicioCasillero servicioCasillero,
-            ServicioPropiedad servicioPropiedad,
-            ServicioEventoCasillero servicioEventoCasillero) {
-
-        this(servicioPartida, notificadorWebSocket,
-                servicioCasillero, servicioPropiedad,
-                servicioEventoCasillero,
-                new NotificadorPartida(notificadorWebSocket),
-                null);
-    }
-
-    public ControladorPartida(
-            ServicioPartida servicioPartida,
-            SimpMessagingTemplate notificadorWebSocket,
-            ServicioCasillero servicioCasillero,
-            ServicioPropiedad servicioPropiedad,
-            NotificadorPartida notificadorPartida) {
-
-        this(servicioPartida, notificadorWebSocket,
-                servicioCasillero, servicioPropiedad,
-                null, notificadorPartida,
-                null);
+        this.servicioJugada = servicioJugada;
+        this.coordinadorTurno = new CoordinadorTurnoPartida(servicioPartida);
     }
 
     @GetMapping("/partida/{codigoPartida}/propiedades/{posicion}")
@@ -133,9 +92,9 @@ public class ControladorPartida {
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
         CasilleroPropiedad casillero = servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
         if (casillero == null) {
-            return ResponseEntity.ok(dtoCatalogoPropiedad(posicion));
+            return ResponseEntity.ok(mapeadorPropiedad.desdeCatalogo(posicion));
         }
-        return ResponseEntity.ok(dtoPropiedad(casillero, casillero.getPropiedad()));
+        return ResponseEntity.ok(mapeadorPropiedad.desdePropiedad(casillero, casillero.getPropiedad()));
     }
 
     @GetMapping("/partida/{codigoPartida}/propiedades")
@@ -147,7 +106,7 @@ public class ControladorPartida {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null) return ResponseEntity.notFound().build();
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
@@ -197,7 +156,7 @@ public class ControladorPartida {
             Propiedad propiedad = servicioPropiedad.obtenerPropiedadExistente(
                     casillero.getPropiedad().getId()
             );
-            Map<String, Object> dto = dtoPropiedad(casillero, propiedad);
+            Map<String, Object> dto = mapeadorPropiedad.desdePropiedad(casillero, propiedad);
             Jugador jugadorActualizado = servicioPartida.obtenerJugadorPorId(idJugador);
             dto.put(CLAVE_ID_JUGADOR, idJugador);
             dto.put("dineroJugador", jugadorActualizado.getDinero());
@@ -218,11 +177,21 @@ public class ControladorPartida {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> comprarPropiedad(
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
-            @PathVariable(PARAM_POSICION) Integer posicion
+            @PathVariable(PARAM_POSICION) Integer posicion,
+            HttpServletRequest request
     ) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null || !servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
+        Long idSesion = resolverJugadorAutenticado(partida, request);
+        Jugador actual = servicioPartida.obtenerJugadorActual(codigoPartida);
+        if (actual == null) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, "No hay un jugador activo en esta partida."));
+        if (!esTurnoDeJugador(actual, idSesion)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(CLAVE_ERROR, "No podés comprar por otro jugador."));
+        }
         try {
             ServicioPropiedad.CompraPreparada compra = servicioPropiedad.prepararCompra(codigoPartida, posicion);
             if (compra == null) return ResponseEntity.notFound().build();
+            if (!java.util.Objects.equals(compra.jugador().getId(), idSesion)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             return procesarCompraPropiedad(compra);
         } catch (EstadoPartidaInvalidoException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
@@ -271,7 +240,7 @@ public class ControladorPartida {
                 servicioGestionQuiebra.evaluarDeuda(codigoPartida, jugadorSesionId);
             }
             Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(jugadorSesionId);
-            Map<String, Object> actualizado = dtoPropiedad(casillero,
+            Map<String, Object> actualizado = mapeadorPropiedad.desdePropiedad(casillero,
                     servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId()));
             actualizado.put(CLAVE_ID_JUGADOR, jugadorSesionId);
             actualizado.put("dineroJugador", vendedorActualizado.getDinero());
@@ -299,7 +268,7 @@ public class ControladorPartida {
 
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
 
-        if (!ResolutorJugadorSesion.pertenece(partida, idJugador)) {
+        if (!participacion.pertenece(partida, idJugador)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                     Map.of(CLAVE_ERROR, ERROR_JUGADOR_AJENO)
             );
@@ -331,7 +300,7 @@ public class ControladorPartida {
     private Boolean puedeParticiparEnPartida(Partida partida, Long idJugador) {
         if (idJugador == null) return false;
         Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
-        return partida.permiteAdministrarPropiedades(jugador, idJugador);
+        return participacion.permiteAdministrarPropiedades(partida, jugador, idJugador);
     }
 
     private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) {
@@ -344,7 +313,7 @@ public class ControladorPartida {
                     jugador.getId()
             );
             Jugador compradorActualizado = servicioPartida.obtenerJugadorPorId(jugador.getId());
-            Map<String, Object> actualizado = dtoPropiedad(
+            Map<String, Object> actualizado = mapeadorPropiedad.desdePropiedad(
                     casillero,
                     servicioPropiedad.obtenerPropiedadExistente(casillero.getPropiedad().getId())
             );
@@ -388,61 +357,6 @@ public class ControladorPartida {
     private String obtenerMensajeError(RuntimeException excepcion, String mensajePredeterminado) {
         String mensaje = excepcion.getMessage();
         return mensaje == null || mensaje.isBlank() ? mensajePredeterminado : mensaje;
-    }
-
-    private Map<String, Object> dtoCatalogoPropiedad(Integer posicion) {
-        List<String> datos = servicioCasillero.obtenerDatosCatalogoPropiedad(posicion);
-        if (datos == null) return Map.of();
-        Map<String, Object> dto = new HashMap<>();
-        dto.put("posicion", posicion);
-        dto.put("nombre", datos.get(0));
-        dto.put("descripcion", datos.get(1));
-        dto.put("precioCompra", 300);
-        dto.put("precioVenta", 150);
-        Integer alquilerBase = servicioCasillero.obtenerAlquilerBaseCatalogo(posicion);
-        dto.put("alquiler", alquilerBase);
-        dto.put("alquilerBase", alquilerBase);
-        dto.put("nivelMejora", 0);
-        dto.put("grupo", POSICIONES_PARADA.contains(posicion) ? null : datos.get(2));
-        dto.put("propietario", null);
-        dto.put("propietarioId", null);
-        dto.put("disponible", true);
-        return dto;
-    }
-
-    private Map<String, Object> dtoPropiedad(CasilleroPropiedad casillero, Propiedad propiedad) {
-        Map<String, Object> dto = new HashMap<>();
-        List<String> datosCatalogo = servicioCasillero.obtenerDatosCatalogoPropiedad(casillero.getPosicion());
-        Jugador propietario = propiedad.getPropietario();
-        // Uso la posición para identificar el casillero.
-        dto.put("posicion", casillero.getPosicion());
-        dto.put("nombre", datosCatalogo == null ? casillero.getNombre() : datosCatalogo.get(0));
-        dto.put(
-                "descripcion",
-                datosCatalogo == null ? casillero.getDescripcion() : datosCatalogo.get(1)
-        );
-        dto.put("precioCompra", propiedad.getPrecioCompra());
-        dto.put(
-                "precioVenta",
-                propiedad.getPrecioCompra() == null ? 0 : propiedad.getPrecioCompra() / 2
-        );
-        dto.put("alquiler", servicioPropiedad.calcularAlquiler(casillero, propiedad));
-        dto.put("propietario", propietario == null ? null : propietario.getApodo());
-        dto.put("propietarioId", propietario == null ? null : propietario.getId());
-        dto.put("disponible", propietario == null);
-        dto.put("idPropiedad", propiedad.getId());
-        dto.put(
-                "alquilerBase",
-                POSICIONES_PARADA.contains(casillero.getPosicion()) ? 20 : propiedad.getPrecioAlquiler()
-        );
-        dto.put("nivelMejora", propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora());
-        dto.put(
-                "grupo",
-                POSICIONES_PARADA.contains(casillero.getPosicion()) || propiedad.getGrupo() == null
-                        ? null
-                        : propiedad.getGrupo().name()
-        );
-        return dto;
     }
 
     @GetMapping("/partida")
@@ -492,8 +406,8 @@ public class ControladorPartida {
         return servicioCasillero.obtenerPosicionesPropiedad().stream().map(posicion -> casilleros.stream()
                         .filter(casillero -> posicion.equals(casillero.getPosicion()))
                         .findFirst()
-                        .map(casillero -> dtoPropiedad(casillero, casillero.getPropiedad()))
-                        .orElseGet(() -> dtoCatalogoPropiedad(posicion)))
+                        .map(casillero -> mapeadorPropiedad.desdePropiedad(casillero, casillero.getPropiedad()))
+                        .orElseGet(() -> mapeadorPropiedad.desdeCatalogo(posicion)))
                 .toList();
     }
 
@@ -529,15 +443,11 @@ public class ControladorPartida {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        Boolean coincideId =
-                usuarioSesionId != null && usuarioSesionId.equals(jugadorActual.getId());
-        Boolean coincideNombre =
-                nombreSesion != null && nombreSesion.equalsIgnoreCase(jugadorActual.getApodo());
-
-        if ((!coincideId && !coincideNombre) || jugadorActual.getEnBancarrota()) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        Long idSesion = ResolutorJugadorSesion.resolverAutenticado(partida, request);
+        if (idSesion == null || !esTurnoDeJugador(jugadorActual, idSesion) || !participacion.estaActivo(jugadorActual)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-
         return ResponseEntity.ok(coordinadorTurno.avanzarYObtenerTurno(codigoPartida));
     }
 
@@ -545,160 +455,39 @@ public class ControladorPartida {
     @ResponseBody
     public RespuestaMovimientoDTO tirarDados(
             @RequestParam("codigoUnico") String codigoUnico,
-            @RequestParam(CLAVE_ID_JUGADOR) Long idJugador
+            @RequestParam(CLAVE_ID_JUGADOR) Long idJugador,
+            HttpServletRequest request
     ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
-        Partida partida = obtenerPartidaParaTirada(codigoUnico);
-        Jugador jugadorActual = obtenerJugadorParaTirada(partida, idJugador);
-        validarTurnoDeTirada(codigoUnico, idJugador, jugadorActual);
-        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigoUnico);
-
-        Integer posicionAnterior = jugadorActual.getPosicionActual();
-        ResultadoTiradaDTO resultado = servicioPartida.tirarDados(); //Llama al servicio para generar la tirada
-
-        servicioPartida.moverJugador(jugadorActual, resultado.sumarDados(), 30); //se mueve ficha
-        Boolean pasoPorInicio = posicionAnterior + resultado.sumarDados() >= 30;
-        if (pasoPorInicio) {
-            servicioPartida.sumarDinero(jugadorActual, 200);
-        }
-
-        RespuestaMovimientoDTO respuesta = crearRespuestaMovimiento(jugadorActual, posicionAnterior, resultado);
-        Optional<EventoCasillero> evento = servicioEventoCasillero == null
-                ? Optional.empty()
-                : servicioEventoCasillero.aplicarSiCorresponde(codigoUnico, jugadorActual);
-        if (evento.isPresent()) {
-            EventoCasillero eventoAplicado = evento.get();
-            respuesta.setNombreEvento(eventoAplicado.getNombre());
-            respuesta.setDescripcionEvento(eventoAplicado.getDescripcion());
-            respuesta.setTipoEfectoEvento(eventoAplicado.getTipoEfecto().name());
-            respuesta.setNuevaPosicion(jugadorActual.getPosicionActual());
-        }
-        respuesta.informarDineroPorInicio(pasoPorInicio);
-        servicioPartida.actualizarJugador(jugadorActual);
-        // Espero la decisión de compra solo si la propiedad está libre.
-        CasilleroPropiedad casilleroDestino = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida,
-                jugadorActual.getPosicionActual());
-        Boolean requiereDecision = Boolean.TRUE.equals(jugadorActual.getEnBancarrota())
-                || Boolean.TRUE.equals(jugadorActual.getPierdeTurno())
-                ? false
-                : resolverPropiedadDestino(
-                codigoUnico, casilleroDestino, jugadorActual, respuesta);
-
-        Boolean deudaPendiente = servicioGestionQuiebra
-                .obtenerDeudaPendiente(codigoUnico, idJugador) != null;
-
-        //Vuelve a consultar la partida actua. despues de que se realizaron los pagos.
-        Partida partidaActualizada = servicioPartida.obtenerPartida(codigoUnico);
-        //operador ternario. Busca partidas activas. Si la partidaActulizada es distinta a null, partidaSaldo toma partidaActualiza. Sino
-        Partida partidaParaSaldos = partidaActualizada != null
-                ? partidaActualizada
-                : partida;
-        //recorre los jugadores de la partida seleccionada, transforma cada uno en un SaldoJugadorDTO y los agrega a la respuesta que recibe el frontend.
-        respuesta.setSaldos(partidaParaSaldos.getJugadores().stream()
-                .map(SaldoJugadorDTO::desdeJugador)
-                .toList());
-
-        if (!requiereDecision
-                && !deudaPendiente
-                && !Boolean.TRUE.equals(jugadorActual.getEnBancarrota())) {
-            coordinadorTurno.avanzarYObtenerTurno(codigoUnico);
-        }
-        servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
-        respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
-        notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta);
-        return respuesta;
-    }
-
-    private RespuestaMovimientoDTO crearRespuestaMovimiento(
-            Jugador jugador,
-            Integer posicionAnterior,
-            ResultadoTiradaDTO resultado
-    ) {
-        RespuestaMovimientoDTO respuesta = new RespuestaMovimientoDTO();
-        respuesta.setIdJugador(jugador.getId());
-        respuesta.setPosicionAnterior(posicionAnterior);
-        respuesta.setIdMovimiento(java.util.UUID.randomUUID().toString());
-        respuesta.setDado1(resultado.getDado1());
-        respuesta.setDado2(resultado.getDado2());
-        respuesta.setSuma(resultado.sumarDados());
-        respuesta.setNuevaPosicion(jugador.getPosicionActual());
-        respuesta.setPosicionCaidaEvento(jugador.getPosicionActual());
-        return respuesta;
-    }
-
-    private Partida obtenerPartidaParaTirada(String codigoUnico)
-            throws PartidaNoEncontradaException {
         Partida partida = servicioPartida.obtenerPartida(codigoUnico);
         if (partida == null) throw new PartidaNoEncontradaException();
-        return partida;
-    }
-
-    private Jugador obtenerJugadorParaTirada(Partida partida, Long idJugador)
-            throws JugadorNoEncontradoException {
-        return partida
-                .getJugadores()
-                .stream()
-                .filter(jugador -> jugador.getId().equals(idJugador))
-                .findFirst()
-                .orElseThrow(() ->
-                        new JugadorNoEncontradoException("No se encontró el jugador en esta partida")
-                );
-    }
-
-    private void validarTurnoDeTirada(String codigoUnico, Long idJugador, Jugador jugador)
-            throws ResponseStatusException {
-        Jugador jugadorDelTurno = servicioPartida.obtenerJugadorActual(codigoUnico);
-        if (jugador.getEnBancarrota() || !esTurnoDeJugador(jugadorDelTurno, idJugador)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "No podés tirar los dados en este turno.");
+        Long idSesion = resolverJugadorAutenticado(partida, request);
+        if (!java.util.Objects.equals(idSesion, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No podés tirar por otro jugador.");
         }
-        if (servicioGestionQuiebra.obtenerDeudaPendiente(codigoUnico, idJugador) != null) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados."
-            );
+        try {
+            RespuestaMovimientoDTO respuesta = com.tallerwebi.presentacion.mapeadores.MapeadorMovimiento.desde(
+                    servicioJugada.tirarYMover(codigoUnico, idJugador));
+            servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
+            respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
+            com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar.ejecutar(
+                    () -> notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta));
+            return respuesta;
+        } catch (com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException ex) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
         }
     }
 
-
-    private Boolean resolverPropiedadDestino(
-            String codigoPartida,
-            CasilleroPropiedad casillero,
-            Jugador jugador,
-            RespuestaMovimientoDTO respuesta) {
-
-        if (casillero == null) {
-            return false;
+    private Long resolverJugadorAutenticado(Partida partida, HttpServletRequest request) {
+        if (ResolutorJugadorSesion.resolverUsuarioSesionId(request) == null
+                && request.getSession().getAttribute(SESION_NOMBRE) == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debés iniciar sesión.");
         }
-
-        Propiedad propiedad = casillero.getPropiedad();
-
-        if (servicioPropiedad.estaDisponible(propiedad)) {
-            return true;
+        Long idJugador = ResolutorJugadorSesion.resolverAutenticado(partida, request);
+        if (!participacion.pertenece(partida, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR_JUGADOR_AJENO);
         }
-
-        Jugador propietario = propiedad.getPropietario();
-
-        if (propietario == null
-                || propietario.getId().equals(jugador.getId())) {
-            return false;
-        }
-
-        Integer alquiler = servicioPropiedad.calcularAlquiler(
-                casillero, propiedad);
-
-        ResultadoDeuda resultado = servicioGestionQuiebra.procesarAlquiler(
-                codigoPartida, propiedad, jugador, alquiler);
-
-        respuesta.setAlquiler(new AlquilerMovimientoDTO(
-                jugador.getId(),
-                jugador.getApodo(),
-                propietario.getApodo(),
-                propiedad.getNombre(),
-                alquiler));
-
-        return ResultadoDeuda.PENDIENTE.equals(resultado);
+        return idJugador;
     }
-
 
     @ExceptionHandler(JugadorNoEncontradoException.class)
     public ResponseEntity<String> manejarJugadorNoEncontrado(JugadorNoEncontradoException ex) {

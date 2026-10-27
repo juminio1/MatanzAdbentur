@@ -1,8 +1,6 @@
 package com.tallerwebi.dominio.entidades;
 
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
-import com.tallerwebi.dominio.excepcion.PropiedadInvalidaException;
-import com.tallerwebi.dominio.excepcion.PropiedadNoDisponibleException;
 import jakarta.persistence.*;
 
 @Entity
@@ -83,27 +81,6 @@ public class Propiedad {
     }
     public GrupoPropiedades getGrupo() {
         return grupo;
-    }
-
-    public void validarPropietarioDeVenta(Long idJugador) {
-        if (propietario == null || !idJugador.equals(propietario.getId())) {
-            throw new PropiedadNoDisponibleException("Solo puedes vender una propiedad que te pertenece.");
-        }
-    }
-
-    public Integer venderAlBanco(Long idJugador) {
-        validarPropietarioDeVenta(idJugador);
-        Integer precioVenta = calcularPrecioVenta();
-        setPropietario(null);
-        setNivelMejora(0);
-        return precioVenta;
-    }
-
-    private Integer calcularPrecioVenta() {
-        if (precioCompra == null || precioCompra < 0) {
-            throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
-        }
-        return precioCompra / 2;
     }
 
 }

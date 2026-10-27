@@ -21,7 +21,7 @@ public class ObservadorTurnoAbandonoTest {
     @BeforeEach
     public void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
-        observador = new ObservadorTurnoAbandono(servicioPartidaMock);
+        observador = new ObservadorTurnoAbandono(servicioPartidaMock, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
 

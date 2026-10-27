@@ -1,5 +1,8 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
@@ -10,9 +13,7 @@ import com.tallerwebi.dominio.excepcion.PropiedadNoMejorableException;
 import com.tallerwebi.dominio.excepcion.PropiedadNoDisponibleException;
 import com.tallerwebi.dominio.excepcion.PropiedadInvalidaException;
 
-import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 
@@ -26,8 +27,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ServicioPropiedadOperacionesTest {
+    private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
     private RepositorioPropiedad repositorio;
-    private ServicioPartida partidas;
+    private RepositorioPartida partidas;
     private ServicioCasillero casilleros;
     private ServicioPropiedadImpl servicio;
     private Jugador vendedor;
@@ -37,16 +39,20 @@ class ServicioPropiedadOperacionesTest {
     @BeforeEach
     void preparar() {
         repositorio = mock(RepositorioPropiedad.class);
-        partidas = mock(ServicioPartida.class);
+        partidas = mock(RepositorioPartida.class);
         casilleros = mock(ServicioCasillero.class);
-        servicio = new ServicioPropiedadImpl(repositorio, partidas, casilleros);
+        servicio = new ServicioPropiedadImpl(repositorio,
+                partidas,
+                casilleros,
+                economia,
+                new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         vendedor = jugador(1L, 1000);
         comprador = jugador(2L, 800);
         propiedad = new Propiedad(10L, "Barrio Marina", 300, 50, vendedor,
                 GrupoPropiedades.VILLA_LUZURIAGA);
         when(repositorio.buscarPropiedadPorId(10L)).thenReturn(propiedad);
-        when(partidas.obtenerJugadorPorId(1L)).thenReturn(vendedor);
-        when(partidas.obtenerJugadorPorId(2L)).thenReturn(comprador);
+        when(partidas.buscarJugadorPorId(1L)).thenReturn(vendedor);
+        when(partidas.buscarJugadorPorId(2L)).thenReturn(comprador);
     }
 
     @Test
@@ -57,7 +63,7 @@ class ServicioPropiedadOperacionesTest {
 
         assertNull(propiedad.getPropietario());
         assertEquals(0, propiedad.getNivelMejora());
-        verify(partidas).sumarDinero(vendedor, 150);
+        verify(economia).sumarDinero(vendedor, 150);
         verify(partidas).actualizarJugador(vendedor);
         verify(repositorio).guardarPropiedad(propiedad);
     }
@@ -73,7 +79,7 @@ class ServicioPropiedadOperacionesTest {
         assertThrows(PropiedadNoDisponibleException.class,
                 () -> servicio.venderPropiedadParaJugador(10L, 1L));
         assertEquals(3, propiedad.getNivelMejora());
-        verify(partidas, never()).sumarDinero(any(), any());
+        verify(economia, never()).sumarDinero(any(), any());
         verify(partidas, never()).actualizarJugador(any());
         verify(repositorio, never()).guardarPropiedad(any());
     }
@@ -89,7 +95,7 @@ class ServicioPropiedadOperacionesTest {
             assertSame(vendedor, propiedad.getPropietario());
             assertEquals(3, propiedad.getNivelMejora());
         }
-        verify(partidas, never()).sumarDinero(any(), any());
+        verify(economia, never()).sumarDinero(any(), any());
         verify(repositorio, never()).guardarPropiedad(any());
     }
 
@@ -97,7 +103,7 @@ class ServicioPropiedadOperacionesTest {
     void ventaDePrecioImparConservaLaDivisionEntera() {
         propiedad.setPrecioCompra(301);
         assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
-        verify(partidas).sumarDinero(vendedor, 150);
+        verify(economia).sumarDinero(vendedor, 150);
     }
 
     @Test
@@ -108,8 +114,8 @@ class ServicioPropiedadOperacionesTest {
 
         assertSame(comprador, propiedad.getPropietario());
         assertEquals(2, propiedad.getNivelMejora());
-        verify(partidas).restarDinero(comprador, 450);
-        verify(partidas).sumarDinero(vendedor, 450);
+        verify(economia).restarDinero(comprador, 450);
+        verify(economia).sumarDinero(vendedor, 450);
         verify(partidas).actualizarJugador(comprador);
         verify(partidas).actualizarJugador(vendedor);
         verify(repositorio).guardarPropiedad(propiedad);
@@ -121,8 +127,8 @@ class ServicioPropiedadOperacionesTest {
                 () -> servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 900));
 
         assertSame(vendedor, propiedad.getPropietario());
-        verify(partidas, never()).restarDinero(any(), anyInt());
-        verify(partidas, never()).sumarDinero(any(), anyInt());
+        verify(economia, never()).restarDinero(any(), anyInt());
+        verify(economia, never()).sumarDinero(any(), anyInt());
         verify(repositorio, never()).guardarPropiedad(any());
     }
 
@@ -159,7 +165,7 @@ class ServicioPropiedadOperacionesTest {
         assertEquals(1, propiedad.getNivelMejora());
         assertEquals(0, vecina.getNivelMejora());
         assertEquals(200, servicio.calcularAlquiler(propiedad));
-        verify(partidas).restarDinero(vendedor, 200);
+        verify(economia).restarDinero(vendedor, 200);
         verify(partidas).actualizarJugador(vendedor);
     }
 
@@ -174,7 +180,7 @@ class ServicioPropiedadOperacionesTest {
                 () -> servicio.mejorarPropiedad(10L, vendedor));
 
         assertEquals(0, propiedad.getNivelMejora());
-        verify(partidas, never()).restarDinero(any(), anyInt());
+        verify(economia, never()).restarDinero(any(), anyInt());
     }
 
     private Jugador jugador(Long id, int dinero) {

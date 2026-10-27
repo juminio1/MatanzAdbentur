@@ -21,7 +21,7 @@ class ObservadorTurnoQuiebraTest {
     @BeforeEach
     void preparar() {
         servicioPartida = mock(ServicioPartida.class);
-        observador = new ObservadorTurnoQuiebra(servicioPartida);
+        observador = new ObservadorTurnoQuiebra(servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test

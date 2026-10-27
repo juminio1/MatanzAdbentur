@@ -61,7 +61,6 @@ public class ServicioLoginImpl implements ServicioLogin {
         }
     }
 
-
     @Override
     public Usuario buscarPorId(Long id) {
         return this.repositorioUsuario.buscarUsuarioPorId(id);
