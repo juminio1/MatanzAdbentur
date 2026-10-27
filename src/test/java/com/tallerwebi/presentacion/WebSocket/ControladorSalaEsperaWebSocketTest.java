@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioSalaDeEspera;
-import com.tallerwebi.presentacion.ControladorSalaEsperaWebSocket;
 import com.tallerwebi.presentacion.DTO.SeleccionFichaDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

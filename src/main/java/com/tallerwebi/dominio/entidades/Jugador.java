@@ -10,6 +10,7 @@ public class Jugador {
 @GeneratedValue(strategy= GenerationType.IDENTITY)
 private Long id;
 private String apodo;
+private Boolean tiroEnTurno = false;
 private Integer dinero;
 
 @Enumerated(EnumType.STRING)
@@ -28,6 +29,14 @@ private ColorFicha ficha;
         this.pierdeTurno = false;
         this.enBancarrota = false;
         this.abandono = false;
+    }
+
+    public Boolean getTiroEnTurno() {
+        return tiroEnTurno;
+    }
+
+    public void setTiroEnTurno(Boolean tiroEnTurno) {
+        this.tiroEnTurno = tiroEnTurno;
     }
 
     public Long getId() {
@@ -64,10 +73,6 @@ private ColorFicha ficha;
 
     public Integer getPosicionActual() {
         return posicionActual;
-    }
-
-    public Boolean estaEnPosicion(Integer posicion) {
-        return posicion.equals(posicionActual);
     }
 
     public void setPosicionActual(Integer posicionActual) {

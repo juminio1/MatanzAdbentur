@@ -1,8 +1,8 @@
 package com.tallerwebi.dominio.servicios.interfaces;
 
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 
 @FunctionalInterface
 public interface ServicioDado {
-    ResultadoTiradaDTO tirarDados();
+    ResultadoTirada tirarDados();
 }

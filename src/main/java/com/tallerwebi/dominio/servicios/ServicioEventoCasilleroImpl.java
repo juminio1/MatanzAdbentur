@@ -9,7 +9,8 @@ import com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.TipoEfectoEventoNoSoportadoException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
-import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.infraestructura.RepositorioEventoCasillero;
 
@@ -18,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BiConsumer;
+import java.util.function.ToIntBiFunction;
+import com.tallerwebi.dominio.resultados.ResultadoEvento;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,32 +30,31 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
 
-    private static final Integer TOTAL_CASILLEROS = 30;
-    private static final Integer DINERO_POR_PASAR_POR_INICIO = 200;
-
     private final RepositorioEventoCasillero repositorioEventoCasillero;
     private final ServicioCasillero servicioCasillero;
-    private final ServicioPartida servicioPartida;
+    private final ServicioEconomia economia;
+    private final ServicioMovimiento movimiento;
     private final ServicioGestionQuiebra servicioGestionQuiebra;
 
-    private final Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> aplicadores;
+    private final Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> aplicadores;
 
     @Autowired
     public ServicioEventoCasilleroImpl(
             RepositorioEventoCasillero repositorioEventoCasillero,
             ServicioCasillero servicioCasillero,
-            ServicioPartida servicioPartida,
+            ServicioEconomia economia, ServicioMovimiento movimiento,
             ServicioGestionQuiebra servicioGestionQuiebra) {
 
         this.repositorioEventoCasillero = repositorioEventoCasillero;
         this.servicioCasillero = servicioCasillero;
-        this.servicioPartida = servicioPartida;
+        this.economia = economia;
+        this.movimiento = movimiento;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
         this.aplicadores = crearAplicadores();
     }
 
     @Override
-    public Optional<EventoCasillero> aplicarSiCorresponde(
+    public Optional<ResultadoEvento> aplicarSiCorresponde(
             String codigoPartida,
             Jugador jugador) {
 
@@ -72,20 +73,21 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
         Integer indiceEvento = ThreadLocalRandom.current().nextInt(eventos.size());
         EventoCasillero evento = eventos.get(indiceEvento);
 
+        int premio = 0;
         if (evento.getTipoEfecto() == TipoEfectoEvento.RESTA) {
             procesarEventoResta(codigoPartida, evento, jugador);
         } else {
-            BiConsumer<EventoCasillero, Jugador> aplicador =
+            ToIntBiFunction<EventoCasillero, Jugador> aplicador =
                     aplicadores.get(evento.getTipoEfecto());
 
             if (aplicador == null) {
                 throw new TipoEfectoEventoNoSoportadoException(evento.getTipoEfecto());
             }
 
-            aplicador.accept(evento, jugador);
+            premio = aplicador.applyAsInt(evento, jugador);
         }
 
-        return Optional.of(evento);
+        return Optional.of(new ResultadoEvento(evento, premio));
     }
 
     private void procesarEventoResta(
@@ -104,8 +106,8 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
             throw new IllegalStateException("El jugador ya tiene un pago pendiente");
         }
 
-        if (jugador.getDinero() != null && jugador.getDinero() >= monto) {
-            servicioPartida.restarDinero(jugador, monto);
+        if (economia.tieneDineroSuficiente(jugador, monto)) {
+            economia.restarDinero(jugador, monto);
             return;
         }
 
@@ -128,15 +130,21 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
                 .anyMatch(posicion::equals);
     }
 
-    private Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> crearAplicadores() {
-        Map<TipoEfectoEvento, BiConsumer<EventoCasillero, Jugador>> resultado =
+    private Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> crearAplicadores() {
+        Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> resultado =
                 new EnumMap<>(TipoEfectoEvento.class);
 
         resultado.put(TipoEfectoEvento.SUMA,
-                (evento, jugador) -> servicioPartida.sumarDinero(jugador, evento.getMonto()));
+                (evento, jugador) -> {
+                    economia.sumarDinero(jugador, evento.getMonto());
+                    return 0;
+                });
 
         resultado.put(TipoEfectoEvento.PIERDE_TURNO,
-                (evento, jugador) -> jugador.setPierdeTurno(true));
+                (evento, jugador) -> {
+                    jugador.setPierdeTurno(true);
+                    return 0;
+                });
 
         resultado.put(TipoEfectoEvento.AVANZA_CASILLEROS, this::avanzarCasilleros);
 
@@ -145,34 +153,10 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
         return Map.copyOf(resultado);
     }
 
-    private void avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
-        Integer posicionAnterior = jugador.getPosicionActual();
-
-        servicioPartida.moverJugador(
-                jugador, evento.getCantidadCasilleros(), TOTAL_CASILLEROS);
-
-        sumarDineroSiPasoPorInicio(
-                jugador, posicionAnterior, jugador.getPosicionActual());
+    private int avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
+        return movimiento.avanzar(jugador, evento.getCantidadCasilleros());
     }
-
-    private void avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
-        Integer posicionAnterior = jugador.getPosicionActual();
-        Integer posicionDestino = evento.getPosicionDestino();
-
-        jugador.setPosicionActual(posicionDestino);
-
-        sumarDineroSiPasoPorInicio(
-                jugador, posicionAnterior, posicionDestino);
-    }
-
-    private void sumarDineroSiPasoPorInicio(
-            Jugador jugador,
-            Integer posicionAnterior,
-            Integer posicionDestino) {
-
-        if (posicionDestino < posicionAnterior) {
-            servicioPartida.sumarDinero(
-                    jugador, DINERO_POR_PASAR_POR_INICIO);
-        }
+    private int avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
+        return movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
     }
 }

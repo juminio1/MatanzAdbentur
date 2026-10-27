@@ -51,7 +51,7 @@ class ControladorOfertaPropiedadTest {
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificador = mock(SimpMessagingTemplate.class);
         controlador = new ControladorOfertaPropiedad(servicioPartida, servicioCasillero,
-                servicioPropiedad, notificador);
+                servicioPropiedad, notificador, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         partida = new Partida();
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);

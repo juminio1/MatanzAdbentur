@@ -16,7 +16,33 @@ class ServicioTurnoImplTest {
 
     @BeforeEach
     void preparar() {
-        servicioTurno = new ServicioTurnoImpl();
+        servicioTurno = new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+    }
+
+    @Test
+    void unaRondaSeCompletaSoloConLosJugadoresActivos() {
+        Jugador ana = new Jugador();
+        ana.setOrden(0);
+        Jugador ausente = new Jugador();
+        ausente.setOrden(1);
+        ausente.setAbandono(true);
+        Jugador quebrado = new Jugador();
+        quebrado.setOrden(2);
+        quebrado.setEnBancarrota(true);
+        Jugador maria = new Jugador();
+        maria.setOrden(3);
+        Partida partida = new Partida();
+        partida.setJugadores(List.of(ana, ausente, quebrado, maria));
+        partida.setRondaActual(1);
+        partida.setTurnosFinalizadosEnRonda(0);
+
+        servicioTurno.incrementarRondas(partida);
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertSame(maria, servicioTurno.resolverSiguienteJugador(partida, 0));
+        servicioTurno.incrementarRondas(partida);
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
     }
 
     @Test
