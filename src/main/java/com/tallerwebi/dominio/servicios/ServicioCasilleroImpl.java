@@ -70,7 +70,17 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
         return casillero != null ? casillero : crearCasilleroPropiedad(partida, posicion);
     }
 
-    private CasilleroPropiedad crearCasilleroPropiedad(Partida partida, Integer posicion) {
+    @Override
+    public Integer obtenerAlquilerBaseCatalogo(Integer posicion) {
+        return alquilerBase(posicion);
+    }
+
+    @Override
+    public List<String> obtenerDatosCatalogoPropiedad(Integer posicion) {
+        return CATALOGO_PROPIEDADES.get(posicion);
+    }
+
+     private CasilleroPropiedad crearCasilleroPropiedad(Partida partida, Integer posicion) {
         List<String> datos = CATALOGO_PROPIEDADES.get(posicion);
         if (datos == null) return null;
         Integer alquilerBase = obtenerAlquilerBaseCatalogo(posicion);
@@ -80,15 +90,5 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
         casillero.setPartidaId(partida.getId());
         guardarCasillero(casillero);
         return casillero;
-    }
-
-    @Override
-    public Integer obtenerAlquilerBaseCatalogo(Integer posicion) {
-        return alquilerBase(posicion);
-    }
-
-    @Override
-    public List<String> obtenerDatosCatalogoPropiedad(Integer posicion) {
-        return CATALOGO_PROPIEDADES.get(posicion);
     }
 }

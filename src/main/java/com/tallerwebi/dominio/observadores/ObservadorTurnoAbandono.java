@@ -6,6 +6,11 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -24,7 +29,7 @@ public class ObservadorTurnoAbandono implements Observador<EventoJugadorAbandona
     }
 
     @Override
-    public void actualizar(EventoJugadorAbandonado evento) throws ActivacionEventoInvalidoException {
+    public void actualizar(EventoJugadorAbandonado evento) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = evento.partida();
         Jugador jugadorQueAbandona = evento.jugador();
 

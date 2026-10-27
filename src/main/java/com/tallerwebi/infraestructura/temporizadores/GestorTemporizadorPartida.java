@@ -33,11 +33,7 @@ public class GestorTemporizadorPartida {
     ) {
         cancelarTemporizador(codigoUnico);
 
-        ScheduledFuture<?> tarea = scheduler.schedule(
-            () -> ejecutarAccionConTransaccion(accionExpiracion),
-            duracionSegundos,
-            TimeUnit.SECONDS
-        );
+        ScheduledFuture<?> tarea = scheduler.schedule(() -> ejecutarAccionConTransaccion(accionExpiracion),duracionSegundos,TimeUnit.SECONDS);
 
         temporizadores.put(codigoUnico, tarea);
     }

@@ -4,9 +4,7 @@ import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
-import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.enums.TipoEvento;
-import com.tallerwebi.dominio.servicios.ServicioCasilleroImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.infraestructura.RepositorioCasillero;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +15,6 @@ import java.util.List;
 
 import static com.tallerwebi.dominio.enums.GrupoPropiedades.*;
 import static com.tallerwebi.dominio.enums.TipoEvento.RESTA;
-import static com.tallerwebi.dominio.enums.TipoEvento.SUMA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;

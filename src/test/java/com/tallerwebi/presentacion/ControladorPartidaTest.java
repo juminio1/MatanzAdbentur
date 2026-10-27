@@ -26,6 +26,9 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -178,7 +181,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() throws ActivacionEventoInvalidoException {
+    public void dadoQueUnUsuarioNoTieneSesionCuandoIntentaAvanzarTurnoDaComoResultadoUnauthorized() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = "PARTIDA123";
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
@@ -191,7 +194,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException {
+    public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 99L);
@@ -213,7 +216,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() throws ActivacionEventoInvalidoException {
+    public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = "PARTIDA123";
 
         session.setAttribute("id", 1L);
@@ -321,7 +324,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException {
+    public void dadoQueNoSeEncuentraElJugadorActualCuandoSeIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("id", 1L);
 
@@ -337,7 +340,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() throws ActivacionEventoInvalidoException {
+    public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = "PARTIDA123";
         session.setAttribute("NOMBRE", "PEPITO");
 
@@ -375,7 +378,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException {
+    public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 
@@ -403,7 +406,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException {
+    public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Long idJugador = 1L;
 
@@ -505,7 +508,7 @@ public class ControladorPartidaTest {
 
     //test abandonar partida
     @Test
-    public void dadoQueLaPartidaNoExisteCuandoUnJugadorIntentaAbandonarEntoncesDevuelveNotFound() throws PartidaNoEncontradaException {
+    public void dadoQueLaPartidaNoExisteCuandoUnJugadorIntentaAbandonarEntoncesDevuelveNotFound() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
 
@@ -538,7 +541,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElJugadorNoPerteneceALaPartidaCuandoIntentaAbandonarEntoncesDevuelveForbidden() throws PartidaNoEncontradaException {
+    public void dadoQueElJugadorNoPerteneceALaPartidaCuandoIntentaAbandonarEntoncesDevuelveForbidden() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
 
@@ -577,7 +580,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElJugadorPerteneceALaPartidaCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException {
+    public void dadoQueElJugadorPerteneceALaPartidaCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
@@ -620,7 +623,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElServicioNoEncuentraLaPartidaCuandoSeIntentaAbandonarEntoncesDevuelveNotFound() throws PartidaNoEncontradaException {
+    public void dadoQueElServicioNoEncuentraLaPartidaCuandoSeIntentaAbandonarEntoncesDevuelveNotFound() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
@@ -662,7 +665,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElServicioNoEncuentraAlJugadorCuandoSeIntentaAbandonarEntoncesDevuelveBadRequest() throws PartidaNoEncontradaException {
+    public void dadoQueElServicioNoEncuentraAlJugadorCuandoSeIntentaAbandonarEntoncesDevuelveBadRequest() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
@@ -704,7 +707,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElJugadorTieneSuNombreEnSesionCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException {
+    public void dadoQueElJugadorTieneSuNombreEnSesionCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
@@ -743,7 +746,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnJugadorPerteneceALaPartidaCuandoSeLoBuscaParaAbandonarEntoncesSeEncuentraCorrectamente() throws PartidaNoEncontradaException {
+    public void dadoQueUnJugadorPerteneceALaPartidaCuandoSeLoBuscaParaAbandonarEntoncesSeEncuentraCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         // Preparación
         String codigoPartida = "ABC123";
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);

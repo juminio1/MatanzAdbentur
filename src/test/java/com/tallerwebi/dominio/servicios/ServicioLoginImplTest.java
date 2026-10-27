@@ -8,7 +8,6 @@ import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
-import com.tallerwebi.dominio.servicios.ServicioLoginImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioLogin;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import org.junit.jupiter.api.BeforeEach;

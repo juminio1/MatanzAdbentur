@@ -15,6 +15,12 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
@@ -217,7 +223,7 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
-    void unaSesionAjenaNoPuedeTirarNiComprarAunqueEnvieElIdentificadorDelJugadorActual() {
+    void unaSesionAjenaNoPuedeTirarNiComprarAunqueEnvieElIdentificadorDelJugadorActual() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         cargarPropiedadDisponible(2);
         MockHttpServletRequest request = solicitudJugador(codigo, idPropietario);
         request.getSession().setAttribute("id", idJugador);
@@ -245,7 +251,7 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
-    void avanzarTurnoUsaElJugadorDeSesionAunqueSuIdDeUsuarioSeaDiferente() {
+    void avanzarTurnoUsaElJugadorDeSesionAunqueSuIdDeUsuarioSeaDiferente() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         MockHttpServletRequest request = solicitudJugador(codigo, idJugador);
         request.getSession().setAttribute("id", idJugador + 1000);
         var respuesta = controlador.avanzarTurno(codigo, request);
@@ -650,7 +656,7 @@ class EfectosPartidaIntegracionTest {
     }
 
     @RepeatedTest(3)
-    void queSePuedaComprarYOfrecerPropiedadesACadaUnoDeLosOtrosJugadores(RepetitionInfo repeticion) {
+    void queSePuedaComprarYOfrecerPropiedadesACadaUnoDeLosOtrosJugadores(RepetitionInfo repeticion) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         ControladorOfertaPropiedad ofertas = new ControladorOfertaPropiedad(servicioPartida, servicioCasillero,

@@ -1,8 +1,14 @@
-package com.tallerwebi.dominio.obvservadoresTest;
+package com.tallerwebi.dominio.obvservadores;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.observadores.ObservadorTurnoAbandono;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 
@@ -26,7 +32,7 @@ public class ObservadorTurnoAbandonoTest {
 
 
 @Test
-public void dadoQueHay3JugadoresYElDelMedioAbandonaEnSuTurnoCuandoElObservadorRevisaEntoncesAvanzaElTurno() {
+public void dadoQueHay3JugadoresYElDelMedioAbandonaEnSuTurnoCuandoElObservadorRevisaEntoncesAvanzaElTurno() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
     // Preparación
     Partida partida = new Partida();
     partida.setCodigoUnico("SALA-123");

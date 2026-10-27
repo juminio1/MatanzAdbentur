@@ -9,6 +9,12 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
@@ -132,7 +138,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
-    public Boolean venderPropiedadYResolverDeuda(String codigoPartida, Long idJugador, Long idPropiedad) {
+    public Boolean venderPropiedadYResolverDeuda(String codigoPartida, Long idJugador, Long idPropiedad) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
         if (deuda == null) {
@@ -154,7 +160,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
     @Override
     public ResultadoDeuda evaluarDeuda(
-            String codigoPartida, Long idJugador) {
+            String codigoPartida, Long idJugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         DeudaPendiente deuda =
                 obtenerDeudaPendiente(codigoPartida, idJugador);
@@ -177,7 +183,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
     // Declara la quiebra y devuelve la partida con los cambios realizados por los observadores.
     @Override
-    public Partida declararQuiebra(String codigoPartida, Long idJugador) {
+    public Partida declararQuiebra(String codigoPartida, Long idJugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = validarPartidaParaQuiebra(codigoPartida, idJugador);
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
@@ -225,7 +231,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             String codigoPartida,
             Propiedad propiedad,
             Jugador jugador,
-            Integer montoAlquiler) {
+            Integer montoAlquiler) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
 

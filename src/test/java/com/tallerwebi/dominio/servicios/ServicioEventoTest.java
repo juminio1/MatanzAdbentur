@@ -13,13 +13,17 @@ import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
+import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.infraestructura.RepositorioEvento;
-import com.tallerwebi.presentacion.DTO.ResultadoTiradaDTO;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
+import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,12 +42,18 @@ public class ServicioEventoTest {
     private ServicioEvento servicioEvento;
     private RepositorioEvento repositorioEventoMock;
     private ServicioDado servicioDadoMock;
+    private ApplicationEventPublisher publicadorEventosMock;
+    private GestorTemporizadorPartida gestorTemporizadorMock;
+    private RepositorioPartida repositorioPartidaMock;
 
     @BeforeEach
     public void init() {
         repositorioEventoMock = mock(RepositorioEvento.class);
         servicioDadoMock = mock(ServicioDado.class);
-        servicioEvento = new ServicioEventoImpl(repositorioEventoMock, servicioDadoMock);
+        publicadorEventosMock = (ApplicationEventPublisher) mock(PublicadorEventos.class);
+        gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
+        repositorioPartidaMock = mock(RepositorioPartida.class);
+        servicioEvento = new ServicioEventoImpl(repositorioEventoMock, servicioDadoMock, publicadorEventosMock, gestorTemporizadorMock, repositorioPartidaMock);
     }
 
     private Jugador crearJugador(Long id, Integer dinero, Integer posicion) {
@@ -70,9 +80,7 @@ public class ServicioEventoTest {
         return evento;
     }
 
-    private EventoGlobal crearEventoGlobal(
-        Long id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, Integer valor
-    ) {
+    private EventoGlobal crearEventoGlobal(Long id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, Integer valor) {
         EventoGlobal evento = new EventoGlobal();
         evento.setId(id);
         evento.setTipoEventoGlobal(tipoEventoGlobal);
@@ -347,9 +355,9 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(6, 4));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 4));
 
-        ResultadoTiradaDTO resultado = servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        ResultadoTirada resultado = servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
 
         assertEquals(10, resultado.sumarDados());
         assertEquals(10, uno.getPosicionActual());
@@ -364,7 +372,7 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(6, 4), new ResultadoTiradaDTO(3, 4));
+            new ResultadoTirada(6, 4), new ResultadoTirada(3, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -382,7 +390,7 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearPiquete();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(2, 3), new ResultadoTiradaDTO(4, 5));
+            new ResultadoTirada(2, 3), new ResultadoTirada(4, 5));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -399,7 +407,7 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearAfip();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(5, 6), new ResultadoTiradaDTO(2, 3));
+            new ResultadoTirada(5, 6), new ResultadoTirada(2, 3));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -416,8 +424,8 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(5, 5), new ResultadoTiradaDTO(6, 4),
-            new ResultadoTiradaDTO(3, 3), new ResultadoTiradaDTO(6, 3));
+            new ResultadoTirada(5, 5), new ResultadoTirada(6, 4),
+            new ResultadoTirada(3, 3), new ResultadoTirada(6, 3));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -439,9 +447,9 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(5, 4), new ResultadoTiradaDTO(4, 5),
-            new ResultadoTiradaDTO(3, 3), new ResultadoTiradaDTO(2, 4),
-            new ResultadoTiradaDTO(6, 2), new ResultadoTiradaDTO(3, 4));
+            new ResultadoTirada(5, 4), new ResultadoTirada(4, 5),
+            new ResultadoTirada(3, 3), new ResultadoTirada(2, 4),
+            new ResultadoTirada(6, 2), new ResultadoTirada(3, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -466,8 +474,8 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(6, 5), new ResultadoTiradaDTO(5, 6),
-            new ResultadoTiradaDTO(2, 2));
+            new ResultadoTirada(6, 5), new ResultadoTirada(5, 6),
+            new ResultadoTirada(2, 2));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -485,7 +493,7 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(3, 3));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 3));
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
 
         assertThrows(TiradaDadoInvalidaException.class,
@@ -499,7 +507,7 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(0, 1));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(0, 1));
 
         assertThrows(TiradaDadoInvalidaException.class,
             () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
@@ -512,7 +520,7 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(7, 7));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(7, 7));
 
         assertThrows(TiradaDadoInvalidaException.class,
             () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
@@ -524,7 +532,7 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        ResultadoTiradaDTO resultadoMock = mock(ResultadoTiradaDTO.class);
+        ResultadoTirada resultadoMock = mock(ResultadoTirada.class);
         when(resultadoMock.sumarDados()).thenReturn(null);
         when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
 
@@ -654,7 +662,7 @@ public class ServicioEventoTest {
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTiradaDTO(3, 4));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
 
@@ -671,7 +679,7 @@ public class ServicioEventoTest {
         EventoGlobal segundoEvento = crearPiquete();
         servicioEvento.iniciarEventoGlobal(partida, primerEvento);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(3, 4), new ResultadoTiradaDTO(2, 4));
+            new ResultadoTirada(3, 4), new ResultadoTirada(2, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, primerEvento);
         servicioEvento.iniciarEventoGlobal(partida, segundoEvento);
@@ -691,7 +699,7 @@ public class ServicioEventoTest {
         servicioEvento.iniciarEventoGlobal(partidaUno, eventoUno);
         servicioEvento.iniciarEventoGlobal(partidaDos, eventoDos);
         when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTiradaDTO(4, 3), new ResultadoTiradaDTO(4, 5));
+            new ResultadoTirada(4, 3), new ResultadoTirada(4, 5));
 
         servicioEvento.realizarTiradaEventoGlobal(partidaUno, uno, eventoUno);
         assertEquals(7, uno.getPosicionActual());

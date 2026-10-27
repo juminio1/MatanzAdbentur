@@ -5,6 +5,12 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -82,7 +88,7 @@ public class ControladorGestionQuiebra {
     @PostMapping("/partida/{codigoPartida}/declarar-quiebra")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> declararQuiebra(
-            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) {
+            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         if (ResolutorJugadorSesion.resolverUsuarioSesionId(request) == null
                 && request.getSession().getAttribute(SESION_NOMBRE) == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(

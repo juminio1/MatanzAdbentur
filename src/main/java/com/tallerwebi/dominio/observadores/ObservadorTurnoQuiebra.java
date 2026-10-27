@@ -5,6 +5,12 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -25,7 +31,7 @@ public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado>
     }
 
     @Override
-    public void actualizar(EventoJugadorQuebrado evento) {
+    public void actualizar(EventoJugadorQuebrado evento) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         Partida partida = evento.partida();
 

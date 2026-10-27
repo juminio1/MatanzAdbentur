@@ -2,27 +2,32 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
-import com.tallerwebi.infraestructura.RepositorioPartida;
-import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
-import com.tallerwebi.dominio.resultados.PosicionFicha;
-import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
-import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
-
-import java.util.List;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
-
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 //  Coordino las operaciones de la partida.
@@ -34,20 +39,24 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
 
     private final RepositorioPartida repositorioPartida;
+
     private final ServicioInicioPartida servicioInicioPartida;
     private final ServicioTurno servicioTurno;
+    private final ServicioEvento servicioEvento;
+
     private final PublicadorEventos<EventoTurnoCambiado> publicadorTurno;
     private final GestorTemporizadorPartida gestorTemporizador;
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
 
     @Autowired
     public ServicioPartidaImpl(
-            RepositorioPartida repositorioPartida,
-            ServicioInicioPartida servicioInicioPartida,
-            GestorTemporizadorPartida gestorTemporizador,
-            ServicioTurno servicioTurno,
-            @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
-            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
+        RepositorioPartida repositorioPartida,
+        ServicioInicioPartida servicioInicioPartida,
+        GestorTemporizadorPartida gestorTemporizador,
+        ServicioTurno servicioTurno,
+        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
+        ServicioEvento servicioEvento
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
@@ -55,6 +64,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.gestorTemporizador = gestorTemporizador;
         this.publicadorTurno = publicadorTurno;
         this.publicadorAbandono = publicadorAbandono;
+        this.servicioEvento = servicioEvento;
     }
 
     @Override
@@ -107,15 +117,19 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW) //Permite iniciar una una transcacción nueva cuando el obvservador solicite reanudar la partida 
     public void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico) {
+
         Partida partida = obtenerPartida(codigoUnico);
-        if (partida == null) return;
-        Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
-                codigoUnico,
-                DURACION_TURNO_SEGUNDOS,
-                () -> avanzarTurno(codigoUnico)
-        );
-        if (iniciado) notificarTurnoActual(partida, false);
+
+        if (partida != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+
+            Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(codigoUnico, DURACION_TURNO_SEGUNDOS, () -> avanzarTurno(codigoUnico));
+
+            if (Boolean.TRUE.equals(iniciado)) {
+                notificarTurnoActual(partida, false);
+            }
+        }
     }
 
     @Override
@@ -132,34 +146,45 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void avanzarTurno(String codigoUnico) {
-        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
 
         Partida partida = obtenerPartida(codigoUnico);
-        if (esPartidaConJugadoresInvalida(partida)) {
-            return;
-        }
 
-        Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
-        incrementarRondas(partida);
+        if (!esPartidaConJugadoresInvalida(partida)&& !verificarSiHayEventoGlobalActivo(codigoUnico)) {
 
-        Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
-        if (candidato == null) {
-            repositorioPartida.guardarPartida(partida);
             DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
-            return;
-        }
 
-        candidato.setTiroEnTurno(false);
-        partida.setIndiceTurnoActual(candidato.getOrden());
-        repositorioPartida.guardarPartida(partida);
-        notificarTurnoActual(partida, true);
+            Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
+
+            Integer rondaAnterior = partida.getRondaActual();
+
+            incrementarRondas(partida);
+
+            Boolean cambioRonda = !rondaAnterior.equals(partida.getRondaActual());
+
+            if (cambioRonda) {
+                verificarEventoGlobalAlCambiarRonda(partida);
+            }
+
+            Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
+
+            if (candidato != null) {
+                candidato.setTiroEnTurno(false);
+                partida.setIndiceTurnoActual(candidato.getOrden());
+            }
+
+            repositorioPartida.guardarPartida(partida);
+
+            if (candidato != null) {
+                Boolean iniciarTemporizador = !verificarSiHayEventoGlobalActivo(codigoUnico); //Pausa la partida para el evento global
+
+                notificarTurnoActual(partida, iniciarTemporizador);
+            }
+        }
     }
 
     @Override
     public void iniciarPartida(String codigo, Long idUsuario)
-            throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException,
-            CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException,
-            SalaNoEncontradaException, FichaNoDisponibleException {
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         Partida partida = servicioInicioPartida.iniciarPartida(codigo, idUsuario);
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigo));
         notificarTurnoActual(partida, false);
@@ -176,7 +201,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    public void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException {
+    public void abandonarPartida(String codigoUnico, Long idJugador)
+        throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) {
             throw new PartidaNoEncontradaException();
@@ -194,9 +220,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
         publicadorAbandono.notificar(new EventoJugadorAbandonado(partida, jugador));
     }
 
+    @Override
+    public Boolean verificarSiHayEventoGlobalActivo(String codigoUnico) {
+        return Boolean.TRUE.equals(this.servicioEvento.verificarSiHayEventoGlobalActivo(codigoUnico));
+    }
+
     private PosicionFicha mapearAJugadorPosicionDto(Jugador jugador) {
         String nombreFicha = obtenerNombreFichaSegura(jugador);
-        Integer posicion = jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
+        Integer posicion =
+            jugador.getPosicionActual() != null ? jugador.getPosicionActual() : POSICION_INICIAL;
         return new PosicionFicha(jugador.getId(), jugador.getApodo(), nombreFicha, posicion);
     }
 
@@ -205,31 +237,38 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador, Integer segundosTotales) {
-        Jugador jugadorActual = obtenerJugadorActual(partida.getCodigoUnico());
-        if (jugadorActual == null) {
-            return;
+    
+        Jugador jugadorActual =obtenerJugadorActual(partida.getCodigoUnico());
+
+        if (jugadorActual != null) {
+
+            DespuesDeConfirmar.ejecutar(() -> {
+
+                if (iniciarTemporizador && partida.getCodigoUnico() != null) {
+
+                    gestorTemporizador.programarTemporizador(partida.getCodigoUnico(), segundosTotales, () -> avanzarTurno(partida.getCodigoUnico()));
+                }
+
+                if (publicadorTurno != null) {
+
+                    EventoTurnoCambiado evento = new EventoTurnoCambiado(
+                        partida.getCodigoUnico(), jugadorActual.getId(), jugadorActual.getApodo(), jugadorActual.getOrden(), obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
+                        partida.getRondaActual(), partida.getTurnosFinalizadosEnRonda());
+
+                    publicarTurnoCambiado(evento);
+                }
+            });
         }
-        DespuesDeConfirmar.ejecutar(() -> {
-        if (iniciarTemporizador && partida.getCodigoUnico() != null) {
-            gestorTemporizador.programarTemporizador(
-                    partida.getCodigoUnico(),
-                    segundosTotales,
-                    () -> avanzarTurno(partida.getCodigoUnico())
-            );
-        }
-        if (publicadorTurno != null) {
-            EventoTurnoCambiado evento = new EventoTurnoCambiado(
-                    partida.getCodigoUnico(),
-                    jugadorActual.getId(),
-                    jugadorActual.getApodo(),
-                    jugadorActual.getOrden(),
-                    obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
-                    partida.getRondaActual(),
-                    partida.getTurnosFinalizadosEnRonda()
-            );
+    }
+    
+    private void publicarTurnoCambiado(EventoTurnoCambiado evento) {
+        try {
             publicadorTurno.notificar(evento);
+
+        } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException exception) {
+
+            throw new IllegalStateException("Error al notificar el cambio de turno",exception);
         }
-        });
     }
 
     private Boolean esPartidaConJugadoresInvalida(Partida partida) {
@@ -243,6 +282,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private String obtenerNombreFichaSegura(Jugador jugador) {
         return jugador.getFicha() == null ? null : jugador.getFicha().name();
     }
+   
+    private void verificarEventoGlobalAlCambiarRonda(Partida partida) {
+    try {
+        servicioEvento.verificarActivacionEventoGlobal(partida);
 
+    } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException excption) {
 
+        throw new IllegalStateException("Error al verificar el evento global de la partida", excption); //esta exception es para no ocultar los horrores, y se propaga como error de ejecución y la transacción puede revertirse. 
+    }
+}
 }

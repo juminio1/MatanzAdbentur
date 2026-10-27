@@ -5,7 +5,13 @@ import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TipoEfectoEventoNoSoportadoException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -56,7 +62,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     @Override
     public Optional<ResultadoEvento> aplicarSiCorresponde(
             String codigoPartida,
-            Jugador jugador) {
+            Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         Integer posicion = jugador.getPosicionActual();
 
@@ -93,7 +99,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     private void procesarEventoResta(
             String codigoPartida,
             EventoCasillero evento,
-            Jugador jugador) {
+            Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         Integer monto = evento.getMonto();
 

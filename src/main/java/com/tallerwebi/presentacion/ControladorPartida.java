@@ -7,8 +7,12 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.*;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
@@ -179,7 +183,7 @@ public class ControladorPartida {
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
             @PathVariable(PARAM_POSICION) Integer posicion,
             HttpServletRequest request
-    ) {
+    ) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (partida == null || !servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
         Long idSesion = resolverJugadorAutenticado(partida, request);
@@ -216,7 +220,7 @@ public class ControladorPartida {
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
             @PathVariable(PARAM_POSICION) Integer posicion,
             HttpServletRequest request
-    ) {
+    ) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) {
             return ResponseEntity.notFound().build();
@@ -257,7 +261,7 @@ public class ControladorPartida {
     @PostMapping("/partida/{codigoPartida}/abandonar")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> abandonarPartida(
-            @PathVariable("codigoPartida") String codigoPartida, HttpServletRequest request) {
+            @PathVariable("codigoPartida") String codigoPartida, HttpServletRequest request) throws ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
 
         if (partida == null) {
@@ -280,7 +284,7 @@ public class ControladorPartida {
     }
 
     private ResponseEntity<Map<String, Object>> ejecutarAbandono(
-            Partida partida, Jugador jugador) {
+            Partida partida, Jugador jugador) throws ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         try {
             servicioPartida.abandonarPartida(partida.getCodigoUnico(), jugador.getId());
@@ -303,7 +307,7 @@ public class ControladorPartida {
         return participacion.permiteAdministrarPropiedades(partida, jugador, idJugador);
     }
 
-    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) {
+    private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPartida = compra.codigoPartida();
         Jugador jugador = compra.jugador();
         CasilleroPropiedad casillero = compra.casillero();
@@ -430,7 +434,7 @@ public class ControladorPartida {
     public ResponseEntity<TurnoDTO> avanzarTurno(
             @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
             HttpServletRequest request
-    ) {
+    ) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Long usuarioSesionId = ResolutorJugadorSesion.resolverUsuarioSesionId(request);
         String nombreSesion = (String) request.getSession().getAttribute(SESION_NOMBRE);
 
@@ -457,7 +461,7 @@ public class ControladorPartida {
             @RequestParam("codigoUnico") String codigoUnico,
             @RequestParam(CLAVE_ID_JUGADOR) Long idJugador,
             HttpServletRequest request
-    ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    ) throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = servicioPartida.obtenerPartida(codigoUnico);
         if (partida == null) throw new PartidaNoEncontradaException();
         Long idSesion = resolverJugadorAutenticado(partida, request);

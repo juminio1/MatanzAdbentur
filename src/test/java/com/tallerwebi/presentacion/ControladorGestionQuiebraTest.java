@@ -18,6 +18,11 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -107,7 +112,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queDeclararQuiebraUseElJugadorDeSesionAunqueLaPeticionIndiqueOtro() throws PartidaNoEncontradaException {
+    void queDeclararQuiebraUseElJugadorDeSesionAunqueLaPeticionIndiqueOtro() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 1L);
         request.addParameter("idJugador", "2");
 
@@ -124,28 +129,28 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queDeclararQuiebraResuelvaLaSesionConIDUSUARIO() {
+    void queDeclararQuiebraResuelvaLaSesionConIDUSUARIO() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("IDUSUARIO", 1L);
         assertEquals(HttpStatus.OK, controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
         verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
     }
 
     @Test
-    void queDeclararQuiebraResuelvaLaSesionConNombre() {
+    void queDeclararQuiebraResuelvaLaSesionConNombre() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("NOMBRE", "Ana");
         assertEquals(HttpStatus.OK, controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
         verify(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
     }
 
     @Test
-    void queDeclararQuiebraSinSesionDevuelvaUnauthorized() {
+    void queDeclararQuiebraSinSesionDevuelvaUnauthorized() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         assertEquals(HttpStatus.UNAUTHORIZED,
                 controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
         verifyNoInteractions(servicioGestionQuiebraMock, servicioPartidaMock);
     }
 
     @Test
-    void queDeclararQuiebraEnPartidaInexistenteDevuelvaNotFound() {
+    void queDeclararQuiebraEnPartidaInexistenteDevuelvaNotFound() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         session.setAttribute("id", 1L);
         assertEquals(HttpStatus.NOT_FOUND,
                 controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
@@ -153,7 +158,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queDeclararQuiebraDeUnJugadorAjenoDevuelvaForbidden() {
+    void queDeclararQuiebraDeUnJugadorAjenoDevuelvaForbidden() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 99L);
         assertEquals(HttpStatus.FORBIDDEN,
                 controladorGestionQuiebra.declararQuiebra("PARTIDA123", request).getStatusCode());
@@ -161,7 +166,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queUnaDeclaracionInvalidaDevuelvaConflictConElMotivo() {
+    void queUnaDeclaracionInvalidaDevuelvaConflictConElMotivo() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 1L);
         for (String motivo : List.of("La partida no está en curso.", "El jugador no tiene un pago pendiente.",
                 "El jugador ya abandonó o está en quiebra.")) {
@@ -175,7 +180,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queUnErrorInternoAlDeclararQuiebraNoSeConviertaEnConflict() {
+    void queUnErrorInternoAlDeclararQuiebraNoSeConviertaEnConflict() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 1L);
         IllegalStateException fallo = new IllegalStateException("Fallo interno");
         doThrow(fallo).when(servicioGestionQuiebraMock).declararQuiebra("PARTIDA123", 1L);
@@ -185,7 +190,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queElControladorNoDupliqueLaNotificacionDelObservador() {
+    void queElControladorNoDupliqueLaNotificacionDelObservador() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 1L);
         Partida confirmada = new Partida();
         confirmada.setEstado(EstadoPartida.FINALIZADA);
@@ -243,7 +248,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queLaConsultaDeDeudaDeUnJugadorAjenoDevuelvaForbidden() {
+    void queLaConsultaDeDeudaDeUnJugadorAjenoDevuelvaForbidden() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 99L);
         ResponseEntity<Map<String, Object>> respuesta = controladorGestionQuiebra.obtenerDeudaPendiente("PARTIDA123", request);
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
@@ -263,7 +268,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queLaConsultaDeDeudaResuelvaLasVariantesDeIdentidadDeSesion() {
+    void queLaConsultaDeDeudaResuelvaLasVariantesDeIdentidadDeSesion() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         for (String atributo : List.of("id", "IDUSUARIO", "NOMBRE")) {
             prepararSesionParaQuiebra(atributo, atributo.equals("NOMBRE") ? "Ana" : 1L);
             assertEquals(HttpStatus.OK,
@@ -284,7 +289,7 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
-    void queLaDeudaPuedaConsultarseFueraDeTurnoSinCambiarLaPartida() {
+    void queLaDeudaPuedaConsultarseFueraDeTurnoSinCambiarLaPartida() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararSesionParaQuiebra("id", 1L);
         Partida partida = servicioPartidaMock.obtenerPartida("PARTIDA123");
         Jugador jugadorSesion = partida.getJugadores().get(0);
@@ -323,7 +328,7 @@ class ControladorGestionQuiebraTest {
     }
 
     // Prepara la identidad de sesión y una partida para probar el endpoint.
-    private void prepararSesionParaQuiebra(String atributo, Object valor) {
+    private void prepararSesionParaQuiebra(String atributo, Object valor) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         session.setAttribute(atributo, valor);
         Jugador jugador = new Jugador();
         jugador.setId(1L);

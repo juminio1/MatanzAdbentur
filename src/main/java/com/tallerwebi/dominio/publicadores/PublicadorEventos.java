@@ -1,5 +1,11 @@
 package com.tallerwebi.dominio.publicadores;
 
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.observadores.Observador;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +29,7 @@ public class PublicadorEventos<T> {
         observadores.remove(observador);
     }
 
-    public void notificar(T evento) {
+    public void notificar(T evento) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         for (Observador<T> observador : observadores) {
             observador.actualizar(evento);
         }

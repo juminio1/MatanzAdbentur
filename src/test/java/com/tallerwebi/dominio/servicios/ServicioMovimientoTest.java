@@ -1,8 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
-import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
-import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
+
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

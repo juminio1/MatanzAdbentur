@@ -16,7 +16,6 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.ContraseniaInvalidaException;
 import com.tallerwebi.dominio.excepcion.EmailExistenteException;
 import com.tallerwebi.dominio.excepcion.UsernameExistenteException;
-import com.tallerwebi.dominio.servicios.ServicioRegistroImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioRegistro;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
 import com.tallerwebi.presentacion.DTO.RegistroDTO;

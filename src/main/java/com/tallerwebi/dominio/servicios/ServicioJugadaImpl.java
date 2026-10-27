@@ -1,6 +1,5 @@
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
@@ -38,8 +37,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
         this.movimiento = movimiento;
     }
     @Override
-    public ResultadoJugada tirarYMover(String codigo, Long idJugador) //CORREGIR ESTO
-            throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+    public ResultadoJugada tirarYMover(String codigo, Long idJugador) // :|
+            throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
         Jugador jugador = obtenerJugador(partida, idJugador);
@@ -68,6 +67,11 @@ public class ServicioJugadaImpl implements ServicioJugada {
     }
     private void validarTirada(String codigo, Jugador jugador) {
         Jugador actual = partidas.obtenerJugadorActual(codigo);
+
+        if (this.partidas.verificarSiHayEventoGlobalActivo(codigo)) { 
+            throw new TiradaNoPermitidaException("La partida está pausada por un evento global.");
+        }
+
         if (!participacion.estaActivo(jugador) || actual == null || !Objects.equals(actual.getId(), jugador.getId())) {
             throw new TiradaNoPermitidaException("No podés tirar los dados en este turno.");
         }
@@ -78,10 +82,10 @@ public class ServicioJugadaImpl implements ServicioJugada {
             throw new TiradaNoPermitidaException("Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados.");
         }
     }
-    private Optional<ResultadoEvento> aplicarEvento(String codigo, Jugador jugador) {
+    private Optional<ResultadoEvento> aplicarEvento(String codigo, Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         return eventos == null ? Optional.empty() : eventos.aplicarSiCorresponde(codigo, jugador); 
     }
-    private Destino resolverDestino(Partida partida, Jugador jugador) {
+    private Destino resolverDestino(Partida partida, Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         if (!participacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno())) return new Destino(false, null);
         CasilleroPropiedad casillero = casilleros.buscarOCrearPropiedadEnPosicion(partida, jugador.getPosicionActual());
         if (casillero == null) return new Destino(false, null);
@@ -94,7 +98,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         return new Destino(deuda == ResultadoDeuda.PENDIENTE, new AlquilerJugada(jugador.getId(),
                 jugador.getApodo(), propietario.getApodo(), propiedad.getNombre(), alquiler));
     }
-    private void avanzarTurnoSiCorresponde(String codigo, Jugador jugador, boolean requiereDecision) {
+    private void avanzarTurnoSiCorresponde(String codigo, Jugador jugador, boolean requiereDecision) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         if (requiereDecision || !participacion.estaActivo(jugador)) return;
         if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) return;
         partidas.avanzarTurno(codigo);

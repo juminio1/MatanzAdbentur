@@ -13,6 +13,12 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
@@ -21,6 +27,7 @@ import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSock
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -29,7 +36,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 class ObservadoresConfigTest {
 
     @Test
-    void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() {
+    void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() throws BeansException, ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         NotificadorPartida notificador = mock(NotificadorPartida.class);
         ObservadorVictoria victoria = mock(ObservadorVictoria.class);
         try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
@@ -58,7 +65,7 @@ class ObservadoresConfigTest {
     }
 
     @Test
-    void springConectaCadaPublicadorConSuObservadorYConservaLosMensajes() {
+    void springConectaCadaPublicadorConSuObservadorYConservaLosMensajes() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         NotificadorSala sala = mock(NotificadorSala.class);
         NotificadorPartida partida = mock(NotificadorPartida.class);
         try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {

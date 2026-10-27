@@ -3,6 +3,11 @@ package com.tallerwebi.presentacion.coordinadores;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
 
@@ -22,7 +27,7 @@ public final class CoordinadorTurnoPartida {
         return crearTurno(codigoPartida, partida, jugadorActual);
     }
 
-    public TurnoDTO avanzarYObtenerTurno(String codigoPartida) throws ActivacionEventoInvalidoException {
+    public TurnoDTO avanzarYObtenerTurno(String codigoPartida) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         servicioPartida.avanzarTurno(codigoPartida);
         return obtenerTurnoActual(codigoPartida);
     }

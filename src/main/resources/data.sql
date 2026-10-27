@@ -2,7 +2,6 @@ INSERT INTO Usuario( email, username, password, rol, activo)
 VALUES( 'test@unlam.edu.ar', 'test123', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'ADMIN', true)
 ON CONFLICT DO NOTHING;
 
-<<<<<<< HEAD
 INSERT INTO Evento(descripcion, tipoEfecto, valor, tipoEventoGlobal, DTYPE)
 VALUES ('Tramites en AFIP: Caíste a hacer un trámite y hay terrible fila. Todos tiran los dados y el que saque la mayor suma se saltea toda la fila y avanza hasta el casillero del jugador más adelantado. Si hay empate, los empatados vuelven a tirar hasta que uno se gane el pase VIP.', 'MOVER_CASILLEROS', 0, 'TRAMITES_AFIP', 'EventoGlobal'),
 ('Se inundó el rancho: Se largó el diluvio en La Matanza y el barrio parece una pileta municipal. Todos tiran los dados, el que saque la mayor suma de dados se lo lleva el agua puesto y retrocede 3 casilleros. Si hay empate, los que empataron con la mayor suma vuelven a tirar hasta que uno se coma el garrón. ', 'MOVER_CASILLEROS', -3, 'INUNDACION', 'EventoGlobal'),
@@ -13,7 +12,6 @@ VALUES ('Tramites en AFIP: Caíste a hacer un trámite y hay terrible fila. Todo
 
 
 /* VALUES(null, null, null, null, null); */
-=======
 DELETE FROM EventoCasillero
 WHERE id IN (
     SELECT id
@@ -122,4 +120,3 @@ INSERT INTO CasilleroEvento (id)
 SELECT id
 FROM casilleros_nuevos
 ON CONFLICT (id) DO NOTHING;
->>>>>>> ceeda4f80ccebd107ddc307b5cf9492cd6fa354a

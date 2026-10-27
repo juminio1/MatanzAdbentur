@@ -13,6 +13,11 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.servicios.*;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -94,7 +99,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void lasOperacionesDePropiedadConservanNotFoundParaPosicionesQueNoSonPropiedades()  {
+    void lasOperacionesDePropiedadConservanNotFoundParaPosicionesQueNoSonPropiedades() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException  {
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(crearPartida());
 
         assertEquals(HttpStatus.NOT_FOUND, controlador.obtenerInfoPropiedad(CODIGO, 0).getStatusCode());
@@ -169,15 +174,10 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-<<<<<<< HEAD
-    void rechazaLaCompraSinJugadorActivoSinConsultarNuevamenteElTurno()  {
-        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(crearPartida());
-=======
-    void rechazaLaCompraSinJugadorActivoSinConsultarNuevamenteElTurno() {
+    void rechazaLaCompraSinJugadorActivoSinConsultarNuevamenteElTurno() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         partida.setJugadores(List.of(crearJugador(1L, "Ana", 1000, 1)));
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
->>>>>>> 6df2a4e23ca77284e91c143a4b6a3fe276fddd3a
 
         ResponseEntity<Map<String, Object>> respuesta = controlador.comprarPropiedad(CODIGO, 1, solicitudJugador(CODIGO, null));
 
@@ -252,7 +252,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void compraLaPropiedadDelJugadorActivoYNotificaElSiguienteTurno() {
+    void compraLaPropiedadDelJugadorActivoYNotificaElSiguienteTurno() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, 1);
         Jugador siguiente = crearJugador(2L, "Luna", 1000, 0);
@@ -296,7 +296,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void compraSinFondosConservaElCodigoDeErrorYNoNotificaNiAvanza() {
+    void compraSinFondosConservaElCodigoDeErrorYNoNotificaNiAvanza() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararCompraExistente();
         doThrow(new DineroInsuficienteException("Fondos insuficientes"))
                 .when(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, 1L);
@@ -311,7 +311,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void errorDeMaterializacionConservaElErrorInternoSinComprar() {
+    void errorDeMaterializacionConservaElErrorInternoSinComprar() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararCompraExistente();
         when(servicioCasillero.buscarOCrearPropiedadEnPosicion(any(), eq(4)))
                 .thenThrow(new IllegalStateException("Fallo de persistencia"));
@@ -327,7 +327,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void errorDeCompraConMensajeVacioConservaElConflictoPredeterminado() {
+    void errorDeCompraConMensajeVacioConservaElConflictoPredeterminado() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararCompraExistente();
         doThrow(new IllegalStateException(" "))
                 .when(servicioPropiedad).comprarPropiedadParaJugador(ID_PROPIEDAD, 1L);
@@ -341,7 +341,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void falloAlNotificarLaCompraNoPublicaSaldosNiAvanzaElTurno() {
+    void falloAlNotificarLaCompraNoPublicaSaldosNiAvanzaElTurno() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararCompraExistente();
         doThrow(new IllegalStateException("Fallo de envio")).when(notificador)
                 .convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
@@ -392,18 +392,18 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void laCompraMaterializaUnaPropiedadComunConLosDatosDelCatalogo() {
+    void laCompraMaterializaUnaPropiedadComunConLosDatosDelCatalogo() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         comprobarCreacionEnCompra(1, "Plaza Barrio Marina", "Villa Luzuriaga", 50,
                 GrupoPropiedades.VILLA_LUZURIAGA);
     }
 
     @Test
-    void laCompraMaterializaUnaParadaSinGrupoYConAlquilerBaseVeinte() {
+    void laCompraMaterializaUnaParadaSinGrupoYConAlquilerBaseVeinte() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         comprobarCreacionEnCompra(6, "Colectivo 242", "Parada de bondi", 20, null);
     }
 
     @Test
-    void laCompraUsaLaPropiedadDeSuPartidaAunqueOtraOcupeLaMismaPosicion() {
+    void laCompraUsaLaPropiedadDeSuPartidaAunqueOtraOcupeLaMismaPosicion() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, 4);
         partida.setJugadores(List.of(comprador));
@@ -458,7 +458,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     private void comprobarCreacionEnCompra(Integer posicion, String nombre, String descripcion,
-                                           Integer alquilerBase, GrupoPropiedades grupo) {
+                                           Integer alquilerBase, GrupoPropiedades grupo) throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, posicion);
         partida.setJugadores(List.of(comprador));
@@ -497,7 +497,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad()  {
+    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException  {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 1000, 2);
         partida.setJugadores(List.of(jugador));
@@ -511,7 +511,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void vendeLaPropiedadDelJugadorYActualizaSuSaldo() {
+    void vendeLaPropiedadDelJugadorYActualizaSuSaldo() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador vendedor = crearJugador(1L, "Ana", 700, 9);
         partida.setJugadores(List.of(vendedor));
@@ -595,7 +595,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void errorDeVentaConservaElConflictoSinNotificarNiAvanzar() {
+    void errorDeVentaConservaElConflictoSinNotificarNiAvanzar() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararCompraExistente();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", 1L);

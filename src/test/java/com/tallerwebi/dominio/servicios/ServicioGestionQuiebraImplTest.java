@@ -7,8 +7,13 @@ import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import org.mockito.ArgumentCaptor;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
-import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import com.tallerwebi.infraestructura.RepositorioPartida;
@@ -45,7 +50,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queAlVenderUnaPropiedadYReunirDineroSuficienteSePagueLaDeuda() {
+    void queAlVenderUnaPropiedadYReunirDineroSuficienteSePagueLaDeuda() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "PARTIDA123";
         Long idJugador = 1L;
         Long idPropiedad = 10L;
@@ -81,7 +86,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queSiLaVentaNoAlcanzaYQuedanPropiedadesLaDeudaSigaPendiente() {
+    void queSiLaVentaNoAlcanzaYQuedanPropiedadesLaDeudaSigaPendiente() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "PARTIDA123";
         Long idJugador = 1L;
         Long idPropiedad = 10L;
@@ -119,7 +124,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queSiVendeSuUltimaPropiedadYNoAlcanzaEntreEnQuiebra() {
+    void queSiVendeSuUltimaPropiedadYNoAlcanzaEntreEnQuiebra() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "PARTIDA123";
         Long idJugador = 1L;
         Long idPropiedad = 10L;
@@ -165,7 +170,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queSePuedaDeclararQuiebraConDeudaYPropiedadesSinTenerElTurno() {
+    void queSePuedaDeclararQuiebraConDeudaYPropiedadesSinTenerElTurno() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         DeudaPendiente deuda = prepararDeudaParaQuiebra();
         Jugador jugador = deuda.getJugadorDeudor();
         com.tallerwebi.dominio.entidades.Propiedad propiedad = new com.tallerwebi.dominio.entidades.Propiedad();
@@ -189,7 +194,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queDeclararQuiebraDevuelvaElEstadoDecididoPorLosObservadores() {
+    void queDeclararQuiebraDevuelvaElEstadoDecididoPorLosObservadores() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         DeudaPendiente deuda = prepararDeudaParaQuiebra();
         doAnswer(invocacion -> {
             EventoJugadorQuebrado evento = invocacion.getArgument(0);
@@ -246,7 +251,7 @@ class ServicioGestionQuiebraImplTest {
     }
 
     @Test
-    void queLosFallosDelObservadorNoSeConfundanConSolicitudesInvalidas() {
+    void queLosFallosDelObservadorNoSeConfundanConSolicitudesInvalidas() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         prepararDeudaParaQuiebra();
         IllegalStateException fallo = new IllegalStateException("Fallo del observador");
         doThrow(fallo).when(publicadorQuiebra).notificar(any(EventoJugadorQuebrado.class));

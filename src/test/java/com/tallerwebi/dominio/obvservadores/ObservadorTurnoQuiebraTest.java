@@ -1,9 +1,15 @@
 
-package com.tallerwebi.dominio.obvservadoresTest;
+package com.tallerwebi.dominio.obvservadores;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
+import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +31,7 @@ class ObservadorTurnoQuiebraTest {
     }
 
     @Test
-    void queAlQuebrarElJugadorActualSeAvanceElTurnoUnaSolaVez() {
+    void queAlQuebrarElJugadorActualSeAvanceElTurnoUnaSolaVez() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Jugador ana = new Jugador();
         ana.setId(1L);
         ana.setOrden(0);

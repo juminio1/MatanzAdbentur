@@ -3,7 +3,12 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
+import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
+import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
+import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.FichaOcupadaException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
@@ -125,40 +130,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         return sala;
     }
 
-    private EventoSalaActualizada obtenerEstadoSala(SalaDeEspera sala) {
-        List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
-        List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
-
-        Map<String, String> asignadas = new java.util.HashMap<>();
-        for (Usuario u : sala.getUsuarios()) {
-            if (u.getFicha() != null) {
-                asignadas.put(u.getUsername(), u.getFicha().name());
-            }
-        }
-
-        String creador = sala.getCreador() == null ? null : sala.getCreador().getUsername();
-        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador);
-    }
-
-    private void notificarCambioDeSala(SalaDeEspera sala) {
-        EventoSalaActualizada estadoActualizado = obtenerEstadoSala(sala);
-
-        DespuesDeConfirmar.ejecutar(() -> publicadorSala.notificar(estadoActualizado));
-    }
-
-    private Usuario obtenerUsuarioExistente(Long idUsuario) {
-        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
-        if (usuario == null) {
-            throw new UsuarioNoEncontradoException();
-        }
-        return usuario;
-    }
-
-    private String generarCodigoUnico() {
-        return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
-    }
-
-    @Override
+     @Override
     public void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
         Usuario usuario = obtenerUsuarioExistente(idUsuario);
@@ -191,4 +163,49 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         notificarCambioDeSala(sala);
     }
+
+    private EventoSalaActualizada obtenerEstadoSala(SalaDeEspera sala) {
+        List<String> usernames = sala.getUsuarios().stream().map(Usuario::getUsername).toList();
+        List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
+
+        Map<String, String> asignadas = new java.util.HashMap<>();
+        for (Usuario u : sala.getUsuarios()) {
+            if (u.getFicha() != null) {
+                asignadas.put(u.getUsername(), u.getFicha().name());
+            }
+        }
+
+        String creador = sala.getCreador() == null ? null : sala.getCreador().getUsername();
+        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador);
+    }
+
+    private void notificarCambioDeSala(SalaDeEspera sala) {
+        EventoSalaActualizada estadoActual = obtenerEstadoSala(sala);
+
+        DespuesDeConfirmar.ejecutar(() -> publicarSalaActualizada(estadoActual));
+    }
+
+    private Usuario obtenerUsuarioExistente(Long idUsuario) {
+        Usuario usuario = repositorioUsuario.buscarUsuarioPorId(idUsuario);
+        if (usuario == null) {
+            throw new UsuarioNoEncontradoException();
+        }
+        return usuario;
+    }
+
+    private String generarCodigoUnico() {
+        return UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
+    }
+
+    private void publicarSalaActualizada(EventoSalaActualizada evento) {
+        try {
+            publicadorSala.notificar(evento);
+
+        } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException exception) {
+
+            throw new IllegalStateException("Error al notificar la actualización de la sala", exception);
+        }
+    }
+
+   
 }

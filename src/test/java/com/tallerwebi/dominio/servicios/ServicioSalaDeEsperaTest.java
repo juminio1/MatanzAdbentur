@@ -12,7 +12,6 @@ import com.tallerwebi.dominio.excepcion.SalaDeEsperaLlenaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.excepcion.UsuarioNoEncontradoException;
-import com.tallerwebi.dominio.servicios.ServicioSalaDeEsperaImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 import com.tallerwebi.infraestructura.RepositorioUsuario;
