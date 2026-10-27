@@ -492,7 +492,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() {
+    public void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 1000, 2);
         partida.setJugadores(List.of(jugador));
