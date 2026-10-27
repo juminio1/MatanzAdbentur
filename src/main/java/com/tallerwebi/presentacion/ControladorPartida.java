@@ -84,7 +84,6 @@ public class ControladorPartida {
         this.servicioGestionQuiebra = servicioGestionQuiebra;
     }
 
-
     public ControladorPartida(
             ServicioPartida servicioPartida,
             SimpMessagingTemplate notificadorWebSocket,
