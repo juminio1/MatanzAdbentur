@@ -71,7 +71,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         ResultadoTirada tirada = dados.tirarDados();
 
         // --- VALIDACIÓN DE CÁRCEL ---
-        if (!puedeAvanzarDesdeCarcel(jugador, tirada)) { // <-- Acá borramos 'codigo'
+        if (!puedeAvanzarDesdeCarcel(codigo, jugador, tirada)) {
             partidas.actualizarJugador(jugador);
             avanzarTurnoSiCorresponde(codigo, jugador, false);
             
@@ -227,7 +227,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         partidas.avanzarTurno(codigo);
     }
 
-    private boolean puedeAvanzarDesdeCarcel(Jugador jugador, ResultadoTirada tirada) {
+    private boolean puedeAvanzarDesdeCarcel(String codigo, Jugador jugador, ResultadoTirada tirada) {
         if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
             return true;
         }
@@ -239,13 +239,21 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         jugador.getEstadoCarcel().registrarIntentoFallido();
         if (jugador.getEstadoCarcel().getIntentosSalirCarcel() >= MAX_INTENTOS_CARCEL) {
-            jugador.setDinero(jugador.getDinero() - COSTO_FIANZA); 
+            
+            // Llamamos al servicio de quiebra para gestionar el pago o la deuda
+            ResultadoDeuda estadoDeuda = quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+            
+            // Lo liberamos SIEMPRE. Su deuda de cárcel ya se cobró (en efectivo o asumiendo deuda)
             jugador.getEstadoCarcel().liberar();
-            return true;
+            
+            // Si pagó en efectivo, devuelve true y avanza.
+            // Si quedó pendiente (debe vender) o quebró, devuelve false y corta el turno.
+            return estadoDeuda == ResultadoDeuda.RESUELTA;
         }
 
         return false;
     }
+
     //Record: crea clases pequeñas para guardar datos
     //indica si existe algo q el jugador debe resolver y guarda la info. del alquiler
     private record Destino(boolean requiereDecision, AlquilerJugada alquiler) {
