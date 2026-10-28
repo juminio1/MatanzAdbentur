@@ -238,10 +238,14 @@ public class ControladorPartida {
             );
         }
         try {
+            Boolean teniaDeuda = servicioGestionQuiebra.obtenerDeudaPendiente(codigoPartida, jugadorSesionId) != null;
             Integer precioVenta = servicioPropiedad.venderPropiedadParaJugador(
                     casillero.getPropiedad().getId(), jugadorSesionId);
-            if (servicioGestionQuiebra.obtenerDeudaPendiente(codigoPartida, jugadorSesionId) != null) {
+            if (teniaDeuda) {
                 servicioGestionQuiebra.evaluarDeuda(codigoPartida, jugadorSesionId);
+                if (servicioGestionQuiebra.obtenerDeudaPendiente(codigoPartida, jugadorSesionId) == null) {
+                    servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigoPartida);
+                }
             }
             Jugador vendedorActualizado = servicioPartida.obtenerJugadorPorId(jugadorSesionId);
             Map<String, Object> actualizado = mapeadorPropiedad.desdePropiedad(casillero,

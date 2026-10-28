@@ -1203,3 +1203,94 @@
     font-weight: bold;
     text-decoration: none;
 }
+
+
+/* Ventana de eventos globales; no modifica el modal de eventos por casillero. */
+.modal-evento-global {
+    width: min(560px, calc(100vw - 28px));
+    max-height: calc(100dvh - 28px);
+    overflow-y: auto;
+    border: 3px solid var(--p-dorado);
+    box-shadow: 6px 6px 0 var(--p-borde);
+}
+
+.modal-evento-global::backdrop {
+    background: rgb(0 0 0 / 82%);
+    backdrop-filter: blur(4px);
+}
+
+.modal-evento-global [hidden] { display: none !important; }
+.modal-evento-global__contenido { gap: 14px; }
+.modal-evento-global__cabecera { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+.modal-evento-global__etiqueta { background: var(--p-dorado); color: #111; border-radius: 8px; padding: 6px 10px; font-weight: 900; font-size: 12px; }
+.modal-evento-global__fase { color: var(--p-celeste); font-size: 12px; font-weight: 800; }
+.modal-evento-global h2 { font-size: clamp(21px, 5vw, 29px); color: var(--p-texto); line-height: 1.15; }
+.modal-evento-global__descripcion { color: var(--p-texto-suave); line-height: 1.5; }
+.modal-evento-global__tiempo { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 800; }
+.modal-evento-global__tiempo strong { color: var(--p-dorado); font-size: 24px; font-variant-numeric: tabular-nums; }
+.modal-evento-global__barra { height: 10px; border-radius: 99px; background: var(--p-claro); border: 1px solid var(--p-borde); overflow: hidden; }
+.modal-evento-global__progreso { height: 100%; width: 100%; background: var(--p-dorado); transition: width 0.25s linear; }
+.modal-evento-global__etapa { color: var(--p-celeste); font-size: 13px; font-weight: 800; text-align: center; }
+.modal-evento-global__dados { display: flex; justify-content: center; gap: 16px; }
+.modal-evento-global__dados .dado { width: 58px; height: 58px; font-size: 27px; background: var(--p-claro); }
+.modal-evento-global__mensaje { min-height: 1.6em; color: var(--p-texto-suave); text-align: center; line-height: 1.4; }
+.modal-evento-global__participantes { background: var(--p-claro); border: 1px solid var(--p-borde); border-radius: 10px; padding: 12px; }
+.modal-evento-global__participantes h3 { margin-bottom: 10px; font-size: 13px; color: var(--p-celeste); }
+.modal-evento-global__participantes ul { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.modal-evento-global__participantes li { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid var(--p-gris); }
+.modal-evento-global__participantes li:last-child { border: none; padding-bottom: 0; }
+.modal-evento-global__participantes li span:last-child { font-weight: 800; text-align: right; }
+.modal-evento-global__resultado { background: var(--p-superficie-2); border: 1px solid var(--p-dorado); color: var(--p-dorado); padding: 12px; text-align: center; border-radius: 10px; font-weight: 800; }
+.modal-evento-global__resultado[hidden] { display: none; }
+.modal-evento-global__tiempo--agotado strong { color: var(--p-rojo); }
+.cronometro--evento-global .cronometro-nro { color: var(--p-dorado); }
+
+@media (max-width: 480px) {
+    .modal-evento-global__contenido { padding: 18px; }
+    .modal-evento-global__dados .dado { width: 48px; height: 48px; }
+}
+
+/* Resultado del evento: se presenta sin controles y desaparece automáticamente. */
+.modal-evento-global--finalizado .modal-evento-global__etapa,
+.modal-evento-global--finalizado .modal-evento-global__dados,
+.modal-evento-global--finalizado .modal-evento-global__barra,
+.modal-evento-global--finalizado .modal-evento-global__participantes,
+.modal-evento-global--finalizado #btn-tirar-evento-global { display: none !important; }
+
+/* Conserva la descripcion del evento junto al resultado de su consecuencia. */
+.modal-evento-global--finalizado .modal-evento-global__descripcion {
+    display: block;
+    padding: 12px;
+    border-radius: 9px;
+    background: var(--p-superficie-2);
+    color: var(--p-texto-suave);
+    line-height: 1.5;
+}
+
+.modal-evento-global--finalizado .modal-evento-global__resultado {
+    display: block;
+    padding: 22px 16px;
+    font-size: 17px;
+    line-height: 1.5;
+    border-width: 2px;
+    background: var(--p-claro);
+}
+
+.modal-evento-global--finalizado .modal-evento-global__tiempo { justify-content: center; gap: 12px; }
+.modal-evento-global--finalizado .modal-evento-global__tiempo strong { font-size: 20px; }
+
+/* Después de la última tirada se muestran los puntajes durante cinco segundos. */
+.modal-evento-global--finalizado.modal-evento-global--mostrando-tiradas .modal-evento-global__dados {
+    display: flex !important;
+}
+.modal-evento-global--finalizado.modal-evento-global--mostrando-tiradas .modal-evento-global__participantes {
+    display: block !important;
+}
+.modal-evento-global--finalizado.modal-evento-global--mostrando-tiradas .modal-evento-global__resultado {
+    display: none !important;
+}
+
+/* El resultado queda en pausa hasta confirmar, sin un reloj que pueda adelantar el turno. */
+.modal-evento-global--finalizado .modal-evento-global__tiempo { display: none !important; }
+.modal-evento-global--finalizado #btn-continuar-partida-global { display: block; width: 100%; }
+.modal-evento-global #btn-continuar-partida-global[hidden] { display: none !important; }

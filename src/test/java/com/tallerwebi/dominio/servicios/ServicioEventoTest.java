@@ -111,7 +111,7 @@ public class ServicioEventoTest {
     }
 
     private EventoGlobal crearKevin() {
-        return crearEventoGlobal(4L, TipoEventoGlobal.EL_KEVIN, TipoEfecto.PERDER_PLATA, 100);
+        return crearEventoGlobal(4L, TipoEventoGlobal.ROBO, TipoEfecto.PERDER_PLATA, 100);
     }
 
     @Test
@@ -856,7 +856,7 @@ public class ServicioEventoTest {
 
 
     // Nuevas pruebas: estado del evento, temporizadores, tiradas automáticas y desempates.
-    // El mock del gestor no espera 15 segundos reales: almacena las acciones programadas.
+    // El mock del gestor no espera 20 segundos reales: almacena las acciones programadas.
     private List<Runnable> prepararVencimientosSimulados() {
         List<Runnable> vencimientos = new ArrayList<>();
         doAnswer(invocacion -> {
@@ -889,7 +889,7 @@ public class ServicioEventoTest {
         assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(gestorTemporizadorMock).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global:ABC"),
-            org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
     @Test
@@ -902,11 +902,10 @@ public class ServicioEventoTest {
 
         servicioEvento.realizarTiradaEventoGlobal(partida, jugador, evento);
 
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         assertEquals(7, jugador.getPosicionActual());
         verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:ABC");
-        verify(publicadorEventosMock).publishEvent(
-            new com.tallerwebi.dominio.eventos.EventoGlobalFinalizado("ABC"));
+        verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
     }
 
     @Test
@@ -965,7 +964,7 @@ public class ServicioEventoTest {
         assertEquals(7, uno.getPosicionActual());
         assertEquals(15, dos.getPosicionActual());
         assertEquals(20, tres.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(servicioDadoMock, times(3)).tirarDados();
     }
 
@@ -1021,7 +1020,7 @@ public class ServicioEventoTest {
         servicioEvento.realizarTiradasAutomaticasPendientes(partida);
 
         assertEquals(22, cuatro.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(servicioDadoMock, times(4)).tirarDados();
     }
 
@@ -1048,7 +1047,7 @@ public class ServicioEventoTest {
         assertEquals(10, uno.getPosicionActual());
         assertEquals(15, dos.getPosicionActual());
         assertEquals(17, tres.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(servicioDadoMock, times(6)).tirarDados();
     }
 
@@ -1089,7 +1088,7 @@ public class ServicioEventoTest {
         assertEquals(25, cuatro.getPosicionActual());
         verify(gestorTemporizadorMock, times(3)).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global:ABC"),
-            org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
     @Test
@@ -1126,7 +1125,7 @@ public class ServicioEventoTest {
 
         assertEquals(12, dos.getPosicionActual());
         assertEquals(10, uno.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(servicioDadoMock, times(10)).tirarDados();
     }
 
@@ -1230,7 +1229,7 @@ public class ServicioEventoTest {
         verify(repositorioPartidaMock, never()).buscarPartidaActivaPorCodigoUnico("ABC");
         verify(gestorTemporizadorMock, times(2)).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global:ABC"),
-            org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
     @Test
@@ -1251,7 +1250,7 @@ public class ServicioEventoTest {
         vencimientos.get(1).run();
 
         assertEquals(12, dos.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(servicioDadoMock, times(4)).tirarDados();
     }
 
@@ -1301,11 +1300,11 @@ public class ServicioEventoTest {
 
         assertEquals(7, uno.getPosicionActual());
         assertEquals(20, dos.getPosicionActual());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("XYZ"));
         verify(gestorTemporizadorMock).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global:XYZ"),
-            org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
     @Test
@@ -1331,7 +1330,7 @@ public class ServicioEventoTest {
         assertEquals(25, cuatro.getPosicionActual());
         verify(gestorTemporizadorMock, times(2)).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global:ABC"),
-            org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
 
@@ -1359,6 +1358,40 @@ public class ServicioEventoTest {
     }
 
     @Test
+    public void dadoQueVencieronLosVeinteSegundosYNoTiroNadieCuandoSeConsultaElEventoYDaTiradasAutomaticas() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(2, 3));
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:ABC")).thenReturn(0);
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+
+        assertEquals("FINALIZADO", estado.fase());
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        verify(servicioDadoMock, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueAunQuedaTiempoCuandoSeConsultaElEventoYDaNingunaTiradaAutomatica() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:ABC")).thenReturn(12);
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+
+        assertEquals("INICIADO", estado.fase());
+        assertEquals(12, estado.segundosRestantes());
+        verify(servicioDadoMock, never()).tirarDados();
+    }
+
+    @Test
     public void dadoQueComienzaUnEventoCuandoSeConsultaSuEstadoYDaLosDatosIniciales() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 15);
@@ -1374,7 +1407,7 @@ public class ServicioEventoTest {
         assertEquals(TipoEventoGlobal.INUNDACION, estado.tipo());
         assertEquals("Evento global de prueba", estado.descripcion());
         assertEquals(0, estado.etapa());
-        assertEquals(15, estado.segundosRestantes());
+        assertEquals(20, estado.segundosRestantes());
         assertEquals(List.of(1L, 2L), estado.participantes());
         assertEquals(0, estado.tiradas().size());
         assertNull(estado.idJugadorElegido());
@@ -1390,7 +1423,7 @@ public class ServicioEventoTest {
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
         assertEquals(8, estado.segundosRestantes());
-        verify(gestorTemporizadorMock, times(2)).obtenerSegundosRestantes("evento-global:ABC");
+        verify(gestorTemporizadorMock, times(3)).obtenerSegundosRestantes("evento-global:ABC");
     }
 
     @Test
@@ -1560,7 +1593,7 @@ public class ServicioEventoTest {
             publicado instanceof EventoGlobalActualizado actualizacion
             && "INICIADO".equals(actualizacion.estado().fase())
             && "ABC".equals(actualizacion.estado().codigoPartida())
-            && actualizacion.estado().segundosRestantes().equals(15)
+            && actualizacion.estado().segundosRestantes().equals(20)
             && actualizacion.estado().participantes().equals(List.of(1L))));
     }
 
@@ -1600,11 +1633,11 @@ public class ServicioEventoTest {
             publicado instanceof EventoGlobalActualizado actualizacion
             && "DESEMPATE".equals(actualizacion.estado().fase())
             && actualizacion.estado().etapa().equals(1)
-            && actualizacion.estado().segundosRestantes().equals(15)
+            && actualizacion.estado().segundosRestantes().equals(20)
             && actualizacion.estado().participantes().equals(List.of(1L, 2L))
             && actualizacion.estado().tiradas().isEmpty()));
         verify(gestorTemporizadorMock, times(2)).programarTemporizador(
-            org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+            org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(20), any(Runnable.class));
     }
 
     @Test
@@ -1620,11 +1653,11 @@ public class ServicioEventoTest {
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
             && "FINALIZADO".equals(actualizacion.estado().fase())
-            && actualizacion.estado().segundosRestantes().equals(0)
+            && actualizacion.estado().segundosRestantes().equals(6)
             && actualizacion.estado().idJugadorElegido().equals(1L)
             && actualizacion.estado().tiradas().get(1L).equals(9)));
-        verify(publicadorEventosMock).publishEvent(new EventoGlobalFinalizado("ABC"));
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
     }
 
     @Test
@@ -1636,12 +1669,12 @@ public class ServicioEventoTest {
         servicioEvento.iniciarEventoGlobal(partida, evento);
 
         assertEquals(900, uno.getDinero());
-        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
             && "FINALIZADO".equals(actualizacion.estado().fase())
             && actualizacion.estado().etapa().equals(0)
-            && actualizacion.estado().segundosRestantes().equals(0)
+            && actualizacion.estado().segundosRestantes().equals(6)
             && actualizacion.estado().idJugadorElegido().equals(1L)
             && actualizacion.estado().tiradas().isEmpty()));
         verify(gestorTemporizadorMock, never()).programarTemporizador(
@@ -1671,8 +1704,37 @@ public class ServicioEventoTest {
 
         assertEquals(9, resultado.sumarDados());
         assertEquals(7, uno.getPosicionActual());
-        assertNull(servicioEvento.consultarEstadoEventoGlobal("ABC"));
+        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
         verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:ABC");
+        verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
+    }
+
+    @Test
+    public void dadoQueElResultadoSePresentaCuandoVencenSeisSegundosYDaReanudacionDeTurno() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<Runnable> vencimientoResultado = new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(invocacion -> {
+            vencimientoResultado.set(invocacion.getArgument(2));
+            return null;
+        }).when(gestorTemporizadorMock).programarTemporizador(
+            org.mockito.ArgumentMatchers.eq("evento-global-resultado:ABC"), org.mockito.ArgumentMatchers.eq(6), any(Runnable.class));
+
+        Jugador jugador = crearJugador(1L, 1000, 10);
+        Partida partida = crearPartida("ABC", 5, jugador);
+        EventoGlobal evento = crearInundacion();
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 4));
+
+        servicioEvento.realizarTiradaEventoGlobal(partida, jugador, evento);
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
+        org.junit.jupiter.api.Assertions.assertNotNull(vencimientoResultado.get());
+
+        vencimientoResultado.get().run();
+
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertNull(servicioEvento.consultarEstadoEventoGlobal("ABC"));
         verify(publicadorEventosMock).publishEvent(new EventoGlobalFinalizado("ABC"));
     }
 

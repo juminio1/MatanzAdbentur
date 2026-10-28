@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=evento-manual-7)}"
-            href="../../../resources/core/css/partida.css?v=evento-manual-7"
+            th:href="@{/css/partida.css(v=evento-global-2)}"
+            href="../../../resources/core/css/partida.css?v=evento-global-2"
         />
     </head>
     <body class="pagina-partida">
@@ -955,6 +955,45 @@
             </div>
         </dialog>
 
+
+        <!-- Evento global de partida: independiente de los eventos por casillero -->
+        <dialog id="modal-evento-global" class="modal-propiedad modal-evento-global" aria-labelledby="evento-global-titulo" aria-describedby="evento-global-descripcion">
+            <div class="modal-propiedad__contenido modal-evento-global__contenido">
+                <header class="modal-evento-global__cabecera">
+                    <span class="modal-evento-global__etiqueta">EVENTO GLOBAL</span>
+                    <span id="evento-global-fase" class="modal-evento-global__fase">Esperando evento</span>
+                </header>
+
+                <h2 id="evento-global-titulo">Evento global</h2>
+                <p id="evento-global-descripcion" class="modal-evento-global__descripcion"></p>
+
+                <div class="modal-evento-global__tiempo">
+                    <span>Tiempo para tirar</span>
+                    <strong id="evento-global-segundos" aria-live="off">00:15</strong>
+                </div>
+                <div class="modal-evento-global__barra" aria-hidden="true">
+                    <div id="evento-global-progreso" class="modal-evento-global__progreso"></div>
+                </div>
+
+                <p id="evento-global-etapa" class="modal-evento-global__etapa">Primera tirada</p>
+                <div class="modal-evento-global__dados" aria-label="Resultado de tus dados del evento">
+                    <output id="evento-global-dado-1" class="dado">–</output>
+                    <output id="evento-global-dado-2" class="dado">–</output>
+                </div>
+
+                <button id="btn-tirar-evento-global" type="button" class="btn-casillero btn-casillero--principal" disabled>Tirar dados del evento</button>
+                <p id="evento-global-mensaje" class="modal-evento-global__mensaje" role="status" aria-live="polite">Esperando participantes…</p>
+
+                <section id="evento-global-participantes" class="modal-evento-global__participantes" aria-labelledby="evento-global-participantes-titulo" hidden>
+                    <h3 id="evento-global-participantes-titulo">Participantes</h3>
+                    <ul id="evento-global-lista-participantes" aria-live="polite"></ul>
+                </section>
+
+                <p id="evento-global-resultado" class="modal-evento-global__resultado" role="status" aria-live="polite" hidden></p>
+                <button id="btn-continuar-partida-global" type="button" class="btn-casillero btn-casillero--principal" hidden>Continuar partida</button>
+            </div>
+        </dialog>
+
         <!-- Librerías de WebSocket -->
 
         <script
@@ -989,7 +1028,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=evento-manual-7)}" src="../../../resources/core/js/partida.js?v=evento-manual-7" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=evento-global-2)}" src="../../../resources/core/js/partida.js?v=evento-global-2" charset="UTF-8" defer></script>
 
 </body>
 

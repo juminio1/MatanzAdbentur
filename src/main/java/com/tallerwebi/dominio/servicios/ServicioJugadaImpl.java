@@ -66,20 +66,28 @@ public class ServicioJugadaImpl implements ServicioJugada {
                 .findFirst().orElseThrow(() -> new JugadorNoEncontradoException("No se encontró el jugador en esta partida"));
     }
     private void validarTirada(String codigo, Jugador jugador) {
-        Jugador actual = partidas.obtenerJugadorActual(codigo);
 
-        if (this.partidas.verificarSiHayEventoGlobalActivo(codigo)) { 
-            throw new TiradaNoPermitidaException("La partida está pausada por un evento global.");
-        }
+        validarQueNoHayaEventoGlobalActivo(codigo);
+
+        Jugador actual = partidas.obtenerJugadorActual(codigo);
 
         if (!participacion.estaActivo(jugador) || actual == null || !Objects.equals(actual.getId(), jugador.getId())) {
             throw new TiradaNoPermitidaException("No podés tirar los dados en este turno.");
         }
+
         if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
             throw new TiradaNoPermitidaException("Ya tiraste los dados en este turno.");
         }
+
         if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) {
             throw new TiradaNoPermitidaException("Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados.");
+        }
+    }
+
+    private void validarQueNoHayaEventoGlobalActivo(String codigo) {
+
+        if (Boolean.TRUE.equals(partidas.verificarSiHayEventoGlobalActivo(codigo))) {
+            throw new TiradaNoPermitidaException("La partida está pausada por un evento global.");
         }
     }
     private Optional<ResultadoEvento> aplicarEvento(String codigo, Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {

@@ -4,7 +4,6 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
-import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
@@ -26,5 +25,6 @@ public interface ServicioEvento {
     EstadoEventoGlobal consultarEstadoEventoGlobal(String codigoPartida);
     ResultadoTirada tirarDadosEventoGlobal(String codigoPartida, Long idJugador) throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException;
     Boolean verificarSiHayEventoGlobalActivo(String codigoUnico);
+    void reanudarPartidaTrasEvento(String codigoPartida);
     void realizarTiradasAutomaticasPendientes(Partida partida) throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException;
 }

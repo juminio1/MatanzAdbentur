@@ -14,5 +14,15 @@ public record EstadoEventoGlobal(
         Integer segundosRestantes,
         List<Long> participantes,
         Map<Long, Integer> tiradas,
-        Long idJugadorElegido) {
+        Long idJugadorElegido,
+        String detalle,
+        Map<Long, Integer> posiciones,
+        Map<Long, Integer> saldos) {
+
+    // Conserva las llamadas existentes al constructor original de nueve argumentos.
+    public EstadoEventoGlobal(String codigoPartida, String fase, TipoEventoGlobal tipo, String descripcion, Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas, Long idJugadorElegido) {
+        this(codigoPartida, fase, tipo, descripcion, etapa, segundosRestantes, participantes, tiradas, idJugadorElegido,
+                null, Map.of(), Map.of());
+    }
 }
+

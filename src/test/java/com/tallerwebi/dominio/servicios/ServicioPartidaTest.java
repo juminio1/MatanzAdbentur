@@ -60,14 +60,7 @@ public class ServicioPartidaTest {
     private ServicioPartida servicioPartida;
     private ServicioEvento servicioEventoMock;
 
-    private Partida partida;
-    private Jugador jugadorUno;
-    private Jugador jugadorDos;
-    private EventoGlobal piquete;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
-
-
-    private static final Integer TOTAL_CASILLEROS = 30;
 
     @BeforeEach
     public void init() {

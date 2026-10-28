@@ -26,14 +26,12 @@ public class RepositorioEventoImpl implements RepositorioEvento {
     public Evento obtenerEventoAleatorio() {
         final Session session = sessionFactory.getCurrentSession();
 
-        // Traemos únicamente los eventos comunes, excluyendo los globales.
-        List<Evento> eventos = session.createQuery("SELECT COUNT(e) FROM Evento e WHERE TYPE(e) = Evento", Evento.class).list();
+        List<Evento> eventos = session.createQuery("FROM EventoGlobalBase e WHERE TYPE(e) = EventoGlobalBase", Evento.class).list();
 
         if (eventos.isEmpty()) {
             return null;
         }
 
-        // Seleccionamos aleatoriamente uno de los eventos comunes.
         Integer indiceAleatorio = random.nextInt(eventos.size());
 
         return eventos.get(indiceAleatorio);
@@ -44,16 +42,16 @@ public class RepositorioEventoImpl implements RepositorioEvento {
     public Evento obtenerEventoGlobalAleatorio() {
         final Session session = sessionFactory.getCurrentSession();
 
-        // Traemos únicamente los eventos globales guardados en la base de datos.
         List<EventoGlobal> eventosGlobales = session.createQuery("FROM EventoGlobal", EventoGlobal.class).list();
 
         if (eventosGlobales.isEmpty()) {
             return null;
         }
 
-        // Seleccionamos aleatoriamente uno de los eventos globales.
         Integer indiceAleatorio = random.nextInt(eventosGlobales.size());
 
         return eventosGlobales.get(indiceAleatorio);
     }
+
+
 }

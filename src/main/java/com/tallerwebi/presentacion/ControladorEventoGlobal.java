@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-/** REST: consulta del evento y tiradas manuales de jugadores autenticados. */
+/* consulta del evento y tiradas manuales de jugadores autenticados. */
 @RestController
 @RequestMapping("/partida/{codigoPartida}/evento-global")
 public class ControladorEventoGlobal {
@@ -33,6 +33,7 @@ public class ControladorEventoGlobal {
     private final ServicioPartida servicioPartida;
     private final ServicioEvento servicioEvento;
     private final ServicioParticipacion participacion;
+    private final String ERROR = "error";
 
     public ControladorEventoGlobal(
             ServicioPartida servicioPartida,
@@ -55,14 +56,30 @@ public class ControladorEventoGlobal {
     }
 
     @PostMapping("/tirar")
-    public ResponseEntity<Map<String, Integer>> tirarDadosEvento(@PathVariable("codigoPartida") String codigoPartida,HttpServletRequest request)
-            throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException {
+    public ResponseEntity<Map<String, Integer>> tirarDadosEvento(
+            @PathVariable("codigoPartida") String codigoPartida,
+            HttpServletRequest request)
+            throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions,
+                   TiradaDadoInvalidaException, JugadorNoEncontradoException,
+                   TiradasFaltantesException, EventoInexistenteException {
         Long idJugador = validarAcceso(codigoPartida, request);
         ResultadoTirada resultado = servicioEvento.tirarDadosEventoGlobal(codigoPartida, idJugador);
         return ResponseEntity.ok(Map.of(
                 "dado1", resultado.getDado1(),
                 "dado2", resultado.getDado2(),
                 "suma", resultado.sumarDados()));
+    }
+
+    @PostMapping("/continuar")
+    public ResponseEntity<Map<String, String>> continuarPartida(
+            @PathVariable("codigoPartida") String codigoPartida, HttpServletRequest request) {
+        validarAcceso(codigoPartida, request);
+        try {
+            servicioEvento.reanudarPartidaTrasEvento(codigoPartida);
+            return ResponseEntity.ok(Map.of("mensaje", "Evento finalizado. La partida se reanudará."));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(ERROR, mensajeSeguro(exception)));
+        }
     }
 
     private Long validarAcceso(String codigoPartida, HttpServletRequest request) {
@@ -86,13 +103,13 @@ public class ControladorEventoGlobal {
             TiradaDadoInvalidaException.class, TiradasFaltantesException.class})
     public ResponseEntity<Map<String, String>> manejarEventoNoDisponible(Exception exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("error", mensajeSeguro(exception)));
+                .body(Map.of(ERROR, mensajeSeguro(exception)));
     }
 
     @ExceptionHandler(JugadorNoEncontradoException.class)
     public ResponseEntity<Map<String, String>> manejarJugadorNoEncontrado(Exception exception) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", mensajeSeguro(exception)));
+                .body(Map.of(ERROR, mensajeSeguro(exception)));
     }
 
     private String mensajeSeguro(Exception exception) {
@@ -102,6 +119,6 @@ public class ControladorEventoGlobal {
     @ExceptionHandler({PartidaNoEncontradaException.class, EventoInexistenteException.class})
     public ResponseEntity<Map<String, String>> manejarRecursoNoEncontrado(Exception exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", exception.getMessage() == null ? "Recurso no encontrado" : exception.getMessage()));
+                .body(Map.of(ERROR, exception.getMessage() == null ? "Recurso no encontrado" : exception.getMessage()));
     }
 }

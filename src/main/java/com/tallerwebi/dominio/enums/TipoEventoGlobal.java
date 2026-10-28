@@ -3,7 +3,7 @@ package com.tallerwebi.dominio.enums;
 public enum TipoEventoGlobal{
 
     INUNDACION,
-    EL_KEVIN,
+    ROBO,
     TRAMITES_AFIP,
     PIQUETE,
     FIAT_600,

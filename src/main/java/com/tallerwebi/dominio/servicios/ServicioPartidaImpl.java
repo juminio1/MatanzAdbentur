@@ -22,6 +22,7 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 import java.util.List;
@@ -39,6 +40,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private static final Integer DURACION_TURNO_SEGUNDOS = 30;
 
     private final RepositorioPartida repositorioPartida;
+    private RepositorioDeudaPendiente repositorioDeudaPendiente;
+
+    @Autowired
+    public void configurarRepositorioDeudaPendiente(RepositorioDeudaPendiente repositorioDeudaPendiente) {
+        this.repositorioDeudaPendiente = repositorioDeudaPendiente;
+    }
 
     private final ServicioInicioPartida servicioInicioPartida;
     private final ServicioTurno servicioTurno;
@@ -49,7 +56,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
 
     @Autowired
-    public ServicioPartidaImpl(RepositorioPartida repositorioPartida, ServicioInicioPartida servicioInicioPartida, GestorTemporizadorPartida gestorTemporizador, ServicioTurno servicioTurno, @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno, PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono, ServicioEvento servicioEvento) {
+    public ServicioPartidaImpl(
+        RepositorioPartida repositorioPartida,
+        ServicioInicioPartida servicioInicioPartida,
+        GestorTemporizadorPartida gestorTemporizador,
+        ServicioTurno servicioTurno,
+        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
+        ServicioEvento servicioEvento
+    ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
         this.servicioTurno = servicioTurno;
@@ -78,12 +93,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void inicializarTurnos(String codigoUnico) {
         Partida partida = obtenerPartida(codigoUnico);
-        if (!esPartidaConJugadoresInvalida(partida)) {
-            servicioTurno.asignarOrdenInicialJugadores(partida);
-            partida.getJugadores().forEach(jugador -> jugador.setEnBancarrota(false));
-            partida.setIndiceTurnoActual(servicioTurno.obtenerIndiceTurnoActual(partida));
-            repositorioPartida.guardarPartida(partida);
+        if (esPartidaConJugadoresInvalida(partida)) {
+            return;
         }
+
+        servicioTurno.asignarOrdenInicialJugadores(partida);
+        partida.getJugadores().forEach(jugador -> jugador.setEnBancarrota(false));
+        partida.setIndiceTurnoActual(servicioTurno.obtenerIndiceTurnoActual(partida));
+        repositorioPartida.guardarPartida(partida);
     }
 
     @Override
@@ -112,7 +129,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Partida partida = obtenerPartida(codigoUnico);
 
-        if (partida != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+        if (partida != null && !verificarSiHayEventoGlobalActivo(codigoUnico)
+                && !tieneDeudasPendientes(partida)) {
 
             Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(codigoUnico, DURACION_TURNO_SEGUNDOS, () -> avanzarTurno(codigoUnico));
 
@@ -130,9 +148,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
     public void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion) {
         Partida partida = obtenerPartida(codigoUnico);
-        if (partida != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
-            notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
-        }
+        if (partida == null) return;
+        notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
     }
 
     @Override
@@ -140,7 +157,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Partida partida = obtenerPartida(codigoUnico);
 
-        if (!esPartidaConJugadoresInvalida(partida) && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+        if (!esPartidaConJugadoresInvalida(partida) && !verificarSiHayEventoGlobalActivo(codigoUnico) && !tieneDeudasPendientes(partida)) {
 
             DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
 
@@ -165,14 +182,17 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             repositorioPartida.guardarPartida(partida);
 
-            if (candidato != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
-                notificarTurnoActual(partida, true);
+            if (candidato != null) {
+                Boolean iniciarTemporizador = !verificarSiHayEventoGlobalActivo(codigoUnico); //Pausa la partida para el evento global
+
+                notificarTurnoActual(partida, iniciarTemporizador);
             }
         }
     }
 
     @Override
-    public void iniciarPartida(String codigo, Long idUsuario) throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
+    public void iniciarPartida(String codigo, Long idUsuario)
+        throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException {
         Partida partida = servicioInicioPartida.iniciarPartida(codigo, idUsuario);
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigo));
         notificarTurnoActual(partida, false);
@@ -189,7 +209,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    public void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+    public void abandonarPartida(String codigoUnico, Long idJugador)
+        throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) {
             throw new PartidaNoEncontradaException();
@@ -225,7 +246,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador, Integer segundosTotales) {
     
-        Jugador jugadorActual = obtenerJugadorActual(partida.getCodigoUnico());
+        Jugador jugadorActual =obtenerJugadorActual(partida.getCodigoUnico());
 
         if (jugadorActual != null) {
 
@@ -238,7 +259,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
                 if (publicadorTurno != null) {
 
-                    EventoTurnoCambiado evento = new EventoTurnoCambiado(partida.getCodigoUnico(), jugadorActual.getId(), jugadorActual.getApodo(), jugadorActual.getOrden(), obtenerSegundosRestantesTurno(partida.getCodigoUnico()), partida.getRondaActual(), partida.getTurnosFinalizadosEnRonda());
+                    EventoTurnoCambiado evento = new EventoTurnoCambiado(
+                        partida.getCodigoUnico(), jugadorActual.getId(), jugadorActual.getApodo(), jugadorActual.getOrden(), obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
+                        partida.getRondaActual(), partida.getTurnosFinalizadosEnRonda());
 
                     publicarTurnoCambiado(evento);
                 }
@@ -252,8 +275,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException exception) {
 
-            throw new IllegalStateException("Error al notificar el cambio de turno", exception);
+            throw new IllegalStateException("Error al notificar el cambio de turno",exception);
         }
+    }
+
+    private Boolean tieneDeudasPendientes(Partida partida) {
+        return repositorioDeudaPendiente != null && partida.getJugadores().stream()
+                .anyMatch(jugador -> repositorioDeudaPendiente.buscarPorPartidaYJugador(
+                        partida.getCodigoUnico(), jugador.getId()) != null);
     }
 
     private Boolean esPartidaConJugadoresInvalida(Partida partida) {
@@ -272,8 +301,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
         try {
             servicioEvento.verificarActivacionEventoGlobal(partida);
 
-        } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException exception) {
-            throw new IllegalStateException("Error al verificar el evento global de la partida", exception);
+        } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException excption) {
+
+            throw new IllegalStateException("Error al verificar el evento global de la partida", excption); //esta exception es para no ocultar los horrores, y se propaga como error de ejecución y la transacción puede revertirse. 
         }
     }
 }

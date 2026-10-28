@@ -180,7 +180,7 @@ public class EventosGlobalesIntegracionTest {
 
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPartida)).thenReturn(partida);
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(eventoGlobal);
-        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:" + codigoPartida)).thenReturn(15);
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:" + codigoPartida)).thenReturn(20);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class))).thenReturn(true);
     }
 
@@ -194,7 +194,7 @@ public class EventosGlobalesIntegracionTest {
         assertEquals(5, partida.getRondaActual());
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals(1, partida.getIndiceTurnoActual());
-        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(15), any(Runnable.class));
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
         verify(gestorTemporizadorMock, never()).programarTemporizador(eq(codigoPartida), any(Integer.class), any(Runnable.class));
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "INICIADO".equals(estado.fase())));
 
@@ -205,7 +205,7 @@ public class EventosGlobalesIntegracionTest {
         JsonNode contenido = new ObjectMapper().readTree(respuesta);
 
         assertEquals("INICIADO", contenido.path("fase").asText());
-        assertEquals(15, contenido.path("segundosRestantes").asInt());
+        assertEquals(20, contenido.path("segundosRestantes").asInt());
     }
 
     @Test
@@ -271,12 +271,13 @@ public class EventosGlobalesIntegracionTest {
         realizarTiradaRest("Ana").andExpect(status().isOk());
         realizarTiradaRest("Beto").andExpect(status().isOk());
 
-        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals(7, jugadorUno.getPosicionActual());
         assertEquals(7, jugadorDos.getPosicionActual());
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
         verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:" + codigoPartida);
-        verify(gestorTemporizadorMock, times(1)).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
+        verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(6), any(Runnable.class));
     }
 
     @Test
@@ -294,9 +295,9 @@ public class EventosGlobalesIntegracionTest {
         realizarTiradaRest("Ana").andExpect(status().isOk());
         realizarTiradaRest("Beto").andExpect(status().isOk());
 
-        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
-        verify(gestorTemporizadorMock, times(2)).programarTemporizador(eq("evento-global:" + codigoPartida), eq(15), any(Runnable.class));
+        verify(gestorTemporizadorMock, times(2)).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
     }
 
     @Test
@@ -305,16 +306,56 @@ public class EventosGlobalesIntegracionTest {
         doAnswer(invocacion -> {
             accionVencimiento.set(invocacion.getArgument(2));
             return null;
-        }).when(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(15), any(Runnable.class));
+        }).when(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 4), new ResultadoTirada(1, 1));
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
 
         assertNotNull(accionVencimiento.get());
         accionVencimiento.get().run();
 
-        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(servicioDadoMock, times(2)).tirarDados();
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase())));
+        verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueVenceElTiempoSinTiradasCuandoSeConsultaPorRestYDaResultadoAutomatico() throws Exception {
+        servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(1, 2));
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:" + codigoPartida)).thenReturn(0);
+
+        String respuesta = mockMvc.perform(get("/partida/{codigoPartida}/evento-global", codigoPartida).sessionAttr("NOMBRE", "Ana"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode estado = new ObjectMapper().readTree(respuesta);
+        assertEquals("FINALIZADO", estado.path("fase").asText());
+        verify(servicioDadoMock, times(2)).tirarDados();
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal actualizado) -> actualizado != null && "FINALIZADO".equals(actualizado.fase())));
+    }
+
+    @Test
+    public void dadoQueElResultadoGlobalEstaVisibleCuandoVencenSeisSegundosYDaReanudacionReal() throws Exception {
+        AtomicReference<Runnable> accionReanudar = new AtomicReference<>();
+        doAnswer(invocacion -> {
+            accionReanudar.set(invocacion.getArgument(2));
+            return null;
+        }).when(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(6), any(Runnable.class));
+        servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3), new ResultadoTirada(1, 2));
+
+        realizarTiradaRest("Ana").andExpect(status().isOk());
+        realizarTiradaRest("Beto").andExpect(status().isOk());
+
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
+        verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
+        assertNotNull(accionReanudar.get());
+
+        accionReanudar.get().run();
+
+        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
     }
 
