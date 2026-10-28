@@ -550,7 +550,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void ventaRechazaJugadorAjenoOInhabilitadoSinBuscarNiCrearLaPropiedad() {
+    void ventaRechazaJugadorAjenoOInhabilitadoSinBuscarNiCrearLaPropiedad() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 700, 9);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -573,7 +573,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void ventaSinCasilleroPropioDevuelveConflictoSinMaterializar() {
+    void ventaSinCasilleroPropioDevuelveConflictoSinMaterializar() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 700, 9);
         partida.setJugadores(List.of(jugador));
