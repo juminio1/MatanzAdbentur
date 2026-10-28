@@ -20,8 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServicioJugadaImpl implements ServicioJugada {
 
     private static final Integer POSICION_COMISARIA = 8;
-    private static final Integer MAX_INTENTOS_CARCEL = 3;
-    private static final Integer COSTO_FIANZA = 100;
+    private static final Integer COSTO_FIANZA = EstadoCarcel.COSTO_FIANZA;
 
     private final ServicioParticipacion participacion;
     private final ServicioDado dados;
@@ -204,7 +203,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
     private Destino resolverDestino(Partida partida, Jugador jugador) {
 
         if (jugador.getPosicionActual() != null && jugador.getPosicionActual().equals(POSICION_COMISARIA)) {
-            jugador.getEstadoCarcel().encarcelar(); // <- Cambio acá
+            jugador.getEstadoCarcel().encarcelar();
             return new Destino(false, null); 
         }
         
@@ -265,8 +264,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
             return true;
         }
 
-        jugador.getEstadoCarcel().registrarIntentoFallido();
-        if (jugador.getEstadoCarcel().getIntentosSalirCarcel() >= MAX_INTENTOS_CARCEL) {
+        // Al último intento fallido se cobra la fianza, pero se queda en el lugar hasta el próximo turno (castigo).
+        if (jugador.getEstadoCarcel().registrarIntentoFallido()) {
             
             quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
             

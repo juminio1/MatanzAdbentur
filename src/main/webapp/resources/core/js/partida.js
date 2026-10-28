@@ -377,6 +377,14 @@ function conectarWebSocketTurnos(base, codigo) {
                     tipo: "saldo",
                 });
             });
+            // Llega cuando a un jugador preso se le acaba el tiempo sin tirar.
+            stompClient.subscribe(`/topic/partida/${codigo}/carcel`, (mensaje) => {
+                const aviso = JSON.parse(mensaje.body);
+                actualizarDineroJugador(aviso.idJugador, aviso.dinero);
+                actualizarEstadoCarcel(aviso.idJugador, aviso.encarcelado, aviso.intentosCarcel, {
+                    tipo: "tiempo",
+                });
+            });
             stompClient.subscribe(`/topic/partida/${codigo}/ofertas`, (mensaje) => {
                 const oferta = JSON.parse(mensaje.body);
                 if (String(oferta.idComprador) !== String(window.usuarioSesionId)) return;
@@ -489,6 +497,21 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
         if (esUsuario) {
             mostrarAvisoPartida(
                 "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
+            );
+        }
+        return;
+    }
+
+    if (contexto.tipo === "tiempo") {
+        if (actual.encarcelado) {
+            agregarAlHistorial(
+                `A ${nombre} se le acabó el tiempo estando preso y pierde el intento (${actual.intentos} de ${MAX_INTENTOS_CARCEL}).`,
+                idJugador,
+            );
+        } else {
+            agregarAlHistorial(
+                `A ${nombre} se le acabó el tiempo en su último intento: le cobran $${COSTO_FIANZA} de fianza y sale en su próximo turno.`,
+                idJugador,
             );
         }
         return;
