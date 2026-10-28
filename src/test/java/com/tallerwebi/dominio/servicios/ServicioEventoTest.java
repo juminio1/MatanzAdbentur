@@ -13,7 +13,6 @@ import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
-import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.infraestructura.RepositorioEvento;
@@ -21,6 +20,7 @@ import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
+import java.util.ArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,6 +31,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -50,7 +54,7 @@ public class ServicioEventoTest {
     public void init() {
         repositorioEventoMock = mock(RepositorioEvento.class);
         servicioDadoMock = mock(ServicioDado.class);
-        publicadorEventosMock = (ApplicationEventPublisher) mock(PublicadorEventos.class);
+        publicadorEventosMock = mock(ApplicationEventPublisher.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         repositorioPartidaMock = mock(RepositorioPartida.class);
         servicioEvento = new ServicioEventoImpl(repositorioEventoMock, servicioDadoMock, publicadorEventosMock, gestorTemporizadorMock, repositorioPartidaMock);
@@ -107,8 +111,9 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElRepositorioTieneUnEventoCuandoSeObtieneUnoAleatorioDaComoResultadoElEvento() {
+    public void dadoQueElRepositorioTieneUnEventoCuandoSeObtieneUnoAleatorioYDaElEvento() {
         Evento evento = crearEvento(TipoEfecto.GANAR_PLATA, 300);
+        
         when(repositorioEventoMock.obtenerEventoAleatorio()).thenReturn(evento);
 
         Evento resultado = servicioEvento.obtenerEventoAleatorio();
@@ -118,7 +123,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElRepositorioNoTieneEventosCuandoSeBuscaUnoAleatorioDaComoResultadoNull() {
+    public void dadoQueElRepositorioNoTieneEventosCuandoSeBuscaUnoAleatorioYDaNull() {
         when(repositorioEventoMock.obtenerEventoAleatorio()).thenReturn(null);
 
         Evento resultado = servicioEvento.obtenerEventoAleatorio();
@@ -127,8 +132,9 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElRepositorioTieneUnEventoGlobalCuandoSeObtieneUnoAleatorioDaComoResultadoElEventoGlobal() {
+    public void dadoQueElRepositorioTieneUnEventoGlobalCuandoSeObtieneUnoAleatorioYDaElEventoGlobal() {
         EventoGlobal evento = crearInundacion();
+        
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(evento);
 
         Evento resultado = servicioEvento.obtenerEventosGlobalesAleatorio();
@@ -211,99 +217,69 @@ public class ServicioEventoTest {
         assertEquals(0, jugador.getPosicionActual());
     }
 
-    @Test
-    public void dadoQueElEventoEsNullCuandoSeIntentaAplicarDaComoResultadoJugadorSinCambios() throws EventoInexistenteException {
-        Jugador jugador = crearJugador(1L, 1500, 10);
-
-        servicioEvento.aplicarEvento(jugador, null);
-
-        assertEquals(1500, jugador.getDinero());
-        assertEquals(10, jugador.getPosicionActual());
-    }
-
-    @Test
-    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeAplicaDaComoResultadoJugadorSinCambios() throws EventoInexistenteException {
-        Jugador jugador = crearJugador(1L, 1500, 10);
-        Evento evento = new Evento();
-        evento.setValor(200);
-
-        servicioEvento.aplicarEvento(jugador, evento);
-
-        assertEquals(1500, jugador.getDinero());
-        assertEquals(10, jugador.getPosicionActual());
-    }
-
     //Inicializar los eventos globales y validar sus datos
     @Test
-    public void dadoQueElEventoGlobalEsNullCuandoSeIniciaDaComoResultadoExcepcion() {
+    public void dadoQueElEventoGlobalEsNullCuandoSeIniciaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
 
-        assertThrows(EventoGlobalInvalidoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, null));
+        assertThrows(EventoGlobalInvalidoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, null));
     }
 
     @Test
-    public void dadoQueElEventoGlobalNoTieneTipoEfectoCuandoSeIniciaDaComoResultadoExcepcion() {
+    public void dadoQueElEventoGlobalNoTieneTipoEfectoCuandoSeIniciaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
         EventoGlobal evento = crearInundacion();
         evento.setTipoEfecto(null);
 
-        assertThrows(EventoGlobalInvalidoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, evento));
+        assertThrows(EventoGlobalInvalidoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, evento));
     }
 
     @Test
-    public void dadoQueElEventoGlobalNoTieneTipoGlobalCuandoSeIniciaDaComoResultadoExcepcion() {
+    public void dadoQueElEventoGlobalNoTieneTipoGlobalCuandoSeIniciaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
         EventoGlobal evento = crearInundacion();
         evento.setTipoEventoGlobal(null);
 
-        assertThrows(EventoGlobalInvalidoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, evento));
+        assertThrows(EventoGlobalInvalidoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, evento));
     }
 
     @Test
-    public void dadoQueLaPartidaEsNullCuandoSeIniciaUnEventoGlobalDaComoResultadoExcepcion() {
-        assertThrows(PartidaNoEncontradaException.class,
-            () -> servicioEvento.iniciarEventoGlobal(null, crearInundacion()));
+    public void dadoQueLaPartidaEsNullCuandoSeIniciaUnEventoGlobalYDaExcepcion() {
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.iniciarEventoGlobal(null, crearInundacion()));
     }
 
     @Test
-    public void dadoQueLaPartidaNoTieneCodigoCuandoSeIniciaUnEventoGlobalDaComoResultadoExcepcion() {
+    public void dadoQueLaPartidaNoTieneCodigoCuandoSeIniciaUnEventoGlobalYDaExcepcion() {
         Partida partida = crearPartida(null, 5, crearJugador(1L, 1000, 5));
 
-        assertThrows(PartidaNoEncontradaException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
     }
 
     @Test
-    public void dadoQueLaPartidaNoTieneListaDeJugadoresCuandoSeIniciaDaComoResultadoExcepcion() {
+    public void dadoQueLaPartidaNoTieneListaDeJugadoresCuandoSeIniciaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5);
         partida.setJugadores(null);
 
-        assertThrows(JugadorNoEncontradoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
+        assertThrows(JugadorNoEncontradoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
     }
 
     @Test
-    public void dadoQueLaPartidaEstaSinJugadoresCuandoSeIniciaDaComoResultadoExcepcion() {
+    public void dadoQueLaPartidaEstaSinJugadoresCuandoSeIniciaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5);
 
-        assertThrows(JugadorNoEncontradoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
+        assertThrows(JugadorNoEncontradoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, crearInundacion()));
     }
 
     @Test
-    public void dadoQueYaHayInundacionActivaCuandoSeIniciaOtroEventoDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueYaHayInundacionActivaCuandoSeIniciaOtroEventoYDaExcepcion() throws Exception {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
         servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
 
-        assertThrows(EventoGlobalActivoException.class,
-            () -> servicioEvento.iniciarEventoGlobal(partida, crearPiquete()));
+        assertThrows(EventoGlobalActivoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, crearPiquete()));
     }
 
     @Test
-    public void dadoQueSeIniciaKevinConUnJugadorCuandoSeAplicaDaComoResultadoMenosDinero() throws Exception {
+    public void dadoQueSeIniciaKevinConUnJugadorCuandoSeAplicaYDaMenosDinero() throws Exception {
         Jugador jugador = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, jugador);
 
@@ -313,11 +289,10 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueSeIniciaFiatSeiscientosCuandoSeAplicaDaComoResultadoMasDinero() throws Exception {
+    public void dadoQueSeIniciaFiatSeiscientosCuandoSeAplicaYDaMasDinero() throws Exception {
         Jugador jugador = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, jugador);
-        EventoGlobal fiat = crearEventoGlobal(
-            5L, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400);
+        EventoGlobal fiat = crearEventoGlobal(5L, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400);
 
         servicioEvento.iniciarEventoGlobal(partida, fiat);
 
@@ -325,11 +300,10 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueSeIniciaAccidenteSarmientoCuandoSeAplicaDaComoResultadoPerderTurno() throws Exception {
+    public void dadoQueSeIniciaAccidenteSarmientoCuandoSeAplicaYDaPerderTurno() throws Exception {
         Jugador jugador = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, jugador);
-        EventoGlobal accidente = crearEventoGlobal(
-            6L, TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1);
+        EventoGlobal accidente = crearEventoGlobal(6L, TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1);
 
         servicioEvento.iniciarEventoGlobal(partida, accidente);
 
@@ -337,7 +311,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueKevinTieneDosJugadoresCuandoSeActivaDaComoResultadoUnSoloAfectado() throws Exception {
+    public void dadoQueKevinTieneDosJugadoresCuandoSeActivaYDaUnSoloAfectado() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Jugador dos = crearJugador(2L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno, dos);
@@ -349,12 +323,14 @@ public class ServicioEventoTest {
 
     //Tests de resolución, tiradas y desempates
     @Test
-    public void dadoQueFaltaUnJugadorPorTirarCuandoTiraElPrimeroDaComoResultadoEventoPendiente() throws Exception {
+    public void dadoQueFaltaUnJugadorPorTirarCuandoTiraElPrimeroYDaEventoPendiente() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 12);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 4));
 
         ResultadoTirada resultado = servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
@@ -365,14 +341,15 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueTodosTiraronInundacionCuandoHayUnMayorDaComoResultadoRetrocederTres() throws Exception {
+    public void dadoQueTodosTiraronInundacionCuandoHayUnMayorYDaRetrocederTres() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 12);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(6, 4), new ResultadoTirada(3, 4));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 4), new ResultadoTirada(3, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -383,14 +360,15 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueTodosTiraronPiqueteCuandoHayUnMenorDaComoResultadoVolverAlInicio() throws Exception {
+    public void dadoQueTodosTiraronPiqueteCuandoHayUnMenorYDaVolverAlInicio() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 12);
         Jugador dos = crearJugador(2L, 1000, 20);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearPiquete();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(2, 3), new ResultadoTirada(4, 5));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(2, 3), new ResultadoTirada(4, 5));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -400,14 +378,15 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueTodosTiraronAfipCuandoHayUnMayorDaComoResultadoAlcanzarAlMasAdelantado() throws Exception {
+    public void dadoQueTodosTiraronAfipCuandoHayUnMayorYDaAlcanzarAlMasAdelantado() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Jugador dos = crearJugador(2L, 1000, 20);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearAfip();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(5, 6), new ResultadoTirada(2, 3));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 6), new ResultadoTirada(2, 3));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
@@ -417,18 +396,21 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueDosJugadoresEmpatanCuandoVuelvenATirarDaComoResultadoUnGanador() throws Exception {
+    public void dadoQueDosJugadoresEmpatanCuandoVuelvenATirarYDaUnGanador() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 15);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(
             new ResultadoTirada(5, 5), new ResultadoTirada(6, 4),
             new ResultadoTirada(3, 3), new ResultadoTirada(6, 3));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        
         assertEquals(10, uno.getPosicionActual());
         assertEquals(15, dos.getPosicionActual());
 
@@ -440,12 +422,14 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueSeRepiteElEmpateCuandoTiranOtraVezDaComoResultadoResolucionFinal() throws Exception {
+    public void dadoQueSeRepiteElEmpateCuandoTiranOtraVezYDaResolucionFinal() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 15);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(
             new ResultadoTirada(5, 4), new ResultadoTirada(4, 5),
             new ResultadoTirada(3, 3), new ResultadoTirada(2, 4),
@@ -455,6 +439,7 @@ public class ServicioEventoTest {
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        
         assertEquals(10, uno.getPosicionActual());
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
@@ -466,220 +451,218 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueDosDeTresEmpatanCuandoElTerceroIntentaDesempatarDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueDosDeTresEmpatanCuandoElTerceroIntentaDesempatarYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 15);
         Jugador tres = crearJugador(3L, 1000, 20);
         Partida partida = crearPartida("ABC", 5, uno, dos, tres);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(6, 5), new ResultadoTirada(5, 6),
-            new ResultadoTirada(2, 2));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(5, 6),new ResultadoTirada(2, 2));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
         servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
 
-        assertThrows(TiradaDadoInvalidaException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento));
         verify(servicioDadoMock, times(3)).tirarDados();
     }
 
     @Test
-    public void dadoQueUnJugadorYaTiroCuandoIntentaRepetirAntesDelOtroDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueUnJugadorYaTiroCuandoIntentaRepetirAntesDelOtroYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 15);
         Partida partida = crearPartida("ABC", 5, uno, dos);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 3));
+        
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
 
-        assertThrows(TiradaDadoInvalidaException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
         verify(servicioDadoMock, times(1)).tirarDados();
     }
 
     @Test
-    public void dadoQueLaSumaEsMenorADosCuandoSeRegistraDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueLaSumaEsMenorADosCuandoSeRegistraYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(0, 1));
 
-        assertThrows(TiradaDadoInvalidaException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
         assertEquals(10, uno.getPosicionActual());
     }
 
     @Test
-    public void dadoQueLaSumaEsMayorADoceCuandoSeRegistraDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueLaSumaEsMayorADoceCuandoSeRegistraYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(7, 7));
 
-        assertThrows(TiradaDadoInvalidaException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueLaSumaDeDadosEsNullCuandoSeRegistraDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueLaSumaDeDadosEsNullCuandoSeRegistraYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         ResultadoTirada resultadoMock = mock(ResultadoTirada.class);
+        
         when(resultadoMock.sumarDados()).thenReturn(null);
         when(servicioDadoMock.tirarDados()).thenReturn(resultadoMock);
 
-        assertThrows(TiradaDadoInvalidaException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueLaPartidaEsNullCuandoUnJugadorTiraDaComoResultadoDatosInvalidos() {
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(null, crearJugador(1L, 1000, 10), crearInundacion()));
+    public void dadoQueLaPartidaEsNullCuandoUnJugadorTiraYDaDatosInvalidos() {
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(null, crearJugador(1L, 1000, 10), crearInundacion()));
     }
 
     @Test
-    public void dadoQueElJugadorEsNullCuandoIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueElJugadorEsNullCuandoIntentaTirarYDaDatosInvalidos() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 10));
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, null, crearInundacion()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, null, crearInundacion()));
     }
 
     @Test
-    public void dadoQueElEventoEsNullCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueElEventoEsNullCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, null));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, null));
     }
 
     @Test
-    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         evento.setTipoEfecto(null);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(DatosEnventoInvalidoExceptions.class,() -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueElEventoNoTieneTipoGlobalCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueElEventoNoTieneTipoGlobalCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         evento.setTipoEventoGlobal(null);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueLaPartidaNoTieneCodigoCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueLaPartidaNoTieneCodigoCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida(null, 5, uno);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
     }
 
     @Test
-    public void dadoQueLaPartidaNoTieneJugadoresCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueLaPartidaNoTieneJugadoresCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         partida.setJugadores(null);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
     }
 
     @Test
-    public void dadoQueElJugadorNoTieneIdCuandoSeIntentaTirarDaComoResultadoDatosInvalidos() {
+    public void dadoQueElJugadorNoTieneIdCuandoSeIntentaTirarYDaDatosInvalidos() {
         Jugador uno = crearJugador(null, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
     }
 
     @Test
-    public void dadoQueElJugadorNoPerteneceALaPartidaCuandoIntentaTirarDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueElJugadorNoPerteneceALaPartidaCuandoIntentaTirarYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador ajeno = crearJugador(2L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
 
-        assertThrows(JugadorNoEncontradoException.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, ajeno, evento));
+        assertThrows(JugadorNoEncontradoException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, ajeno, evento));
     }
 
     @Test
-    public void dadoQueNoExisteEventoGlobalActivoCuandoUnJugadorTiraDaComoResultadoExcepcion() {
+    public void dadoQueNoExisteEventoGlobalActivoCuandoUnJugadorTiraYDaExcepcion() {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearInundacion()));
     }
 
     @Test
-    public void dadoQueElEventoActivoTieneOtroIdCuandoUnJugadorTiraDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueElEventoActivoTieneOtroIdCuandoUnJugadorTiraYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
+        
         servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearPiquete()));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, crearPiquete()));
     }
 
     @Test
-    public void dadoQueElEventoActivoNoTieneIdCuandoSeIntentaTirarDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueElEventoActivoNoTieneIdCuandoSeIntentaTirarYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
         evento.setId(null);
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
 
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueSeResuelveLaInundacionCuandoSeIntentaTirarOtraVezDaComoResultadoEventoInactivo() throws Exception {
+    public void dadoQueSeResuelveLaInundacionCuandoSeIntentaTirarOtraVezYDaEventoInactivo() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal evento = crearInundacion();
+        
         servicioEvento.iniciarEventoGlobal(partida, evento);
+        
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
 
         assertEquals(7, uno.getPosicionActual());
-        assertThrows(DatosEnventoInvalidoExceptions.class,
-            () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
+        assertThrows(DatosEnventoInvalidoExceptions.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento));
     }
 
     @Test
-    public void dadoQueFinalizaUnEventoCuandoSeIniciaOtroDaComoResultadoNuevoEventoPermitido() throws Exception {
+    public void dadoQueFinalizaUnEventoCuandoSeIniciaOtroYDaNuevoEventoPermitido() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Partida partida = crearPartida("ABC", 5, uno);
         EventoGlobal primerEvento = crearInundacion();
         EventoGlobal segundoEvento = crearPiquete();
+        
         servicioEvento.iniciarEventoGlobal(partida, primerEvento);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(3, 4), new ResultadoTirada(2, 4));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 4), new ResultadoTirada(2, 4));
 
         servicioEvento.realizarTiradaEventoGlobal(partida, uno, primerEvento);
         servicioEvento.iniciarEventoGlobal(partida, segundoEvento);
@@ -689,21 +672,24 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueExistenDosPartidasCuandoSeResuelveUnaDaComoResultadoLaOtraPendiente() throws Exception {
+    public void dadoQueExistenDosPartidasCuandoSeResuelveUnaYDaLaOtraPendiente() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 10);
         Jugador dos = crearJugador(2L, 1000, 20);
         Partida partidaUno = crearPartida("ABC", 5, uno);
         Partida partidaDos = crearPartida("XYZ", 5, dos);
         EventoGlobal eventoUno = crearInundacion();
         EventoGlobal eventoDos = crearPiquete();
+        
         servicioEvento.iniciarEventoGlobal(partidaUno, eventoUno);
         servicioEvento.iniciarEventoGlobal(partidaDos, eventoDos);
-        when(servicioDadoMock.tirarDados()).thenReturn(
-            new ResultadoTirada(4, 3), new ResultadoTirada(4, 5));
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3), new ResultadoTirada(4, 5));
 
         servicioEvento.realizarTiradaEventoGlobal(partidaUno, uno, eventoUno);
+        
         assertEquals(7, uno.getPosicionActual());
         assertEquals(20, dos.getPosicionActual());
+        
         servicioEvento.realizarTiradaEventoGlobal(partidaDos, dos, eventoDos);
 
         assertEquals(0, dos.getPosicionActual());
@@ -711,29 +697,26 @@ public class ServicioEventoTest {
 
     //Test de activación por rondas
     @Test
-    public void dadoQueLaPartidaEsNullCuandoSeVerificaActivacionDaComoResultadoExcepcion() {
-        assertThrows(PartidaNoEncontradaException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(null));
+    public void dadoQueLaPartidaEsNullCuandoSeVerificaActivacionYDaExcepcion() {
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.verificarActivacionEventoGlobal(null));
     }
 
     @Test
-    public void dadoQueLaPartidaNoTieneCodigoCuandoSeVerificaActivacionDaComoResultadoExcepcion() {
+    public void dadoQueLaPartidaNoTieneCodigoCuandoSeVerificaActivacionYDaExcepcion() {
         Partida partida = crearPartida(null, 5, crearJugador(1L, 1000, 5));
 
-        assertThrows(PartidaNoEncontradaException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(partida));
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.verificarActivacionEventoGlobal(partida));
     }
 
     @Test
-    public void dadoQueLaPartidaTieneCodigoVacioCuandoSeVerificaActivacionDaComoResultadoExcepcion() {
+    public void dadoQueLaPartidaTieneCodigoVacioCuandoSeVerificaActivacionYDaExcepcion() {
         Partida partida = crearPartida("  ", 5, crearJugador(1L, 1000, 5));
 
-        assertThrows(PartidaNoEncontradaException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(partida));
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.verificarActivacionEventoGlobal(partida));
     }
 
     @Test
-    public void dadoQueLaRondaEsNullCuandoSeVerificaActivacionDaComoResultadoNoActivarEvento() throws Exception {
+    public void dadoQueLaRondaEsNullCuandoSeVerificaActivacionYDaNoActivarEvento() throws Exception {
         Partida partida = crearPartida("ABC", null, crearJugador(1L, 1000, 5));
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -742,7 +725,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueLaRondaEsCeroCuandoSeVerificaActivacionDaComoResultadoNoActivarEvento() throws Exception {
+    public void dadoQueLaRondaEsCeroCuandoSeVerificaActivacionYDaNoActivarEvento() throws Exception {
         Partida partida = crearPartida("ABC", 0, crearJugador(1L, 1000, 5));
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -751,7 +734,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueLaRondaEsCuatroCuandoSeVerificaActivacionDaComoResultadoNoActivarEvento() throws Exception {
+    public void dadoQueLaRondaEsCuatroCuandoSeVerificaActivacionYDaNoActivarEvento() throws Exception {
         Partida partida = crearPartida("ABC", 4, crearJugador(1L, 1000, 5));
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -760,9 +743,10 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueLaRondaEsCincoCuandoSeVerificaActivacionDaComoResultadoAplicarEvento() throws Exception {
+    public void dadoQueLaRondaEsCincoCuandoSeVerificaActivacionYDaAplicarEvento() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, uno);
+        
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearKevin());
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -772,9 +756,10 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueYaSeActivoEnLaRondaCincoCuandoSeVerificaOtraVezDaComoResultadoUnaSolaActivacion() throws Exception {
+    public void dadoQueYaSeActivoEnLaRondaCincoCuandoSeVerificaOtraVezYDaUnaSolaActivacion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, uno);
+        
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearKevin());
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -785,9 +770,10 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueSeActivoEnLaRondaCincoCuandoSeLlegaADiezDaComoResultadoNuevoEvento() throws Exception {
+    public void dadoQueSeActivoEnLaRondaCincoCuandoSeLlegaADiezYDaNuevoEvento() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, uno);
+       
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearKevin());
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
@@ -799,43 +785,43 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueNoHayEventoGlobalEnRepositorioCuandoSeActivaLaRondaDaComoResultadoExcepcion() {
+    public void dadoQueNoHayEventoGlobalEnRepositorioCuandoSeActivaLaRondaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(null);
 
-        assertThrows(EventoGlobalInvalidoException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(partida));
+        assertThrows(EventoGlobalInvalidoException.class, () -> servicioEvento.verificarActivacionEventoGlobal(partida));
     }
 
     @Test
-    public void dadoQueElRepositorioDevuelveEventoComunCuandoSeActivaLaRondaDaComoResultadoExcepcion() {
+    public void dadoQueElRepositorioDevuelveEventoComunCuandoSeActivaLaRondaYDaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
-        when(repositorioEventoMock.obtenerEventoGlobalAleatorio())
-            .thenReturn(crearEvento(TipoEfecto.GANAR_PLATA, 300));
+       
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearEvento(TipoEfecto.GANAR_PLATA, 300));
 
-        assertThrows(EventoGlobalInvalidoException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(partida));
+        assertThrows(EventoGlobalInvalidoException.class, () -> servicioEvento.verificarActivacionEventoGlobal(partida));
     }
 
     @Test
-    public void dadoQueQuedaUnEventoPendienteCuandoLlegaOtraRondaDeActivacionDaComoResultadoExcepcion() throws Exception {
+    public void dadoQueQuedaUnEventoPendienteCuandoLlegaOtraRondaDeActivacionYDaExcepcion() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, uno);
+        
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearPiquete());
+        
         servicioEvento.verificarActivacionEventoGlobal(partida);
         partida.setRondaActual(10);
 
-        assertThrows(EventoGlobalActivoException.class,
-            () -> servicioEvento.verificarActivacionEventoGlobal(partida));
+        assertThrows(EventoGlobalActivoException.class, () -> servicioEvento.verificarActivacionEventoGlobal(partida));
         verify(repositorioEventoMock, times(1)).obtenerEventoGlobalAleatorio();
     }
 
     @Test
-    public void dadoQueHayDosPartidasEnRondaCincoCuandoSeVerificaActivacionDaComoResultadoDosEventos() throws Exception {
+    public void dadoQueHayDosPartidasEnRondaCincoCuandoSeVerificaActivacionYDaDosEventos() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Jugador dos = crearJugador(2L, 1000, 5);
         Partida primera = crearPartida("ABC", 5, uno);
         Partida segunda = crearPartida("XYZ", 5, dos);
+        
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearKevin());
 
         servicioEvento.verificarActivacionEventoGlobal(primera);
@@ -845,4 +831,525 @@ public class ServicioEventoTest {
         assertEquals(900, dos.getDinero());
         verify(repositorioEventoMock, times(2)).obtenerEventoGlobalAleatorio();
     }
+
+
+    // El mock del gestor no espera 15 segundos reales: almacena las acciones programadas.
+    private List<Runnable> prepararVencimientosSimulados() {
+        List<Runnable> vencimientos = new ArrayList<>();
+        doAnswer(invocacion -> {
+            vencimientos.add(invocacion.getArgument(2)); return null;}).when(gestorTemporizadorMock).programarTemporizador(anyString(), anyInt(), any(Runnable.class));
+        return vencimientos;
+    }
+
+    @Test
+    public void dadoQueElCodigoEsNullCuandoSeConsultaElEventoYDaResultadoInactivo() {
+        Boolean activo = servicioEvento.verificarSiHayEventoGlobalActivo(null);
+
+        assertEquals(false, activo);
+    }
+
+    @Test
+    public void dadoQueNoHayEventoCuandoSeConsultaLaPartidaYDaResultadoInactivo() {
+        Boolean activo = servicioEvento.verificarSiHayEventoGlobalActivo("ABC");
+
+        assertEquals(false, activo);
+    }
+
+    @Test
+    public void dadoQueSeIniciaInundacionCuandoSeConsultaLaPartidaYDaResultadoActivo() throws Exception {
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 10));
+        
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(gestorTemporizadorMock).programarTemporizador(org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueTerminaUnEventoCuandoSeConsultaSuEstadoYDaInactivoYPublicaLaFinalizacion() throws Exception {
+        Jugador jugador = crearJugador(1L, 1000, 10);
+        Partida partida = crearPartida("ABC", 5, jugador);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 4));
+
+        servicioEvento.realizarTiradaEventoGlobal(partida, jugador, evento);
+
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(7, jugador.getPosicionActual());
+        verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:ABC");
+        verify(publicadorEventosMock).publishEvent( new com.tallerwebi.dominio.eventos.EventoGlobalFinalizado("ABC"));
+    }
+
+    @Test
+    public void dadoQueFaltaOtroJugadorCuandoTiraElPrimeroYDaEventoTodaviaActivo() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 3));
+
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(publicadorEventosMock, never()).publishEvent(any());
+        verify(gestorTemporizadorMock, never()).cancelarTemporizador("evento-global:ABC");
+    }
+
+    @Test
+    public void dadoQueLaPartidaEsNullCuandoSePidenTiradasAutomaticasYDaExcepcion() {
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.realizarTiradasAutomaticasPendientes(null));
+    }
+
+    @Test
+    public void dadoQueLaPartidaNoTieneCodigoCuandoSePidenTiradasAutomaticasYDaExcepcion() {
+        Partida partida = crearPartida(null, 5, crearJugador(1L, 1000, 10));
+
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioEvento.realizarTiradasAutomaticasPendientes(partida));
+    }
+
+    @Test
+    public void dadoQueNoExisteEventoCuandoSePidenTiradasAutomaticasYDaCeroTiradas() throws Exception {
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 10));
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        verify(servicioDadoMock, never()).tirarDados();
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+    }
+
+    @Test
+    public void dadoQueNadieTiroCuandoSeEjecutanLasAutomaticasYDaTodasLasTiradas() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(3, 4), new ResultadoTirada(1, 2));
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        assertEquals(20, tres.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(3)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueUnoYaTiroCuandoSeEjecutanAutomaticasYDaSoloLaTiradaPendiente() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(2, 3));
+        
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        verify(servicioDadoMock, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueTodosYaTiraronCuandoSeSolicitanAutomaticasYDaNingunaTiradaExtra() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Partida partida = crearPartida("ABC", 5, uno);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3));
+        
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        assertEquals(7, uno.getPosicionActual());
+        verify(servicioDadoMock, times(1)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueHayCuatroJugadoresCuandoFaltaUnoPorTirarYDaUnaSolaTiradaAutomatica() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Jugador cuatro = crearJugador(4L, 1000, 25);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres, cuatro);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(
+            new ResultadoTirada(2, 2), new ResultadoTirada(3, 3),
+            new ResultadoTirada(4, 4), new ResultadoTirada(6, 5));
+        
+            servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        assertEquals(22, cuatro.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(4)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueHayTresEmpatadosCuandoSeDesempataYDaUnUnicoGanador() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(
+            new ResultadoTirada(5, 5), new ResultadoTirada(6, 4), new ResultadoTirada(4, 6),
+            new ResultadoTirada(1, 3), new ResultadoTirada(2, 4), new ResultadoTirada(5, 6));
+        
+            servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+
+        assertEquals(10, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        assertEquals(17, tres.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(6)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueEmpatanLosCuatroCuandoSeRepiteElEmpateYDaOtraRondaDeTiradas() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Jugador cuatro = crearJugador(4L, 1000, 25);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres, cuatro);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(
+            new ResultadoTirada(5, 5), new ResultadoTirada(6, 4),
+            new ResultadoTirada(4, 6), new ResultadoTirada(5, 5),
+            new ResultadoTirada(3, 3), new ResultadoTirada(2, 4),
+            new ResultadoTirada(5, 1), new ResultadoTirada(4, 2),
+            new ResultadoTirada(2, 3), new ResultadoTirada(5, 6),
+            new ResultadoTirada(1, 3), new ResultadoTirada(3, 5));
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento);
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento);
+
+        assertEquals(12, dos.getPosicionActual());
+        assertEquals(10, uno.getPosicionActual());
+        assertEquals(20, tres.getPosicionActual());
+        assertEquals(25, cuatro.getPosicionActual());
+        verify(gestorTemporizadorMock, times(3)).programarTemporizador(org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueEmpatanCuatroCuandoSoloDosPersistenYDaDesempateEntreDos() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Jugador cuatro = crearJugador(4L, 1000, 25);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres, cuatro);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(
+            new ResultadoTirada(5, 5), new ResultadoTirada(6, 4),
+            new ResultadoTirada(4, 6), new ResultadoTirada(5, 5),
+            new ResultadoTirada(5, 6), new ResultadoTirada(6, 5),
+            new ResultadoTirada(2, 3), new ResultadoTirada(1, 2),
+            new ResultadoTirada(4, 3), new ResultadoTirada(6, 5));
+        
+            servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento);
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento));
+        assertThrows(TiradaDadoInvalidaException.class, () -> servicioEvento.realizarTiradaEventoGlobal(partida, cuatro, evento));
+        
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+
+        assertEquals(12, dos.getPosicionActual());
+        assertEquals(10, uno.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(10)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueHayEmpateCuandoSePidenAutomaticasYDaSoloTiradasParaEmpatados() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 5), new ResultadoTirada(4, 6),new ResultadoTirada(2, 3), new ResultadoTirada(4, 3), new ResultadoTirada(6, 5));
+        
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, tres, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+
+        assertEquals(12, dos.getPosicionActual());
+        assertEquals(20, tres.getPosicionActual());
+        verify(servicioDadoMock, times(5)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueVenceElTiempoCuandoNadieTiroYDaTiradasAutomaticas() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(2, 3));
+        
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+
+        vencimientos.get(0).run();
+
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        verify(repositorioPartidaMock).buscarPartidaActivaPorCodigoUnico("ABC");
+        verify(servicioDadoMock, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueVenceElTiempoCuandoSoloUnoTiroYDaUnaTiradaAutomatica() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        EventoGlobal evento = crearInundacion();
+        
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 6), new ResultadoTirada(2, 3));
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        vencimientos.get(0).run();
+
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        verify(servicioDadoMock, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueFinalizoElEventoCuandoVenceElTemporizadorAntiguoYDaNingunaTirada() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Partida partida = crearPartida("ABC", 5, uno);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 4));
+        
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+
+        vencimientos.get(0).run();
+
+        assertEquals(7, uno.getPosicionActual());
+        verify(servicioDadoMock, times(1)).tirarDados();
+        verify(repositorioPartidaMock, never()).buscarPartidaActivaPorCodigoUnico("ABC");
+    }
+
+    @Test
+    public void dadoQueHuboDesempateCuandoVenceElTemporizadorAnteriorYDaNingunaTiradaNueva() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        EventoGlobal evento = crearInundacion();
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 5), new ResultadoTirada(6, 4));
+
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+
+        vencimientos.get(0).run();
+
+        assertEquals(10, uno.getPosicionActual());
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(2)).tirarDados();
+        verify(repositorioPartidaMock, never()).buscarPartidaActivaPorCodigoUnico("ABC");
+        verify(gestorTemporizadorMock, times(2)).programarTemporizador(org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueVenceElDesempateCuandoFaltanDadosYDaUnUnicoGanador() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        EventoGlobal evento = crearInundacion();
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 5), new ResultadoTirada(6, 4),new ResultadoTirada(2, 3), new ResultadoTirada(5, 6));
+        
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, uno, evento);
+        servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
+
+        vencimientos.get(1).run();
+
+        assertEquals(12, dos.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(servicioDadoMock, times(4)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueVenceElTiempoCuandoNoExisteLaPartidaYDaExcepcionDeEstado() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 10));
+        
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+        
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(null);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> vencimientos.get(0).run());
+
+        assertEquals("No se encontró la partida del evento global", exception.getMessage());
+        verify(servicioDadoMock, never()).tirarDados();
+    }
+
+    @Test
+    public void dadoQueVenceElTiempoCuandoLosDadosSonInvalidosYDaExcepcionConCausa() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Partida partida = crearPartida("ABC", 5, uno);
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(0, 1));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> vencimientos.get(0).run());
+
+        assertEquals(TiradaDadoInvalidaException.class, exception.getCause().getClass());
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+    }
+
+    @Test
+    public void dadoQueHayDosPartidasCuandoVenceUnaYDaOtraPartidaSinCambios() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 20);
+        Partida primera = crearPartida("ABC", 5, uno);
+        Partida segunda = crearPartida("XYZ", 5, dos);
+        
+        servicioEvento.iniciarEventoGlobal(primera, crearInundacion());
+        servicioEvento.iniciarEventoGlobal(segunda, crearPiquete());
+        
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(primera);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 5));
+
+        vencimientos.get(0).run();
+
+        assertEquals(7, uno.getPosicionActual());
+        assertEquals(20, dos.getPosicionActual());
+        assertEquals(false, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("XYZ"));
+
+        verify(gestorTemporizadorMock).programarTemporizador(org.mockito.ArgumentMatchers.eq("evento-global:XYZ"),org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueHayCuatroEmpatadosCuandoVenceLaPrimeraEtapaYDaNuevoPlazo() throws Exception {
+        List<Runnable> vencimientos = prepararVencimientosSimulados();
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Jugador tres = crearJugador(3L, 1000, 20);
+        Jugador cuatro = crearJugador(4L, 1000, 25);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres, cuatro);
+        
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 5), new ResultadoTirada(5, 4), new ResultadoTirada(6, 3), new ResultadoTirada(3, 6));
+
+        vencimientos.get(0).run();
+
+        assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        assertEquals(10, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        assertEquals(20, tres.getPosicionActual());
+        assertEquals(25, cuatro.getPosicionActual());
+
+        verify(gestorTemporizadorMock, times(2)).programarTemporizador(org.mockito.ArgumentMatchers.eq("evento-global:ABC"), org.mockito.ArgumentMatchers.eq(15), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueElEventoEsNullCuandoSeIntentaAplicarYDaEventoInexistenteException() {
+        Jugador jugador = crearJugador(1L, 1500, 10);
+
+        assertThrows(EventoInexistenteException.class,
+            () -> servicioEvento.aplicarEvento(jugador, null));
+
+        assertEquals(1500, jugador.getDinero());
+        assertEquals(10, jugador.getPosicionActual());
+    }
+
+    @Test
+    public void dadoQueElEventoNoTieneTipoEfectoCuandoSeAplicaYDaEventoInexistenteException() {
+        Jugador jugador = crearJugador(1L, 1500, 10);
+
+        Evento evento = new Evento();
+        evento.setValor(200);
+
+        assertThrows(EventoInexistenteException.class, () -> servicioEvento.aplicarEvento(jugador, evento));
+
+        assertEquals(1500, jugador.getDinero());
+        assertEquals(10, jugador.getPosicionActual());
+    }
+
 }

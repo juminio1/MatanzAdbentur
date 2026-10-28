@@ -33,10 +33,7 @@ public class ControladorPosicionesWebSocket {
     @MessageMapping("/partida/{codigo}/solicitar-posiciones")
     public void solicitarPosiciones(@DestinationVariable String codigo) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info(
-                "Solicitud de posiciones recibida via WebSocket para la partida: {}",
-                codigo
-            );
+            LOGGER.info("Solicitud de posiciones recibida via WebSocket para la partida: {}", codigo);
         }
 
         try {
@@ -51,18 +48,12 @@ public class ControladorPosicionesWebSocket {
 
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info(
-                    "Posiciones enviadas exitosamente a {}. Total jugadores: {}",
-                    destino,
-                    posiciones.size()
+                    "Posiciones enviadas exitosamente a {}. Total jugadores: {}", destino, posiciones.size()
                 );
             }
         } catch (Exception exception) {
             if (LOGGER.isErrorEnabled()) {
-                LOGGER.error(
-                    "Error inesperado al responder la solicitud de posiciones para la partida: {}",
-                    codigo,
-                    exception
-                );
+                LOGGER.error("Error inesperado al responder la solicitud de posiciones para la partida: {}", codigo, exception);
             }
         }
     }

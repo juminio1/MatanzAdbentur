@@ -139,9 +139,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion) {
+
         Partida partida = obtenerPartida(codigoUnico);
-        if (partida == null) return;
-        notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
+
+        if (partida != null&& !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+
+            notificarTurnoActual(partida,true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
+        }
     }
 
     @Override

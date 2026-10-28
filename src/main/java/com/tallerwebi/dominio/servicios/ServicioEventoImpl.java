@@ -417,19 +417,14 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         Boolean elKevin = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.EL_KEVIN);
         Boolean fiat600 = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.FIAT_600);
-        Boolean sarmiento = eventoGlobal
-            .getTipoEventoGlobal()
-            .equals(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
+        Boolean sarmiento = eventoGlobal.getTipoEventoGlobal().equals(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
 
         if (elKevin || fiat600 || sarmiento) {
             this.seleccionarJugadorYAplicarEvento(jugadores, eventoGlobal);
         }
     }
 
-    private void seleccionarJugadorYAplicarEvento(
-        List<Jugador> jugadores,
-        EventoGlobal eventoGlobal
-    ) throws JugadorNoEncontradoException, EventoInexistenteException {
+    private void seleccionarJugadorYAplicarEvento(List<Jugador> jugadores, EventoGlobal eventoGlobal) throws JugadorNoEncontradoException, EventoInexistenteException {
         if (jugadores == null || jugadores.isEmpty()) {
             throw new JugadorNoEncontradoException("No hay jugadores en la partida");
         }
@@ -449,26 +444,16 @@ public class ServicioEventoImpl implements ServicioEvento {
         return rondaActual != null && rondaActual > 0 && rondaActual % RONDAS_ENTRE_EVENTOS == 0;
     }
 
-    private List<Jugador> obtenerJugadoresConResultadoElegido(
-        List<Jugador> participantes,
-        Map<Long, Integer> tiradas,
-        TipoEventoGlobal tipoEvento
-    ) {
+    private List<Jugador> obtenerJugadoresConResultadoElegido(List<Jugador> participantes, Map<Long, Integer> tiradas, TipoEventoGlobal tipoEvento) {
         //El map relaciona el id de cada jugador con el resultado de la tirada
 
         if (tiradas.isEmpty()) {
             return List.of();
         }
 
-        Integer resultadoElegido =
-            tipoEvento == TipoEventoGlobal.PIQUETE
-                ? Collections.min(tiradas.values())
-                : Collections.max(tiradas.values()); //Buscan el número más grande o más chico de una colección
+        Integer resultadoElegido = tipoEvento == TipoEventoGlobal.PIQUETE ? Collections.min(tiradas.values()) : Collections.max(tiradas.values()); //Buscan el número más grande o más chico de una colección
 
-        return participantes
-            .stream()
-            .filter(jugador -> resultadoElegido.equals(tiradas.get(jugador.getId())))
-            .toList();
+        return participantes.stream().filter(jugador -> resultadoElegido.equals(tiradas.get(jugador.getId()))).toList();
     }
 
     private void prepararDesempate(Partida partida, List<Jugador> jugadoresEmpatados) {

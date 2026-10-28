@@ -206,10 +206,7 @@ public class ControladorPartidaTest {
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorConTurno);
 
-        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-                codigoPartida,
-                request
-        );
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida,request);
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
         verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
@@ -236,16 +233,11 @@ public class ControladorPartidaTest {
         partidaActualizada.setRondaActual(2);
         partidaActualizada.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
-        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
-                .thenReturn(jugadorActual)
-                .thenReturn(jugadorSiguiente);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorActual).thenReturn(jugadorSiguiente);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partidaActualizada);
 
-        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-                codigoPartida,
-                request
-        );
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida,request);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertNotNull(respuesta.getBody());
@@ -358,16 +350,11 @@ public class ControladorPartidaTest {
         partida.setRondaActual(1);
         partida.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
-        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida))
-                .thenReturn(jugadorActual)
-                .thenReturn(jugadorSiguiente);
+        when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorActual).thenReturn(jugadorSiguiente);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
-        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-                codigoPartida,
-                request
-        );
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertNotNull(respuesta.getBody());
@@ -433,8 +420,10 @@ public class ControladorPartidaTest {
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setPosicionActual(28);
+       
         Partida partida = new Partida();
         partida.setJugadores(List.of(jugador));
+       
         when(servicioPartidaMock.obtenerPartida("INICIO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("INICIO")).thenReturn(jugador);
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
@@ -454,25 +443,25 @@ public class ControladorPartidaTest {
     @Test
     public void queElPremioPorCruzarInicioEnUnEventoSeInformeSinPagarloDeNuevo() throws Exception {
         ServicioEventoCasillero servicioEvento = mock(ServicioEventoCasillero.class);
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                notificadorWebSocketMock,
-                servicioCasilleroMock,
-                servicioPropiedadMock,
-                notificadorPartidaMock,
-                servicioGestionQuiebraMock,
+        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,notificadorWebSocketMock, servicioCasilleroMock,servicioPropiedadMock,notificadorPartidaMock,servicioGestionQuiebraMock,
                 new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
-        Jugador jugador = new Jugador();
+       
+                Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setPosicionActual(26);
+       
         Partida partida = new Partida();
         partida.setJugadores(List.of(jugador));
+       
         when(servicioPartidaMock.obtenerPartida("EVENTO")).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual("EVENTO")).thenReturn(jugador);
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+       
         doAnswer(invocacion -> {
             jugador.setPosicionActual(28);
             return null;
         }).when(movimiento).moverJugador(jugador, 2, 30);
+       
         when(servicioEvento.aplicarSiCorresponde("EVENTO", jugador)).thenAnswer(invocacion -> {
             jugador.setPosicionActual(0);
             EventoCasillero evento = new EventoCasillero();
@@ -501,9 +490,9 @@ public class ControladorPartidaTest {
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaVacia);
 
         var error = assertThrows(org.springframework.web.server.ResponseStatusException.class, () -> {
-            controladorPartida.tirarDados(codigoPrueba, idJugadorInexistente, solicitudJugador(codigoPrueba,  idJugadorInexistente));
-        });
-        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
+            controladorPartida.tirarDados(codigoPrueba, idJugadorInexistente, solicitudJugador(codigoPrueba,  idJugadorInexistente));});
+        
+            assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
     }
 
     //test abandonar partida
@@ -525,11 +514,9 @@ public class ControladorPartidaTest {
 
         MockHttpServletRequest request = new MockHttpServletRequest();
 
-        when(servicioPartidaMock.obtenerPartida(codigoPartida))
-                .thenReturn(null);
+        when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(null);
 
-        ResponseEntity<Map<String, Object>> respuesta =
-                controlador.abandonarPartida(codigoPartida, request);
+        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
 
         assertEquals(HttpStatus.NOT_FOUND, respuesta.getStatusCode());
         assertNotNull(respuesta.getBody());
@@ -579,22 +566,65 @@ public class ControladorPartidaTest {
         verifyNoInteractions(notificadorPartidaMock);
     }
 
-    @Test
-    public void dadoQueElJugadorPerteneceALaPartidaCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
+    @Test
+    public void dadoQueLaPartidaNoExisteCuandoSeIntentaAbandonarYDaNotFound() throws Exception {
+
+        // Preparación
+        String codigoPartida = "MATANZA123";
+
+        when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(null);
+
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta =
+            controladorPartida.abandonarPartida(codigoPartida, request);
+
+        // Comprobación
+        assertEquals(HttpStatus.NOT_FOUND, respuesta.getStatusCode());
+        assertEquals("La partida no existe.", respuesta.getBody().get("error"));
+
+        verify(servicioPartidaMock, never()).abandonarPartida(anyString(), anyLong());
+
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+
+    @Test
+    public void dadoQueElJugadorNoPerteneceALaPartidaCuandoIntentaAbandonarYDaForbidden() throws Exception {
+
+        // Preparación
+        String codigoPartida = "MATANZA123";
+
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigoPartida);
+        partida.setJugadores(List.of(jugador));
+
+        request.getSession().setAttribute("id", 99L);
+
+        when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
+
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta =
+            controladorPartida.abandonarPartida(codigoPartida, request);
+
+        // Comprobación
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        assertEquals("No pertenecés a esta partida.", respuesta.getBody().get("error"));
+
+        verify(servicioPartidaMock, never()).abandonarPartida(anyString(), anyLong());
+
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+    @Test
+    public void dadoQueElJugadorPerteneceALaPartidaCuandoAbandonaYDaNotificacionCorrecta()throws Exception {
+
+        // Preparación
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
-
-        ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
-        NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
-
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                mock(SimpMessagingTemplate.class),
-                mock(ServicioCasillero.class),
-                mock(ServicioPropiedad.class),
-                notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -604,18 +634,18 @@ public class ControladorPartidaTest {
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugador));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", idJugador);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
-        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta =controladorPartida.abandonarPartida(codigoPartida, request);
 
+        // Comprobación
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-        assertNotNull(respuesta.getBody());
         assertEquals("Abandonaste la partida correctamente.", respuesta.getBody().get("mensaje"));
 
-        InOrder orden = inOrder(servicioPartidaMock, notificadorPartidaMock); //Se usa InOrder porque se quiere comprobar que primero abandona la partida y después se le notifica a los demás jugadores
+        InOrder orden = inOrder(servicioPartidaMock, notificadorPartidaMock);
 
         orden.verify(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
 
@@ -623,21 +653,11 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElServicioNoEncuentraLaPartidaCuandoSeIntentaAbandonarEntoncesDevuelveNotFound() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+    public void dadoQueElServicioNoEncuentraLaPartidaCuandoSeIntentaAbandonarYDaNotFound() throws Exception {
 
+        // Preparación
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
-
-        ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
-        NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
-
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                mock(SimpMessagingTemplate.class),
-                mock(ServicioCasillero.class),
-                mock(ServicioPropiedad.class),
-                notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -646,17 +666,18 @@ public class ControladorPartidaTest {
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugador));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", idJugador);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         doThrow(new PartidaNoEncontradaException()).when(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
 
-        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta =
+            controladorPartida.abandonarPartida(codigoPartida, request);
 
+        // Comprobación
         assertEquals(HttpStatus.NOT_FOUND, respuesta.getStatusCode());
-        assertNotNull(respuesta.getBody());
         assertEquals("No se encontró la partida.", respuesta.getBody().get("error"));
 
         verify(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
@@ -665,21 +686,11 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElServicioNoEncuentraAlJugadorCuandoSeIntentaAbandonarEntoncesDevuelveBadRequest() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+    public void dadoQueElServicioNoEncuentraAlJugadorCuandoSeIntentaAbandonarYDaBadRequest() throws Exception {
 
+        // Preparación
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
-
-        ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
-        NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
-
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                mock(SimpMessagingTemplate.class),
-                mock(ServicioCasillero.class),
-                mock(ServicioPropiedad.class),
-                notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -688,17 +699,17 @@ public class ControladorPartidaTest {
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugador));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", idJugador);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         doThrow(new IllegalArgumentException("El jugador no existe.")).when(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
 
-        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta = controladorPartida.abandonarPartida(codigoPartida, request);
 
+        // Comprobación
         assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertNotNull(respuesta.getBody());
         assertEquals("No se encontró el jugador.", respuesta.getBody().get("error"));
 
         verify(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
@@ -707,21 +718,11 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueElJugadorTieneSuNombreEnSesionCuandoAbandonaEntoncesSeNotificaCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+    public void dadoQueElJugadorTieneSuNombreEnSesionCuandoAbandonaYDaNotificacionCorrecta() throws Exception {
 
+        // Preparación
         String codigoPartida = "MATANZA123";
         Long idJugador = 1L;
-
-        ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
-        NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
-
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                mock(SimpMessagingTemplate.class),
-                mock(ServicioCasillero.class),
-                mock(ServicioPropiedad.class),
-                notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
@@ -731,13 +732,14 @@ public class ControladorPartidaTest {
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugador));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("NOMBRE", "Messi10");
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
-        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
+        // Ejecución
+        ResponseEntity<Map<String, Object>> respuesta = controladorPartida.abandonarPartida(codigoPartida, request);
 
+        // Comprobación
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
 
         verify(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
@@ -746,18 +748,9 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void dadoQueUnJugadorPerteneceALaPartidaCuandoSeLoBuscaParaAbandonarEntoncesSeEncuentraCorrectamente() throws PartidaNoEncontradaException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+    public void dadoQueHayDosJugadoresCuandoElSegundoAbandonaYDaLaNotificacionCorrecta() throws Exception {
         // Preparación
         String codigoPartida = "ABC123";
-        ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
-        NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
-        ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
-                mock(SimpMessagingTemplate.class),
-                mock(ServicioCasillero.class),
-                mock(ServicioPropiedad.class),
-                notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
-                new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugadorUno = new Jugador();
         jugadorUno.setId(1L);
@@ -771,17 +764,18 @@ public class ControladorPartidaTest {
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", 2L);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         // Ejecución
-        ResponseEntity<Map<String, Object>> respuesta = controlador.abandonarPartida(codigoPartida, request);
+        ResponseEntity<Map<String, Object>> respuesta = controladorPartida.abandonarPartida(codigoPartida, request);
 
-        // Verificación
+        // Comprobación
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+
         verify(servicioPartidaMock, times(1)).abandonarPartida(codigoPartida, 2L);
+
         verify(notificadorPartidaMock, times(1)).notificarAbandonoPorWebSocket(partida, jugadorDos);
     }
 
@@ -799,10 +793,7 @@ public class ControladorPartidaTest {
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
         when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
 
-        ResponseStatusException excepcion = assertThrows(
-                ResponseStatusException.class,
-                () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId()))
-        );
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId())));
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
         verify(dados, never()).tirarDados();
@@ -826,18 +817,50 @@ public class ControladorPartidaTest {
 
         DeudaPendiente deuda = mock(DeudaPendiente.class);
 
-        when(servicioGestionQuiebraMock.obtenerDeudaPendiente(codigo, jugador.getId()))
-                .thenReturn(deuda);
+        when(servicioGestionQuiebraMock.obtenerDeudaPendiente(codigo, jugador.getId())).thenReturn(deuda);
 
-        ResponseStatusException excepcion = assertThrows(
-                ResponseStatusException.class,
-                () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId()))
-        );
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId())));
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
 
         verify(dados, never()).tirarDados();
     }
+
+
+    @Test
+    public void dadoQueHayEventoGlobalActivoCuandoElJugadorIntentaTirarDadosYDaForbidden() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
+
+        String codigo = "MATANZA123";
+
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setApodo("Jugador1");
+        jugador.setOrden(0);
+        jugador.setPosicionActual(0);
+
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setJugadores(List.of(jugador));
+
+        when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
+
+        when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
+
+        when(servicioPartidaMock.verificarSiHayEventoGlobalActivo(codigo)).thenReturn(true);
+
+        ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, 1L, solicitudJugador(codigo, 1L)));
+
+        assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
+
+        assertEquals("La partida está pausada por un evento global.", excepcion.getReason());
+
+        verify(dados, never()).tirarDados();
+
+        verify(servicioPartidaMock, never()).prepararTiempoTurno(eq(codigo), anyInt());
+
+        verify(servicioPartidaMock, never()).avanzarTurno(codigo);
+    }
+
     private org.springframework.mock.web.MockHttpServletRequest solicitudJugador(String codigo, Long idJugador) {
         var request = new org.springframework.mock.web.MockHttpServletRequest();
         Partida partida = servicioPartidaMock.obtenerPartida(codigo);
