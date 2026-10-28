@@ -110,10 +110,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico) {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
+        MarcaTurno marca = MarcaTurno.de(partida);
         Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
                 codigoUnico,
                 DURACION_TURNO_SEGUNDOS,
-                () -> avanzarTurno(codigoUnico)
+                () -> avanzarTurnoSiSigueVigente(codigoUnico, marca)
         );
         if (iniciado) notificarTurnoActual(partida, false);
     }
@@ -209,12 +210,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (jugadorActual == null) {
             return;
         }
+        MarcaTurno marca = MarcaTurno.de(partida);
         DespuesDeConfirmar.ejecutar(() -> {
         if (iniciarTemporizador && partida.getCodigoUnico() != null) {
             gestorTemporizador.programarTemporizador(
                     partida.getCodigoUnico(),
                     segundosTotales,
-                    () -> avanzarTurno(partida.getCodigoUnico())
+                    () -> avanzarTurnoSiSigueVigente(partida.getCodigoUnico(), marca)
             );
         }
         if (publicadorTurno != null) {
@@ -230,6 +232,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
             publicadorTurno.notificar(evento);
         }
         });
+    }
+
+    /*
+     * Lo usa el temporizador al vencer. Si el turno que se programó ya terminó
+     * (por ejemplo, el jugador lo cerró justo antes), no avanza de nuevo.
+     */
+    private void avanzarTurnoSiSigueVigente(String codigoUnico, MarcaTurno marcaProgramada) {
+        Partida partida = obtenerPartida(codigoUnico);
+        if (partida == null || !marcaProgramada.equals(MarcaTurno.de(partida))) {
+            return;
+        }
+        avanzarTurno(codigoUnico);
+    }
+
+    // Identifica un turno concreto: cambia cada vez que se avanza el turno.
+    private record MarcaTurno(Integer indiceTurno, Integer ronda, Integer turnosFinalizadosEnRonda) {
+        static MarcaTurno de(Partida partida) {
+            return new MarcaTurno(partida.getIndiceTurnoActual(), partida.getRondaActual(),
+                    partida.getTurnosFinalizadosEnRonda());
+        }
     }
 
     private Boolean esPartidaConJugadoresInvalida(Partida partida) {
