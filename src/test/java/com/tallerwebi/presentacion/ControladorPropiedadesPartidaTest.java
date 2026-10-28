@@ -46,7 +46,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-class ControladorPartidaPropiedadesTest {
+class ControladorPropiedadesPartidaTest {
     private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
     private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
@@ -59,7 +59,8 @@ class ControladorPartidaPropiedadesTest {
     private SimpMessagingTemplate notificador;
     private ServicioCasillero servicioCasillero;
     private ServicioPropiedad servicioPropiedad;
-    private ControladorPartida controlador;
+    private ControladorPropiedadesPartida controlador;
+    private ControladorPartida controladorPartida;
     private NotificadorPartida notificadorPartidaMock;
     private ServicioGestionQuiebra servicioGestionQuiebraMock;
 
@@ -71,13 +72,21 @@ class ControladorPartidaPropiedadesTest {
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
-        controlador = new ControladorPartida(servicioPartida,
+        var participacion = new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl();
+        controlador = new ControladorPropiedadesPartida(servicioPartida,
+                notificador,
+                servicioCasillero,
+                servicioPropiedad,
+                servicioGestionQuiebraMock,
+                participacion,
+                new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
+        controladorPartida = new ControladorPartida(servicioPartida,
                 notificador,
                 servicioCasillero,
                 servicioPropiedad,
                 notificadorPartidaMock,
-                servicioGestionQuiebraMock,
-                new ServicioJugadaImpl(servicioPartida, servicioCasillero, servicioPropiedad, null, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                new ServicioJugadaImpl(servicioPartida, servicioCasillero, servicioPropiedad, null, servicioGestionQuiebraMock, movimiento, participacion, dados),
+                participacion);
         RepositorioPartida consultas = mock(RepositorioPartida.class);
         when(consultas.buscarPartidaActivaPorCodigoUnico(any())).thenAnswer(i -> servicioPartida.obtenerPartida(i.getArgument(0)));
         when(consultas.buscarJugadorPorId(any())).thenAnswer(i -> servicioPartida.obtenerJugadorPorId(i.getArgument(0)));
@@ -377,7 +386,7 @@ class ControladorPartidaPropiedadesTest {
         ResponseEntity<?> catalogo = controlador.obtenerPropiedadesTablero(CODIGO, request);
         assertEquals(HttpStatus.OK, catalogo.getStatusCode());
         assertEquals(23, ((List<?>) catalogo.getBody()).size());
-        var vista = controlador.verTablero(CODIGO, request);
+        var vista = controladorPartida.verTablero(CODIGO, request);
         assertEquals("partida", vista.getViewName());
         assertEquals(catalogo.getBody(), vista.getModel().get("propiedadesTablero"));
 
@@ -436,7 +445,7 @@ class ControladorPartidaPropiedadesTest {
         }).when(movimiento).moverJugador(jugador, 4, 30);
         when(servicioPropiedad.estaDisponible(any(Propiedad.class))).thenReturn(true);
 
-        RespuestaMovimientoDTO respuesta = controlador.tirarDados(CODIGO, jugador.getId(), solicitudJugador(CODIGO,  jugador.getId()));
+        RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados(CODIGO, jugador.getId(), solicitudJugador(CODIGO,  jugador.getId()));
 
         ArgumentCaptor<Casillero> captor = ArgumentCaptor.forClass(Casillero.class);
         verify(servicioCasillero).guardarCasillero(captor.capture());
@@ -492,7 +501,7 @@ class ControladorPartidaPropiedadesTest {
     }
 
     @Test
-    void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() {
+    public void rechazaLaCompraSiElJugadorActivoNoCayoEnEsaPropiedad() {
         Partida partida = crearPartida();
         Jugador jugador = crearJugador(1L, "Ana", 1000, 2);
         partida.setJugadores(List.of(jugador));
@@ -612,7 +621,7 @@ class ControladorPartidaPropiedadesTest {
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorActual(CODIGO)).thenReturn(actual);
 
-        ResponseEntity<TurnoDTO> respuesta = controlador.obtenerTurnoActual(CODIGO);
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.obtenerTurnoActual(CODIGO);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertEquals(actual.getId(), respuesta.getBody().getIdJugadorActual());

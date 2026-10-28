@@ -28,7 +28,7 @@ import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.ControladorPartida;
 import com.tallerwebi.presentacion.ControladorGestionQuiebra;
-import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
+import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
@@ -154,6 +154,7 @@ class EfectosPartidaIntegracionTest {
     @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
     private TransactionTemplate transaccion;
     private ControladorPartida controlador;
+    private ControladorPropiedadesPartida propiedades;
     private String codigo;
     private Long idJugador;
     private Long idPropietario;
@@ -168,8 +169,12 @@ class EfectosPartidaIntegracionTest {
                 servicioCasillero,
                 servicioPropiedad,
                 new NotificadorPartida(notificador),
-                servicioGestionQuiebra,
                 servicioJugada, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        var participacion = new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl();
+        propiedades = new ControladorPropiedadesPartida(servicioPartida, notificador, servicioCasillero,
+                servicioPropiedad, servicioGestionQuiebra, participacion,
+                new com.tallerwebi.dominio.servicios.ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero,
+                        servicioPropiedad, participacion));
         codigo = UUID.randomUUID().toString();
         transaccion.executeWithoutResult(estado -> {
             sesiones.getCurrentSession().createMutationQuery("DELETE FROM EventoCasillero").executeUpdate();
@@ -226,10 +231,10 @@ class EfectosPartidaIntegracionTest {
         var error = assertThrows(org.springframework.web.server.ResponseStatusException.class,
                 () -> controlador.tirarDados(codigo, idJugador, request));
         assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
-        assertEquals(HttpStatus.FORBIDDEN, controlador.comprarPropiedad(codigo, 2, request).getStatusCode());
+        assertEquals(HttpStatus.FORBIDDEN, propiedades.comprarPropiedad(codigo, 2, request).getStatusCode());
         verify(servicioDado, never()).tirarDados();
         assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
-        assertNull(controlador.obtenerInfoPropiedad(codigo, 2).getBody().get("propietarioId"));
+        assertNull(propiedades.obtenerInfoPropiedad(codigo, 2).getBody().get("propietarioId"));
     }
 
     @Test
@@ -237,7 +242,7 @@ class EfectosPartidaIntegracionTest {
         cargarPropiedadDisponible(2);
         var request = new MockHttpServletRequest();
         var compra = assertThrows(org.springframework.web.server.ResponseStatusException.class,
-                () -> controlador.comprarPropiedad(codigo, 2, request));
+                () -> propiedades.comprarPropiedad(codigo, 2, request));
         var tirada = assertThrows(org.springframework.web.server.ResponseStatusException.class,
                 () -> controlador.tirarDados(codigo, idJugador, request));
         assertEquals(HttpStatus.UNAUTHORIZED, compra.getStatusCode());
@@ -653,24 +658,22 @@ class EfectosPartidaIntegracionTest {
     void queSePuedaComprarYOfrecerPropiedadesACadaUnoDeLosOtrosJugadores(RepetitionInfo repeticion) {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
-        ControladorOfertaPropiedad ofertas = new ControladorOfertaPropiedad(servicioPartida, servicioCasillero,
-                servicioPropiedad, notificador, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         List<Integer> posiciones = List.of(2, 4, 5);
         for (Integer orden = 1; orden < cantidad; orden++) {
             Integer posicion = posiciones.get(orden - 1);
             cargarPropiedadDisponible(posicion);
-            assertEquals(true, controlador.obtenerInfoPropiedad(codigo, posicion).getBody().get("disponible"));
-            assertEquals(HttpStatus.OK, controlador.comprarPropiedad(codigo, posicion, solicitudJugador(codigo, null)).getStatusCode());
+            assertEquals(true, propiedades.obtenerInfoPropiedad(codigo, posicion).getBody().get("disponible"));
+            assertEquals(HttpStatus.OK, propiedades.comprarPropiedad(codigo, posicion, solicitudJugador(codigo, null)).getStatusCode());
             Long comprador = idDelOrden(orden);
-            var oferta = ofertas.crearOferta(codigo, posicion,
+            var oferta = propiedades.crearOferta(codigo, posicion,
                     Map.of("idJugadorComprador", comprador, "precio", 450), sesion(idJugador));
             assertEquals(HttpStatus.OK, oferta.getStatusCode());
             for (Integer destinatario = 0; destinatario < cantidad; destinatario++) {
-                List<?> pendientes = (List<?>) ofertas.ofertasPendientes(codigo, sesion(idDelOrden(destinatario))).getBody();
+                List<?> pendientes = (List<?>) propiedades.ofertasPendientes(codigo, sesion(idDelOrden(destinatario))).getBody();
                 assertEquals(destinatario.equals(orden) ? 1 : 0, pendientes.size());
             }
             String idOferta = (String) oferta.getBody().get("idOferta");
-            var venta = ofertas.responderOferta(codigo, idOferta, Map.of("aceptar", true), sesion(comprador));
+            var venta = propiedades.responderOferta(codigo, idOferta, Map.of("aceptar", true), sesion(comprador));
             assertEquals(HttpStatus.OK, venta.getStatusCode());
             assertEquals(comprador, venta.getBody().get("propietarioId"));
             assertEquals(1550, servicioPartida.obtenerJugadorPorId(comprador).getDinero());
@@ -683,10 +686,10 @@ class EfectosPartidaIntegracionTest {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
         cargarPropiedadConDueno();
-        var venta = controlador.venderPropiedad(codigo, 2, sesion(idPropietario));
+        var venta = propiedades.venderPropiedad(codigo, 2, sesion(idPropietario));
         assertEquals(HttpStatus.OK, venta.getStatusCode());
         assertEquals(2150, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
-        assertEquals(true, controlador.obtenerInfoPropiedad(codigo, 2).getBody().get("disponible"));
+        assertEquals(true, propiedades.obtenerInfoPropiedad(codigo, 2).getBody().get("disponible"));
     }
 
     @Test
@@ -716,7 +719,7 @@ class EfectosPartidaIntegracionTest {
         assertNotNull(servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigo, idJugador));
 
-        var respuesta = controlador.venderPropiedad(
+        var respuesta = propiedades.venderPropiedad(
                 codigo, 4, sesion(idJugador));
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
@@ -759,7 +762,7 @@ class EfectosPartidaIntegracionTest {
         assertNotNull(servicioGestionQuiebra
                 .obtenerDeudaPendiente(codigo, idJugador));
 
-        var primeraVenta = controlador.venderPropiedad(
+        var primeraVenta = propiedades.venderPropiedad(
                 codigo, 4, sesion(idJugador));
 
         assertEquals(HttpStatus.OK, primeraVenta.getStatusCode());
@@ -768,7 +771,7 @@ class EfectosPartidaIntegracionTest {
                 .obtenerDeudaPendiente(codigo, idJugador));
         assertFalse(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
 
-        var segundaVenta = controlador.venderPropiedad(
+        var segundaVenta = propiedades.venderPropiedad(
                 codigo, 5, sesion(idJugador));
 
         assertEquals(HttpStatus.OK, segundaVenta.getStatusCode());

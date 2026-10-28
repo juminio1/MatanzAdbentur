@@ -84,7 +84,6 @@ public class ControladorPartidaTest {
                 servicioCasilleroMock,
                 servicioPropiedadMock,
                 notificadorPartidaMock,
-                servicioGestionQuiebraMock,
                 new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, null, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         request = new MockHttpServletRequest();
@@ -455,7 +454,6 @@ public class ControladorPartidaTest {
                 servicioCasilleroMock,
                 servicioPropiedadMock,
                 notificadorPartidaMock,
-                servicioGestionQuiebraMock,
                 new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, servicioEvento, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         Jugador jugador = new Jugador();
         jugador.setId(1L);
@@ -516,7 +514,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -549,7 +546,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
@@ -589,7 +585,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
@@ -632,7 +627,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
@@ -674,7 +668,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
@@ -716,7 +709,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugador = new Jugador();
@@ -752,7 +744,6 @@ public class ControladorPartidaTest {
                 mock(ServicioCasillero.class),
                 mock(ServicioPropiedad.class),
                 notificadorPartidaMock,
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), mock(ServicioPropiedad.class), null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         Jugador jugadorUno = new Jugador();

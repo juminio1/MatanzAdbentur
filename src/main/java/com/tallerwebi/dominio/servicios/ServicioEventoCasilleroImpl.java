@@ -54,9 +54,7 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     @Override
-    public Optional<ResultadoEvento> aplicarSiCorresponde(
-            String codigoPartida,
-            Jugador jugador) {
+    public Optional<ResultadoEvento> aplicarSiCorresponde(String codigoPartida, Jugador jugador) {
 
         Integer posicion = jugador.getPosicionActual();
 
