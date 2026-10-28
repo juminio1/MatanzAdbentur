@@ -132,6 +132,34 @@ public class ServicioJugadaImpl implements ServicioJugada {
                 destino.alquiler());
     }   
 
+    @Override
+    public void pagarFianzaVoluntaria(String codigo, Long idJugador) 
+            throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        
+        Partida partida = partidas.obtenerPartida(codigo);
+        if (partida == null) throw new PartidaNoEncontradaException();
+
+        Jugador jugador = obtenerJugador(partida, idJugador);
+
+        if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
+            throw new IllegalStateException("No podés pagar fianza porque no estás en la cárcel.");
+        }
+
+        if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new IllegalStateException("Ya tiraste los dados, debés esperar al próximo turno.");
+        }
+
+        if (jugador.getDinero() == null || jugador.getDinero() < COSTO_FIANZA) {
+            throw new DineroInsuficienteException("No tenés los $100 necesarios para pagar la fianza anticipada.");
+        }
+
+        quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+
+        jugador.getEstadoCarcel().liberar();
+
+        partidas.actualizarJugador(jugador);
+    }
+
     //busca al jugador por id.
     private Jugador obtenerJugador(Partida partida, Long idJugador)
             throws JugadorNoEncontradoException {
@@ -240,15 +268,11 @@ public class ServicioJugadaImpl implements ServicioJugada {
         jugador.getEstadoCarcel().registrarIntentoFallido();
         if (jugador.getEstadoCarcel().getIntentosSalirCarcel() >= MAX_INTENTOS_CARCEL) {
             
-            // Llamamos al servicio de quiebra para gestionar el pago o la deuda
-            ResultadoDeuda estadoDeuda = quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+            quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
             
-            // Lo liberamos SIEMPRE. Su deuda de cárcel ya se cobró (en efectivo o asumiendo deuda)
             jugador.getEstadoCarcel().liberar();
             
-            // Si pagó en efectivo, devuelve true y avanza.
-            // Si quedó pendiente (debe vender) o quebró, devuelve false y corta el turno.
-            return estadoDeuda == ResultadoDeuda.RESUELTA;
+            return false;
         }
 
         return false;

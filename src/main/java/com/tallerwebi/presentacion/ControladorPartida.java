@@ -1,7 +1,5 @@
 package com.tallerwebi.presentacion;
 
-import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
-
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
@@ -474,6 +472,49 @@ public class ControladorPartida {
             return respuesta;
         } catch (com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
+        }
+    }
+
+    @PostMapping("/partida/{codigoPartida}/pagar-fianza")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> pagarFianzaVoluntaria(
+            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
+            HttpServletRequest request
+    ) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null) return ResponseEntity.notFound().build();
+
+        // 1. Validamos que el jugador sea parte de la partida y esté logueado
+        Long idSesion = resolverJugadorAutenticado(partida, request);
+        Jugador actual = servicioPartida.obtenerJugadorActual(codigoPartida);
+
+        if (actual == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, "No hay un jugador activo en esta partida."));
+        }
+        
+        // 2. Validamos que solo pueda pagar en su propio turno
+        if (!esTurnoDeJugador(actual, idSesion)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(CLAVE_ERROR, "No es tu turno para pagar la fianza."));
+        }
+
+        try {
+            // 3. Llamamos al servicio (la lógica que haremos en el próximo paso)
+            servicioJugada.pagarFianzaVoluntaria(codigoPartida, idSesion);
+            
+            // Si sale bien, avisamos al frontend para que le habilite los dados
+            return ResponseEntity.ok(Map.of("mensaje", "Fianza pagada con éxito. Ya podés tirar los dados."));
+            
+        } catch (DineroInsuficienteException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    Map.of("codigoError", "DINERO_INSUFICIENTE", CLAVE_ERROR, ex.getMessage())
+            );
+        } catch (IllegalStateException ex) {
+            // Ataja si intenta pagar y no estaba preso, o si ya tiró los dados
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    Map.of(CLAVE_ERROR, "Error interno al procesar el pago de la fianza.")
+            );
         }
     }
 
