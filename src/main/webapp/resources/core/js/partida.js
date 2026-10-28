@@ -1605,7 +1605,18 @@ async function responderOfertaVenta(aceptar) {
 
 window.setInterval(revisarOfertasPendientes, 10000); // 2500
 
-async function finalizarTurno() {
+// Si ya hay un pedido para avanzar el turno en curso, se reutiliza en lugar de mandar otro.
+let finalizacionTurnoEnCurso = null;
+
+function finalizarTurno() {
+    if (finalizacionTurnoEnCurso) return finalizacionTurnoEnCurso;
+    finalizacionTurnoEnCurso = enviarFinalizacionTurno().finally(() => {
+        finalizacionTurnoEnCurso = null;
+    });
+    return finalizacionTurnoEnCurso;
+}
+
+async function enviarFinalizacionTurno() {
     console.log("Intentando avanzar el turno...");
 
     const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {

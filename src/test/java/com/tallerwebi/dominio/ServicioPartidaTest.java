@@ -43,6 +43,7 @@ import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 public class ServicioPartidaTest {
 
@@ -913,6 +914,55 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
 
         verify(repositorioPartidaMock, never()).actualizarJugador(any());
         verify(publicadorAbandonoMock, never()).notificar(any());
+    }
+
+    @Test
+    public void siElTurnoYaAvanzoCuandoVenceElTemporizadorNoSeAvanzaOtraVez() {
+        String codigo = "VENCE-TARDE";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+
+        servicioPartida.avanzarTurno(codigo);
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        vencimiento.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    @Test
+    public void siElTurnoSigueVigenteCuandoVenceElTemporizadorSeAvanza() {
+        String codigo = "VENCE-A-TIEMPO";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+
+        vencimiento.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador primero = new Jugador();
+        primero.setOrden(0);
+        Jugador segundo = new Jugador();
+        segundo.setOrden(1);
+        partida.setJugadores(List.of(primero, segundo));
+        partida.setIndiceTurnoActual(0);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+        return partida;
+    }
+
+    private Runnable iniciarTemporizadorYCapturarVencimiento(String codigo) {
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
+            eq(codigo), eq(30), any(Runnable.class))).thenReturn(true);
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigo), eq(30), captor.capture());
+        return captor.getValue();
     }
 
 }
