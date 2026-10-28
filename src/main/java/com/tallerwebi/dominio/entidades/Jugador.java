@@ -6,37 +6,29 @@ import jakarta.persistence.*;
 @Entity
 public class Jugador {
 
-@Id
-@GeneratedValue(strategy= GenerationType.IDENTITY)
-private Long id;
-private String apodo;
-private Boolean tiroEnTurno = false;
-private Integer dinero;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String apodo;
+    private Integer dinero;
 
-@Enumerated(EnumType.STRING)
-private ColorFicha ficha;
+    @Enumerated(EnumType.STRING)
+    private ColorFicha ficha;
 
     private Integer posicionActual;
-
     private Integer orden;
-    private Boolean pierdeTurno;
-    private Boolean enBancarrota;
-    private Boolean abandono;
+
+    @Embedded
+    private EstadoCarcel estadoCarcel;
+
+    @Embedded
+    private EstadoJugador estadoJugador;
 
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
-        this.pierdeTurno = false;
-        this.enBancarrota = false;
-        this.abandono = false;
-    }
-
-    public Boolean getTiroEnTurno() {
-        return tiroEnTurno;
-    }
-
-    public void setTiroEnTurno(Boolean tiroEnTurno) {
-        this.tiroEnTurno = tiroEnTurno;
+        this.estadoCarcel = new EstadoCarcel();
+        this.estadoJugador = new EstadoJugador();
     }
 
     public Long getId() {
@@ -87,27 +79,41 @@ private ColorFicha ficha;
         this.orden = orden;
     }
 
+    public EstadoCarcel getEstadoCarcel() {
+        return this.estadoCarcel;
+    }
+
+    // --- MÉTODOS DELEGADOS AL ESTADO JUGADOR ---
+
+    public Boolean getTiroEnTurno() {
+        return this.estadoJugador.getTiroEnTurno();
+    }
+
+    public void setTiroEnTurno(Boolean tiroEnTurno) {
+        this.estadoJugador.setTiroEnTurno(tiroEnTurno);
+    }
+
     public Boolean getPierdeTurno() {
-        return pierdeTurno;
+        return this.estadoJugador.getPierdeTurno();
     }
 
     public void setPierdeTurno(Boolean pierdeTurno) {
-        this.pierdeTurno = pierdeTurno;
+        this.estadoJugador.setPierdeTurno(pierdeTurno);
     }
 
     public Boolean getEnBancarrota() {
-        return Boolean.TRUE.equals(enBancarrota);
+        return Boolean.TRUE.equals(this.estadoJugador.getEnBancarrota());
     }
 
     public void setEnBancarrota(Boolean enBancarrota) {
-        this.enBancarrota = Boolean.TRUE.equals(enBancarrota);
+        this.estadoJugador.setEnBancarrota(enBancarrota);
     }
 
     public Boolean getAbandono() {
-        return Boolean.TRUE.equals(abandono);
+        return Boolean.TRUE.equals(this.estadoJugador.getAbandono());
     }
 
     public void setAbandono(Boolean abandono) {
-        this.abandono = Boolean.TRUE.equals(abandono);
+        this.estadoJugador.setAbandono(abandono);
     }
 }
