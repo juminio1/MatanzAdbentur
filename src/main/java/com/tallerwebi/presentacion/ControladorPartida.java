@@ -251,9 +251,16 @@ public class ControladorPartida {
         try {
             // 3. Llamamos al servicio
             servicioJugada.pagarFianzaVoluntaria(codigoPartida, idSesion);
-            
-            // Si sale bien, avisamos al frontend para que le habilite los dados
-            return ResponseEntity.ok(Map.of("mensaje", "Fianza pagada con éxito. Ya podés tirar los dados."));
+
+            // Avisamos a todos los jugadores el nuevo saldo y que salió de la cárcel
+            NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
+
+            // Si sale bien, avisamos al frontend para que le habilite los dados y le mandamos su saldo
+            Map<String, Object> cuerpo = new HashMap<>();
+            cuerpo.put("mensaje", "Fianza pagada con éxito. Ya podés tirar los dados.");
+            Jugador pagador = servicioPartida.obtenerJugadorPorId(idSesion);
+            if (pagador != null) cuerpo.put("dineroJugador", pagador.getDinero());
+            return ResponseEntity.ok(cuerpo);
             
         } catch (DineroInsuficienteException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(

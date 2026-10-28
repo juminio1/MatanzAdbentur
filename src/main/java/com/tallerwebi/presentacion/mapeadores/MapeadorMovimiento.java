@@ -20,7 +20,7 @@ public final class MapeadorMovimiento {
             dto.setDescripcionEvento(jugada.evento().descripcion());
             dto.setTipoEfectoEvento(jugada.evento().tipoEfecto());
         }
-        dto.setSaldos(jugada.saldos().stream().map(s -> new SaldoJugadorDTO(s.idJugador(), s.dinero(), s.enBancarrota())).toList());
+        dto.setSaldos(jugada.saldos().stream().map(s -> new SaldoJugadorDTO(s.idJugador(), s.dinero(), s.enBancarrota(), s.encarcelado(), s.intentosCarcel())).toList());
         if (jugada.alquiler() != null) {
             var alquiler = jugada.alquiler();
             dto.setAlquiler(new AlquilerMovimientoDTO(alquiler.idJugadorPagador(), alquiler.pagador(), alquiler.propietario(), alquiler.propiedad(), alquiler.monto()));

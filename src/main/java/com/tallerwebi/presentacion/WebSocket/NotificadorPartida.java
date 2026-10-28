@@ -45,6 +45,8 @@ public class NotificadorPartida {
             saldo.put("idJugador", jugador.getId());
             saldo.put("dinero", jugador.getDinero());
             saldo.put("enBancarrota", jugador.getEnBancarrota());
+            saldo.put("encarcelado", Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+            saldo.put("intentosCarcel", jugador.getEstadoCarcel().getIntentosSalirCarcel());
             template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/dinero", saldo);
         }
     }
