@@ -150,7 +150,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             incrementarRondas(partida);
 
-            boolean cambioRonda = !rondaAnterior.equals(partida.getRondaActual());
+            Boolean cambioRonda = !rondaAnterior.equals(partida.getRondaActual());
 
             if (cambioRonda) {
                 verificarEventoGlobalAlCambiarRonda(partida);
