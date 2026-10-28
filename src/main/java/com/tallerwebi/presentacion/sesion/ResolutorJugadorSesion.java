@@ -2,7 +2,10 @@ package com.tallerwebi.presentacion.sesion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Identifico al jugador desde la sesión. */
 public final class ResolutorJugadorSesion {
@@ -28,6 +31,22 @@ public final class ResolutorJugadorSesion {
         return partida.getJugadores().stream()
                 .filter(jugador -> nombre.equalsIgnoreCase(jugador.getApodo()))
                 .map(Jugador::getId).findFirst().orElse(null);
+    }
+
+    /**
+     * Devuelve el jugador autenticado en sesión y exige que pertenezca a la partida.
+     * Responde 401 si no hay sesión y 403 si el jugador es ajeno a la partida.
+     */
+    public static Long resolverParticipante(Partida partida, HttpServletRequest request,
+                                            ServicioParticipacion participacion) {
+        if (resolverUsuarioSesionId(request) == null && request.getSession().getAttribute("NOMBRE") == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debés iniciar sesión.");
+        }
+        Long idJugador = resolverAutenticado(partida, request);
+        if (!participacion.pertenece(partida, idJugador)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No pertenecés a esta partida.");
+        }
+        return idJugador;
     }
 
     public static Long resolver(Partida partida, HttpServletRequest request) {

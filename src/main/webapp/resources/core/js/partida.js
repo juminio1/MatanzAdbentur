@@ -374,6 +374,14 @@ function conectarWebSocketTurnos(base, codigo) {
                 const saldo = JSON.parse(mensaje.body);
                 actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
             });
+            stompClient.subscribe(`/topic/partida/${codigo}/ofertas`, (mensaje) => {
+                const oferta = JSON.parse(mensaje.body);
+                if (String(oferta.idComprador) !== String(window.usuarioSesionId)) return;
+                if (modalOfertaRecibida?.open) return; // Se muestra al cerrar la oferta actual.
+                mostrarOfertaRecibida(oferta);
+            });
+            // Recupera las ofertas que llegaron antes de conectarse (por ejemplo, al recargar la página).
+            revisarOfertasPendientes();
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
                 if (datos.motivo === "QUIEBRA") {
@@ -1549,15 +1557,19 @@ async function revisarOfertasPendientes() {
         });
         if (!respuesta.ok) return;
         const ofertas = await respuesta.json();
-        if (!ofertas.length) return;
-        ofertaActiva = ofertas[0];
-        document.getElementById("oferta-recibida-detalle").textContent =
-            `${ofertaActiva.apodoVendedor} te ofrece ${ofertaActiva.nombrePropiedad} por $${ofertaActiva.precio}.`;
-        mensajeOfertaRecibida.textContent = "";
-        modalOfertaRecibida.showModal();
+        if (!ofertas.length || modalOfertaRecibida?.open) return;
+        mostrarOfertaRecibida(ofertas[0]);
     } catch (error) {
         console.warn("No se pudieron revisar las ofertas de propiedades.", error);
     }
+}
+
+function mostrarOfertaRecibida(oferta) {
+    ofertaActiva = oferta;
+    document.getElementById("oferta-recibida-detalle").textContent =
+        `${oferta.apodoVendedor} te ofrece ${oferta.nombrePropiedad} por $${oferta.precio}.`;
+    mensajeOfertaRecibida.textContent = "";
+    modalOfertaRecibida.showModal();
 }
 
 async function responderOfertaVenta(aceptar) {
@@ -1594,6 +1606,7 @@ async function responderOfertaVenta(aceptar) {
         modalOfertaRecibida.close();
         ofertaActiva = null;
         if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
+        revisarOfertasPendientes(); // Muestra la siguiente oferta, si llegó otra mientras tanto.
     } catch (error) {
         mensajeOfertaRecibida.textContent = error.message || "No se pudo responder la oferta.";
     } finally {
@@ -1603,9 +1616,18 @@ async function responderOfertaVenta(aceptar) {
     }
 }
 
-window.setInterval(revisarOfertasPendientes, 10000); // 2500
+// Si ya hay un pedido para avanzar el turno en curso, se reutiliza en lugar de mandar otro.
+let finalizacionTurnoEnCurso = null;
 
-async function finalizarTurno() {
+function finalizarTurno() {
+    if (finalizacionTurnoEnCurso) return finalizacionTurnoEnCurso;
+    finalizacionTurnoEnCurso = enviarFinalizacionTurno().finally(() => {
+        finalizacionTurnoEnCurso = null;
+    });
+    return finalizacionTurnoEnCurso;
+}
+
+async function enviarFinalizacionTurno() {
     console.log("Intentando avanzar el turno...");
 
     const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {

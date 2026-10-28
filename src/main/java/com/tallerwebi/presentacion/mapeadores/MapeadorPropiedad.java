@@ -67,4 +67,15 @@ public final class MapeadorPropiedad {
         return dto;
     }
 
+    /** Devuelve todas las propiedades del tablero: las registradas en la partida y, el resto, desde el catálogo. */
+    public List<Map<String, Object>> catalogoTablero(Partida partida) {
+        List<CasilleroPropiedad> casilleros = servicioCasillero.obtenerCasillerosPropiedadDePartida(partida);
+        return servicioCasillero.obtenerPosicionesPropiedad().stream().map(posicion -> casilleros.stream()
+                        .filter(casillero -> posicion.equals(casillero.getPosicion()))
+                        .findFirst()
+                        .map(casillero -> desdePropiedad(casillero, casillero.getPropiedad()))
+                        .orElseGet(() -> desdeCatalogo(posicion)))
+                .toList();
+    }
+
 }

@@ -5,7 +5,10 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.servicios.ServicioOfertaPropiedadImpl;
+import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 
@@ -13,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,22 +26,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class ControladorOfertaPropiedadTest {
+class ControladorPropiedadesPartidaOfertasTest {
 
     private static final String CODIGO = "PARTIDA123";
     private static final Long ID_PARTIDA = 10L;
     private static final Long ID_VENDEDOR = 1L;
     private static final Long ID_COMPRADOR = 2L;
     private static final Integer POSICION = 1;
+    private static final String TOPIC_OFERTAS = "/topic/partida/" + CODIGO + "/ofertas";
     private ServicioPartida servicioPartida;
     private ServicioCasillero servicioCasillero;
     private ServicioPropiedad servicioPropiedad;
     private SimpMessagingTemplate notificador;
-    private ControladorOfertaPropiedad controlador;
+    private ControladorPropiedadesPartida controlador;
     private Partida partida;
     private Jugador vendedor;
     private Jugador comprador;
@@ -50,8 +58,10 @@ class ControladorOfertaPropiedadTest {
         servicioCasillero = mock(ServicioCasillero.class);
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificador = mock(SimpMessagingTemplate.class);
-        controlador = new ControladorOfertaPropiedad(servicioPartida, servicioCasillero,
-                servicioPropiedad, notificador, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        ServicioParticipacionImpl participacion = new ServicioParticipacionImpl();
+        controlador = new ControladorPropiedadesPartida(servicioPartida, notificador, servicioCasillero,
+                servicioPropiedad, mock(ServicioGestionQuiebra.class), participacion,
+                new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
         partida = new Partida();
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);
@@ -66,13 +76,15 @@ class ControladorOfertaPropiedadTest {
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorPorId(ID_VENDEDOR)).thenReturn(vendedor);
         when(servicioPartida.obtenerJugadorPorId(ID_COMPRADOR)).thenReturn(comprador);
-        when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of(casillero));
+        when(servicioCasillero.existePosicionDePropiedad(partida, POSICION)).thenReturn(true);
+        when(servicioCasillero.buscarCasilleroPropiedad(partida, POSICION)).thenReturn(casillero);
+        when(servicioCasillero.obtenerDatosCatalogoPropiedad(POSICION))
+                .thenReturn(List.of("Plaza Barrio Marina", "Villa Luzuriaga", "VILLA_LUZURIAGA"));
     }
 
     @Test
     void creaOfertaCuandoElPropietarioOfreceAOtroJugadorDeLaPartida() {
-        ResponseEntity<Map<String, Object>> respuesta = controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR));
+        ResponseEntity<Map<String, Object>> respuesta = crearOfertaDeVendedor(450);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertEquals("pendiente", respuesta.getBody().get("estado"));
@@ -80,32 +92,56 @@ class ControladorOfertaPropiedadTest {
     }
 
     @Test
+    void avisaLaOfertaNuevaPorWebSocketConElCompradorComoDestinatario() {
+        ResponseEntity<Map<String, Object>> respuesta = crearOfertaDeVendedor(450);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(notificador).convertAndSend(eq(TOPIC_OFERTAS), captor.capture());
+        Map<String, Object> aviso = captor.getValue();
+        assertEquals(respuesta.getBody().get("idOferta"), aviso.get("idOferta"));
+        assertEquals(ID_COMPRADOR, aviso.get("idComprador"));
+        assertEquals("Ana", aviso.get("apodoVendedor"));
+        assertEquals("Plaza Barrio Marina", aviso.get("nombrePropiedad"));
+        assertEquals(450, aviso.get("precio"));
+    }
+
+    @Test
+    void siFallaElAvisoPorWebSocketLaOfertaQuedaPendienteIgual() {
+        doThrow(new IllegalStateException("Sin conexión")).when(notificador)
+                .convertAndSend(eq(TOPIC_OFERTAS), any(Map.class));
+
+        ResponseEntity<Map<String, Object>> respuesta = crearOfertaDeVendedor(450);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(1, ((List<?>) controlador.ofertasPendientes(CODIGO, sesion(ID_COMPRADOR)).getBody()).size());
+    }
+
+    @Test
     void rechazaOfertaInvalidaYSolicitudesDePartidaInexistente() {
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(null);
-        assertEquals(HttpStatus.NOT_FOUND, controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR))
-                .getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, crearOfertaDeVendedor(450).getStatusCode());
 
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         ResponseEntity<Map<String, Object>> respuesta = controlador.crearOferta(CODIGO, POSICION,
                 Map.of("idJugadorComprador", ID_VENDEDOR, "precio", 450), sesion(ID_VENDEDOR));
         assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, crearOfertaDeVendedor(-1).getStatusCode());
+        verify(notificador, never()).convertAndSend(eq(TOPIC_OFERTAS), any(Map.class));
     }
 
     @Test
     void rechazaOfertaDeUnaPropiedadQueNoEsDelVendedor() {
         propiedad.setPropietario(comprador);
 
-        ResponseEntity<Map<String, Object>> respuesta = controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR));
+        ResponseEntity<Map<String, Object>> respuesta = crearOfertaDeVendedor(450);
 
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
     }
 
     @Test
     void listaOfertaPendienteSoloParaElJugadorComprador() {
-        controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR));
+        crearOfertaDeVendedor(450);
 
         ResponseEntity<?> respuesta = controlador.ofertasPendientes(CODIGO, sesion(ID_COMPRADOR));
 
@@ -116,13 +152,12 @@ class ControladorOfertaPropiedadTest {
         assertEquals("Plaza Barrio Marina", oferta.get("nombrePropiedad"));
         assertEquals("Ana", oferta.get("apodoVendedor"));
         assertEquals(450, oferta.get("precio"));
+        assertEquals(0, ((List<?>) controlador.ofertasPendientes(CODIGO, sesion(ID_VENDEDOR)).getBody()).size());
     }
 
     @Test
     void rechazaUnaOfertaPendienteYLaQuitaDeLaLista() {
-        ResponseEntity<Map<String, Object>> creada = controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR));
-        String idOferta = creada.getBody().get("idOferta").toString();
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
 
         ResponseEntity<Map<String, Object>> respuesta = controlador.responderOferta(CODIGO, idOferta,
                 Map.of("aceptar", false), sesion(ID_COMPRADOR));
@@ -134,9 +169,7 @@ class ControladorOfertaPropiedadTest {
 
     @Test
     void aceptaOfertaTransfiereLaPropiedadYNotificaLosSaldos() {
-        ResponseEntity<Map<String, Object>> creada = controlador.crearOferta(CODIGO, POSICION,
-                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", 450), sesion(ID_VENDEDOR));
-        String idOferta = creada.getBody().get("idOferta").toString();
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
         doAnswer(invocacion -> {
             propiedad.setPropietario(comprador);
             return null;
@@ -147,13 +180,40 @@ class ControladorOfertaPropiedadTest {
         ResponseEntity<Map<String, Object>> respuesta = controlador.responderOferta(CODIGO, idOferta,
                 Map.of("aceptar", true), sesion(ID_COMPRADOR));
 
-        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode(), () -> String.valueOf(respuesta.getBody()));
         assertEquals(ID_COMPRADOR, respuesta.getBody().get("propietarioId"));
         assertEquals(450, respuesta.getBody().get("precioVenta"));
         assertEquals(75, respuesta.getBody().get("alquiler"));
+        assertEquals(ID_VENDEDOR, respuesta.getBody().get("idVendedor"));
         verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), any(Map.class));
-        verify(notificador, org.mockito.Mockito.times(2)).convertAndSend(
-                eq("/topic/partida/" + CODIGO + "/dinero"), any(Map.class));
+        verify(notificador, times(2)).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"), any(Map.class));
+    }
+
+    @Test
+    void siLaTransferenciaFallaInformaConflictoYLaOfertaSigueDisponible() {
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
+        doThrow(new IllegalStateException("El comprador no tiene dinero suficiente para aceptar la oferta."))
+                .when(servicioPropiedad).transferirPropiedadParaJugadores(50L, ID_VENDEDOR, ID_COMPRADOR, 450);
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.responderOferta(CODIGO, idOferta,
+                Map.of("aceptar", true), sesion(ID_COMPRADOR));
+
+        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals("El comprador no tiene dinero suficiente para aceptar la oferta.",
+                respuesta.getBody().get("error"));
+        assertEquals(1, ((List<?>) controlador.ofertasPendientes(CODIGO, sesion(ID_COMPRADOR)).getBody()).size());
+    }
+
+    @Test
+    void elCompradorEnBancarrotaNoPuedeAceptarLaOferta() {
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
+        comprador.setEnBancarrota(true);
+
+        ResponseEntity<Map<String, Object>> respuesta = controlador.responderOferta(CODIGO, idOferta,
+                Map.of("aceptar", true), sesion(ID_COMPRADOR));
+
+        assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
+        verify(servicioPropiedad, never()).transferirPropiedadParaJugadores(any(), any(), any(), any());
     }
 
     @Test
@@ -162,6 +222,11 @@ class ControladorOfertaPropiedadTest {
                 Map.of("aceptar", true), sesion(ID_COMPRADOR));
 
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+    }
+
+    private ResponseEntity<Map<String, Object>> crearOfertaDeVendedor(Integer precio) {
+        return controlador.crearOferta(CODIGO, POSICION,
+                Map.of("idJugadorComprador", ID_COMPRADOR, "precio", precio), sesion(ID_VENDEDOR));
     }
 
     private MockHttpServletRequest sesion(Long idJugador) {
