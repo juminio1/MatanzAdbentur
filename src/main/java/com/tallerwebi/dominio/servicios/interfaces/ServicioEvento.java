@@ -26,5 +26,6 @@ public interface ServicioEvento {
     ResultadoTirada tirarDadosEventoGlobal(String codigoPartida, Long idJugador) throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException;
     Boolean verificarSiHayEventoGlobalActivo(String codigoUnico);
     void reanudarPartidaTrasEvento(String codigoPartida);
+    void confirmarContinuacion(String codigoPartida, Long idJugador);
     void realizarTiradasAutomaticasPendientes(Partida partida) throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException;
 }

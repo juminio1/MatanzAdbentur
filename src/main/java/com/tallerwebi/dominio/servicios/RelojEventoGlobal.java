@@ -18,6 +18,19 @@ public final class RelojEventoGlobal {
         return vencimiento != null && System.nanoTime() >= vencimiento;
     }
 
+    public boolean vencioOProgramacionAgotada(String codigoPartida, Integer segundosProgramados) {
+        return vencio(codigoPartida) || Integer.valueOf(0).equals(segundosProgramados);
+    }
+
+    public Integer obtenerSegundosConRespaldo(String codigoPartida, boolean enPausaEmpate,
+            Integer segundosProgramados, Integer duracionPorDefecto) {
+        Integer segundos = segundosProgramados;
+        if (segundos == null && !enPausaEmpate) {
+            segundos = obtenerSegundosRestantes(codigoPartida);
+        }
+        return segundos == null ? duracionPorDefecto : segundos;
+    }
+
     public Integer obtenerSegundosRestantes(String codigoPartida) {
         Long vencimiento = vencimientosPorPartida.get(codigoPartida);
         Integer segundosRestantes = null;

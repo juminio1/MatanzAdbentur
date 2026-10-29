@@ -1254,7 +1254,6 @@
 .modal-evento-global--finalizado .modal-evento-global__etapa,
 .modal-evento-global--finalizado .modal-evento-global__dados,
 .modal-evento-global--finalizado .modal-evento-global__barra,
-.modal-evento-global--finalizado .modal-evento-global__participantes,
 .modal-evento-global--finalizado #btn-tirar-evento-global { display: none !important; }
 
 /* Conserva la descripcion del evento junto al resultado de su consecuencia. */
@@ -1291,6 +1290,6 @@
 }
 
 /* El resultado queda en pausa hasta confirmar, sin un reloj que pueda adelantar el turno. */
-.modal-evento-global--finalizado .modal-evento-global__tiempo { display: none !important; }
+.modal-evento-global--finalizado .modal-evento-global__tiempo { display: flex !important; }
 .modal-evento-global--finalizado #btn-continuar-partida-global { display: block; width: 100%; }
 .modal-evento-global #btn-continuar-partida-global[hidden] { display: none !important; }

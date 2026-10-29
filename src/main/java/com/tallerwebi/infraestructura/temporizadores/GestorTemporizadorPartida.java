@@ -6,6 +6,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -15,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class GestorTemporizadorPartida {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(GestorTemporizadorPartida.class);
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     private final Map<String, ScheduledFuture<?>> temporizadores = new ConcurrentHashMap<>();
@@ -56,6 +59,7 @@ public class GestorTemporizadorPartida {
         try {
             transactionTemplate.executeWithoutResult(status -> accionExpiracion.run());
         } catch (Exception e) {
+            LOGGER.error("Falló la ejecución programada del temporizador de partida", e);
             throw new IllegalStateException(
                 "Error al ejecutar accion diferida del temporizador",
                 e

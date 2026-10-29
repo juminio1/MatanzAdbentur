@@ -349,6 +349,10 @@ function conectarWebSocketTurnos(base, codigo) {
                 if (propiedadSeleccionada?.posicion === propiedad.posicion)
                     mostrarInfoPropiedad(propiedad);
                 if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
+                if (propiedad.idVendedor != null
+                        && String(propiedad.idVendedor) === String(window.usuarioSesionId)) {
+                    consultarDeudaPendiente(true);
+                }
                 if (propiedad.idVendedor != null && propiedad.dineroVendedor != null) {
                     actualizarDineroJugador(
                         propiedad.idVendedor,
@@ -386,6 +390,8 @@ function conectarWebSocketTurnos(base, codigo) {
             });
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
+                // El servidor recalcula participantes y tiradas al abandonar o quebrar.
+                if (hayEventoGlobalEnCurso()) consultarEstadoEventoGlobal();
                 if (datos.motivo === "QUIEBRA") {
                     procesarNotificacionQuiebra(datos);
                     return;
@@ -2039,7 +2045,7 @@ function obtenerNombreEventoGlobal(tipo) {
         TRAMITES_AFIP: "Trámites en AFIP",
         PIQUETE: "Piquete",
         INUNDACION: "Inundación",
-        EL_KEVIN: "El Kevin",
+        ROBO: "El Kevin",
         FIAT_600: "Fiat 600",
         ACCIDENTE_SARMIENTO: "Accidente en el Sarmiento"
     };
@@ -2048,7 +2054,9 @@ function obtenerNombreEventoGlobal(tipo) {
 
 function formatearSegundosEventoGlobal(segundos) {
     const total = Math.max(0, Math.ceil(Number(segundos) || 0));
-    return `00:${String(total).padStart(2, "0")}`;
+    const minutos = Math.floor(total / 60);
+    const segundosRestantes = total % 60;
+    return `${String(minutos).padStart(2, "0")}:${String(segundosRestantes).padStart(2, "0")}`;
 }
 
 function pausarRelojNormalPorEventoGlobal() {
@@ -2098,7 +2106,8 @@ function actualizarRelojEventoGlobal() {
     const barra = obtenerCampoEventoGlobal("evento-global-progreso");
     const contenedorReloj = modalEventoGlobal?.querySelector(".modal-evento-global__tiempo");
     if (reloj) reloj.textContent = formatearSegundosEventoGlobal(segundos);
-    const duracionEtapa = estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.EMPATE ? 8 : 30;
+    const duracionEtapa = estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO ? 60
+        : estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.EMPATE ? 8 : 30;
     if (barra) barra.style.width = `${Math.min(100, segundos / duracionEtapa * 100)}%`;
     contenedorReloj?.classList.toggle("modal-evento-global__tiempo--agotado", segundos === 0);
     actualizarBotonTiradaEventoGlobal();
@@ -2113,7 +2122,11 @@ function actualizarParticipantesEventoGlobal(estado) {
             const fila = document.createElement("li");
             const nombre = document.createElement("span");
             const resultado = document.createElement("span");
-            nombre.textContent = obtenerNombreJugadorHistorial(idJugador);
+            const elegido = estado.fase === FASES_EVENTO_GLOBAL.FINALIZADO && String(estado.idJugadorElegido) === String(idJugador);
+            const etiqueta = elegido
+                ? estado.tipo === "TRAMITES_AFIP" ? " (ganó)" : estado.tipo === "PIQUETE" ? " (perdió)" : " (recibió consecuencia)"
+                : "";
+            nombre.textContent = obtenerNombreJugadorHistorial(idJugador) + etiqueta;
             resultado.textContent = Object.prototype.hasOwnProperty.call(tiradas, String(idJugador))
                 ? `${tiradas[String(idJugador)]} puntos` : "Pendiente";
             fila.append(nombre, resultado);
@@ -2160,13 +2173,61 @@ function abrirVentanaEventoGlobal() {
     }
 }
 
+// Lee el nombre directamente del tablero: no hace falta mantener un mapa de posiciones en JS.
+function obtenerNombreCasilleroEventoGlobal(posicion) {
+    const numero = Number(posicion);
+    if (!Number.isInteger(numero) || numero < 0) return null;
+    const etiqueta = document.querySelector(`.casillero[data-casillero="${numero}"] .casillero__nombre`);
+    return etiqueta?.textContent.trim() || null;
+}
+
+function formatearDetalleCasillerosEventoGlobal(detalle) {
+    const nombre = (posicion) => {
+        const nombreTablero = obtenerNombreCasilleroEventoGlobal(posicion);
+        return nombreTablero ? `«${nombreTablero}»` : null;
+    };
+
+    return detalle
+        .replace(/del casillero (\d+) al Inicio \(casillero (\d+)\)/gi, (texto, anterior, destino) => {
+            const desde = nombre(anterior);
+            const hasta = nombre(destino);
+            return desde && hasta ? `de ${desde} a ${hasta}` : texto;
+        })
+        .replace(/del casillero (\d+) al (\d+)/gi, (texto, anterior, destino) => {
+            const desde = nombre(anterior);
+            const hasta = nombre(destino);
+            return desde && hasta ? `de ${desde} a ${hasta}` : texto;
+        })
+        .replace(/el casillero más adelantado \((\d+)\)/gi, (texto, posicion) => {
+            const ubicacion = nombre(posicion);
+            return ubicacion ? `${ubicacion}, el casillero más adelantado` : texto;
+        })
+        .replace(/Inicio \(casillero 0\)/gi, () => nombre(0) || "Inicio (casillero 0)")
+        .replace(/\b(hasta el|en el|al|el) casillero (\d+)/gi, (texto, preposicion, posicion) => {
+            const ubicacion = nombre(posicion);
+            if (!ubicacion) return texto;
+            if (preposicion.toLowerCase() === "hasta el") return `hasta ${ubicacion}`;
+            if (preposicion.toLowerCase() === "en el") return `en ${ubicacion}`;
+            if (preposicion.toLowerCase() === "al") return `a ${ubicacion}`;
+            return ubicacion;
+        });
+}
+
 function obtenerConsecuenciaEventoGlobal(estado) {
-    if (typeof estado.detalle === "string" && estado.detalle.trim()) return estado.detalle;
+    if (typeof estado.detalle === "string" && estado.detalle.trim()) {
+        return formatearDetalleCasillerosEventoGlobal(estado.detalle);
+    }
+    const posicion = estado.idJugadorElegido == null ? undefined : estado.posiciones?.[String(estado.idJugadorElegido)];
+    const destino = posicion == null ? null : obtenerNombreCasilleroEventoGlobal(posicion);
     const consecuencias = {
-        TRAMITES_AFIP: "se ganó el pase VIP y avanzó hasta el casillero más adelantado.",
-        INUNDACION: "fue arrastrado por la inundación y retrocedió tres casilleros.",
-        PIQUETE: "quedó atrapado en el piquete y volvió al inicio.",
-        EL_KEVIN: "sufrió un robo y perdió dinero.",
+        TRAMITES_AFIP: destino
+            ? `se ganó el pase VIP y avanzó hasta «${destino}».`
+            : "se ganó el pase VIP y avanzó hasta el casillero más adelantado.",
+        INUNDACION: destino
+            ? `retrocedió hasta «${destino}» por la inundación.`
+            : "fue arrastrado por la inundación y retrocedió tres casilleros.",
+        PIQUETE: "quedó atrapado en el piquete y volvió a Inicio.",
+        ROBO: "sufrió un robo y perdió dinero.",
         FIAT_600: "recibió plata por ayudar a empujar el Fiat 600.",
         ACCIDENTE_SARMIENTO: "quedó atrapado por el accidente del Sarmiento y perdió su turno."
     };
@@ -2188,6 +2249,7 @@ function mostrarEstadoEventoGlobal(estado) {
     const esDesempate = Number(estado.etapa) > 0;
     const fases = { INICIADO: "Evento iniciado", TIRADA: "Tiradas en curso", EMPATE: "Empate", DESEMPATE: "Desempate", FINALIZADO: "Evento finalizado" };
     const tiradasRegistradas = Object.keys(estado.tiradas || {}).length > 0;
+    const yoConfirme = (estado.confirmados || []).some((id) => String(id) === String(window.usuarioSesionId));
 
     modalEventoGlobal?.classList.toggle("modal-evento-global--finalizado", finalizado);
     obtenerCampoEventoGlobal("evento-global-titulo").textContent = obtenerNombreEventoGlobal(estado.tipo);
@@ -2198,7 +2260,8 @@ function mostrarEstadoEventoGlobal(estado) {
         ? `Empataron ${empatados.join(" y ")}. El desempate comienza en unos segundos.`
         : esDesempate ? `Desempate: tirada ${Number(estado.etapa) + 1}` : "Primera tirada";
     const mostrandoUltimasTiradas = modalEventoGlobal?.classList.contains("modal-evento-global--mostrando-tiradas");
-    obtenerCampoEventoGlobal("evento-global-participantes").hidden = !tiradasRegistradas || (finalizado && !mostrandoUltimasTiradas);
+    // Los dos jugadores conservan a la vista los puntajes durante todo el resultado final.
+    obtenerCampoEventoGlobal("evento-global-participantes").hidden = !tiradasRegistradas;
 
     const resultado = obtenerCampoEventoGlobal("evento-global-resultado");
     resultado.hidden = !finalizado;
@@ -2208,7 +2271,14 @@ function mostrarEstadoEventoGlobal(estado) {
         resultado.textContent = nombreElegido
             ? `${nombreElegido} ${obtenerConsecuenciaEventoGlobal(estado)}`
             : "El evento global terminó.";
-        obtenerCampoEventoGlobal("evento-global-mensaje").textContent = "La partida permanecerá en pausa hasta que presionen Continuar partida.";
+        const confirmados = estado.confirmados || [];
+        obtenerCampoEventoGlobal("evento-global-mensaje").textContent = Number(estado.segundosRestantes) === 0
+            ? "Se terminó el plazo. Si hay una deuda, hay que resolverla para continuar."
+            : estadoDeudaLocal.deuda !== null
+                ? `Hay una deuda por resolver. Ya confirmaron ${confirmados.length} jugadores.`
+                : yoConfirme
+                    ? `Ya confirmaste. Confirmaciones registradas: ${confirmados.length}. Esperando al resto o al vencimiento del plazo.`
+                    : `Confirmaciones registradas: ${confirmados.length}. Ambos jugadores deben confirmar o esperar hasta 60 segundos.`;
     } else {
         const participa = (estado.participantes || []).some((id) => String(id) === String(window.usuarioSesionId));
         const yaTiro = Object.prototype.hasOwnProperty.call(estado.tiradas || {}, String(window.usuarioSesionId));
@@ -2219,12 +2289,13 @@ function mostrarEstadoEventoGlobal(estado) {
     }
 
     const etiquetaTiempo = modalEventoGlobal?.querySelector(".modal-evento-global__tiempo span");
-    if (etiquetaTiempo) etiquetaTiempo.textContent = estado.fase === FASES_EVENTO_GLOBAL.EMPATE
-        ? "Desempate en" : "Tiempo para tirar";
+    if (etiquetaTiempo) etiquetaTiempo.textContent = finalizado ? "Plazo máximo para confirmar"
+        : estado.fase === FASES_EVENTO_GLOBAL.EMPATE ? "Desempate en" : "Tiempo para tirar";
     if (botonContinuarPartidaGlobal) {
-        botonContinuarPartidaGlobal.hidden = !finalizado;
+        botonContinuarPartidaGlobal.hidden = !finalizado || mostrandoUltimasTiradas;
         botonContinuarPartidaGlobal.textContent = estadoDeudaLocal.deuda !== null
-            ? "Resolver deuda para continuar" : "Continuar partida";
+            ? "Resolver deuda para continuar" : yoConfirme ? "Esperando a los demás..." : "Continuar partida";
+        botonContinuarPartidaGlobal.disabled = yoConfirme && estadoDeudaLocal.deuda === null;
     }
     actualizarParticipantesEventoGlobal(estado);
     actualizarBotonTiradaEventoGlobal();
@@ -2408,7 +2479,8 @@ function cerrarResultadoEventoGlobal(forzar = false) {
         clearTimeout(temporizadorCierreResultadoEventoGlobal);
         temporizadorCierreResultadoEventoGlobal = null;
         if (estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO) {
-            ultimoResultadoEventoGlobalCerrado = claveResultadoEventoGlobal;
+            // Impide que un WebSocket retrasado vuelva a abrir el resultado final.
+            ultimoResultadoEventoGlobalCerrado = `${estadoEventoGlobal.tipo}:${estadoEventoGlobal.etapa}:${estadoEventoGlobal.idJugadorElegido}`;
         }
         claveResultadoEventoGlobal = null;
         resultadoGlobalOcultoParaPagarDeuda = false;
@@ -2417,6 +2489,7 @@ function cerrarResultadoEventoGlobal(forzar = false) {
         estadoEventoGlobal = null;
         claveEtapaEvento = null;
         detenerRelojEventoGlobal();
+        solicitarPosicionesPartida();
         reanudarRelojNormalTrasEvento();
         actualizarAvisoDeuda();
     }
@@ -2453,12 +2526,15 @@ async function continuarPartidaDespuesDeEventoGlobal() {
             method: "POST", credentials: "same-origin", headers: { Accept: "application/json" }
         });
         const datos = await respuesta.json().catch(() => ({}));
-        if (!respuesta.ok) throw new Error(datos.error || "No se pudo reanudar la partida.");
-        cerrarResultadoEventoGlobal(true);
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo registrar tu confirmación.");
+        // Confirmar no equivale a reanudar: el servidor debe autorizar el cierre.
+        await consultarEstadoEventoGlobal();
     } catch (error) {
         obtenerCampoEventoGlobal("evento-global-mensaje").textContent = error.message;
     } finally {
-        if (botonContinuarPartidaGlobal) botonContinuarPartidaGlobal.disabled = false;
+        if (estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO) {
+            mostrarEstadoEventoGlobal(estadoEventoGlobal);
+        }
     }
 }
 

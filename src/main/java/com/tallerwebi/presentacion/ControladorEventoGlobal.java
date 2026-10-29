@@ -73,10 +73,10 @@ public class ControladorEventoGlobal {
     @PostMapping("/continuar")
     public ResponseEntity<Map<String, String>> continuarPartida(
             @PathVariable("codigoPartida") String codigoPartida, HttpServletRequest request) {
-        validarAcceso(codigoPartida, request);
+        Long idJugador = validarAcceso(codigoPartida, request);
         try {
-            servicioEvento.reanudarPartidaTrasEvento(codigoPartida);
-            return ResponseEntity.ok(Map.of("mensaje", "Evento finalizado. La partida se reanudará."));
+            servicioEvento.confirmarContinuacion(codigoPartida, idJugador);
+            return ResponseEntity.ok(Map.of("mensaje", "Confirmación registrada. Esperando a los demás jugadores o al vencimiento del plazo."));
         } catch (IllegalStateException exception) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(ERROR, mensajeSeguro(exception)));
         }
@@ -99,8 +99,7 @@ public class ControladorEventoGlobal {
         return idJugador;
     }
 
-    @ExceptionHandler({DatosEnventoInvalidoExceptions.class,
-            TiradaDadoInvalidaException.class, TiradasFaltantesException.class})
+    @ExceptionHandler({DatosEnventoInvalidoExceptions.class, TiradaDadoInvalidaException.class, TiradasFaltantesException.class})
     public ResponseEntity<Map<String, String>> manejarEventoNoDisponible(Exception exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of(ERROR, mensajeSeguro(exception)));

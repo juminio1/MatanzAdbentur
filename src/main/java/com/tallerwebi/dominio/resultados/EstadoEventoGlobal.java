@@ -17,12 +17,21 @@ public record EstadoEventoGlobal(
         Long idJugadorElegido,
         String detalle,
         Map<Long, Integer> posiciones,
-        Map<Long, Integer> saldos) {
+        Map<Long, Integer> saldos,
+        List<Long> confirmados) {
+
+    // Conserva las llamadas que construyen el estado sin confirmaciones.
+    public EstadoEventoGlobal(String codigoPartida, String fase, TipoEventoGlobal tipo, String descripcion,
+            Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas,
+            Long idJugadorElegido, String detalle, Map<Long, Integer> posiciones, Map<Long, Integer> saldos) {
+        this(codigoPartida, fase, tipo, descripcion, etapa, segundosRestantes, participantes, tiradas,
+                idJugadorElegido, detalle, posiciones, saldos, List.of());
+    }
 
     // Conserva las llamadas existentes al constructor original de nueve argumentos.
     public EstadoEventoGlobal(String codigoPartida, String fase, TipoEventoGlobal tipo, String descripcion, Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas, Long idJugadorElegido) {
         this(codigoPartida, fase, tipo, descripcion, etapa, segundosRestantes, participantes, tiradas, idJugadorElegido,
-                null, Map.of(), Map.of());
+                null, Map.of(), Map.of(), List.of());
     }
 }
 

@@ -106,7 +106,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return false;
         }
 
-        Jugador deudor = deuda.getJugadorDeudor();
+        Jugador deudor = repositorioPartida.buscarJugadorPorId(idJugador);
+        if (deudor == null) {
+            deudor = deuda.getJugadorDeudor();
+        }
         Integer monto = deuda.getMontoPendiente();
 
         if (deudor.getDinero() == null
@@ -265,8 +268,6 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
     //busca el pago pendiente del jugador. Consulta las propiedades y si tiene alguna devuelve true y sino false.
     private Boolean tienePropiedadesVendibles(Jugador jugador) {
-        return !repositorioPropiedad
-                .buscarPropiedadesPorPropietario(jugador)
-                .isEmpty();
+        return !repositorioPropiedad.buscarPropiedadesPorPropietario(jugador).isEmpty();
     }
 }

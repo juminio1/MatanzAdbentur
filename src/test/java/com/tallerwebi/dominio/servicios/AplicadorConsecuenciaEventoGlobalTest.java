@@ -8,7 +8,10 @@ import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,6 +42,48 @@ public class AplicadorConsecuenciaEventoGlobalTest {
         evento.setTipoEfecto(efecto);
         evento.setValor(valor);
         return evento;
+    }
+
+    @Test
+    public void dadoQueDosJugadoresEstanActivosCuandoSeEligeUnoAlAzarYDaConsecuenciaParaElSeleccionado() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 5);
+        Jugador dos = crearJugador(2L, 1000, 9);
+        Partida partida = crearPartida(uno, dos);
+        Random random = mock(Random.class);
+        RepositorioPartida repositorio = mock(RepositorioPartida.class);
+        List<Long> jugadoresNotificados = new ArrayList<>();
+        when(random.nextInt(2)).thenReturn(1);
+
+        AplicadorConsecuenciaEventoGlobal.aplicarAlAzar(partida,
+                crearEvento(TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1),
+                random, repositorio, null, (jugador, evento) -> jugador.setPierdeTurno(true),
+                (jugador, detalle) -> jugadoresNotificados.add(jugador.getId()));
+
+        assertTrue(dos.getPierdeTurno());
+        assertEquals(List.of(2L), jugadoresNotificados);
+        verify(repositorio).actualizarJugador(dos);
+    }
+
+    @Test
+    public void dadoQuePiqueteEligeElMenorCuandoSeComparanTiradasYDaJugadorConMenosPuntos() {
+        Jugador uno = crearJugador(1L, 1000, 5);
+        Jugador dos = crearJugador(2L, 1000, 9);
+
+        List<Jugador> resultado = AplicadorConsecuenciaEventoGlobal.obtenerJugadoresConResultadoElegido(
+                List.of(uno, dos), Map.of(1L, 4, 2L, 8), TipoEventoGlobal.PIQUETE);
+
+        assertEquals(List.of(uno), resultado);
+    }
+
+    @Test
+    public void dadoQueAfipEligeElMayorCuandoSeComparanTiradasYDaJugadorConMasPuntos() {
+        Jugador uno = crearJugador(1L, 1000, 5);
+        Jugador dos = crearJugador(2L, 1000, 9);
+
+        List<Jugador> resultado = AplicadorConsecuenciaEventoGlobal.obtenerJugadoresConResultadoElegido(
+                List.of(uno, dos), Map.of(1L, 4, 2L, 8), TipoEventoGlobal.TRAMITES_AFIP);
+
+        assertEquals(List.of(dos), resultado);
     }
 
     @Test

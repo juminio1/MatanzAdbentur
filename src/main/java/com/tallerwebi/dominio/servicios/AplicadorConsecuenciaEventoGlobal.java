@@ -14,7 +14,12 @@ import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
+import java.util.function.BiConsumer;
 
 // Separa las consecuencias de la coordinación de tiradas para cumplir el límite de PMD.
 public final class AplicadorConsecuenciaEventoGlobal {
@@ -44,10 +49,57 @@ public final class AplicadorConsecuenciaEventoGlobal {
         return detalle;
     }
 
+    // La selección aleatoria y la consecuencia pertenecen a la misma responsabilidad.
+    public static void aplicarAlAzar(Partida partida, EventoGlobal evento, Random random, RepositorioPartida repositorio,
+                                    ServicioGestionQuiebra gestionQuiebra, AplicadorEvento aplicadorEvento,
+                                    BiConsumer<Jugador, String> alResolver) throws JugadorNoEncontradoException, EventoInexistenteException {
+        List<Jugador> jugadores = partida.getJugadores();
+        List<Jugador> activos = jugadores == null ? List.of() : jugadores.stream()
+                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()) && !Boolean.TRUE.equals(jugador.getAbandono()))
+                .toList();
+        if (activos.isEmpty()) {
+            throw new JugadorNoEncontradoException("No hay jugadores activos en la partida");
+        }
+        Jugador elegido = activos.get(random.nextInt(activos.size()));
+        String detalle = aplicar(partida, elegido, evento, repositorio, gestionQuiebra, aplicadorEvento);
+        alResolver.accept(elegido, detalle);
+    }
+
+    public static List<Jugador> obtenerJugadoresConResultadoElegido(List<Jugador> participantes, Map<Long, Integer> tiradas, TipoEventoGlobal tipoEvento) {
+        List<Integer> puntosActivos = participantes.stream().map(jugador -> tiradas.get(jugador.getId()))
+                .filter(Objects::nonNull).toList();
+        if (puntosActivos.isEmpty()) {
+            return List.of();
+        }
+        Integer resultadoElegido = tipoEvento == TipoEventoGlobal.PIQUETE
+                ? Collections.min(puntosActivos) : Collections.max(puntosActivos);
+        return participantes.stream().filter(jugador -> resultadoElegido.equals(tiradas.get(jugador.getId()))).toList();
+    }
+
+    public static boolean modificaPosicion(EventoGlobal evento) {
+        return evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP
+                || evento.getTipoEventoGlobal() == TipoEventoGlobal.PIQUETE
+                || evento.getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION;
+    }
+
+    public static String previsualizarMovimiento(Partida partida, Jugador jugador, EventoGlobal evento) {
+        Integer origen = jugador.getPosicionActual();
+        Integer destino = switch (evento.getTipoEventoGlobal()) {
+            case TRAMITES_AFIP -> partida.getJugadores().stream().filter(ValidadorEventoGlobal::estaActivo)
+                    .map(Jugador::getPosicionActual).filter(Objects::nonNull)
+                    .mapToInt(Integer::intValue).max().orElse(origen);
+            case PIQUETE -> 0;
+            case INUNDACION -> Math.floorMod(origen + evento.getValor(), 30);
+            default -> origen;
+        };
+        return Objects.equals(origen, destino)
+                ? "ya estaba en el casillero " + destino + ", por eso no se moverá."
+                : "se moverá del casillero " + origen + " al " + destino + " cuando se reanude la partida.";
+    }
+
     private static String aplicarAfip(Partida partida, Jugador jugador) {
         Integer posicionAnterior = jugador.getPosicionActual();
-        Integer posicionMasAdelantada = partida.getJugadores().stream().map(Jugador::getPosicionActual)
-                .filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(posicionAnterior);
+        Integer posicionMasAdelantada = partida.getJugadores().stream().filter(ValidadorEventoGlobal::estaActivo).map(Jugador::getPosicionActual).filter(Objects::nonNull).mapToInt(Integer::intValue).max().orElse(posicionAnterior);
         jugador.setPosicionActual(posicionMasAdelantada);
 
         return posicionAnterior.equals(posicionMasAdelantada)

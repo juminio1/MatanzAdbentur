@@ -132,11 +132,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (partida != null && !verificarSiHayEventoGlobalActivo(codigoUnico)
                 && !tieneDeudasPendientes(partida)) {
 
+            omitirTurnoPenalizadoTrasEvento(partida);
             Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(codigoUnico, DURACION_TURNO_SEGUNDOS, () -> avanzarTurno(codigoUnico));
 
             if (Boolean.TRUE.equals(iniciado)) {
                 notificarTurnoActual(partida, false);
             }
+        }
+    }
+
+    // Si la consecuencia alcanzó al jugador que quedaba seleccionado, no debe recibir el reloj normal.
+    private void omitirTurnoPenalizadoTrasEvento(Partida partida) {
+        Jugador actual = servicioTurno.obtenerJugadorActual(partida);
+        if (actual != null && Boolean.TRUE.equals(actual.getPierdeTurno())) {
+            actual.setPierdeTurno(false);
+            Jugador siguiente = servicioTurno.resolverSiguienteJugador(partida, servicioTurno.obtenerIndiceTurnoActual(partida));
+            if (siguiente != null) {
+                siguiente.setTiroEnTurno(false);
+                partida.setIndiceTurnoActual(siguiente.getOrden());
+            }
+            repositorioPartida.guardarPartida(partida);
         }
     }
 
@@ -182,10 +197,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             repositorioPartida.guardarPartida(partida);
 
-            if (candidato != null) {
-                Boolean iniciarTemporizador = !verificarSiHayEventoGlobalActivo(codigoUnico); //Pausa la partida para el evento global
-
-                notificarTurnoActual(partida, iniciarTemporizador);
+            if (candidato != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+                notificarTurnoActual(partida, true);
             }
         }
     }
@@ -281,6 +294,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private Boolean tieneDeudasPendientes(Partida partida) {
         return repositorioDeudaPendiente != null && partida.getJugadores().stream()
+                .filter(ValidadorEventoGlobal::estaActivo)
                 .anyMatch(jugador -> repositorioDeudaPendiente.buscarPorPartidaYJugador(
                         partida.getCodigoUnico(), jugador.getId()) != null);
     }

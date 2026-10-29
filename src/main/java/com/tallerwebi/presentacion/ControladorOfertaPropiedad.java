@@ -18,6 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +49,12 @@ public class ControladorOfertaPropiedad {
     private final ServicioPartida servicioPartida;
     private final ServicioCasillero servicioCasillero;
     private final ServicioPropiedad servicioPropiedad;
+    private ServicioGestionQuiebra servicioGestionQuiebra;
+
+    @Autowired
+    public void configurarServicioGestionQuiebra(@Lazy ServicioGestionQuiebra servicioGestionQuiebra) {
+        this.servicioGestionQuiebra = servicioGestionQuiebra;
+    }
     private final SimpMessagingTemplate notificadorWebSocket;
     private final Map<String, OfertaVenta> ofertas = new ConcurrentHashMap<>();
 
@@ -138,6 +147,9 @@ public class ControladorOfertaPropiedad {
             Long idPropiedad = casillero.getPropiedad().getId();
             servicioPropiedad.transferirPropiedadParaJugadores(idPropiedad,
                     oferta.idVendedor, oferta.idComprador, oferta.precio);
+            if (servicioGestionQuiebra != null) {
+                servicioGestionQuiebra.intentarResolverDeuda(oferta.codigoPartida, oferta.idVendedor);
+            }
             Propiedad propiedad = servicioPropiedad.obtenerPropiedadExistente(idPropiedad);
             Map<String, Object> dto = dtoPropiedad(casillero, propiedad);
             dto.put("precioVenta", oferta.precio);
