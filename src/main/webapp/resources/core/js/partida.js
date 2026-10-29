@@ -386,6 +386,7 @@ function conectarWebSocketTurnos(base, codigo) {
                 const datos = JSON.parse(mensaje.body);
                 if (datos.motivo === "QUIEBRA") {
                     procesarNotificacionQuiebra(datos);
+                    await sincronizarPropiedadesTrasAbandono(datos.idJugador);
                     return;
                 }
 
