@@ -10,7 +10,12 @@ public class ReiniciarDB {
   public static void limpiarBaseDeDatos() {
     String dbHost = variable("DB_HOST", "localhost");
     String dbPort = variable("DB_PORT", "5432");
-    String dbName = variable("DB_NAME", "tallerwebi");
+    // Solo se permite borrar datos de la base exclusiva de las pruebas E2E.
+    String dbName = System.getProperty("DB_NAME", System.getenv("DB_NAME"));
+    if (!"tallerwebi_e2e".equals(dbName)) {
+      throw new IllegalStateException(
+          "Limpieza E2E bloqueada: DB_NAME debe ser exactamente tallerwebi_e2e");
+    }
     String url = String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, dbName);
 
     try (Connection connection = DriverManager.getConnection(
@@ -19,9 +24,13 @@ public class ReiniciarDB {
       try (Statement statement = connection.createStatement()) {
         statement.executeUpdate("DELETE FROM Usuario");
         statement.execute("ALTER TABLE Usuario ALTER COLUMN id RESTART WITH 1");
+        String hashTest =
+            "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
         statement.executeUpdate(
             "INSERT INTO Usuario(email, username, password, rol, activo) "
-                + "VALUES ('test@unlam.edu.ar', 'test123', 'test', 'ADMIN', true)");
+                + "VALUES ('test@unlam.edu.ar', 'test123', '"
+                + hashTest
+                + "', 'ADMIN', true)");
         connection.commit();
       } catch (SQLException e) {
         connection.rollback();

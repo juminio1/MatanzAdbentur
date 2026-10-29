@@ -33,13 +33,6 @@
             <version>8.0.5.Final</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId> <!--  Selenium - E2E -->
-            <version>4.35.0</version>
-            <scope>test</scope>
-        </dependency>
-        
         <dependency>  <!--  Soporte para WebSockets en Spring 6  -->
             <groupId>org.springframework</groupId>
             <artifactId>spring-websocket</artifactId>
@@ -597,6 +590,10 @@
                             <stopPort>8079</stopPort>
                             <stopKey>matanza-e2e</stopKey>
                             <!--  Clave utilizada para autorizar esa orden  -->
+                            <!--  Base de datos exclusiva para las pruebas E2E  -->
+                            <systemProperties>
+                                <DB_NAME>tallerwebi_e2e</DB_NAME>
+                            </systemProperties>
                         </configuration>
                         <executions>
                             <execution>
@@ -624,6 +621,10 @@
                             <includes>
                                 <include>**/*E2EIT.java</include>
                             </includes>
+                            <!--  Los tests E2E se conectan a la misma base que Jetty  -->
+                            <systemPropertyVariables>
+                                <DB_NAME>tallerwebi_e2e</DB_NAME>
+                            </systemPropertyVariables>
                         </configuration>
                         <executions>
                             <execution>
