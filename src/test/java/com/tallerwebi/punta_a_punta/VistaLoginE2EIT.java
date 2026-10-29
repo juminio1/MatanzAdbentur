@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class VistaLoginE2E {
+public class VistaLoginE2EIT {
 
   static Playwright playwright;
   static Browser browser;
@@ -31,8 +31,9 @@ public class VistaLoginE2E {
 
   @AfterAll
   static void cerrarNavegador() {
+    browser.close();
     playwright.close();
-  }
+}
 
   @BeforeEach
   void crearContextoYPagina() {
