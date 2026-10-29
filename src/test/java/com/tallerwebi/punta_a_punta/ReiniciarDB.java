@@ -22,6 +22,9 @@ public class ReiniciarDB {
         url, variable("DB_USER", "user"), variable("DB_PASSWORD", "user"))) {
       connection.setAutoCommit(false);
       try (Statement statement = connection.createStatement()) {
+        statement.executeUpdate("DELETE FROM saladeespera_fichasocupadas");
+        statement.executeUpdate("DELETE FROM sala_usuario");
+        statement.executeUpdate("DELETE FROM sala_de_espera");
         statement.executeUpdate("DELETE FROM Usuario");
         statement.execute("ALTER TABLE Usuario ALTER COLUMN id RESTART WITH 1");
         String hashTest =
