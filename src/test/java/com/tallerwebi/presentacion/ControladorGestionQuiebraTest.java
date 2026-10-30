@@ -78,7 +78,6 @@ class ControladorGestionQuiebraTest {
                 mock(ServicioCasillero.class),
                 servicioPropiedadMock,
                 new com.tallerwebi.presentacion.WebSocket.NotificadorPartida(notificadorWebSocketMock),
-                org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class),
                 new ServicioJugadaImpl(servicioPartidaMock, mock(ServicioCasillero.class), servicioPropiedadMock, null, org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class), movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controladorPartida, controladorGestionQuiebra).build();
         RequestMappingHandlerMapping rutas = mvc.getDispatcherServlet().getWebApplicationContext()

@@ -18,17 +18,20 @@ import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.observadores.ObservadorReanudarPartida;
 import com.tallerwebi.infraestructura.RepositorioEvento;
+import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.ControladorEventoGlobal;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorEventoGlobalWebSocket;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +56,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -92,6 +97,16 @@ public class EventosGlobalesIntegracionTest {
         @Bean
         public RepositorioPartida repositorioPartida() {
             return mock(RepositorioPartida.class);
+        }
+
+        @Bean
+        public RepositorioDeudaPendiente repositorioDeudaPendiente() {
+            return mock(RepositorioDeudaPendiente.class);
+        }
+
+        @Bean
+        public ServicioGestionQuiebra servicioGestionQuiebra() {
+            return mock(ServicioGestionQuiebra.class);
         }
 
         @Bean
@@ -146,10 +161,12 @@ public class EventosGlobalesIntegracionTest {
     private String canalEvento;
     private Jugador jugadorUno;
     private Jugador jugadorDos;
+    private final Map<String, Runnable> vencimientosPorClave = new HashMap<>();
 
     @BeforeEach
     public void init() {
         reset(repositorioEventoMock, repositorioPartidaMock, servicioDadoMock, gestorTemporizadorMock, mensajeriaWebSocketMock);
+        vencimientosPorClave.clear();
         mockMvc = MockMvcBuilders.standaloneSetup(controladorEventoGlobal).build();
         codigoPartida = UUID.randomUUID().toString();
         canalEvento = "/topic/partida/" + codigoPartida + "/evento-global";
@@ -180,12 +197,17 @@ public class EventosGlobalesIntegracionTest {
 
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPartida)).thenReturn(partida);
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(eventoGlobal);
-        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:" + codigoPartida)).thenReturn(20);
+        when(gestorTemporizadorMock.obtenerSegundosRestantes(anyString())).thenReturn(30);
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global-empate:" + codigoPartida)).thenReturn(8);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class))).thenReturn(true);
+        doAnswer(invocacion -> {
+            vencimientosPorClave.put(invocacion.getArgument(0), invocacion.getArgument(2));
+            return null;
+        }).when(gestorTemporizadorMock).programarTemporizador(anyString(), anyInt(), any(Runnable.class));
     }
 
     @Test
-    public void dadoQueSeCompletaLaQuintaRondaCuandoAvanzaElTurnoYDaEventoGlobalActivoSinIniciarTurnoNormal() throws Exception {
+    public void dadoQueSeCompletaLaQuintaRondaCuandoAvanzaElTurnoEntoncesSeActivaElEventoSinIniciarElTurnoNormal() throws Exception {
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
 
@@ -194,7 +216,7 @@ public class EventosGlobalesIntegracionTest {
         assertEquals(5, partida.getRondaActual());
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals(1, partida.getIndiceTurnoActual());
-        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(30), any(Runnable.class));
         verify(gestorTemporizadorMock, never()).programarTemporizador(eq(codigoPartida), any(Integer.class), any(Runnable.class));
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "INICIADO".equals(estado.fase())));
 
@@ -205,11 +227,11 @@ public class EventosGlobalesIntegracionTest {
         JsonNode contenido = new ObjectMapper().readTree(respuesta);
 
         assertEquals("INICIADO", contenido.path("fase").asText());
-        assertEquals(20, contenido.path("segundosRestantes").asInt());
+        assertEquals(30, contenido.path("segundosRestantes").asInt());
     }
 
     @Test
-    public void dadoQueHayUnEventoActivoCuandoSeIntentaAvanzarTurnoYDaPartidaPausada() throws Exception {
+    public void dadoQueHayUnEventoActivoCuandoSeIntentaAvanzarTurnoEntoncesLaPartidaPermanecePausada() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         reset(gestorTemporizadorMock);
         Integer indiceAnterior = partida.getIndiceTurnoActual();
@@ -224,7 +246,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueElEventoEstaActivoCuandoUnJugadorTiraPorRestYDaResultadoYNotificacionWebSocket() throws Exception {
+    public void dadoQueElEventoEstaActivoCuandoUnJugadorTiraPorRestEntoncesSeDevuelveElResultadoYSeNotificaPorWebSocket() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
 
@@ -244,7 +266,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueElJugadorYaTiroCuandoIntentaRepetirLaTiradaYDaConflict() throws Exception {
+    public void dadoQueElJugadorYaTiroCuandoIntentaRepetirLaTiradaEntoncesSeDevuelveConflict() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(2, 4));
 
@@ -256,7 +278,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueNoHayEventoActivoCuandoSeConsultaPorRestYDaNoContent() throws Exception {
+    public void dadoQueNoHayEventoActivoCuandoSeConsultaPorRestEntoncesSeDevuelveNoContent() throws Exception {
         mockMvc.perform(get("/partida/{codigoPartida}/evento-global", codigoPartida).sessionAttr("NOMBRE", "Ana"))
                 .andExpect(status().isNoContent());
 
@@ -264,7 +286,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueTodosLosJugadoresTiranCuandoSeResuelveElEventoYDaFinalizacionYReanudacion() throws Exception {
+    public void dadoQueTodosLosJugadoresTiranCuandoSeResuelveElEventoEntoncesElMovimientoEsperaLaConfirmacion() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3), new ResultadoTirada(1, 2));
 
@@ -272,16 +294,20 @@ public class EventosGlobalesIntegracionTest {
         realizarTiradaRest("Beto").andExpect(status().isOk());
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
-        assertEquals(7, jugadorUno.getPosicionActual());
+        assertEquals(2, jugadorUno.getPosicionActual());
         assertEquals(7, jugadorDos.getPosicionActual());
+        EstadoEventoGlobal resultado = servicioEvento.consultarEstadoEventoGlobal(codigoPartida);
+        assertEquals("FINALIZADO", resultado.fase());
+        assertEquals(jugadorUno.getId(), resultado.idJugadorElegido());
+        assertEquals(2, resultado.posiciones().get(jugadorUno.getId()));
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
         verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:" + codigoPartida);
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
-        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(6), any(Runnable.class));
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(60), any(Runnable.class));
     }
 
     @Test
-    public void dadoQueLosJugadoresEmpatanCuandoVuelvenATirarYDaDesempateYFinalizacion() throws Exception {
+    public void dadoQueLosJugadoresEmpatanCuandoTerminaLaPausaEntoncesPuedenDesempatarYVerElResultado() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 3), new ResultadoTirada(2, 4), new ResultadoTirada(5, 5), new ResultadoTirada(1, 2));
 
@@ -290,6 +316,14 @@ public class EventosGlobalesIntegracionTest {
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals(1, servicioEvento.consultarEstadoEventoGlobal(codigoPartida).etapa());
+        assertEquals("EMPATE", servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-empate:" + codigoPartida), eq(8), any(Runnable.class));
+        realizarTiradaRest("Ana").andExpect(status().isConflict());
+
+        Runnable finDePausa = vencimientosPorClave.get("evento-global-empate:" + codigoPartida);
+        assertNotNull(finDePausa);
+        finDePausa.run();
+
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "DESEMPATE".equals(estado.fase()) && estado.participantes().size() == 2));
 
         realizarTiradaRest("Ana").andExpect(status().isOk());
@@ -297,21 +331,17 @@ public class EventosGlobalesIntegracionTest {
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
-        verify(gestorTemporizadorMock, times(2)).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
+        verify(gestorTemporizadorMock, times(2)).programarTemporizador(eq("evento-global:" + codigoPartida), eq(30), any(Runnable.class));
     }
 
     @Test
-    public void dadoQueVenceElTemporizadorCuandoFaltanTiradasYDaResolucionAutomatica() throws Exception {
-        AtomicReference<Runnable> accionVencimiento = new AtomicReference<>();
-        doAnswer(invocacion -> {
-            accionVencimiento.set(invocacion.getArgument(2));
-            return null;
-        }).when(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(20), any(Runnable.class));
+    public void dadoQueFaltanTiradasCuandoVenceElTemporizadorEntoncesSeRealizanAutomaticamente() throws Exception {
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 4), new ResultadoTirada(1, 1));
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
 
-        assertNotNull(accionVencimiento.get());
-        accionVencimiento.get().run();
+        Runnable accionVencimiento = vencimientosPorClave.get("evento-global:" + codigoPartida);
+        assertNotNull(accionVencimiento);
+        accionVencimiento.run();
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(servicioDadoMock, times(2)).tirarDados();
@@ -320,7 +350,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueVenceElTiempoSinTiradasCuandoSeConsultaPorRestYDaResultadoAutomatico() throws Exception {
+    public void dadoQueVenceElTiempoSinTiradasCuandoSeConsultaPorRestEntoncesSeDevuelveElResultadoAutomatico() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(6, 5), new ResultadoTirada(1, 2));
         when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global:" + codigoPartida)).thenReturn(0);
@@ -336,12 +366,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueElResultadoGlobalEstaVisibleCuandoVencenSeisSegundosYDaReanudacionReal() throws Exception {
-        AtomicReference<Runnable> accionReanudar = new AtomicReference<>();
-        doAnswer(invocacion -> {
-            accionReanudar.set(invocacion.getArgument(2));
-            return null;
-        }).when(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(6), any(Runnable.class));
+    public void dadoQueElResultadoGlobalEstaVisibleCuandoTodosConfirmanEntoncesSeReanudaAntesDeSesentaSegundos() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3), new ResultadoTirada(1, 2));
 
@@ -351,16 +376,26 @@ public class EventosGlobalesIntegracionTest {
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
-        assertNotNull(accionReanudar.get());
+        verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(60), any(Runnable.class));
+        assertEquals(2, jugadorUno.getPosicionActual());
 
-        accionReanudar.get().run();
+        mockMvc.perform(post("/partida/{codigoPartida}/evento-global/continuar", codigoPartida).sessionAttr("NOMBRE", "Ana"))
+                .andExpect(status().isOk());
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertEquals(2, jugadorUno.getPosicionActual());
+        verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
+
+        mockMvc.perform(post("/partida/{codigoPartida}/evento-global/continuar", codigoPartida).sessionAttr("NOMBRE", "Beto"))
+                .andExpect(status().isOk());
 
         assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        assertEquals(7, jugadorUno.getPosicionActual());
+        verify(gestorTemporizadorMock).cancelarTemporizador("evento-global-resultado:" + codigoPartida);
         verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
     }
 
     @Test
-    public void dadoQueNoHayUnaSesionAutenticadaCuandoSeIntentaTirarYDaUnauthorized() throws Exception {
+    public void dadoQueNoHayUnaSesionAutenticadaCuandoSeIntentaTirarEntoncesSeDevuelveUnauthorized() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
 
         mockMvc.perform(post("/partida/{codigoPartida}/evento-global/tirar", codigoPartida))
@@ -370,7 +405,7 @@ public class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    public void dadoQueElUsuarioNoPerteneceALaPartidaCuandoIntentaTirarYDaForbidden() throws Exception {
+    public void dadoQueElUsuarioNoPerteneceALaPartidaCuandoIntentaTirarEntoncesSeDevuelveForbidden() throws Exception {
         servicioEvento.iniciarEventoGlobal(partida, eventoGlobal);
 
         mockMvc.perform(post("/partida/{codigoPartida}/evento-global/tirar", codigoPartida).sessionAttr("NOMBRE", "PersonaAjena"))

@@ -9,6 +9,9 @@ implementan en servicios de dominio; no se agregó una capa de aplicación.
 | Componente | Responsabilidad |
 | --- | --- |
 | Controladores | Recibir parámetros y sesión, traducir errores y devolver respuestas. |
+| ControladorPartida | Tablero, turnos, tirada de dados y abandono. |
+| ControladorPropiedadesPartida | Consulta, compra, venta al banco y mejora. |
+| ControladorOfertaPropiedad | Creación, consulta y respuesta de ofertas entre jugadores. |
 | MapeadorMovimiento / MapeadorPropiedad | Construir la representación para el cliente. |
 | ServicioJugada | Coordinar la tirada, movimiento, casillero, deuda y continuación del turno en una transacción. |
 | ServicioPartida | Ciclo de vida, consultas de partida y coordinación del cambio de turno. |
@@ -17,6 +20,7 @@ implementan en servicios de dominio; no se agregó una capa de aplicación.
 | ServicioMovimiento | Posiciones y premio por cruzar inicio. |
 | ServicioEconomia | Validar importes y consultar, acreditar o debitar saldo. |
 | ServicioPropiedad | Compra, venta, transferencia, mejoras y cálculo/pago de alquiler. |
+| ServicioOfertaPropiedad | Ofertas de venta entre jugadores: creación, vencimiento (5 min) y respuesta. Las ofertas se guardan en memoria y se avisan por WebSocket en `/topic/partida/{codigo}/ofertas`. |
 | ServicioGestionQuiebra | Deudas pendientes y declaración de quiebra. |
 | ServicioEventoCasillero | Selección y aplicación de efectos. |
 | ServicioParticipacion | Participación y condición activa del jugador. |

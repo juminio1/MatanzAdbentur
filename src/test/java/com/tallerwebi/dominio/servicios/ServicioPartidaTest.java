@@ -18,7 +18,6 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
@@ -49,6 +48,7 @@ import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ServicioPartidaTest {
 
@@ -1514,6 +1514,89 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         verify(gestorTemporizadorMock, times(2)).programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any(Runnable.class));
         verify(notificadorPartidaMock, times(1)).notificarCambioDeTurno(eq(CODIGO), any(TurnoDTO.class));
         verify(gestorTemporizadorMock, never()).programarTemporizador(eq(CODIGO), anyInt(), any(Runnable.class));
+    }
+
+    @Test
+    public void siElTurnoYaAvanzoCuandoVenceElTemporizadorNoSeAvanzaOtraVez() throws Exception {
+        String codigo = "VENCE-TARDE";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+
+        servicioPartida.avanzarTurno(codigo);
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        vencimiento.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    @Test
+    public void siElTurnoSigueVigenteCuandoVenceElTemporizadorSeAvanza() {
+        String codigo = "VENCE-A-TIEMPO";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+
+        vencimiento.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    @Test
+    public void alAvanzarConRondaYContadoresNulosSeInicializanSinActivarUnEventoGlobal() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        partida.setRondaActual(null);
+        partida.setTurnosFinalizadosEnRonda(null);
+
+        servicioPartida.avanzarTurno(CODIGO);
+
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(servicioEventoMock, never()).verificarActivacionEventoGlobal(any());
+        verify(gestorTemporizadorMock).programarTemporizador(eq(CODIGO), eq(30), any(Runnable.class));
+    }
+
+    @Test
+    public void prepararElRelojConUnaDeudaPendienteNoProgramaNiNotificaElTurno() {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador deudor = partida.getJugadores().get(0);
+        deudor.setId(1L);
+        var repositorioDeuda = mock(com.tallerwebi.infraestructura.RepositorioDeudaPendiente.class);
+        ((ServicioPartidaImpl) servicioPartida).configurarRepositorioDeudaPendiente(repositorioDeuda);
+        when(repositorioDeuda.buscarPorPartidaYJugador(CODIGO, deudor.getId()))
+                .thenReturn(new com.tallerwebi.dominio.entidades.DeudaPendiente());
+
+        servicioPartida.prepararTiempoTurno(CODIGO, 8);
+
+        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), anyInt(), any(Runnable.class));
+        verifyNoInteractions(notificadorPartidaMock);
+    }
+
+    private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        Jugador primero = new Jugador();
+        primero.setOrden(0);
+        Jugador segundo = new Jugador();
+        segundo.setOrden(1);
+        partida.setJugadores(List.of(primero, segundo));
+        partida.setIndiceTurnoActual(0);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+        return partida;
+    }
+
+    private Runnable iniciarTemporizadorYCapturarVencimiento(String codigo) {
+        AtomicReference<Runnable> vencimiento = new AtomicReference<>();
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
+            eq(codigo), eq(30), any(Runnable.class))).thenAnswer(invocacion -> {
+                vencimiento.set(invocacion.getArgument(2));
+                return true;
+            });
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigo), eq(30), any(Runnable.class));
+        return vencimiento.get();
     }
 
 }

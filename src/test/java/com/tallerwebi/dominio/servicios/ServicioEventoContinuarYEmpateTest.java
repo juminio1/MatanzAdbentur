@@ -66,14 +66,17 @@ public class ServicioEventoContinuarYEmpateTest {
     }
 
     @Test
-    public void dadoQueEmpatanLosJugadoresCuandoTerminanLasTiradasYDaPausaAntesDelDesempate() throws Exception {
+    public void dadoQueEmpatanLosJugadoresCuandoTerminanLasTiradasEntoncesSePausaAntesDelDesempate() throws Exception {
         ServicioDado dados = mock(ServicioDado.class);
         GestorTemporizadorPartida temporizador = mock(GestorTemporizadorPartida.class);
+        RepositorioPartida partidas = mock(RepositorioPartida.class);
         ServicioEventoImpl servicio = new ServicioEventoImpl(mock(RepositorioEvento.class), dados,
-                mock(ApplicationEventPublisher.class), temporizador, mock(RepositorioPartida.class));
+                mock(ApplicationEventPublisher.class), temporizador, partidas);
         Jugador primero = crearJugador(1L, 1500);
         Jugador segundo = crearJugador(2L, 1500);
         Partida partida = crearPartida(primero, segundo);
+        when(partidas.buscarPartidaActivaPorCodigoUnico("PARTIDA")).thenReturn(partida);
+        when(temporizador.obtenerSegundosRestantes("evento-global-empate:PARTIDA")).thenReturn(8);
         EventoGlobal afip = crearEvento(TipoEventoGlobal.TRAMITES_AFIP, TipoEfecto.MOVER_CASILLEROS, 0);
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(2, 3), new ResultadoTirada(3, 2));
         servicio.iniciarEventoGlobal(partida, afip);

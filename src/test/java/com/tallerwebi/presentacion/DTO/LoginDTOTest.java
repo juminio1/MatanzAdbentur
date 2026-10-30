@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.is;
 
 import org.junit.jupiter.api.Test;
 
-import com.tallerwebi.presentacion.DTO.LoginDTO;
 
 public class LoginDTOTest {
 
