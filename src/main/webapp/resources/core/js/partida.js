@@ -2042,13 +2042,14 @@ function obtenerCampoEventoGlobal(idElemento) {
 
 function obtenerNombreEventoGlobal(tipo) {
     const nombres = {
-        TRAMITES_AFIP: "Trámites en AFIP",
-        PIQUETE: "Piquete",
-        INUNDACION: "Inundación",
-        ROBO: "El Kevin",
-        FIAT_600: "Fiat 600",
-        ACCIDENTE_SARMIENTO: "Accidente en el Sarmiento"
+        TRAMITES_AFIP: "Un día de trámites",
+        PIQUETE: "¡Hasta acá llegaste!",
+        INUNDACION: "¡Sacá el bote!",
+        ROBO: "¡Te regalaste!",
+        FIAT_600: "El fitito",
+        ACCIDENTE_SARMIENTO: "Otra vez el Sarmiento"
     };
+
     return nombres[tipo] || String(tipo || "Evento global").replaceAll("_", " ");
 }
 

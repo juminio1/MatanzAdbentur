@@ -57,7 +57,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         this.servicioGestionQuiebra = servicioGestionQuiebra;
     }
 
-    private static final Integer RONDAS_ENTRE_EVENTOS = 5;
+    private static final Integer RONDAS_ENTRE_EVENTOS = 2; 
     private static final Integer CANTIDAD_CASILLEROS = 30;
     private static final Integer CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS = 1;
     private static final Integer DURACION_EVENTO_GLOBAL_SEGUNDOS = 30;
