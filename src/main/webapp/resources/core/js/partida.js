@@ -373,6 +373,17 @@ function conectarWebSocketTurnos(base, codigo) {
             stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
                 const saldo = JSON.parse(mensaje.body);
                 actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
+                actualizarEstadoCarcel(saldo.idJugador, saldo.encarcelado, saldo.intentosCarcel, {
+                    tipo: "saldo",
+                });
+            });
+            // Llega cuando a un jugador preso se le acaba el tiempo sin tirar.
+            stompClient.subscribe(`/topic/partida/${codigo}/carcel`, (mensaje) => {
+                const aviso = JSON.parse(mensaje.body);
+                actualizarDineroJugador(aviso.idJugador, aviso.dinero);
+                actualizarEstadoCarcel(aviso.idJugador, aviso.encarcelado, aviso.intentosCarcel, {
+                    tipo: "tiempo",
+                });
             });
             stompClient.subscribe(`/topic/partida/${codigo}/ofertas`, (mensaje) => {
                 const oferta = JSON.parse(mensaje.body);
@@ -434,7 +445,168 @@ function actualizarBotonTirada() {
             window.usuarioEnBancarrota ||
             String(window.turnoActualId) !== String(window.usuarioSesionId);
     }
+    actualizarControlesCarcel();
 }
+
+// --- Cárcel ---
+
+const COSTO_FIANZA = 100;
+const MAX_INTENTOS_CARCEL = 3;
+let pagandoFianza = false;
+
+function estaPresoEnPantalla(idJugador) {
+    return document.getElementById(String(idJugador))?.dataset.encarcelado === "true";
+}
+
+// Muestra u oculta la etiqueta "Preso" en la tarjeta del jugador.
+function pintarEstadoCarcel(tarjeta) {
+    const etiqueta = tarjeta?.querySelector(".estado-carcel");
+    if (!etiqueta) return;
+    const preso = tarjeta.dataset.encarcelado === "true";
+    const intentos = Number(tarjeta.dataset.intentosCarcel || 0);
+    etiqueta.hidden = !preso;
+    etiqueta.textContent = intentos > 0 ? `Preso (${intentos}/${MAX_INTENTOS_CARCEL})` : "Preso";
+}
+
+// Guarda el nuevo estado de cárcel de un jugador y deja registro en el historial si cambió.
+// "contexto" indica de dónde viene el dato: una tirada ("movimiento") o un aviso de saldo ("saldo").
+function actualizarEstadoCarcel(idJugador, encarcelado, intentos, contexto = {}) {
+    if (encarcelado == null) return;
+    const tarjeta = document.getElementById(String(idJugador));
+    if (!tarjeta) return;
+
+    const anterior = {
+        encarcelado: tarjeta.dataset.encarcelado === "true",
+        intentos: Number(tarjeta.dataset.intentosCarcel || 0),
+    };
+    const actual = { encarcelado: Boolean(encarcelado), intentos: Number(intentos ?? 0) };
+
+    tarjeta.dataset.encarcelado = String(actual.encarcelado);
+    tarjeta.dataset.intentosCarcel = String(actual.intentos);
+    pintarEstadoCarcel(tarjeta);
+    registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto);
+    actualizarControlesCarcel();
+}
+
+function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto) {
+    const nombre = obtenerNombreJugadorHistorial(idJugador);
+    const esUsuario = String(idJugador) === String(window.usuarioSesionId);
+
+    if (!anterior.encarcelado && actual.encarcelado) {
+        agregarAlHistorial(`${nombre} quedó detenido en la comisaría.`, idJugador);
+        if (esUsuario) {
+            mostrarAvisoPartida(
+                "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
+            );
+        }
+        return;
+    }
+
+    if (contexto.tipo === "tiempo") {
+        if (actual.encarcelado) {
+            agregarAlHistorial(
+                `A ${nombre} se le acabó el tiempo estando preso y pierde el intento (${actual.intentos} de ${MAX_INTENTOS_CARCEL}).`,
+                idJugador,
+            );
+        } else {
+            agregarAlHistorial(
+                `A ${nombre} se le acabó el tiempo en su último intento: le cobran $${COSTO_FIANZA} de fianza y sale en su próximo turno.`,
+                idJugador,
+            );
+        }
+        return;
+    }
+
+    if (anterior.encarcelado && actual.encarcelado && actual.intentos > anterior.intentos) {
+        agregarAlHistorial(
+            `${nombre} no sacó dobles y sigue preso (intento ${actual.intentos} de ${MAX_INTENTOS_CARCEL}).`,
+            idJugador,
+        );
+        return;
+    }
+
+    if (anterior.encarcelado && !actual.encarcelado) {
+        let texto = `${nombre} pagó $${COSTO_FIANZA} de fianza y salió de la comisaría.`;
+        if (contexto.tipo === "movimiento" && contexto.dobles) {
+            texto = `${nombre} sacó dobles y salió de la comisaría.`;
+        } else if (contexto.tipo === "movimiento") {
+            texto = `${nombre} no sacó dobles en ${MAX_INTENTOS_CARCEL} intentos: le cobran $${COSTO_FIANZA} de fianza y sale en su próximo turno.`;
+        }
+        agregarAlHistorial(texto, idJugador);
+    }
+}
+
+// Muestra el panel de fianza solo si el usuario está preso, es su turno y todavía no tiró.
+function actualizarControlesCarcel() {
+    const panel = document.getElementById("carcel-turno");
+    const boton = document.getElementById("btn-pagar-fianza");
+    const texto = document.getElementById("carcel-turno-texto");
+    if (!panel || !boton) return;
+
+    const esMiTurno = String(window.turnoActualId) === String(window.usuarioSesionId);
+    const mostrar =
+        estaPresoEnPantalla(window.usuarioSesionId) &&
+        esMiTurno &&
+        !yaTiroEnEsteTurno &&
+        !window.usuarioEnBancarrota &&
+        !partidaFinalizada;
+    panel.hidden = !mostrar;
+    if (!mostrar) return;
+
+    const alcanza = Number(window.dineroUsuarioSesion ?? 0) >= COSTO_FIANZA;
+    const intentos = Number(
+        document.getElementById(String(window.usuarioSesionId))?.dataset.intentosCarcel || 0,
+    );
+    boton.disabled =
+        !alcanza || pagandoFianza || estaTirando || movimientosDeJugadoresEnCurso.size > 0;
+    if (texto) {
+        texto.textContent =
+            `Estás en la comisaría (intento ${intentos + 1} de ${MAX_INTENTOS_CARCEL}). ` +
+            (alcanza
+                ? "Sacá dobles para salir o pagá la fianza."
+                : "Sacá dobles para salir. No te alcanza para pagar la fianza.");
+    }
+}
+
+async function pagarFianza() {
+    if (pagandoFianza) return;
+    pagandoFianza = true;
+    actualizarControlesCarcel();
+    try {
+        const respuesta = await fetch(
+            `${basePath}/partida/${encodeURIComponent(codigoPartida)}/pagar-fianza`,
+            { method: "POST", credentials: "same-origin", headers: { Accept: "application/json" } },
+        );
+        let datos = {};
+        try {
+            datos = await respuesta.json();
+        } catch (error) {
+            datos = {};
+        }
+        if (!respuesta.ok) {
+            mostrarAvisoPartida(datos.error || "No se pudo pagar la fianza.");
+            return;
+        }
+        // El servidor devuelve el saldo exacto (también llega por WebSocket a todos).
+        if (datos.dineroJugador != null) {
+            actualizarDineroJugador(window.usuarioSesionId, datos.dineroJugador);
+        }
+        actualizarEstadoCarcel(window.usuarioSesionId, false, 0, { tipo: "saldo" });
+        mostrarAvisoPartida(datos.mensaje || "Pagaste la fianza. Ya podés tirar los dados.");
+    } catch (error) {
+        console.error("Error al pagar la fianza:", error);
+        mostrarAvisoPartida("No se pudo pagar la fianza.");
+    } finally {
+        pagandoFianza = false;
+        actualizarControlesCarcel();
+    }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".jugador").forEach(pintarEstadoCarcel);
+    document.getElementById("btn-pagar-fianza")?.addEventListener("click", pagarFianza);
+    actualizarControlesCarcel();
+});
 
 function mostrarAvisoPartida(mensaje) {
     avisosPartidaPendientes.push(mensaje);
@@ -507,8 +679,14 @@ function mostrarAvisoAlquiler(aviso) {
 }
 
 function aplicarSaldosMovimiento(movimiento) {
+    const dobles = Number(movimiento.dado1) === Number(movimiento.dado2);
     (movimiento.saldos ?? []).forEach((saldo) => {
         actualizarDineroJugador(saldo.idJugador, saldo.dinero, saldo.enBancarrota);
+        const contexto =
+            String(saldo.idJugador) === String(movimiento.idJugador)
+                ? { tipo: "movimiento", dobles }
+                : { tipo: "saldo" };
+        actualizarEstadoCarcel(saldo.idJugador, saldo.encarcelado, saldo.intentosCarcel, contexto);
     });
 }
 
@@ -535,7 +713,12 @@ async function procesarMovimiento(movimiento) {
     if (dado1) dado1.textContent = movimiento.dado1;
     if (dado2) dado2.textContent = movimiento.dado2;
     try {
-        const pasos = Number(movimiento.dado1) + Number(movimiento.dado2);
+        // Si estaba preso y no salió, el servidor lo deja en el mismo casillero: no se anima nada.
+        const seQuedoEnElLugar =
+            Number(movimiento.posicionAnterior) === Number(movimiento.nuevaPosicion) &&
+            Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion) ===
+                Number(movimiento.posicionAnterior);
+        const pasos = seQuedoEnElLugar ? 0 : Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
         if (modalDeuda?.open && !declarandoQuiebra) {
             aperturaDeudaPendiente = true;
@@ -546,7 +729,7 @@ async function procesarMovimiento(movimiento) {
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
         if (Number.isInteger(posicionCaida)) {
             moverFichaEnTablero(movimiento.idJugador, posicionCaida);
-            registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
+            if (!seQuedoEnElLugar) registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
         }
         if (movimiento.nombreEvento && movimiento.descripcionEvento) {
             const nombreJugador =
@@ -1069,6 +1252,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         window.dineroUsuarioSesion = Number(dinero);
+        actualizarControlesCarcel();
     }
     if (!tarjeta || !enBancarrota) return;
 

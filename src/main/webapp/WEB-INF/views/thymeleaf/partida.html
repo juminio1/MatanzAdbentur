@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=evento-manual-7)}"
-            href="../../../resources/core/css/partida.css?v=evento-manual-7"
+            th:href="@{/css/partida.css(v=carcel-3)}"
+            href="../../../resources/core/css/partida.css?v=carcel-3"
         />
     </head>
     <body class="pagina-partida">
@@ -54,7 +54,7 @@
                     class="jugador"
                     th:each="jugador : ${partida.jugadores}"
                     th:id="${jugador.id}"
-                    th:attr="data-bancarrota=${jugador.enBancarrota}"
+                    th:attr="data-bancarrota=${jugador.enBancarrota},data-encarcelado=${jugador.estadoCarcel.encarcelado == true},data-intentos-carcel=${jugador.estadoCarcel.intentosSalirCarcel ?: 0}"
                     th:classappend="${jugador.enBancarrota} ? ' jugador--bancarrota' : ''"
                 >
                     <img
@@ -76,6 +76,8 @@
                         <span class="estado-bancarrota" th:if="${jugador.enBancarrota}"
                             >En quiebra</span
                         >
+                        <!-- El texto lo completa partida.js según los intentos -->
+                        <span class="estado-carcel" hidden>Preso</span>
                     </div>
 
                     <!-- Contenedor dinámico del estado de turno -->
@@ -221,7 +223,13 @@
                             </div>
                         </li>
 
-                        <li class="casillero" style="--col: 4; --fila: 5" data-casillero="8">
+                        <li class="casillero casillero--comisaria" style="--col: 4; --fila: 5" data-casillero="8">
+                            <img
+                                class="casillero__icono"
+                                th:src="@{/images/iconos/carcel.svg}"
+                                src="../../../resources/core/images/iconos/carcel.svg"
+                                alt=""
+                            />
                             <span class="casillero__nombre">COMISARÍA</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -628,6 +636,20 @@
                     >
                         Tirar dados
                     </button>
+
+                    <!-- Solo se muestra cuando el usuario está preso y es su turno -->
+                    <div class="carcel-turno" id="carcel-turno" hidden>
+                        <p class="carcel-turno__texto" id="carcel-turno-texto">
+                            Estás en la comisaría. Sacá dobles para salir o pagá la fianza.
+                        </p>
+                        <button
+                            type="button"
+                            class="btn-casillero btn-casillero--secundario"
+                            id="btn-pagar-fianza"
+                        >
+                            Pagar fianza ($100)
+                        </button>
+                    </div>
                 </div>
             </section>
         </main>
@@ -989,7 +1011,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=evento-manual-7)}" src="../../../resources/core/js/partida.js?v=evento-manual-7" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=carcel-3)}" src="../../../resources/core/js/partida.js?v=carcel-3" charset="UTF-8" defer></script>
 
 </body>
 

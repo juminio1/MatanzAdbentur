@@ -1203,3 +1203,64 @@
     font-weight: bold;
     text-decoration: none;
 }
+
+/* --- Cárcel --- */
+
+.estado-carcel {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--p-azul);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.estado-carcel[hidden],
+.carcel-turno[hidden] {
+    display: none;
+}
+
+.carcel-turno {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.carcel-turno__texto {
+    margin: 0;
+    max-width: 220px;
+    color: var(--p-texto-suave);
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.carcel-turno .btn-casillero {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+    .carcel-turno { flex: 1 1 100%; flex-wrap: wrap; }
+    .carcel-turno__texto { max-width: none; }
+}
+
+/* Casillero de la comisaría: ícono de rejas arriba del nombre */
+.casillero--comisaria {
+    flex-direction: column;
+    gap: 2px;
+}
+
+.casillero__icono {
+    display: block;
+    width: auto;
+    height: 55%;
+    max-width: 90%;
+    object-fit: contain;
+    pointer-events: none;
+}
