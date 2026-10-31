@@ -21,6 +21,6 @@ public interface ServicioGestionQuiebra {
     ResultadoDeuda evaluarDeuda(String codigoPartida,Long idJugador);
     Partida declararQuiebra(String codigoPartida, Long idJugador);
     ResultadoDeuda procesarAlquiler(String codigoPartida, Propiedad propiedad, Jugador jugador, Integer montoAlquiler);
-
+    ResultadoDeuda procesarMulta(String codigoPartida, Jugador jugador, Integer montoMulta, String motivo);
 
 }

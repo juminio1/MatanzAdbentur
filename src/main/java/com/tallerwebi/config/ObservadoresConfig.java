@@ -3,6 +3,7 @@ package com.tallerwebi.config;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
+import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.observadores.Observador;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
@@ -47,6 +48,12 @@ public class ObservadoresConfig {
     @Bean
     public PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(
             List<Observador<EventoJugadorQuebrado>> observadores) {
+        return new PublicadorEventos<>(observadores);
+    }
+
+    @Bean
+    public PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel(
+            List<Observador<EventoTiempoAgotadoEnCarcel>> observadores) {
         return new PublicadorEventos<>(observadores);
     }
 }

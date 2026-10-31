@@ -257,6 +257,44 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
 
+    @Override
+    public ResultadoDeuda procesarMulta(
+            String codigoPartida,
+            Jugador jugador,
+            Integer montoMulta,
+            String motivo) {
+
+        Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
+
+        if (pagador == null) {
+            throw new IllegalArgumentException("Jugador no encontrado");
+        }
+
+        if (obtenerDeudaPendiente(codigoPartida, pagador.getId()) != null) {
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
+        }
+
+        if (montoMulta == null || montoMulta < 0) {
+            throw new IllegalArgumentException("Monto de multa inválido");
+        }
+
+        if (economia.tieneDineroSuficiente(pagador, montoMulta)) {
+            economia.restarDinero(pagador, montoMulta);
+            repositorioPartida.actualizarJugador(pagador);
+            return ResultadoDeuda.RESUELTA;
+        }
+
+        registrarDeuda(
+                codigoPartida,
+                pagador,
+                null,
+                montoMulta,
+                motivo
+        );
+
+        return evaluarDeuda(codigoPartida, pagador.getId());
+    }
+
     //busca el pago pendiente del jugador. Consulta las propiedades y si tiene alguna devuelve true y sino false.
     private Boolean tienePropiedadesVendibles(Jugador jugador) {
         return !repositorioPropiedad
