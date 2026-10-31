@@ -13,16 +13,16 @@ public final class RelojEventoGlobal {
         vencimientosPorPartida.put(codigoPartida, System.nanoTime() + TimeUnit.SECONDS.toNanos(duracionSegundos));
     }
 
-    public boolean vencio(String codigoPartida) {
+    public Boolean vencio(String codigoPartida) {
         Long vencimiento = vencimientosPorPartida.get(codigoPartida);
         return vencimiento != null && System.nanoTime() >= vencimiento;
     }
 
-    public boolean vencioOProgramacionAgotada(String codigoPartida, Integer segundosProgramados) {
+    public Boolean vencioOProgramacionAgotada(String codigoPartida, Integer segundosProgramados) {
         return vencio(codigoPartida) || Integer.valueOf(0).equals(segundosProgramados);
     }
 
-    public Integer obtenerSegundosConRespaldo(String codigoPartida, boolean enPausaEmpate,
+    public Integer obtenerSegundosConRespaldo(String codigoPartida, Boolean enPausaEmpate,
             Integer segundosProgramados, Integer duracionPorDefecto) {
         Integer segundos = segundosProgramados;
         if (segundos == null && !enPausaEmpate) {

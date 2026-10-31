@@ -2,7 +2,6 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
@@ -29,7 +28,7 @@ public final class AplicadorConsecuenciaEventoGlobal {
 
     @FunctionalInterface
     public interface AplicadorEvento {
-        public void ejecutar(Jugador jugador, Evento evento) throws EventoInexistenteException;
+        public void ejecutar(Jugador jugador, EventoGlobal evento) throws EventoInexistenteException;
     }
 
     public static String aplicar(Partida partida, Jugador jugador, EventoGlobal evento, RepositorioPartida repositorio, ServicioGestionQuiebra gestionQuiebra, AplicadorEvento aplicadorEvento) throws EventoInexistenteException {
@@ -76,7 +75,7 @@ public final class AplicadorConsecuenciaEventoGlobal {
         return participantes.stream().filter(jugador -> resultadoElegido.equals(tiradas.get(jugador.getId()))).toList();
     }
 
-    public static boolean modificaPosicion(EventoGlobal evento) {
+    public static Boolean modificaPosicion(EventoGlobal evento) {
         return evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP
                 || evento.getTipoEventoGlobal() == TipoEventoGlobal.PIQUETE
                 || evento.getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION;
@@ -92,6 +91,9 @@ public final class AplicadorConsecuenciaEventoGlobal {
             case INUNDACION -> Math.floorMod(origen + evento.getValor(), 30);
             default -> origen;
         };
+        if (evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP && Objects.equals(origen, destino)) {
+            return "no avanza porque ya es el jugador más adelantado del tablero.";
+        }
         return Objects.equals(origen, destino)
                 ? "ya estaba en el casillero " + destino + ", por eso no se moverá."
                 : "se moverá del casillero " + origen + " al " + destino + " cuando se reanude la partida.";
@@ -103,7 +105,7 @@ public final class AplicadorConsecuenciaEventoGlobal {
         jugador.setPosicionActual(posicionMasAdelantada);
 
         return posicionAnterior.equals(posicionMasAdelantada)
-                ? "ya estaba en el casillero más adelantado (" + posicionAnterior + "), por eso no avanzó."
+                ? "no avanza porque ya es el jugador más adelantado del tablero."
                 : "avanzó del casillero " + posicionAnterior + " al " + posicionMasAdelantada + ".";
     }
 
@@ -127,7 +129,7 @@ public final class AplicadorConsecuenciaEventoGlobal {
         }
 
         String codigoPartida = partida.getCodigoUnico();
-        gestionQuiebra.registrarDeuda(codigoPartida, jugador, null, monto, "EVENTO_RESTA");
+        gestionQuiebra.registrarDeuda(codigoPartida, jugador, null, monto, "EVENTO_GLOBAL_ROBO");
 
         try {
             ResultadoDeuda resultado = gestionQuiebra.evaluarDeuda(codigoPartida, jugador.getId());

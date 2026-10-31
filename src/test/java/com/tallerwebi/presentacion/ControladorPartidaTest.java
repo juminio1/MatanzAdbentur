@@ -141,43 +141,26 @@ public class ControladorPartidaTest {
     public void init() {
 
         servicioPartidaMock = mock(ServicioPartida.class);
-
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
-
         servicioCasilleroMock = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
-
         servicioPropiedadMock = mock(ServicioPropiedad.class);
-
         notificadorPartidaMock = mock(NotificadorPartida.class);
-
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
 
-        controladorPartida = new ControladorPartida(servicioPartidaMock,
-
-                notificadorWebSocketMock,
-
-                servicioCasilleroMock,
-
-                servicioPropiedadMock,
-
-                notificadorPartidaMock,
-
-                new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, null, servicioGestionQuiebraMock, movimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        controladorPartida =new ControladorPartida(servicioPartidaMock, notificadorWebSocketMock, servicioCasilleroMock, servicioPropiedadMock, notificadorPartidaMock,
+                            new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock, servicioPropiedadMock, null, servicioGestionQuiebraMock, movimiento, 
+                            new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), dados),
+                            new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
 
         request = new MockHttpServletRequest();
-
         session = new MockHttpSession();
-
         request.setSession(session);
-
     }
 
     @Test
 
     public void dadoQueNoHayCodigoCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() {
-
         ModelAndView mav = controladorPartida.verTablero(null, request);
-
         assertEquals("redirect:/home", mav.getViewName());
 
     }
@@ -185,9 +168,7 @@ public class ControladorPartidaTest {
     @Test
 
     public void dadoQueElCodigoEsVacioCuandoSeIntentaVerElTableroDaComoResultadoRedireccionAHome() {
-
         ModelAndView mav = controladorPartida.verTablero("   ", request);
-
         assertEquals("redirect:/home", mav.getViewName());
 
     }
@@ -203,7 +184,6 @@ public class ControladorPartidaTest {
         ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
 
         assertEquals("redirect:/sala-de-espera?codigoUnico=" + codigoPrueba, mav.getViewName());
-
         verify(servicioPartidaMock, times(1)).obtenerPartida(codigoPrueba);
 
     }
@@ -213,7 +193,6 @@ public class ControladorPartidaTest {
     public void dadoQueNoHayUsuarioEnSesionCuandoSeIntentaVerElTableroDaComoResultadoRedireccionALogin() {
 
         String codigoPrueba = "MATANZA123";
-
         Partida partidaMock = new Partida();
 
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
@@ -229,37 +208,26 @@ public class ControladorPartidaTest {
     public void dadoQueExisteUnUsuarioEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() {
 
         String codigoPrueba = "MATANZA123";
-
         Long usuarioId = 10L;
-
         session.setAttribute("id", usuarioId);
 
         Partida partidaMock = new Partida();
 
         Jugador jugadorMock = new Jugador();
-
         jugadorMock.setId(1L);
-
         jugadorMock.setApodo("Messi");
-
         partidaMock.setJugadores(List.of(jugadorMock));
-
         partidaMock.setJugadorTurnoAleatorio(jugadorMock);
 
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partidaMock);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugadorMock);
 
         ModelAndView mav = controladorPartida.verTablero(codigoPrueba, request);
 
         assertEquals("partida", mav.getViewName());
-
         assertNotNull(mav.getModel().get("partida"));
-
         assertEquals(partidaMock, mav.getModel().get("partida"));
-
         assertEquals(usuarioId, mav.getModel().get("usuarioSesionId"));
-
         assertEquals(1L, mav.getModel().get("turnoActualId"));
 
     }
@@ -269,11 +237,9 @@ public class ControladorPartidaTest {
     public void dadoQueElCodigoYUsuarioEstanEnSesionCuandoSeConsultaElTableroDaComoResultadoLaVistaPartida() {
 
         String codigoEnSesion = "MATANZA999";
-
         Long usuarioIdFallback = 25L;
 
         session.setAttribute("codigoSala", codigoEnSesion);
-
         session.setAttribute("IDUSUARIO", usuarioIdFallback);
 
         Partida partidaMock = new Partida();
@@ -283,9 +249,7 @@ public class ControladorPartidaTest {
         ModelAndView mav = controladorPartida.verTablero(null, request);
 
         assertEquals("partida", mav.getViewName());
-
         assertEquals(usuarioIdFallback, mav.getModel().get("usuarioSesionId"));
-
         assertNull(mav.getModel().get("turnoActualId"));
 
     }
@@ -296,16 +260,9 @@ public class ControladorPartidaTest {
 
         String codigoPartida = "PARTIDA123";
 
-        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(
-
-                codigoPartida,
-
-                request
-
-        );
+        ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
 
         assertEquals(HttpStatus.UNAUTHORIZED, respuesta.getStatusCode());
-
         verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
 
     }
@@ -315,15 +272,11 @@ public class ControladorPartidaTest {
     public void dadoQueUnUsuarioNoTieneElTurnoCuandoIntentaAvanzarDaComoResultadoForbidden() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "PARTIDA123";
-
         session.setAttribute("id", 99L);
-
         session.setAttribute("NOMBRE", "intruso");
 
         Jugador jugadorConTurno = new Jugador();
-
         jugadorConTurno.setId(1L);
-
         jugadorConTurno.setApodo("pepito");
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorConTurno);
@@ -331,7 +284,6 @@ public class ControladorPartidaTest {
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida,request);
 
         assertEquals(HttpStatus.FORBIDDEN, respuesta.getStatusCode());
-
         verify(servicioPartidaMock, never()).avanzarTurno(codigoPartida);
 
     }
@@ -341,49 +293,34 @@ public class ControladorPartidaTest {
     public void dadoQueUnJugadorTieneElTurnoCuandoLoFinalizaDaComoResultadoElSiguienteTurnoYLaRondaNotificada() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "PARTIDA123";
-
         session.setAttribute("id", 1L);
-
         session.setAttribute("NOMBRE", "pepito");
 
         Jugador jugadorActual = new Jugador();
-
         jugadorActual.setId(1L);
-
         jugadorActual.setApodo("pepito");
-
         jugadorActual.setOrden(0);
 
         Jugador jugadorSiguiente = new Jugador();
-
         jugadorSiguiente.setId(2L);
-
         jugadorSiguiente.setApodo("Messi");
-
         jugadorSiguiente.setOrden(1);
 
         Partida partidaActualizada = new Partida();
 
         partidaActualizada.setRondaActual(2);
-
         partidaActualizada.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorActual).thenReturn(jugadorSiguiente);
-
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partidaActualizada);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida,request);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-
         assertNotNull(respuesta.getBody());
-
         assertEquals(2L, respuesta.getBody().getIdJugadorActual());
-
         assertEquals("Messi", respuesta.getBody().getApodoJugadorActual());
-
         assertEquals(2, respuesta.getBody().getRondaActual());
-
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
 
     }
@@ -393,9 +330,7 @@ public class ControladorPartidaTest {
     public void dadoQueElCodigoEnSesionEsVacioCuandoSeConsultaElTableroDaComoResultadoRedireccionAHome() {
 
         session.setAttribute("codigoSala", "   ");
-
         ModelAndView mav = controladorPartida.verTablero(null, request);
-
         assertEquals("redirect:/home", mav.getViewName());
 
     }
@@ -405,17 +340,13 @@ public class ControladorPartidaTest {
     public void dadoQueElUsuarioSeIdentificaPorNombreCuandoConsultaElTableroDaComoResultadoSuJugador() {
 
         String codigoPartida = "PARTIDA123";
-
         session.setAttribute("NOMBRE", "MESSI");
 
         Jugador jugador = new Jugador();
-
         jugador.setId(7L);
-
         jugador.setApodo("Messi");
 
         Partida partida = new Partida();
-
         partida.setJugadores(List.of(jugador));
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
@@ -423,7 +354,6 @@ public class ControladorPartidaTest {
         ModelAndView mav = controladorPartida.verTablero(codigoPartida, request);
 
         assertEquals("partida", mav.getViewName());
-
         assertEquals(7L, mav.getModel().get("usuarioSesionId"));
 
     }
@@ -511,45 +441,31 @@ public class ControladorPartidaTest {
     public void dadoQueElNombreCoincideCuandoSeFinalizaElTurnoDaComoResultadoElSiguienteJugador() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPartida = "PARTIDA123";
-
         session.setAttribute("NOMBRE", "PEPITO");
 
         Jugador jugadorActual = new Jugador();
-
         jugadorActual.setId(1L);
-
         jugadorActual.setApodo("pepito");
-
         jugadorActual.setOrden(0);
 
         Jugador jugadorSiguiente = new Jugador();
-
         jugadorSiguiente.setId(2L);
-
         jugadorSiguiente.setApodo("Messi");
-
         jugadorSiguiente.setOrden(1);
 
         Partida partida = new Partida();
-
         partida.setRondaActual(1);
-
         partida.setJugadores(List.of(jugadorActual, jugadorSiguiente));
 
         when(servicioPartidaMock.obtenerJugadorActual(codigoPartida)).thenReturn(jugadorActual).thenReturn(jugadorSiguiente);
-
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         ResponseEntity<TurnoDTO> respuesta = controladorPartida.avanzarTurno(codigoPartida, request);
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-
         assertNotNull(respuesta.getBody());
-
         assertEquals(2L, respuesta.getBody().getIdJugadorActual());
-
         assertEquals(1, respuesta.getBody().getRondaActual());
-
         verify(servicioPartidaMock, times(1)).avanzarTurno(codigoPartida);
 
     }
@@ -559,39 +475,27 @@ public class ControladorPartidaTest {
     public void tirarDadosDeberiaDevolverResultadoDeTirada() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPrueba = "MATANZA123";
-
         Long idJugador = 1L;
 
         Jugador jugador = new Jugador();
-
         jugador.setId(idJugador);
 
         Partida partida = new Partida();
-
         partida.setJugadores(Collections.singletonList(jugador));
 
         ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5); // Suma 9
 
         when(dados.tirarDados()).thenReturn(resultadoEsperado);
-
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
         RespuestaMovimientoDTO resultado = controladorPartida.tirarDados(codigoPrueba, idJugador, solicitudJugador(codigoPrueba,  idJugador));
 
         assertThat(resultado, notNullValue());
-
         assertThat(resultado.getDado1(), equalTo(4));
-
         assertThat(resultado.getDado2(), equalTo(5));
-
         assertThat(resultado.getSuma(), equalTo(9));
-
-        // SE VERIFICA SOBRE servicioPartidaMock
-
-        verify(dados, times(1)).tirarDados();
-
+        verify(dados, times(1)).tirarDados(); // SE VERIFICA SOBRE servicioPartidaMock
     }
 
     @Test
@@ -599,25 +503,19 @@ public class ControladorPartidaTest {
     public void tirarDadosDeberiaActualizarPosicion() throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigoPrueba = "MATANZA123";
-
         Long idJugador = 1L;
 
         Jugador jugador = new Jugador();
-
         jugador.setId(idJugador);
-
         jugador.setPosicionActual(10);
 
         Partida partida = new Partida();
-
         partida.setJugadores(Collections.singletonList(jugador));
 
         ResultadoTirada resultadoEsperado = new ResultadoTirada(4, 5); // Suma 9
 
         when(dados.tirarDados()).thenReturn(resultadoEsperado);
-
         when(servicioPartidaMock.obtenerPartida(codigoPrueba)).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigoPrueba)).thenReturn(jugador);
 
         controladorPartida.tirarDados(codigoPrueba, idJugador, solicitudJugador(codigoPrueba,  idJugador));
@@ -631,37 +529,25 @@ public class ControladorPartidaTest {
     public void queAlPasarPorInicioSePaguenEInformenLosDoscientos() throws Exception {
 
         Jugador jugador = new Jugador();
-
         jugador.setId(1L);
-
         jugador.setPosicionActual(28);
 
         Partida partida = new Partida();
-
         partida.setJugadores(List.of(jugador));
 
         when(servicioPartidaMock.obtenerPartida("INICIO")).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual("INICIO")).thenReturn(jugador);
-
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(2, 3));
 
-        doAnswer(invocacion -> {
-
-            jugador.setPosicionActual(3);
-
+        doAnswer(invocacion -> { jugador.setPosicionActual(3);
             return null;
-
         }).when(movimiento).moverJugador(jugador, 5, 30);
 
         RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados("INICIO", 1L, solicitudJugador("INICIO",  1L));
 
         assertEquals(200, respuesta.getDineroPorInicio());
-
         assertEquals(3, respuesta.getNuevaPosicion());
-
         verify(economia, times(1)).sumarDinero(jugador, 200);
-
         verify(notificadorWebSocketMock).convertAndSend("/topic/partida/INICIO", respuesta);
 
     }
@@ -1051,85 +937,58 @@ public class ControladorPartidaTest {
     }
 
     @Test
-
     public void dadoQueElJugadorTieneSuNombreEnSesionCuandoAbandonaYDaNotificacionCorrecta() throws Exception {
 
         // Preparación
-
         String codigoPartida = "MATANZA123";
-
         Long idJugador = 1L;
 
         Jugador jugador = new Jugador();
-
         jugador.setId(idJugador);
-
         jugador.setApodo("Messi10");
 
         Partida partida = new Partida();
-
         partida.setCodigoUnico(codigoPartida);
-
         partida.setJugadores(List.of(jugador));
-
         request.getSession().setAttribute("NOMBRE", "Messi10");
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         // Ejecución
-
         ResponseEntity<Map<String, Object>> respuesta = controladorPartida.abandonarPartida(codigoPartida, request);
 
         // Comprobación
-
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-
         verify(servicioPartidaMock).abandonarPartida(codigoPartida, idJugador);
-
         verify(notificadorPartidaMock).notificarAbandonoPorWebSocket(partida, jugador);
-
     }
 
     @Test
-
     public void dadoQueHayDosJugadoresCuandoElSegundoAbandonaYDaLaNotificacionCorrecta() throws Exception {
 
         // Preparación
-
         String codigoPartida = "ABC123";
-
         Jugador jugadorUno = new Jugador();
-
         jugadorUno.setId(1L);
-
         jugadorUno.setApodo("Messi10");
 
         Jugador jugadorDos = new Jugador();
-
         jugadorDos.setId(2L);
-
         jugadorDos.setApodo("Prueba3");
 
         Partida partida = new Partida();
-
         partida.setCodigoUnico(codigoPartida);
-
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
-
         request.getSession().setAttribute("id", 2L);
 
         when(servicioPartidaMock.obtenerPartida(codigoPartida)).thenReturn(partida);
 
         // Ejecución
-
         ResponseEntity<Map<String, Object>> respuesta = controladorPartida.abandonarPartida(codigoPartida, request);
 
         // Comprobación
-
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-
         verify(servicioPartidaMock, times(1)).abandonarPartida(codigoPartida, 2L);
-
         verify(notificadorPartidaMock, times(1)).notificarAbandonoPorWebSocket(partida, jugadorDos);
 
     }
@@ -1139,25 +998,19 @@ public class ControladorPartidaTest {
     void queUnJugadorEnQuiebraNoPuedaTirarDados() {
 
         String codigo = "PARTIDA123";
-
         Jugador jugador = new Jugador();
-
         jugador.setId(1L);
-
         jugador.setEnBancarrota(true);
 
         Partida partida = new Partida();
-
         partida.setJugadores(List.of(jugador));
 
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId())));
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
-
         verify(dados, never()).tirarDados();
 
     }
@@ -1169,21 +1022,15 @@ public class ControladorPartidaTest {
     void queUnJugadorConDeudaPendienteNoPuedaTirarDados() {
 
         String codigo = "PARTIDA123";
-
         Jugador jugador = new Jugador();
-
         jugador.setId(1L);
-
         jugador.setOrden(0);
-
         jugador.setEnBancarrota(false);
 
         Partida partida = new Partida();
-
         partida.setJugadores(List.of(jugador));
 
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
 
         DeudaPendiente deuda = mock(DeudaPendiente.class);
@@ -1193,7 +1040,6 @@ public class ControladorPartidaTest {
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, jugador.getId(), solicitudJugador(codigo,  jugador.getId())));
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
-
         verify(dados, never()).tirarDados();
 
     }
@@ -1203,39 +1049,26 @@ public class ControladorPartidaTest {
     public void dadoQueHayEventoGlobalActivoCuandoElJugadorIntentaTirarDadosYDaForbidden() throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
         String codigo = "MATANZA123";
-
         Jugador jugador = new Jugador();
-
         jugador.setId(1L);
-
         jugador.setApodo("Jugador1");
-
         jugador.setOrden(0);
-
         jugador.setPosicionActual(0);
 
         Partida partida = new Partida();
-
         partida.setCodigoUnico(codigo);
-
         partida.setJugadores(List.of(jugador));
 
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
-
         when(servicioPartidaMock.obtenerJugadorActual(codigo)).thenReturn(jugador);
-
         when(servicioPartidaMock.verificarSiHayEventoGlobalActivo(codigo)).thenReturn(true);
 
         ResponseStatusException excepcion = assertThrows(ResponseStatusException.class, () -> controladorPartida.tirarDados(codigo, 1L, solicitudJugador(codigo, 1L)));
 
         assertEquals(HttpStatus.FORBIDDEN, excepcion.getStatusCode());
-
         assertEquals("La partida está pausada por un evento global.", excepcion.getReason());
-
         verify(dados, never()).tirarDados();
-
         verify(servicioPartidaMock, never()).prepararTiempoTurno(eq(codigo), anyInt());
-
         verify(servicioPartidaMock, never()).avanzarTurno(codigo);
 
     }

@@ -1,6 +1,5 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import java.util.List;
 import java.util.Random;
@@ -23,23 +22,7 @@ public class RepositorioEventoImpl implements RepositorioEvento {
 
     @Override
     @SuppressWarnings("PMD.CloseResource")
-    public Evento obtenerEventoAleatorio() {
-        final Session session = sessionFactory.getCurrentSession();
-
-        List<Evento> eventos = session.createQuery("FROM EventoGlobalBase e WHERE TYPE(e) = EventoGlobalBase", Evento.class).list();
-
-        if (eventos.isEmpty()) {
-            return null;
-        }
-
-        Integer indiceAleatorio = random.nextInt(eventos.size());
-
-        return eventos.get(indiceAleatorio);
-    }
-
-    @Override
-    @SuppressWarnings("PMD.CloseResource")
-    public Evento obtenerEventoGlobalAleatorio() {
+    public EventoGlobal obtenerEventoGlobalAleatorio() {
         final Session session = sessionFactory.getCurrentSession();
 
         List<EventoGlobal> eventosGlobales = session.createQuery("FROM EventoGlobal", EventoGlobal.class).list();

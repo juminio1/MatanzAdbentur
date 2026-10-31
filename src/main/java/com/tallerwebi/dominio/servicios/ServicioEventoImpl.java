@@ -2,8 +2,8 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import org.springframework.context.annotation.Lazy;
@@ -33,6 +33,8 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -63,13 +65,8 @@ public class ServicioEventoImpl implements ServicioEvento {
     private static final Integer DURACION_EVENTO_GLOBAL_SEGUNDOS = 30;
     private static final Set<TipoEventoGlobal> EVENTOS_CON_TIRADA = Set.of(TipoEventoGlobal.INUNDACION, TipoEventoGlobal.PIQUETE, TipoEventoGlobal.TRAMITES_AFIP);
     private static final String PREFIJO_TEMPORIZADOR_EVENTO = "evento-global:";
-    private static final String FASE_INICIADO = "INICIADO";
-    private static final String FASE_TIRADA = "TIRADA";
-    private static final String FASE_DESEMPATE = "DESEMPATE";
-    private static final String FASE_EMPATE = "EMPATE";
     private static final Integer DURACION_PAUSA_EMPATE_SEGUNDOS = 8;
     private static final String PREFIJO_TEMPORIZADOR_EMPATE = "evento-global-empate:";
-    private static final String FASE_FINALIZADO = "FINALIZADO";
     private static final Integer DURACION_CONFIRMACION_SEGUNDOS = 60;
     private static final String PREFIJO_TEMPORIZADOR_RESULTADO = "evento-global-resultado:";
 
@@ -99,17 +96,12 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public Evento obtenerEventoAleatorio() {
-        return repositorioEvento.obtenerEventoAleatorio();
-    }
-
-    @Override
-    public Evento obtenerEventosGlobalesAleatorio() {
+    public EventoGlobal obtenerEventosGlobalesAleatorio() {
         return this.repositorioEvento.obtenerEventoGlobalAleatorio();
     }
 
     @Override
-    public void aplicarEvento(Jugador jugador, Evento evento) throws EventoInexistenteException {
+    public void aplicarEvento(Jugador jugador, EventoGlobal evento) throws EventoInexistenteException {
         if (ValidadorEventoGlobal.esEventoInvalido(evento)) {
             throw new EventoInexistenteException("El evento no existe");
         }
@@ -180,13 +172,9 @@ public class ServicioEventoImpl implements ServicioEvento {
     public synchronized ResultadoTirada realizarTiradaEventoGlobal(Partida partida, Jugador jugador, EventoGlobal eventoGlobal) throws DatosEnventoInvalidoExceptions, TiradaDadoInvalidaException, JugadorNoEncontradoException, TiradasFaltantesException, EventoInexistenteException {
 
         ValidadorEventoGlobal.validarDatosEventoGlobal(partida, jugador, eventoGlobal); //valida los datos del evento que sean validos
-
         ValidadorEventoGlobal.validarJugadorEnPartida(partida, jugador); //valida que los jugadores pertenezcan a la partida
-
         ValidadorEventoGlobal.validarEventoActivo(eventosActivosPorPartida.get(partida.getCodigoUnico()), eventoGlobal); //valida que el evento exista y este activo
-
         ValidadorEventoGlobal.validarJugadorHabilitado(partida, jugador, participantesDesempatePorPartida); //valida que el jugador este habilitado para realizar la tirada de dados
-
         ValidadorEventoGlobal.validarQueNoSeaPausaEmpate(partida.getCodigoUnico(), partidasEnPausaPorEmpate);
 
         Map<Long, Integer> tiradas = ValidadorEventoGlobal.obtenerTiradasDePartida(partida, tiradasPorPartida);
@@ -196,8 +184,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         ResultadoTirada resultado = servicioDado.tirarDados();
 
         ValidadorEventoGlobal.registrarTiradaEventoGlobal(tiradas, jugador, resultado.sumarDados());
-        publicarEstado(partida, eventoGlobal, FASE_TIRADA, null);
-
+        publicarEstado(partida, eventoGlobal, FaseEventoGlobal.TIRADA, null);
         this.resolverEventoGlobal(partida);
 
         return resultado;
@@ -254,8 +241,8 @@ public class ServicioEventoImpl implements ServicioEvento {
             Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
             if (partida != null) {
                 Integer etapa = etapaTiradasPorPartida.get(codigoPartida);
-                String fase = partidasEnPausaPorEmpate.contains(codigoPartida) ? FASE_EMPATE
-                        : etapa != null && etapa > 0 ? FASE_DESEMPATE : FASE_INICIADO;
+                FaseEventoGlobal fase = partidasEnPausaPorEmpate.contains(codigoPartida) ? FaseEventoGlobal.EMPATE
+                        : etapa != null && etapa > 0 ? FaseEventoGlobal.DESEMPATE : FaseEventoGlobal.INICIADO;
                 estado = construirEstadoEvento(partida, eventoActivo, fase, null);
             }
         }
@@ -263,26 +250,24 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private EstadoEventoGlobal construirEstadoResultadoActual(EstadoEventoGlobal resultado) {
-        Integer segundosRestantes = relojResultadoGlobal.obtenerSegundosRestantes(resultado.codigoPartida());
+        String codigoPartida = resultado.codigoPartida();
         
-        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(resultado.codigoPartida());
+        Integer segundosRestantes = relojResultadoGlobal.obtenerSegundosRestantes(codigoPartida);
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
         
-        List<Long> activos = partida == null ? List.of() : partida.getJugadores().stream().filter(ValidadorEventoGlobal::estaActivo).map(Jugador::getId).toList();
-        
-        Map<Long, Integer> tiradas = resultado.tiradas().entrySet().stream().filter(entrada -> activos.contains(entrada.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        List<Long> activos = obtenerJugadoresActivos(partida).stream().map(Jugador::getId).toList();
         
         Boolean elegidoSigueActivo = activos.contains(resultado.idJugadorElegido());
-        
+
         String detalle = elegidoSigueActivo || resultado.idJugadorElegido() == null
                 ? resultado.detalle() : "El jugador seleccionado abandonó la partida; no recibirá la consecuencia.";
-        
-            return new EstadoEventoGlobal(resultado.codigoPartida(), resultado.fase(), resultado.tipo(), resultado.descripcion(),
-            resultado.etapa(), segundosRestantes == null ? DURACION_CONFIRMACION_SEGUNDOS : segundosRestantes,
-            activos, tiradas, elegidoSigueActivo ? resultado.idJugadorElegido() : null, detalle,
-            resultado.posiciones().entrySet().stream().filter(entrada -> activos.contains(entrada.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-            resultado.saldos().entrySet().stream().filter(entrada -> activos.contains(entrada.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-            
-            obtenerConfirmaciones(resultado.codigoPartida()));
+
+        return new EstadoEventoGlobal(codigoPartida, resultado.fase(), resultado.tipo(), resultado.descripcion(),
+                resultado.etapa(), segundosRestantes == null ? DURACION_CONFIRMACION_SEGUNDOS : segundosRestantes,
+                activos, filtrarDatosDeParticipantes(resultado.tiradas(), activos),
+                elegidoSigueActivo ? resultado.idJugadorElegido() : null, detalle,
+                filtrarDatosDeParticipantes(resultado.posiciones(), activos),
+                filtrarDatosDeParticipantes(resultado.saldos(), activos), obtenerConfirmaciones(codigoPartida));
     }
 
     @Override
@@ -314,15 +299,14 @@ public class ServicioEventoImpl implements ServicioEvento {
         if (eventoActivo != null) {
 
             Map<Long, Integer> tiradas = ValidadorEventoGlobal.obtenerTiradasDePartida(partida, tiradasPorPartida);
-
             List<Jugador> participantes = ValidadorEventoGlobal.obtenerParticipantesHabilitados(partida, participantesDesempatePorPartida);
-
             List<Jugador> jugadoresPendientes = participantes.stream().filter(jugador -> !tiradas.containsKey(jugador.getId())).toList();
+            
             for (Jugador jugador : jugadoresPendientes) {
                 ResultadoTirada resultado = servicioDado.tirarDados();
                 ValidadorEventoGlobal.registrarTiradaEventoGlobal(tiradas, jugador, resultado.sumarDados());
             }
-            publicarEstado(partida, eventoActivo, FASE_TIRADA, null);
+            publicarEstado(partida, eventoActivo, FaseEventoGlobal.TIRADA, null);
             if (!participantes.isEmpty()) {
                 resolverEventoGlobal(partida);
             }
@@ -331,26 +315,23 @@ public class ServicioEventoImpl implements ServicioEvento {
     
 
     private EventoGlobal obtenerEventoGlobalValido() throws EventoGlobalInvalidoException {
-        Evento eventoAleatorio = obtenerEventosGlobalesAleatorio();
+        EventoGlobal eventoAleatorio = obtenerEventosGlobalesAleatorio();
 
-        if (!(eventoAleatorio instanceof EventoGlobal)) {
-            //jeje creo q ta mal
+        if (eventoAleatorio == null) {
             throw new EventoGlobalInvalidoException("No se encontró un evento global válido");
         }
 
-        return (EventoGlobal) eventoAleatorio;
+        return eventoAleatorio;
     }
 
     private void resolverEventoGlobal(Partida partida) throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException, EventoInexistenteException {
 
         String codigoPartida = partida.getCodigoUnico();
-
         EventoGlobal eventoActivo = eventosActivosPorPartida.get(codigoPartida);
-
+       
         ValidadorEventoGlobal.validarEventoActivoEnResolucion(eventoActivo);
 
         Map<Long, Integer> tiradas = ValidadorEventoGlobal.obtenerTiradasDePartida(partida, tiradasPorPartida);
-
         List<Jugador> participantes = ValidadorEventoGlobal.obtenerParticipantesHabilitados(partida, participantesDesempatePorPartida);
 
         ValidadorEventoGlobal.validarParticipantesEnResolucion(participantes);
@@ -368,16 +349,15 @@ public class ServicioEventoImpl implements ServicioEvento {
             } else {
                 Jugador elegido = jugadoresElegidos.get(0);
                 String detalle = resolverConsecuenciaOReservarMovimiento(partida, elegido, eventoActivo);
-                publicarEstado(partida, eventoActivo, FASE_FINALIZADO, elegido.getId(), detalle);
+                publicarEstado(partida, eventoActivo, FaseEventoGlobal.FINALIZADO, elegido.getId(), detalle);
 
                 finalizarEventoGlobal(partida);
             }
         }
     }
 
-    private void moverCasilleros(Jugador jugador, Evento evento) {
+    private void moverCasilleros(Jugador jugador, EventoGlobal evento) {
         Integer nuevaPosicion = Math.floorMod(jugador.getPosicionActual() + evento.getValor(),CANTIDAD_CASILLEROS);
-
         jugador.setPosicionActual(nuevaPosicion);
     }
 
@@ -389,12 +369,10 @@ public class ServicioEventoImpl implements ServicioEvento {
         ValidadorEventoGlobal.validarAusenciaDeEventoAnterior(eventoAnterior);
 
         tiradasPorPartida.put(codigoPartida, new ConcurrentHashMap<>());
-
         etapaTiradasPorPartida.put(codigoPartida, 0);
 
         programarTiempoEventoGlobal(codigoPartida, 0);
-
-        publicarEstado(partida, eventoGlobal, FASE_INICIADO, null);
+        publicarEstado(partida, eventoGlobal, FaseEventoGlobal.INICIADO, null);
     }
 
     private String obtenerClaveTemporizadorEvento(String codigoPartida) { //Diferencia del termporizador de la partida con el temporizador del tirar dados por el evento
@@ -445,7 +423,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         participantesDesempatePorPartida.put(codigoPartida, jugadoresHabilitados);
         partidasEnPausaPorEmpate.add(codigoPartida);
         Integer nuevaEtapa = etapaTiradasPorPartida.merge(codigoPartida, 1, Integer::sum);
-        publicarEstado(partida, eventosActivosPorPartida.get(codigoPartida), FASE_EMPATE, null);
+        publicarEstado(partida, eventosActivosPorPartida.get(codigoPartida), FaseEventoGlobal.EMPATE, null);
 
         DespuesDeConfirmar.ejecutar(() -> {
             gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEvento(codigoPartida));
@@ -470,7 +448,7 @@ public class ServicioEventoImpl implements ServicioEvento {
                 partidasEnPausaPorEmpate.remove(codigoPartida);
                 relojPausaEmpate.limpiar(codigoPartida);
                 programarTiempoEventoGlobal(codigoPartida, etapa);
-                publicarEstado(partida, evento, FASE_DESEMPATE, null);
+                publicarEstado(partida, evento, FaseEventoGlobal.DESEMPATE, null);
             }
         }
     }
@@ -489,41 +467,63 @@ public class ServicioEventoImpl implements ServicioEvento {
                 servicioGestionQuiebra, this::aplicarEvento);
     }
 
-    private EstadoEventoGlobal construirEstadoEvento(Partida partida, EventoGlobal eventoGlobal, String fase, Long elegido) {
+    private EstadoEventoGlobal construirEstadoEvento(Partida partida, EventoGlobal eventoGlobal, FaseEventoGlobal fase, Long elegido) {
         return construirEstadoEvento(partida, eventoGlobal, fase, elegido, null);
     }
 
-    private EstadoEventoGlobal construirEstadoEvento(Partida partida, EventoGlobal eventoGlobal, String fase, Long elegido, String detalle) {
+    private EstadoEventoGlobal construirEstadoEvento(Partida partida, EventoGlobal eventoGlobal, FaseEventoGlobal fase, Long elegido, String detalle) {
         String codigoPartida = partida.getCodigoUnico();
         Integer etapa = etapaTiradasPorPartida.getOrDefault(codigoPartida, 0);
-        Integer segundos = FASE_EMPATE.equals(fase)
-                ? gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEmpate(codigoPartida))
-                : gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEvento(codigoPartida));
-        segundos = relojEventoGlobal.obtenerSegundosConRespaldo(codigoPartida, FASE_EMPATE.equals(fase),
-                segundos, FASE_EMPATE.equals(fase) ? DURACION_PAUSA_EMPATE_SEGUNDOS : DURACION_EVENTO_GLOBAL_SEGUNDOS);
-        List<Long> habilitados = ValidadorEventoGlobal.obtenerParticipantesHabilitados(partida, participantesDesempatePorPartida).stream().map(Jugador::getId).filter(Objects::nonNull).toList();
-        Map<Long, Integer> tiradas = tiradasPorPartida.getOrDefault(codigoPartida, Map.of()).entrySet().stream()
-                .filter(entrada -> habilitados.contains(entrada.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        Map<Long, Integer> posiciones = partida.getJugadores().stream().filter(ValidadorEventoGlobal::estaActivo)
-                .filter(ValidadorEventoGlobal::tienePosicionRegistrable).collect(Collectors.toMap(Jugador::getId, Jugador::getPosicionActual));
-        Map<Long, Integer> saldos = partida.getJugadores().stream().filter(ValidadorEventoGlobal::estaActivo)
-                .filter(ValidadorEventoGlobal::tieneSaldoRegistrable).collect(Collectors.toMap(Jugador::getId, Jugador::getDinero));
-        return new EstadoEventoGlobal(codigoPartida, fase, eventoGlobal.getTipoEventoGlobal(), eventoGlobal.getDescripcion(), etapa,
-                FASE_FINALIZADO.equals(fase) ? DURACION_CONFIRMACION_SEGUNDOS : segundos,
-                List.copyOf(habilitados), Map.copyOf(tiradas), elegido,
-                detalle, posiciones, saldos);
+        Integer segundos = obtenerTiempoRestante(codigoPartida, fase);
+        List<Long> habilitados = obtenerIdsParticipantesHabilitados(partida);
+        Map<Long, Integer> tiradas = filtrarDatosDeParticipantes(tiradasPorPartida.getOrDefault(codigoPartida, Map.of()), habilitados);
+        List<Jugador> activos = obtenerJugadoresActivos(partida);
+        Map<Long, Integer> posiciones = obtenerValoresRegistrables(activos, ValidadorEventoGlobal::tienePosicionRegistrable, Jugador::getPosicionActual);
+        Map<Long, Integer> saldos = obtenerValoresRegistrables(activos, ValidadorEventoGlobal::tieneSaldoRegistrable, Jugador::getDinero);
+
+        return new EstadoEventoGlobal(codigoPartida, fase, eventoGlobal.getTipoEventoGlobal(), eventoGlobal.getDescripcion(),
+                etapa, segundos, List.copyOf(habilitados), Map.copyOf(tiradas), elegido, detalle, posiciones, saldos);
     }
 
-    private void publicarEstado(Partida partida, EventoGlobal eventoGlobal, String fase, Long jugadorElegido) {
+    private Integer obtenerTiempoRestante(String codigoPartida, FaseEventoGlobal fase) {
+        boolean enPausaEmpate = fase == FaseEventoGlobal.EMPATE;
+        Integer segundos = enPausaEmpate
+                ? gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEmpate(codigoPartida))
+                : gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEvento(codigoPartida));
+        segundos = relojEventoGlobal.obtenerSegundosConRespaldo(codigoPartida, enPausaEmpate,
+                segundos, enPausaEmpate ? DURACION_PAUSA_EMPATE_SEGUNDOS : DURACION_EVENTO_GLOBAL_SEGUNDOS);
+        return fase == FaseEventoGlobal.FINALIZADO ? DURACION_CONFIRMACION_SEGUNDOS : segundos;
+    }
+
+    private List<Long> obtenerIdsParticipantesHabilitados(Partida partida) {
+        return ValidadorEventoGlobal.obtenerParticipantesHabilitados(partida, participantesDesempatePorPartida).stream()
+                .map(Jugador::getId).filter(Objects::nonNull).toList();
+    }
+
+    private List<Jugador> obtenerJugadoresActivos(Partida partida) {
+        return partida == null ? List.of() : partida.getJugadores().stream()
+                .filter(ValidadorEventoGlobal::estaActivo).toList();
+    }
+
+    private Map<Long, Integer> filtrarDatosDeParticipantes(Map<Long, Integer> datos, List<Long> participantes) {
+        return datos.entrySet().stream().filter(entrada -> participantes.contains(entrada.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    private Map<Long, Integer> obtenerValoresRegistrables(List<Jugador> jugadoresActivos, Predicate<Jugador> tieneValorRegistrable, Function<Jugador, Integer> obtenerValor) {
+        return jugadoresActivos.stream().filter(tieneValorRegistrable)
+                .collect(Collectors.toMap(Jugador::getId, obtenerValor));
+    }
+
+    private void publicarEstado(Partida partida, EventoGlobal eventoGlobal, FaseEventoGlobal fase, Long jugadorElegido) {
         publicarEstado(partida, eventoGlobal, fase, jugadorElegido, null);
     }
 
-    private void publicarEstado(Partida partida, EventoGlobal eventoGlobal, String fase, Long jugadorElegido, String detalle) {
+    private void publicarEstado(Partida partida, EventoGlobal eventoGlobal, FaseEventoGlobal fase, Long jugadorElegido, String detalle) {
         EstadoEventoGlobal snapshot = construirEstadoEvento(partida, eventoGlobal, fase, jugadorElegido, detalle);
-        if (Set.of(FASE_INICIADO, FASE_DESEMPATE, FASE_EMPATE).contains(fase)) {
+        if (Set.of(FaseEventoGlobal.INICIADO, FaseEventoGlobal.DESEMPATE, FaseEventoGlobal.EMPATE).contains(fase)) {
             snapshot = new EstadoEventoGlobal(snapshot.codigoPartida(), snapshot.fase(), snapshot.tipo(), snapshot.descripcion(),
-                    snapshot.etapa(), FASE_EMPATE.equals(fase) ? DURACION_PAUSA_EMPATE_SEGUNDOS : DURACION_EVENTO_GLOBAL_SEGUNDOS,
+                    snapshot.etapa(), fase == FaseEventoGlobal.EMPATE ? DURACION_PAUSA_EMPATE_SEGUNDOS : DURACION_EVENTO_GLOBAL_SEGUNDOS,
                     snapshot.participantes(), snapshot.tiradas(), snapshot.idJugadorElegido(),
                     snapshot.detalle(), snapshot.posiciones(), snapshot.saldos());
         }
@@ -531,12 +531,12 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private void publicarEstadoInmediato(Partida partida, EventoGlobal eventoGlobal, Long idJugadorElegido, String detalle) {
-        EstadoEventoGlobal snapshot = construirEstadoEvento(partida, eventoGlobal, FASE_FINALIZADO, idJugadorElegido, detalle);
+        EstadoEventoGlobal snapshot = construirEstadoEvento(partida, eventoGlobal, FaseEventoGlobal.FINALIZADO, idJugadorElegido, detalle);
         publicarSnapshot(snapshot);
     }
 
     private void publicarSnapshot(EstadoEventoGlobal snapshot) {
-        if (FASE_FINALIZADO.equals(snapshot.fase())) {
+        if (snapshot.fase() == FaseEventoGlobal.FINALIZADO) {
             resultadosEnPresentacionPorPartida.put(snapshot.codigoPartida(), snapshot);
             confirmacionesPorPartida.put(snapshot.codigoPartida(), ConcurrentHashMap.newKeySet());
             DespuesDeConfirmar.ejecutar(() -> programarTiempoDeConfirmacion(snapshot.codigoPartida()));
@@ -644,4 +644,6 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         // La reanudación se notifica cuando vence la presentación del resultado.
     }
+
+
 }

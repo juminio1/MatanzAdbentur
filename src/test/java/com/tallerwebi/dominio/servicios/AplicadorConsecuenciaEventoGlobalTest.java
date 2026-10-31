@@ -112,8 +112,33 @@ public class AplicadorConsecuenciaEventoGlobalTest {
                 (jugador, evento) -> jugador.setPosicionActual(jugador.getPosicionActual() + evento.getValor()));
 
         assertEquals(25, uno.getPosicionActual());
-        assertTrue(detalle.contains("por eso no avanzó"));
+        assertEquals("no avanza porque ya es el jugador más adelantado del tablero.", detalle);
         verify(repositorio).actualizarJugador(uno);
+    }
+
+    @Test
+    public void dadoQueElGanadorYaEstaPrimeroCuandoSePrevisualizaTramitesEntoncesSeExplicaPorQueNoAvanza() {
+        Jugador ganador = crearJugador(1L, 1000, 25);
+        Jugador otro = crearJugador(2L, 1000, 9);
+
+        String detalle = AplicadorConsecuenciaEventoGlobal.previsualizarMovimiento(crearPartida(ganador, otro), ganador,
+                crearEvento(TipoEventoGlobal.TRAMITES_AFIP, TipoEfecto.MOVER_CASILLEROS, 0));
+
+        assertEquals("no avanza porque ya es el jugador más adelantado del tablero.", detalle);
+        assertEquals(25, ganador.getPosicionActual());
+        assertEquals(9, otro.getPosicionActual());
+    }
+
+    @Test
+    public void dadoQueElGanadorEstaAtrasCuandoSePrevisualizaTramitesEntoncesSeAnunciaElDestinoSinMoverLaFicha() {
+        Jugador ganador = crearJugador(1L, 1000, 5);
+        Jugador otro = crearJugador(2L, 1000, 20);
+
+        String detalle = AplicadorConsecuenciaEventoGlobal.previsualizarMovimiento(crearPartida(ganador, otro), ganador,
+                crearEvento(TipoEventoGlobal.TRAMITES_AFIP, TipoEfecto.MOVER_CASILLEROS, 0));
+
+        assertEquals("se moverá del casillero 5 al 20 cuando se reanude la partida.", detalle);
+        assertEquals(5, ganador.getPosicionActual());
     }
 
     @Test
@@ -157,7 +182,7 @@ public class AplicadorConsecuenciaEventoGlobalTest {
 
         assertEquals(200, uno.getDinero());
         assertTrue(detalle.contains("vender propiedades"));
-        verify(quiebras).registrarDeuda("ABC", uno, null, 1000, "EVENTO_RESTA");
+        verify(quiebras).registrarDeuda("ABC", uno, null, 1000, "EVENTO_GLOBAL_ROBO");
         verify(quiebras).evaluarDeuda("ABC", 1L);
     }
 
@@ -173,7 +198,7 @@ public class AplicadorConsecuenciaEventoGlobalTest {
                 (jugador, evento) -> jugador.setDinero(jugador.getDinero() - evento.getValor()));
 
         assertTrue(detalle.contains("quiebra"));
-        verify(quiebras).registrarDeuda("ABC", uno, null, 1000, "EVENTO_RESTA");
+        verify(quiebras).registrarDeuda("ABC", uno, null, 1000, "EVENTO_GLOBAL_ROBO");
         verify(quiebras).evaluarDeuda("ABC", 1L);
     }
 

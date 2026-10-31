@@ -6,6 +6,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfecto;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
@@ -189,7 +190,7 @@ public class EventosGlobalesIntegracionTest {
         partida.setIndiceTurnoActual(0);
 
         eventoGlobal = new EventoGlobal();
-        eventoGlobal.setId(100L);
+        eventoGlobal.setId(100);
         eventoGlobal.setDescripcion("Trámites en AFIP");
         eventoGlobal.setTipoEventoGlobal(TipoEventoGlobal.TRAMITES_AFIP);
         eventoGlobal.setTipoEfecto(TipoEfecto.MOVER_CASILLEROS);
@@ -218,7 +219,7 @@ public class EventosGlobalesIntegracionTest {
         assertEquals(1, partida.getIndiceTurnoActual());
         verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global:" + codigoPartida), eq(30), any(Runnable.class));
         verify(gestorTemporizadorMock, never()).programarTemporizador(eq(codigoPartida), any(Integer.class), any(Runnable.class));
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "INICIADO".equals(estado.fase())));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.INICIADO));
 
         String respuesta = mockMvc.perform(get("/partida/{codigoPartida}/evento-global", codigoPartida).sessionAttr("NOMBRE", "Ana"))
                 .andExpect(status().isOk())
@@ -261,7 +262,7 @@ public class EventosGlobalesIntegracionTest {
         assertEquals(5, contenido.path("suma").asInt());
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "TIRADA".equals(estado.fase()) && Integer.valueOf(5).equals(estado.tiradas().get(1L))));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.TIRADA && Integer.valueOf(5).equals(estado.tiradas().get(1L))));
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
     }
 
@@ -297,10 +298,10 @@ public class EventosGlobalesIntegracionTest {
         assertEquals(2, jugadorUno.getPosicionActual());
         assertEquals(7, jugadorDos.getPosicionActual());
         EstadoEventoGlobal resultado = servicioEvento.consultarEstadoEventoGlobal(codigoPartida);
-        assertEquals("FINALIZADO", resultado.fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, resultado.fase());
         assertEquals(jugadorUno.getId(), resultado.idJugadorElegido());
         assertEquals(2, resultado.posiciones().get(jugadorUno.getId()));
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.FINALIZADO && Long.valueOf(1L).equals(estado.idJugadorElegido())));
         verify(gestorTemporizadorMock).cancelarTemporizador("evento-global:" + codigoPartida);
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
         verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(60), any(Runnable.class));
@@ -316,7 +317,7 @@ public class EventosGlobalesIntegracionTest {
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         assertEquals(1, servicioEvento.consultarEstadoEventoGlobal(codigoPartida).etapa());
-        assertEquals("EMPATE", servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
+        assertEquals(FaseEventoGlobal.EMPATE, servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
         verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-empate:" + codigoPartida), eq(8), any(Runnable.class));
         realizarTiradaRest("Ana").andExpect(status().isConflict());
 
@@ -324,13 +325,13 @@ public class EventosGlobalesIntegracionTest {
         assertNotNull(finDePausa);
         finDePausa.run();
 
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "DESEMPATE".equals(estado.fase()) && estado.participantes().size() == 2));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.DESEMPATE && estado.participantes().size() == 2));
 
         realizarTiradaRest("Ana").andExpect(status().isOk());
         realizarTiradaRest("Beto").andExpect(status().isOk());
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase()) && Long.valueOf(1L).equals(estado.idJugadorElegido())));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.FINALIZADO && Long.valueOf(1L).equals(estado.idJugadorElegido())));
         verify(gestorTemporizadorMock, times(2)).programarTemporizador(eq("evento-global:" + codigoPartida), eq(30), any(Runnable.class));
     }
 
@@ -345,7 +346,7 @@ public class EventosGlobalesIntegracionTest {
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
         verify(servicioDadoMock, times(2)).tirarDados();
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && "FINALIZADO".equals(estado.fase())));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal estado) -> estado != null && estado.fase() == FaseEventoGlobal.FINALIZADO));
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
     }
 
@@ -362,7 +363,7 @@ public class EventosGlobalesIntegracionTest {
         JsonNode estado = new ObjectMapper().readTree(respuesta);
         assertEquals("FINALIZADO", estado.path("fase").asText());
         verify(servicioDadoMock, times(2)).tirarDados();
-        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal actualizado) -> actualizado != null && "FINALIZADO".equals(actualizado.fase())));
+        verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat((EstadoEventoGlobal actualizado) -> actualizado != null && actualizado.fase() == FaseEventoGlobal.FINALIZADO));
     }
 
     @Test
@@ -374,7 +375,7 @@ public class EventosGlobalesIntegracionTest {
         realizarTiradaRest("Beto").andExpect(status().isOk());
 
         assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
-        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicioEvento.consultarEstadoEventoGlobal(codigoPartida).fase());
         verify(gestorTemporizadorMock, never()).programarTemporizadorSiNoExiste(eq(codigoPartida), eq(30), any(Runnable.class));
         verify(gestorTemporizadorMock).programarTemporizador(eq("evento-global-resultado:" + codigoPartida), eq(60), any(Runnable.class));
         assertEquals(2, jugadorUno.getPosicionActual());

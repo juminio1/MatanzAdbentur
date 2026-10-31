@@ -2,7 +2,6 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
@@ -265,7 +264,7 @@ public final class ValidadorEventoGlobal {
         }
     }
 
-    public static Boolean esEventoInvalido(Evento evento) {
+    public static Boolean esEventoInvalido(EventoGlobal evento) {
         return evento == null || evento.getTipoEfecto() == null;
     }
 }

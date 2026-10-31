@@ -764,8 +764,16 @@ function actualizarAvisoDeuda() {
     const importe = `$${deuda.montoPendiente.toLocaleString("es-AR")}`;
     botonDeuda.textContent = `Deuda pendiente: ${importe}`;
     document.getElementById("deuda-importe").textContent = importe;
+    document.getElementById("deuda-saldo").textContent = Number.isSafeInteger(window.dineroUsuarioSesion)
+        ? `$${window.dineroUsuarioSesion.toLocaleString("es-AR")}` : "No disponible";
+    const motivos = {
+        ALQUILER: "Alquiler de propiedad",
+        EVENTO_GLOBAL_ROBO: "Robo de dinero — El Kevin",
+        EVENTO_RESTA: "Pago por un evento del tablero",
+    };
     document.getElementById("deuda-motivo").textContent =
-        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA" }[deuda.motivo] || deuda.motivo;
+        motivos[deuda.motivo] || (/^[A-Z][A-Z0-9_]*$/.test(deuda.motivo)
+            ? "Pago pendiente del juego" : deuda.motivo);
     document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
     document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
     document.getElementById("deuda-opciones").hidden = confirmacionQuiebraVisible;
@@ -1089,6 +1097,8 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         window.dineroUsuarioSesion = Number(dinero);
+        const saldoDeuda = document.getElementById("deuda-saldo");
+        if (saldoDeuda) saldoDeuda.textContent = `$${window.dineroUsuarioSesion.toLocaleString("es-AR")}`;
     }
     if (!tarjeta || !enBancarrota) return;
 

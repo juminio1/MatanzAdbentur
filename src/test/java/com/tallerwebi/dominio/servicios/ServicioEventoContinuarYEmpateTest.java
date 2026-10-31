@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfecto;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
@@ -41,7 +42,7 @@ public class ServicioEventoContinuarYEmpateTest {
         when(partidas.buscarPartidaActivaPorCodigoUnico("PARTIDA")).thenReturn(partida);
         servicio.iniciarEventoGlobal(partida, crearEvento(TipoEventoGlobal.ROBO, TipoEfecto.PERDER_PLATA, 1000));
 
-        assertEquals("FINALIZADO", servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
         servicio.reanudarPartidaTrasEvento("PARTIDA");
 
         assertNull(servicio.consultarEstadoEventoGlobal("PARTIDA"));
@@ -62,7 +63,7 @@ public class ServicioEventoContinuarYEmpateTest {
         when(quiebras.obtenerDeudaPendiente("PARTIDA", 1L)).thenReturn(new DeudaPendiente());
 
         assertThrows(IllegalStateException.class, () -> servicio.reanudarPartidaTrasEvento("PARTIDA"));
-        assertEquals("FINALIZADO", servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
     }
 
     @Test
@@ -84,7 +85,7 @@ public class ServicioEventoContinuarYEmpateTest {
         servicio.realizarTiradaEventoGlobal(partida, primero, afip);
         servicio.realizarTiradaEventoGlobal(partida, segundo, afip);
 
-        assertEquals("EMPATE", servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
+        assertEquals(FaseEventoGlobal.EMPATE, servicio.consultarEstadoEventoGlobal("PARTIDA").fase());
         assertEquals(2, servicio.consultarEstadoEventoGlobal("PARTIDA").participantes().size());
         verify(temporizador).programarTemporizador(eq("evento-global-empate:PARTIDA"), eq(8), any(Runnable.class));
         assertThrows(DatosEnventoInvalidoExceptions.class,
@@ -108,7 +109,7 @@ public class ServicioEventoContinuarYEmpateTest {
 
     private EventoGlobal crearEvento(TipoEventoGlobal tipo, TipoEfecto efecto, Integer valor) {
         EventoGlobal evento = new EventoGlobal();
-        evento.setId(1L);
+        evento.setId(1);
         evento.setTipoEventoGlobal(tipo);
         evento.setTipoEfecto(efecto);
         evento.setValor(valor);

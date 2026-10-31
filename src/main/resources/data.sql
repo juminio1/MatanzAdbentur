@@ -2,13 +2,33 @@ INSERT INTO Usuario( email, username, password, rol, activo)
 VALUES( 'test@unlam.edu.ar', 'test123', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'ADMIN', true)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO EventoGlobalRegistro(descripcion, tipoEfecto, valor, tipoEventoGlobal, DTYPE) /*REDACTAR TODO*/
-VALUES ('Caíste a hacer un trámite y hay terrible fila. Todos tiran los dados y el que saque la mayor suma se saltea toda la fila y avanza hasta el casillero del jugador más adelantado. Si hay empate, los empatados vuelven a tirar hasta definir un ganador.', 'MOVER_CASILLEROS', 0, 'TRAMITES_AFIP', 'EventoGlobal'),
-('Se largó el diluvio y el barrio parece una pileta. Todos tiran los dados y el que saque la mayor suma se lo lleva el agua puesto y retrocede 3 casilleros. Si hay empate, los empatados vuelven a tirar.', 'MOVER_CASILLEROS', -3, 'INUNDACION', 'EventoGlobal'),
-('Quedaste atrapado en un piquete de volqueteros. Todos tiran los dados y el que saque la menor suma vuelve al Inicio. Si hay empate, los empatados vuelven a tirar.', 'VOLVER_INICIO', 0, 'PIQUETE', 'EventoGlobal'),
-('¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $1000.', 'PERDER_PLATA', 1000, 'ROBO', 'EventoGlobal'),
-('Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.', 'GANAR_PLATA', 400, 'FIAT_600', 'EventoGlobal'),
-('Hubo un accidente en el tren Sarmiento y el servicio quedó parado. Justo [nombre del jugador] venía viajando y perdió el turno esperando que vuelva a funcionar.', 'PERDER_TURNO', 1, 'ACCIDENTE_SARMIENTO', 'EventoGlobal');
+/* Catalogo global: insertar solo los tipos que todavia no tienen registros. */
+WITH catalogo(descripcion, tipoEfecto, valor, tipoEventoGlobal) AS (
+    VALUES ('Caíste a hacer un trámite y hay terrible fila. Todos tiran los dados y el que saque la mayor suma se saltea toda la fila y avanza hasta el casillero del jugador más adelantado. Si hay empate, los empatados vuelven a tirar hasta definir un ganador.', 'MOVER_CASILLEROS', 0, 'TRAMITES_AFIP'),
+('Se largó el diluvio y el barrio parece una pileta. Todos tiran los dados y el que saque la mayor suma se lo lleva el agua puesto y retrocede 3 casilleros. Si hay empate, los empatados vuelven a tirar.', 'MOVER_CASILLEROS', -3, 'INUNDACION'),
+('Quedaste atrapado en un piquete de volqueteros. Todos tiran los dados y el que saque la menor suma vuelve al Inicio. Si hay empate, los empatados vuelven a tirar.', 'VOLVER_INICIO', 0, 'PIQUETE'),
+('¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $1000.', 'PERDER_PLATA', 1000, 'ROBO'),
+('Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.', 'GANAR_PLATA', 400, 'FIAT_600'),
+('Hubo un accidente en el tren Sarmiento y el servicio quedó parado. Justo [nombre del jugador] venía viajando y perdió el turno esperando que vuelva a funcionar.', 'PERDER_TURNO', 1, 'ACCIDENTE_SARMIENTO')
+), faltantes AS (
+    SELECT catalogo.*
+    FROM catalogo
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM EventoGlobal global
+        WHERE global.tipoEventoGlobal = catalogo.tipoEventoGlobal
+    )
+), raices_nuevas AS (
+    INSERT INTO Evento(nombre, descripcion)
+    SELECT '__GLOBAL_CATALOGO__:' || tipoEventoGlobal, descripcion
+    FROM faltantes
+    RETURNING id, nombre
+)
+INSERT INTO EventoGlobal(id, tipoEfecto, valor, tipoEventoGlobal)
+SELECT raiz.id, faltante.tipoEfecto, faltante.valor, faltante.tipoEventoGlobal
+FROM raices_nuevas raiz
+JOIN faltantes faltante
+    ON raiz.nombre = '__GLOBAL_CATALOGO__:' || faltante.tipoEventoGlobal;
 
 
 

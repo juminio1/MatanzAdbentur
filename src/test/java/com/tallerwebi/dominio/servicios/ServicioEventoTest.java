@@ -2,12 +2,12 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.Evento;
 import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import com.tallerwebi.dominio.eventos.EventoGlobalActualizado;
 import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfecto;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
@@ -106,15 +106,15 @@ public class ServicioEventoTest {
         return partida;
     }
 
-    private Evento crearEvento(TipoEfecto tipoEfecto, int valor) {
-        Evento evento = new Evento();
+    private EventoGlobal crearEvento(TipoEfecto tipoEfecto, int valor) {
+        EventoGlobal evento = new EventoGlobal();
         evento.setTipoEfecto(tipoEfecto);
         evento.setValor(valor);
         evento.setDescripcion("Evento de prueba");
         return evento;
     }
 
-    private EventoGlobal crearEventoGlobal(Long id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, Integer valor) {
+    private EventoGlobal crearEventoGlobal(Integer id, TipoEventoGlobal tipoEventoGlobal, TipoEfecto tipoEfecto, Integer valor) {
         EventoGlobal evento = new EventoGlobal();
         evento.setId(id);
         evento.setTipoEventoGlobal(tipoEventoGlobal);
@@ -125,37 +125,37 @@ public class ServicioEventoTest {
     }
 
     private EventoGlobal crearInundacion() {
-        return crearEventoGlobal(1L, TipoEventoGlobal.INUNDACION, TipoEfecto.MOVER_CASILLEROS, -3);
+        return crearEventoGlobal(1, TipoEventoGlobal.INUNDACION, TipoEfecto.MOVER_CASILLEROS, -3);
     }
 
     private EventoGlobal crearPiquete() {
-        return crearEventoGlobal(2L, TipoEventoGlobal.PIQUETE, TipoEfecto.VOLVER_INICIO, 0);
+        return crearEventoGlobal(2, TipoEventoGlobal.PIQUETE, TipoEfecto.VOLVER_INICIO, 0);
     }
 
     private EventoGlobal crearAfip() {
-        return crearEventoGlobal(3L, TipoEventoGlobal.TRAMITES_AFIP, TipoEfecto.MOVER_CASILLEROS, 0);
+        return crearEventoGlobal(3, TipoEventoGlobal.TRAMITES_AFIP, TipoEfecto.MOVER_CASILLEROS, 0);
     }
 
     private EventoGlobal crearKevin() {
-        return crearEventoGlobal(4L, TipoEventoGlobal.ROBO, TipoEfecto.PERDER_PLATA, 100);
+        return crearEventoGlobal(4, TipoEventoGlobal.ROBO, TipoEfecto.PERDER_PLATA, 100);
     }
 
     @Test
-    public void dadoQueElRepositorioTieneUnEventoCuandoSeObtieneUnoAleatorioYDaElEvento() {
-        Evento evento = crearEvento(TipoEfecto.GANAR_PLATA, 300);
-        when(repositorioEventoMock.obtenerEventoAleatorio()).thenReturn(evento);
+    public void dadoQueElRepositorioTieneUnEventoGlobalCuandoSeObtieneUnoAleatorioEntoncesDevuelveSusDatos() {
+        EventoGlobal evento = crearEvento(TipoEfecto.GANAR_PLATA, 300);
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(evento);
 
-        Evento resultado = servicioEvento.obtenerEventoAleatorio();
+        EventoGlobal resultado = servicioEvento.obtenerEventosGlobalesAleatorio();
 
         assertEquals(evento, resultado);
-        verify(repositorioEventoMock).obtenerEventoAleatorio();
+        verify(repositorioEventoMock).obtenerEventoGlobalAleatorio();
     }
 
     @Test
-    public void dadoQueElRepositorioNoTieneEventosCuandoSeBuscaUnoAleatorioYDaNull() {
-        when(repositorioEventoMock.obtenerEventoAleatorio()).thenReturn(null);
+    public void dadoQueElRepositorioNoTieneEventosGlobalesCuandoSeBuscaUnoAleatorioEntoncesDevuelveNull() {
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(null);
 
-        Evento resultado = servicioEvento.obtenerEventoAleatorio();
+        EventoGlobal resultado = servicioEvento.obtenerEventosGlobalesAleatorio();
 
         assertNull(resultado);
     }
@@ -165,7 +165,7 @@ public class ServicioEventoTest {
         EventoGlobal evento = crearInundacion();
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(evento);
 
-        Evento resultado = servicioEvento.obtenerEventosGlobalesAleatorio();
+        EventoGlobal resultado = servicioEvento.obtenerEventosGlobalesAleatorio();
 
         assertSame(evento, resultado);
         verify(repositorioEventoMock).obtenerEventoGlobalAleatorio();
@@ -258,7 +258,7 @@ public class ServicioEventoTest {
     @Test
     public void dadoQueElEventoNoTieneTipoEfectoCuandoSeAplicaYDaEventoInexistenteException() {
         Jugador jugador = crearJugador(1L, 1500, 10);
-        Evento evento = new Evento();
+        EventoGlobal evento = new EventoGlobal();
         evento.setValor(200);
 
         assertThrows(EventoInexistenteException.class, () -> servicioEvento.aplicarEvento(jugador, evento));
@@ -351,7 +351,7 @@ public class ServicioEventoTest {
         Jugador jugador = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, jugador);
         EventoGlobal fiat = crearEventoGlobal(
-            5L, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400);
+            5, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400);
 
         servicioEvento.iniciarEventoGlobal(partida, fiat);
 
@@ -363,7 +363,7 @@ public class ServicioEventoTest {
         Jugador jugador = crearJugador(1L, 1000, 5);
         Partida partida = crearPartida("ABC", 5, jugador);
         EventoGlobal accidente = crearEventoGlobal(
-            6L, TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1);
+            6, TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1);
 
         servicioEvento.iniciarEventoGlobal(partida, accidente);
 
@@ -866,7 +866,7 @@ public class ServicioEventoTest {
     }
 
     @Test
-    public void dadoQueElRepositorioDevuelveEventoComunCuandoSeActivaLaRondaEntoncesSeLanzaUnaExcepcion() {
+    public void dadoQueElRepositorioDevuelveUnEventoGlobalIncompletoCuandoSeActivaLaRondaEntoncesSeLanzaUnaExcepcion() {
         Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 5));
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio())
             .thenReturn(crearEvento(TipoEfecto.GANAR_PLATA, 300));
@@ -955,7 +955,7 @@ public class ServicioEventoTest {
 
         assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         assertEquals(10, jugador.getPosicionActual());
-        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
         verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
         continuarEventoFinalizado(partida);
         assertEquals(7, jugador.getPosicionActual());
@@ -1453,7 +1453,7 @@ public class ServicioEventoTest {
 
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
-        assertEquals("FINALIZADO", estado.fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, estado.fase());
         assertEquals(10, uno.getPosicionActual());
         continuarEventoFinalizado(partida);
         assertEquals(7, uno.getPosicionActual());
@@ -1472,7 +1472,7 @@ public class ServicioEventoTest {
 
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
-        assertEquals("INICIADO", estado.fase());
+        assertEquals(FaseEventoGlobal.INICIADO, estado.fase());
         assertEquals(12, estado.segundosRestantes());
         verify(servicioDadoMock, never()).tirarDados();
     }
@@ -1489,7 +1489,7 @@ public class ServicioEventoTest {
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
         assertEquals("ABC", estado.codigoPartida());
-        assertEquals("INICIADO", estado.fase());
+        assertEquals(FaseEventoGlobal.INICIADO, estado.fase());
         assertEquals(TipoEventoGlobal.INUNDACION, estado.tipo());
         assertEquals("Evento global de prueba", estado.descripcion());
         assertEquals(0, estado.etapa());
@@ -1525,7 +1525,7 @@ public class ServicioEventoTest {
 
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
-        assertEquals("INICIADO", estado.fase());
+        assertEquals(FaseEventoGlobal.INICIADO, estado.fase());
         assertEquals(7, estado.tiradas().get(1L));
         assertEquals(List.of(1L, 2L), estado.participantes());
         verify(servicioDadoMock).tirarDados();
@@ -1547,16 +1547,94 @@ public class ServicioEventoTest {
 
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
 
-        assertEquals("EMPATE", estado.fase());
+        assertEquals(FaseEventoGlobal.EMPATE, estado.fase());
         assertEquals(10, estado.tiradas().get(1L));
         assertEquals(10, estado.tiradas().get(2L));
         assertEquals(1, estado.etapa());
         assertEquals(List.of(1L, 2L), estado.participantes());
+        assertEquals(Map.of(1L, 10, 2L, 10), estado.tiradas());
+        assertEquals(Map.of(1L, 10, 2L, 15, 3L, 20), estado.posiciones());
+        assertEquals(Map.of(1L, 1000, 2L, 1000, 3L, 1000), estado.saldos());
+        when(gestorTemporizadorMock.obtenerSegundosRestantes("evento-global-empate:ABC")).thenReturn(null);
+        assertEquals(8, servicioEvento.consultarEstadoEventoGlobal("ABC").segundosRestantes());
         comenzarDesempate(partida);
         EstadoEventoGlobal desempate = servicioEvento.consultarEstadoEventoGlobal("ABC");
-        assertEquals("DESEMPATE", desempate.fase());
+        assertEquals(FaseEventoGlobal.DESEMPATE, desempate.fase());
         assertEquals(0, desempate.tiradas().size());
         assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+    }
+
+    @Test
+    public void dadoQueHayDatosNulosEInactivosCuandoSeConstruyeElEstadoEntoncesSeConservanSoloLosValoresRegistrables() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador sinPosicion = crearJugador(2L, 700, null);
+        Jugador sinSaldo = crearJugador(3L, null, 20);
+        Jugador abandonado = crearJugador(4L, 900, 25);
+        Jugador quebrado = crearJugador(5L, 800, 5);
+        abandonado.setAbandono(true);
+        quebrado.setEnBancarrota(true);
+        Partida partida = crearPartida("ABC", 5, uno, sinPosicion, sinSaldo, abandonado, quebrado);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        servicioEvento.iniciarEventoGlobal(partida, crearInundacion());
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+
+        assertEquals(FaseEventoGlobal.INICIADO, estado.fase());
+        assertEquals(List.of(1L, 2L, 3L), estado.participantes());
+        assertEquals(Map.of(1L, 10, 3L, 20), estado.posiciones());
+        assertEquals(Map.of(1L, 1000, 2L, 700), estado.saldos());
+        assertEquals(Map.of(), estado.tiradas());
+        assertEquals(List.of(), estado.confirmados());
+    }
+
+    @Test
+    public void dadoQueElElegidoAbandonaCuandoSeActualizaElResultadoEntoncesSeFiltranLosInactivosSinRecalcularLosDatosGuardados() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 700, 15);
+        Jugador tres = crearJugador(3L, 800, 20);
+        Jugador cuatro = crearJugador(4L, 900, 25);
+        Partida partida = crearPartida("ABC", 5, uno, dos, tres, cuatro);
+        EventoGlobal evento = crearInundacion();
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(5, 4), new ResultadoTirada(2, 2),
+                new ResultadoTirada(3, 3), new ResultadoTirada(1, 2));
+        servicioEvento.iniciarEventoGlobal(partida, evento);
+        for (Jugador jugador : partida.getJugadores()) {
+            servicioEvento.realizarTiradaEventoGlobal(partida, jugador, evento);
+        }
+        servicioEvento.confirmarContinuacion("ABC", 1L);
+        servicioEvento.confirmarContinuacion("ABC", 2L);
+        uno.setAbandono(true);
+        tres.setEnBancarrota(true);
+        dos.setPosicionActual(21);
+        dos.setDinero(9999);
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+
+        assertEquals(FaseEventoGlobal.FINALIZADO, estado.fase());
+        assertEquals(List.of(2L, 4L), estado.participantes());
+        assertEquals(Map.of(2L, 4, 4L, 3), estado.tiradas());
+        assertEquals(Map.of(2L, 15, 4L, 25), estado.posiciones());
+        assertEquals(Map.of(2L, 700, 4L, 900), estado.saldos());
+        assertNull(estado.idJugadorElegido());
+        assertEquals("El jugador seleccionado abandonó la partida; no recibirá la consecuencia.", estado.detalle());
+        assertEquals(java.util.Set.of(1L, 2L), java.util.Set.copyOf(estado.confirmados()));
+        assertTrue(estado.segundosRestantes() > 0 && estado.segundosRestantes() <= 60);
+    }
+
+    @Test
+    public void dadoQueNoSeRecuperaLaPartidaCuandoSeActualizaElResultadoEntoncesLosMapasDeJugadoresQuedanVacios() throws Exception {
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 10));
+        servicioEvento.iniciarEventoGlobal(partida, crearKevin());
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+
+        assertEquals(FaseEventoGlobal.FINALIZADO, estado.fase());
+        assertEquals(List.of(), estado.participantes());
+        assertEquals(Map.of(), estado.tiradas());
+        assertEquals(Map.of(), estado.posiciones());
+        assertEquals(Map.of(), estado.saldos());
+        assertNull(estado.idJugadorElegido());
     }
 
     @Test
@@ -1682,7 +1760,7 @@ public class ServicioEventoTest {
 
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
-            && "INICIADO".equals(actualizacion.estado().fase())
+            && actualizacion.estado().fase() == FaseEventoGlobal.INICIADO
             && "ABC".equals(actualizacion.estado().codigoPartida())
             && actualizacion.estado().segundosRestantes().equals(30)
             && actualizacion.estado().participantes().equals(List.of(1L))));
@@ -1702,7 +1780,7 @@ public class ServicioEventoTest {
 
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
-            && "TIRADA".equals(actualizacion.estado().fase())
+            && actualizacion.estado().fase() == FaseEventoGlobal.TIRADA
             && actualizacion.estado().tiradas().get(1L).equals(9)
             && actualizacion.estado().segundosRestantes().equals(7)));
         verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
@@ -1722,7 +1800,7 @@ public class ServicioEventoTest {
 
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
-            && "EMPATE".equals(actualizacion.estado().fase())
+            && actualizacion.estado().fase() == FaseEventoGlobal.EMPATE
             && actualizacion.estado().etapa().equals(1)
             && actualizacion.estado().segundosRestantes().equals(8)
             && actualizacion.estado().participantes().equals(List.of(1L, 2L))
@@ -1746,7 +1824,7 @@ public class ServicioEventoTest {
 
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
-            && "FINALIZADO".equals(actualizacion.estado().fase())
+            && actualizacion.estado().fase() == FaseEventoGlobal.FINALIZADO
             && actualizacion.estado().segundosRestantes().equals(60)
             && actualizacion.estado().idJugadorElegido().equals(1L)
             && actualizacion.estado().tiradas().get(1L).equals(9)));
@@ -1766,7 +1844,7 @@ public class ServicioEventoTest {
         assertEquals(true, servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
         verify(publicadorEventosMock).publishEvent(argThat((Object publicado) ->
             publicado instanceof EventoGlobalActualizado actualizacion
-            && "FINALIZADO".equals(actualizacion.estado().fase())
+            && actualizacion.estado().fase() == FaseEventoGlobal.FINALIZADO
             && actualizacion.estado().etapa().equals(0)
             && actualizacion.estado().segundosRestantes().equals(60)
             && actualizacion.estado().idJugadorElegido().equals(1L)
@@ -1798,7 +1876,7 @@ public class ServicioEventoTest {
 
         assertEquals(9, resultado.sumarDados());
         assertEquals(10, uno.getPosicionActual());
-        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
         verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
         continuarEventoFinalizado(partida);
         assertEquals(7, uno.getPosicionActual());
@@ -1820,13 +1898,13 @@ public class ServicioEventoTest {
         servicioEvento.realizarTiradaEventoGlobal(partida, dos, evento);
 
         assertEquals(10, uno.getPosicionActual());
-        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
         verify(gestorTemporizadorMock).programarTemporizador(
             org.mockito.ArgumentMatchers.eq("evento-global-resultado:ABC"),
             org.mockito.ArgumentMatchers.eq(60), any(Runnable.class));
 
         servicioEvento.confirmarContinuacion("ABC", 1L);
-        assertEquals("FINALIZADO", servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        assertEquals(FaseEventoGlobal.FINALIZADO, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
         verify(publicadorEventosMock, never()).publishEvent(any(EventoGlobalFinalizado.class));
 
         servicioEvento.confirmarContinuacion("ABC", 2L);

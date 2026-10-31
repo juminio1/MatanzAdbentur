@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
@@ -60,7 +61,7 @@ public class ControladorEventoGlobalTest {
         // Preparación
         Partida partida = crearPartidaConJugador();
         MockHttpServletRequest request = crearRequestAutenticado();
-        EstadoEventoGlobal estado = new EstadoEventoGlobal(CODIGO, "INICIADO", TipoEventoGlobal.PIQUETE, "Piquete", 0, 15, List.of(1L), Map.of(), null);
+        EstadoEventoGlobal estado = new EstadoEventoGlobal(CODIGO, FaseEventoGlobal.INICIADO, TipoEventoGlobal.PIQUETE, "Piquete", 0, 15, List.of(1L), Map.of(), null);
 
         // When
         when(servicioPartidaMock.obtenerPartida(CODIGO)).thenReturn(partida);
@@ -156,7 +157,7 @@ public class ControladorEventoGlobalTest {
         Partida partida = crearPartidaConJugador();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("NOMBRE", "jugadoruno");
-        EstadoEventoGlobal estado = new EstadoEventoGlobal(CODIGO, "DESEMPATE", TipoEventoGlobal.INUNDACION, "Inundación", 1, 9, List.of(1L), Map.of(), null);
+        EstadoEventoGlobal estado = new EstadoEventoGlobal(CODIGO, FaseEventoGlobal.DESEMPATE, TipoEventoGlobal.INUNDACION, "Inundación", 1, 9, List.of(1L), Map.of(), null);
 
         // When
         when(servicioPartidaMock.obtenerPartida(CODIGO)).thenReturn(partida);
@@ -168,7 +169,7 @@ public class ControladorEventoGlobalTest {
 
         // Verificación
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
-        assertEquals("DESEMPATE", respuesta.getBody().fase());
+        assertEquals(FaseEventoGlobal.DESEMPATE, respuesta.getBody().fase());
         verify(participacionMock).pertenece(partida, 1L);
     }
 

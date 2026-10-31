@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=evento-global-2)}"
-            href="../../../resources/core/css/partida.css?v=evento-global-2"
+            th:href="@{/css/partida.css(v=popups-eventos-deudas-1)}"
+            href="../../../resources/core/css/partida.css?v=popups-eventos-deudas-1"
         />
     </head>
     <body class="pagina-partida">
@@ -662,6 +662,7 @@
                     Tu saldo no alcanzó para realizar este pago. Podés resolverlo aunque ya no sea tu turno.
                 </p>
                 <dl class="modal-info-propiedad__datos">
+                    <div><dt>Dinero disponible</dt><dd id="deuda-saldo"></dd></div>
                     <div><dt>Deuda pendiente</dt><dd id="deuda-importe"></dd></div>
                     <div><dt>Motivo</dt><dd id="deuda-motivo"></dd></div>
                     <div id="deuda-acreedor-contenedor"><dt>Acreedor</dt><dd id="deuda-acreedor"></dd></div>
@@ -1028,7 +1029,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=evento-global-2)}" src="../../../resources/core/js/partida.js?v=evento-global-2" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=popups-eventos-deudas-1)}" src="../../../resources/core/js/partida.js?v=popups-eventos-deudas-1" charset="UTF-8" defer></script>
 
 </body>
 
