@@ -570,7 +570,7 @@ function actualizarControlesCarcel() {
 }
 
 async function pagarFianza() {
-    if (pagandoFianza) return;
+    if (pagandoFianza || window.usuarioEnBancarrota || partidaFinalizada) return;
     pagandoFianza = true;
     actualizarControlesCarcel();
     try {
@@ -1004,14 +1004,13 @@ async function confirmarQuiebra() {
         if (respuesta.redirected || typeof datos?.mensaje !== "string") {
             throw new Error("El servidor no confirmó la declaración. Actualizá la página antes de volver a intentarlo.");
         }
-        actualizarDineroJugador(window.usuarioSesionId, null, true);
-        window.usuarioEnBancarrota = true;
-        bloquearControles();
-        actualizarBotonTirada();
+        procesarNotificacionQuiebra({
+            idJugador: window.usuarioSesionId,
+            apodo: obtenerNombreJugadorHistorial(window.usuarioSesionId),
+        });
         declarandoQuiebra = false;
         modalDeuda.close();
         actualizarAvisoDeuda();
-        window.location.assign(`${basePath}/home`);
     } catch (error) {
         mensajeAccionDeuda = error instanceof TypeError ?
             "No se pudo confirmar la declaración. Comprobá la conexión y actualizá la página antes de volver a intentarlo." :
@@ -1216,6 +1215,7 @@ function mostrarInfoPropiedad(propiedad) {
         .querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)
         ?.closest(".casillero")?.dataset.casillero;
     const puedeComprar =
+        !window.usuarioEnBancarrota && !partidaFinalizada &&
         propiedad.disponible &&
         String(posicionJugador) === String(propiedad.posicion) &&
         String(window.turnoActualId) === String(window.usuarioSesionId) &&
@@ -1255,7 +1255,10 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
         window.dineroUsuarioSesion = Number(dinero);
         actualizarControlesCarcel();
     }
-    if (!tarjeta || !enBancarrota) return;
+    if (!enBancarrota) return;
+
+    if (String(idJugador) === String(window.usuarioSesionId)) activarModoEspectador();
+    if (!tarjeta) return;
 
     tarjeta.dataset.bancarrota = "true";
     tarjeta.classList.add("jugador--bancarrota");
@@ -1264,12 +1267,6 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
         etiqueta.className = "estado-bancarrota";
         etiqueta.textContent = "En quiebra";
         tarjeta.querySelector(".datos-jugador")?.appendChild(etiqueta);
-    }
-    if (String(idJugador) === String(window.usuarioSesionId) && !window.usuarioEnBancarrota) {
-        window.usuarioEnBancarrota = true;
-        bloquearControles();
-        cerrarModalCompra();
-        mostrarAvisoPartida("Llegaste a tu límite de deudas.");
     }
     if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
 }
@@ -1288,6 +1285,7 @@ async function cargarInfoPropiedad(posicion, abrirPopup = false) {
 
 async function comprarPropiedadActual() {
     if (
+        window.usuarioEnBancarrota || partidaFinalizada ||
         !propiedadSeleccionada ||
         !propiedadSeleccionada.disponible ||
         resolviendoDecisionPropiedad ||
@@ -1358,6 +1356,7 @@ async function comprarPropiedadActual() {
         document.getElementById("modal-propiedad-info").textContent = notaModalInfo.textContent;
         if (
             modalCompra?.open &&
+            !window.usuarioEnBancarrota && !partidaFinalizada &&
             tiempoRestante > 0 &&
             String(window.turnoActualId) === String(window.usuarioSesionId)
         ) {
@@ -1387,7 +1386,7 @@ function cerrarModalCompra() {
 }
 
 async function pasarTurnoPropiedad() {
-    if (resolviendoDecisionPropiedad) return;
+    if (resolviendoDecisionPropiedad || window.usuarioEnBancarrota || partidaFinalizada) return;
     resolviendoDecisionPropiedad = true;
     cerrarModalCompra();
     await finalizarTurno().catch(console.error);
@@ -1409,7 +1408,8 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
         return;
     }
 
-    if (propiedad.disponible !== true || String(window.turnoActualId) !== String(idJugador)) return;
+    if (window.usuarioEnBancarrota || partidaFinalizada || propiedad.disponible !== true
+            || String(window.turnoActualId) !== String(idJugador)) return;
 
     const saldoActual =
         document.getElementById(String(idJugador))?.querySelector(".dinero")?.textContent ?? "0";
@@ -1563,6 +1563,7 @@ function crearTarjetaPropiedad(propiedad) {
         agregarDatoPropiedad(datos, "Alquiler después de mejorar", costoMejora);
     }
     botonSubir.disabled =
+        partidaFinalizada ||
         !localidadCompleta ||
         nivel >= nivelesAlquiler.length ||
         posicionesParadas.has(Number(propiedad.posicion)) ||
@@ -1579,7 +1580,7 @@ function crearTarjetaPropiedad(propiedad) {
     const botonVender = document.createElement("button");
     botonVender.type = "button";
     botonVender.className = "btn-casillero btn-casillero--principal";
-    botonVender.disabled = Boolean(window.usuarioEnBancarrota);
+    botonVender.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
     botonVender.textContent = "Vender";
     botonVender.addEventListener("click", () => abrirOpcionesVenta(propiedad));
     acciones.append(botonSubir, botonVender);
@@ -1611,6 +1612,7 @@ function agregarDatoPropiedad(lista, etiqueta, valor) {
 }
 
 async function subirAlquilerPropiedad(posicion, boton) {
+    if (window.usuarioEnBancarrota || partidaFinalizada) return;
     boton.disabled = true;
     try {
         const alquilerAnterior = propiedadesPropiasActuales.find(
@@ -1631,11 +1633,12 @@ async function subirAlquilerPropiedad(posicion, boton) {
         await cargarPropiedadesPropias();
     } catch (error) {
         mensajeBonoPropiedades.textContent = error.message || "No se pudo subir el alquiler.";
-        boton.disabled = false;
+        boton.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
     }
 }
 
 function abrirOpcionesVenta(propiedad) {
+    if (window.usuarioEnBancarrota || partidaFinalizada) return;
     propiedadParaVender = propiedad;
     nombrePropiedadEnVenta.textContent = `${propiedad.nombre} \u00b7 Alquiler actual: $${propiedad.alquiler}`;
     document.getElementById("btn-vender-al-banco").textContent =
@@ -1668,7 +1671,7 @@ async function finalizarTurnoTrasPagarDeuda(claveTurnoVenta) {
 }
 
 async function venderPropiedadBono(propiedad) {
-    if (!propiedad) return;
+    if (!propiedad || window.usuarioEnBancarrota || partidaFinalizada) return;
     if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${propiedad.precioVenta}?`))
         return;
     // El listado abierto desde deuda conserva ese contexto mientras se actualiza la consulta.
@@ -1700,7 +1703,7 @@ async function venderPropiedadBono(propiedad) {
 }
 
 async function enviarOfertaVenta() {
-    if (!propiedadParaVender) return;
+    if (!propiedadParaVender || window.usuarioEnBancarrota || partidaFinalizada) return;
     const boton = document.getElementById("btn-enviar-oferta");
     const idJugadorComprador = document.getElementById("oferta-jugador").value;
     const precio = Number(document.getElementById("oferta-precio").value);
@@ -1729,12 +1732,12 @@ async function enviarOfertaVenta() {
     } catch (error) {
         mensajeOfertaVenta.textContent = error.message || "No se pudo enviar la oferta.";
     } finally {
-        boton.disabled = false;
+        boton.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
     }
 }
 
 async function revisarOfertasPendientes() {
-    if (!codigoPartida || modalOfertaRecibida?.open) return;
+    if (!codigoPartida || modalOfertaRecibida?.open || window.usuarioEnBancarrota || partidaFinalizada) return;
     try {
         const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/ofertas-pendientes`, {
             cache: "no-store",
@@ -1750,6 +1753,7 @@ async function revisarOfertasPendientes() {
 }
 
 function mostrarOfertaRecibida(oferta) {
+    if (window.usuarioEnBancarrota || partidaFinalizada) return;
     ofertaActiva = oferta;
     document.getElementById("oferta-recibida-detalle").textContent =
         `${oferta.apodoVendedor} te ofrece ${oferta.nombrePropiedad} por $${oferta.precio}.`;
@@ -1758,7 +1762,7 @@ function mostrarOfertaRecibida(oferta) {
 }
 
 async function responderOfertaVenta(aceptar) {
-    if (!ofertaActiva) return;
+    if (!ofertaActiva || window.usuarioEnBancarrota || partidaFinalizada) return;
     const botones = [
         document.getElementById("btn-aceptar-oferta"),
         document.getElementById("btn-rechazar-oferta"),
@@ -1796,7 +1800,7 @@ async function responderOfertaVenta(aceptar) {
         mensajeOfertaRecibida.textContent = error.message || "No se pudo responder la oferta.";
     } finally {
         botones.forEach((boton) => {
-            boton.disabled = false;
+            boton.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
         });
     }
 }
@@ -1813,6 +1817,7 @@ function finalizarTurno() {
 }
 
 async function enviarFinalizacionTurno() {
+    if (window.usuarioEnBancarrota || partidaFinalizada) return;
     console.log("Intentando avanzar el turno...");
 
     const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {
@@ -1953,6 +1958,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     actualizarBotonTirada();
     conectarWebSocketTurnos(basePath, codigoPartida);
+    if (window.usuarioEnBancarrota) activarModoEspectador();
     iniciarSincronizacionTurno(basePath, codigoPartida);
     iniciarSincronizacionPosiciones();
     revisarOfertasPendientes();
@@ -2123,17 +2129,25 @@ async function sincronizarPropiedadesTrasAbandono(idJugador) {
 
 let partidaFinalizada = false;
 
+// Mantiene el tablero y sus suscripciones; bloquea solamente las acciones locales.
+function activarModoEspectador() {
+    const yaEraEspectador = window.usuarioEnBancarrota;
+    window.usuarioEnBancarrota = true;
+    bloquearControles();
+    cerrarModalCompra();
+    if (modalVenderPropiedad?.open) modalVenderPropiedad.close();
+    if (modalOfertaRecibida?.open) modalOfertaRecibida.close();
+    ofertaActiva = null;
+    document.querySelectorAll(
+        ".propiedad-propia__acciones button, #btn-vender-al-banco, #btn-enviar-oferta, #btn-aceptar-oferta, #btn-rechazar-oferta",
+    ).forEach((boton) => { boton.disabled = true; });
+    actualizarBotonTirada();
+    actualizarAvisoDeuda();
+    if (!yaEraEspectador) mostrarAvisoPartida("Estás en quiebra. Podés seguir observando la partida.");
+}
+
 // Atiende la quiebra confirmada sin ejecutar las acciones ni los mensajes de abandono.
 function procesarNotificacionQuiebra(datos) {
-    // La declaración voluntaria conserva su redirección al recibir el POST exitoso.
-    if (String(datos.idJugador) === String(window.usuarioSesionId)) {
-        if (!declarandoQuiebra && !quiebrasNotificadas.has(String(datos.idJugador))) {
-            quiebrasNotificadas.add(String(datos.idJugador));
-            window.location.assign(`${basePath}/home`);
-        }
-        return;
-    }
-    if (partidaFinalizada) return;
     if (!quiebrasNotificadas.has(String(datos.idJugador))) {
         quiebrasNotificadas.add(String(datos.idJugador));
         agregarAlHistorial(`${datos.apodo} se declaró en quiebra.`, datos.idJugador);
@@ -2151,6 +2165,12 @@ function procesarNotificacionQuiebra(datos) {
 // Detiene la presentación y evita que respuestas anteriores reactiven el turno.
 function detenerPartidaEnPantalla() {
     partidaFinalizada = true;
+    if (modalOfertaRecibida?.open) modalOfertaRecibida.close();
+    if (modalVenderPropiedad?.open) modalVenderPropiedad.close();
+    ofertaActiva = null;
+    cerrarModalCompra();
+    document.querySelectorAll(".propiedad-propia__acciones button, #btn-aceptar-oferta, #btn-rechazar-oferta")
+        .forEach((boton) => { boton.disabled = true; });
     actualizarAvisoDeuda();
 
     clearInterval(intervaloReloj);
