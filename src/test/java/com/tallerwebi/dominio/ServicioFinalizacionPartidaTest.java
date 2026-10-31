@@ -32,14 +32,18 @@ public class ServicioFinalizacionPartidaTest {
     private ServicioFinalizacionPartida servicioCaptura;
     private Partida partidaCaptura;
     private Jugador jugadorCaptura;
+    private com.tallerwebi.infraestructura.RepositorioPartida partidasCierre;
+    private List<FinalizarPartida> resultadosCierre;
 
     @BeforeEach
     public void prepararCaptura() {
         propiedadesCaptura = mock(RepositorioPropiedad.class);
         deudasCaptura = mock(RepositorioDeudaPendiente.class);
         resultadosCaptura = mock(RepositorioFinalizarPartida.class);
+        partidasCierre = mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+        resultadosCierre = new java.util.ArrayList<>();
         servicioCaptura = new ServicioFinalizacionPartidaImpl(propiedadesCaptura, deudasCaptura,
-                resultadosCaptura, new ServicioParticipacionImpl());
+                resultadosCaptura, new ServicioParticipacionImpl(), partidasCierre);
         partidaCaptura = new Partida();
         partidaCaptura.setId(10L);
         partidaCaptura.setCodigoUnico("CAPTURA");
@@ -583,5 +587,340 @@ public class ServicioFinalizacionPartidaTest {
         resultado.setPatrimonioTotal(patrimonio);
         resultado.setEstadoParticipante(estado);
         return resultado;
+    }
+
+    @Test
+    public void cumpleLaCondicionConUnUnicoJugadorActivo() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura);
+    }
+
+    @Test
+    public void noCumpleLaCondicionConVariosActivosAntesDelLimite() {
+        prepararDosActivosParaCondicion();
+        partidaCaptura.setRondaActual(29);
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void cumpleLaCondicionSoloDespuesDeCompletarLaRondaTreinta() {
+        prepararDosActivosParaCondicion();
+        partidaCaptura.setRondaActual(30);
+        com.tallerwebi.dominio.servicios.ServicioTurnoImpl turnos =
+                new com.tallerwebi.dominio.servicios.ServicioTurnoImpl(new ServicioParticipacionImpl());
+        turnos.incrementarRondas(partidaCaptura);
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+        partidaCaptura.setIndiceTurnoActual(1);
+
+        turnos.incrementarRondas(partidaCaptura);
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+        assertEquals(31, partidaCaptura.getRondaActual());
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO, partidaCaptura.getEstado());
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura);
+    }
+
+    @Test
+    public void noCumpleLaCondicionAlComenzarLaRondaTreinta() {
+        prepararDosActivosParaCondicion();
+        partidaCaptura.setRondaActual(30);
+        partidaCaptura.setTurnosFinalizadosEnRonda(0);
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void unaPartidaEnEsperaNoCumpleLaCondicionAunqueTengaUnSoloActivo() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void unaPartidaFinalizadaNoVuelveACumplirLaCondicion() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        partidaCaptura.setRondaActual(31);
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void sinActivosNoCumpleLaCondicionAunqueSeHayanCompletadoTreintaRondas() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partidaCaptura.setRondaActual(31);
+        jugadorCaptura.setEnBancarrota(true);
+
+        org.junit.jupiter.api.Assertions.assertFalse(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void cumpleLaCondicionCuandoQuedaUnActivoDespuesDeUnaQuiebra() {
+        Jugador eliminado = prepararDosActivosParaCondicion();
+        eliminado.setEnBancarrota(true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    @Test
+    public void cumpleLaCondicionCuandoQuedaUnActivoDespuesDeUnAbandono() {
+        Jugador eliminado = prepararDosActivosParaCondicion();
+        eliminado.setAbandono(true);
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                servicioCaptura.cumpleCondicionFinalizacion(partidaCaptura));
+    }
+
+    private Jugador prepararDosActivosParaCondicion() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        jugadorCaptura.setOrden(0);
+        Jugador segundo = new Jugador();
+        segundo.setId(2L);
+        segundo.setOrden(1);
+        partidaCaptura.getJugadores().add(segundo);
+        return segundo;
+    }
+
+    @Test
+    public void noCierraNiGuardaResultadosSiNoSeCumpleLaCondicion() {
+        prepararDosActivosParaCondicion();
+
+        org.junit.jupiter.api.Assertions.assertFalse(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO, partidaCaptura.getEstado());
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura, partidasCierre);
+    }
+
+    @Test
+    public void cierraConUnActivoCapturandoSuResultadoYDeterminandoElGanador() {
+        prepararRepositorioParaCierre();
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+
+        org.junit.jupiter.api.Assertions.assertTrue(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(1, resultadosCierre.size());
+        FinalizarPartida resultado = resultadosCierre.get(0);
+        assertEquals(1000, resultado.getDineroFinal());
+        assertEquals(1000, resultado.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.ACTIVO, resultado.getEstadoParticipante());
+        assertEquals(true, resultado.getGanador());
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA, partidaCaptura.getEstado());
+        org.mockito.InOrder orden = org.mockito.Mockito.inOrder(resultadosCaptura, partidasCierre);
+        orden.verify(resultadosCaptura).guardar(resultado);
+        orden.verify(resultadosCaptura).buscarPorPartida(10L);
+        orden.verify(partidasCierre).guardarPartida(partidaCaptura);
+    }
+
+    @Test
+    public void cierraPorRondasCapturandoTodosLosActivos() {
+        Jugador segundo = prepararDosActivosParaCondicion();
+        segundo.setDinero(2000);
+        partidaCaptura.setRondaActual(31);
+        prepararRepositorioParaCierre();
+
+        org.junit.jupiter.api.Assertions.assertTrue(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(2, resultadosCierre.size());
+        assertEquals(false, resultadosCierre.get(0).getGanador());
+        assertEquals(true, resultadosCierre.get(1).getGanador());
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA, partidaCaptura.getEstado());
+        verify(partidasCierre).guardarPartida(partidaCaptura);
+    }
+
+    @Test
+    public void cierraConTodosLosGanadoresSiHayEmpate() {
+        prepararDosActivosParaCondicion().setDinero(1000);
+        partidaCaptura.setRondaActual(31);
+        prepararRepositorioParaCierre();
+
+        org.junit.jupiter.api.Assertions.assertTrue(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(2, resultadosCierre.size());
+        assertEquals(true, resultadosCierre.get(0).getGanador());
+        assertEquals(true, resultadosCierre.get(1).getGanador());
+    }
+
+    @Test
+    public void elCierreConservaLasFotografiasDeQuebradosYAbandonados() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        FinalizarPartida quebrado = prepararResultadoGanador(2L, -400, EstadoParticipante.QUEBRADO);
+        quebrado.setDineroFinal(100);
+        quebrado.setValorPropiedades(1500);
+        quebrado.setDeudaPendiente(2000);
+        FinalizarPartida abandonado = prepararResultadoGanador(3L, 9000, EstadoParticipante.ABANDONADO);
+        prepararRepositorioParaCierre();
+        resultadosCierre.add(quebrado);
+        resultadosCierre.add(abandonado);
+
+        org.junit.jupiter.api.Assertions.assertTrue(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(3, resultadosCierre.size());
+        assertEquals(100, quebrado.getDineroFinal());
+        assertEquals(1500, quebrado.getValorPropiedades());
+        assertEquals(2000, quebrado.getDeudaPendiente());
+        assertEquals(-400, quebrado.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.QUEBRADO, quebrado.getEstadoParticipante());
+        assertEquals(9000, abandonado.getDineroFinal());
+        assertEquals(9000, abandonado.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.ABANDONADO, abandonado.getEstadoParticipante());
+        assertEquals(false, quebrado.getGanador());
+        assertEquals(false, abandonado.getGanador());
+        verify(propiedadesCaptura).buscarPropiedadesPorPropietario(jugadorCaptura);
+        verify(deudasCaptura).buscarPorPartidaYJugador("CAPTURA", 1L);
+        verifyNoMoreInteractions(propiedadesCaptura, deudasCaptura);
+        verify(resultadosCaptura, org.mockito.Mockito.times(1)).guardar(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void siYaEstaFinalizadaNoRepiteElCierre() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+
+        org.junit.jupiter.api.Assertions.assertFalse(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura, partidasCierre);
+    }
+
+    @Test
+    public void unaPartidaEnEsperaNoSeCierraNiGuardaResultados() {
+        org.junit.jupiter.api.Assertions.assertFalse(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA, partidaCaptura.getEstado());
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura, partidasCierre);
+    }
+
+    @Test
+    public void siFaltaLaFotografiaDeUnEliminadoNoReconstruyeSusDatosNiCierra() {
+        Jugador eliminado = prepararDosActivosParaCondicion();
+        eliminado.setEnBancarrota(true);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO, partidaCaptura.getEstado());
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, partidasCierre);
+        verify(resultadosCaptura, org.mockito.Mockito.never()).guardar(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void falloDeCapturaRevierteLosResultadosGuardadosDuranteElCierre() {
+        try (org.springframework.context.annotation.AnnotationConfigApplicationContext contexto =
+                     crearContextoParaCierre()) {
+            org.springframework.transaction.support.TransactionTemplate transaccion =
+                    new org.springframework.transaction.support.TransactionTemplate(
+                            contexto.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+            org.hibernate.SessionFactory sesiones = contexto.getBean(org.hibernate.SessionFactory.class);
+            Long idPartida = transaccion.execute(estado -> {
+                Partida partida = persistirPartidaParaCierre(sesiones);
+                Propiedad invalida = new Propiedad();
+                invalida.setPropietario(partida.getJugadores().get(1));
+                sesiones.getCurrentSession().persist(invalida);
+                return partida.getId();
+            });
+            ServicioFinalizacionPartida cierre = contexto.getBean(ServicioFinalizacionPartida.class);
+
+            assertThrows(NullPointerException.class, () -> transaccion.executeWithoutResult(estado ->
+                    cierre.finalizarSiCorresponde(sesiones.getCurrentSession().find(Partida.class, idPartida))));
+
+            transaccion.executeWithoutResult(estado -> {
+                assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO,
+                        sesiones.getCurrentSession().find(Partida.class, idPartida).getEstado());
+                assertEquals(0, contexto.getBean(RepositorioFinalizarPartida.class)
+                        .buscarPorPartida(idPartida).size());
+            });
+        }
+    }
+
+    @Test
+    public void falloAlDeterminarGanadoresRevierteLaCapturaSinConfirmarUnCierreParcial() {
+        try (org.springframework.context.annotation.AnnotationConfigApplicationContext contexto =
+                     crearContextoParaCierre()) {
+            org.springframework.transaction.support.TransactionTemplate transaccion =
+                    new org.springframework.transaction.support.TransactionTemplate(
+                            contexto.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+            org.hibernate.SessionFactory sesiones = contexto.getBean(org.hibernate.SessionFactory.class);
+            Long idPartida = transaccion.execute(estado -> {
+                Partida partida = persistirPartidaParaCierre(sesiones);
+                FinalizarPartida incompleto = new FinalizarPartida();
+                incompleto.setPartida(partida);
+                incompleto.setJugador(partida.getJugadores().get(1));
+                incompleto.setEstadoParticipante(EstadoParticipante.ACTIVO);
+                sesiones.getCurrentSession().persist(incompleto);
+                return partida.getId();
+            });
+            ServicioFinalizacionPartida cierre = contexto.getBean(ServicioFinalizacionPartida.class);
+
+            assertThrows(NullPointerException.class, () -> transaccion.executeWithoutResult(estado ->
+                    cierre.finalizarSiCorresponde(sesiones.getCurrentSession().find(Partida.class, idPartida))));
+
+            transaccion.executeWithoutResult(estado -> {
+                assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO,
+                        sesiones.getCurrentSession().find(Partida.class, idPartida).getEstado());
+                List<FinalizarPartida> resultados = contexto.getBean(RepositorioFinalizarPartida.class)
+                        .buscarPorPartida(idPartida);
+                assertEquals(1, resultados.size());
+                assertEquals(false, resultados.get(0).getGanador());
+                org.junit.jupiter.api.Assertions.assertNull(resultados.get(0).getPatrimonioTotal());
+            });
+        }
+    }
+
+    private void prepararRepositorioParaCierre() {
+        org.mockito.Mockito.doAnswer(invocacion -> {
+            resultadosCierre.add(invocacion.getArgument(0));
+            return null;
+        }).when(resultadosCaptura).guardar(org.mockito.ArgumentMatchers.any());
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(resultadosCierre);
+        when(resultadosCaptura.buscarPorPartidaYJugador(
+                org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.anyLong()))
+                .thenAnswer(invocacion -> {
+                    Long idJugador = invocacion.getArgument(1);
+                    for (FinalizarPartida resultado : resultadosCierre) {
+                        if (idJugador.equals(resultado.getJugador().getId())) {
+                            return resultado;
+                        }
+                    }
+                    return null;
+                });
+    }
+
+    private org.springframework.context.annotation.AnnotationConfigApplicationContext crearContextoParaCierre() {
+        return new org.springframework.context.annotation.AnnotationConfigApplicationContext(
+                com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig.class,
+                ServicioFinalizacionPartidaImpl.class, ServicioParticipacionImpl.class,
+                com.tallerwebi.infraestructura.RepositorioPropiedadImpl.class,
+                com.tallerwebi.infraestructura.RepositorioDeudaPendienteImpl.class,
+                com.tallerwebi.infraestructura.RepositorioFinalizarPartidaImpl.class,
+                com.tallerwebi.infraestructura.RepositorioPartidaImpl.class);
+    }
+
+    private Partida persistirPartidaParaCierre(org.hibernate.SessionFactory sesiones) {
+        com.tallerwebi.dominio.entidades.Usuario creador = new com.tallerwebi.dominio.entidades.Usuario();
+        creador.setEmail("cierre@test.com");
+        creador.setUsername("Cierre");
+        sesiones.getCurrentSession().persist(creador);
+        Partida partida = new Partida();
+        partida.setCreador(creador);
+        partida.setCodigoUnico("CIERRE");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partida.setRondaActual(31);
+        Jugador primero = new Jugador();
+        primero.setDinero(1000);
+        Jugador segundo = new Jugador();
+        segundo.setDinero(500);
+        partida.getJugadores().add(primero);
+        partida.getJugadores().add(segundo);
+        sesiones.getCurrentSession().persist(partida);
+        return partida;
     }
 }

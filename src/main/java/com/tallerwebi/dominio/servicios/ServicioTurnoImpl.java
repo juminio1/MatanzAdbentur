@@ -7,6 +7,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
 
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 /** Resuelvo el orden de los jugadores y el avance de las rondas. */
@@ -26,25 +27,41 @@ public class ServicioTurnoImpl implements ServicioTurno {
 
     @Override
     public void incrementarRondas(Partida partida) {
-        Integer ronda = partida.getRondaActual() == null ? 1 : partida.getRondaActual();
-        Integer turnosFinalizados =
-            partida.getTurnosFinalizadosEnRonda() == null
-                ? 0
-                : partida.getTurnosFinalizadosEnRonda();
+        if (partida.getJugadores().isEmpty()) {
+            return;
+        }
+        if (partida.getRondaActual() == null) {
+            partida.setRondaActual(1);
+        }
+        Jugador actual = buscarJugadorPorTurno(partida.getJugadores(), obtenerIndiceTurnoActual(partida));
+        consumirOportunidad(partida, actual);
+    }
 
-        Long jugadoresActivos = partida.getJugadores().stream()
-            .filter(participacion::estaActivo)
-            .count();
-        if (jugadoresActivos == 0) return;
+    private void consumirOportunidad(Partida partida, Jugador jugador) {
+        if (participacion.estaActivo(jugador)) {
+            jugador.setUltimaRondaConOportunidad(partida.getRondaActual());
+        }
+        actualizarContadoresDeRonda(partida);
+    }
 
-        turnosFinalizados++;
-
-        if (turnosFinalizados >= jugadoresActivos) {
-            ronda++;
+    private void actualizarContadoresDeRonda(Partida partida) {
+        int activos = 0;
+        int turnosFinalizados = 0;
+        for (Jugador jugador : partida.getJugadores()) {
+            if (participacion.estaActivo(jugador)) {
+                activos++;
+                if (Objects.equals(partida.getRondaActual(), jugador.getUltimaRondaConOportunidad())) {
+                    turnosFinalizados++;
+                }
+            }
+        }
+        if (activos == 0) {
+            return;
+        }
+        if (turnosFinalizados == activos) {
+            partida.setRondaActual(partida.getRondaActual() + 1);
             turnosFinalizados = 0;
         }
-
-        partida.setRondaActual(ronda);
         partida.setTurnosFinalizadosEnRonda(turnosFinalizados);
     }
 
@@ -87,6 +104,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
             }
             if (Boolean.TRUE.equals(candidato.getPierdeTurno()) && !incluirJugadoresPenalizados) {
                 candidato.setPierdeTurno(false);
+                consumirOportunidad(partida, candidato);
             } else {
                 return candidato;
             }
@@ -101,6 +119,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
             jugador.setOrden(orden);
             jugador.setPierdeTurno(false);
             jugador.setTiroEnTurno(false);
+            jugador.setUltimaRondaConOportunidad(0);
             orden++;
         }
     }

@@ -5,83 +5,64 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
-import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 public class ObservadorVictoriaTest {
-
-    private RepositorioPartida repositorioPartidaMock;
+    private ServicioFinalizacionPartida finalizacion;
     private ObservadorVictoria observador;
 
     @BeforeEach
     public void init() {
-        repositorioPartidaMock = mock(RepositorioPartida.class);
-        observador = new ObservadorVictoria(repositorioPartidaMock, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        finalizacion = mock(ServicioFinalizacionPartida.class);
+        observador = new ObservadorVictoria(finalizacion);
     }
 
     @Test
-    public void dadoQueUnJugadorAbandonaYQuedaUnSoloJugadorActivoCuandoElObservadorRevisaEntoncesLaPartidaFinaliza() {
-        // Preparación
-        Partida partida = new Partida();
-        partida.setJugadores(new ArrayList<>());
+    public void abandonoDelegaUnaSolaVezSinEvaluarJugadoresNiCambiarElEstado() {
+        Partida partida = spy(new Partida());
         partida.setEstado(EstadoPartida.EN_CURSO);
+        clearInvocations(partida);
+        EventoJugadorAbandonado evento = new EventoJugadorAbandonado(partida, new Jugador());
 
-        Jugador jugadorQueAbandona = new Jugador();
-        jugadorQueAbandona.setAbandono(true);
-
-        Jugador jugadorGanador = new Jugador();
-        jugadorGanador.setAbandono(false);
-        jugadorGanador.setEnBancarrota(false);
-
-        partida.getJugadores().add(jugadorQueAbandona);
-        partida.getJugadores().add(jugadorGanador);
-
-        EventoJugadorAbandonado evento = new EventoJugadorAbandonado(partida, jugadorQueAbandona);
-
-        // 2. Ejecución (Act)
         observador.actualizar(evento);
 
-        // 3. Validación (Assert)
-        assertEquals(EstadoPartida.FINALIZADA, partida.getEstado(), "La partida debería estar finalizada porque quedó un solo jugador");
-        verify(repositorioPartidaMock).guardarPartida(partida);
+        verify(finalizacion).finalizarSiCorresponde(partida);
+        verifyNoMoreInteractions(finalizacion);
+        verify(partida, never()).getJugadores();
+        verify(partida, never()).setEstado(any());
+        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
     }
 
     @Test
-    public void dadoQueHayVariosJugadoresYUnoAbandonaCuandoElObservadorRevisaEntoncesLaPartidaNoFinaliza() {
-        // Preparación
+    public void unResultadoPositivoDelServicioNoProvocaOtroCambioDirectoDeEstado() {
+        Partida partida = spy(new Partida());
+        when(finalizacion.finalizarSiCorresponde(partida)).thenReturn(true);
+
+        observador.actualizar(new EventoJugadorAbandonado(partida, new Jugador()));
+
+        verify(finalizacion).finalizarSiCorresponde(partida);
+        verifyNoMoreInteractions(finalizacion);
+        verify(partida, never()).setEstado(any());
+        verify(partida, never()).getJugadores();
+    }
+
+    @Test
+    public void propagaLaMismaExcepcionDelServicioSinReintentar() {
         Partida partida = new Partida();
-        partida.setJugadores(new ArrayList<>());
-        partida.setEstado(EstadoPartida.EN_CURSO);
+        IllegalStateException fallo = new IllegalStateException("Fallo de finalizacion");
+        when(finalizacion.finalizarSiCorresponde(partida)).thenThrow(fallo);
 
-        Jugador jugadorQueAbandona = new Jugador();
-        jugadorQueAbandona.setAbandono(true);
+        assertSame(fallo, assertThrows(IllegalStateException.class,
+                () -> observador.actualizar(new EventoJugadorAbandonado(partida, new Jugador()))));
 
-        Jugador jugadorPrimero = new Jugador();
-        jugadorPrimero.setAbandono(false);
-        jugadorPrimero.setEnBancarrota(false);
-
-        Jugador jugadorSegundo = new Jugador();
-        jugadorSegundo.setAbandono(false);
-        jugadorSegundo.setEnBancarrota(false);
-
-        partida.getJugadores().add(jugadorQueAbandona);
-        partida.getJugadores().add(jugadorPrimero);
-        partida.getJugadores().add(jugadorSegundo);
-
-        EventoJugadorAbandonado evento = new EventoJugadorAbandonado(partida, jugadorQueAbandona);
-
-        // 2. Ejecución (Act)
-        observador.actualizar(evento);
-
-        // 3. Validación (Assert)
-        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado(), "La partida debería estar en curso porque quedan varios jugadores");
-        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(finalizacion).finalizarSiCorresponde(partida);
+        verifyNoMoreInteractions(finalizacion);
     }
 }

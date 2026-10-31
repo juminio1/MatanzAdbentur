@@ -637,6 +637,11 @@ public class ServicioPartidaTest {
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(3);
+        jugadorUno.setUltimaRondaConOportunidad(1);
+        jugadorDos.setUltimaRondaConOportunidad(1);
+        jugadorTres.setUltimaRondaConOportunidad(1);
+        jugadorCuatro.setOrden(3);
+        partida.setIndiceTurnoActual(3);
 
         servicioPartida.incrementarRondas(partida);
 
@@ -1056,4 +1061,167 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         return captor.getValue();
     }
 
+
+    @Test
+    public void rondaNormalEsperaElTurnoDeLosTresJugadores() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-NORMAL");
+
+        servicioPartida.avanzarTurno("RONDA-NORMAL");
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        servicioPartida.avanzarTurno("RONDA-NORMAL");
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(2, partida.getIndiceTurnoActual());
+
+        servicioPartida.avanzarTurno("RONDA-NORMAL");
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void quiebraDuranteElTurnoNoCierraLaRondaAntesDelUltimoActivo() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-QUIEBRA");
+        servicioPartida.avanzarTurno("RONDA-QUIEBRA");
+        Jugador quebrado = partida.getJugadores().get(1);
+        quebrado.setEnBancarrota(true);
+        com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra observador =
+                new com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra(
+                        servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+
+        observador.actualizar(new com.tallerwebi.dominio.eventos.EventoJugadorQuebrado(partida, quebrado));
+
+        assertEquals(2, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+
+        servicioPartida.avanzarTurno("RONDA-QUIEBRA");
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void abandonoDuranteElTurnoNoCierraLaRondaAntesDelUltimoActivo() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-ABANDONO");
+        servicioPartida.avanzarTurno("RONDA-ABANDONO");
+        Jugador abandonado = partida.getJugadores().get(1);
+        abandonado.setAbandono(true);
+        com.tallerwebi.dominio.observadores.ObservadorTurnoAbandono observador =
+                new com.tallerwebi.dominio.observadores.ObservadorTurnoAbandono(
+                        servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+
+        observador.actualizar(new EventoJugadorAbandonado(partida, abandonado));
+
+        assertEquals(2, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+
+        servicioPartida.avanzarTurno("RONDA-ABANDONO");
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void eliminarFueraDeTurnoAQuienYaJugoNoAdelantaElCierreDeLaRonda() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-YA-JUGO");
+        servicioPartida.avanzarTurno("RONDA-YA-JUGO");
+        Jugador eliminado = partida.getJugadores().get(0);
+        eliminado.setEnBancarrota(true);
+        com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra observador =
+                new com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra(
+                        servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        observador.actualizar(new com.tallerwebi.dominio.eventos.EventoJugadorQuebrado(partida, eliminado));
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        servicioPartida.avanzarTurno("RONDA-YA-JUGO");
+
+        assertEquals(2, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+
+        servicioPartida.avanzarTurno("RONDA-YA-JUGO");
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(1, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void eliminarFueraDeTurnoAQuienNoJugoPermiteCerrarSinEsperarlo() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-NO-JUGO");
+        servicioPartida.avanzarTurno("RONDA-NO-JUGO");
+        Jugador eliminado = partida.getJugadores().get(2);
+        eliminado.setAbandono(true);
+        com.tallerwebi.dominio.observadores.ObservadorTurnoAbandono observador =
+                new com.tallerwebi.dominio.observadores.ObservadorTurnoAbandono(
+                        servicioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        observador.actualizar(new EventoJugadorAbandonado(partida, eliminado));
+        assertEquals(1, partida.getIndiceTurnoActual());
+
+        servicioPartida.avanzarTurno("RONDA-NO-JUGO");
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void vencimientoDelTemporizadorCuentaUnaOportunidadYCierraLaRonda() {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero("RONDA-TIEMPO");
+        Runnable primerVencimiento = iniciarTemporizadorYCapturarVencimiento("RONDA-TIEMPO");
+
+        primerVencimiento.run();
+
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        ArgumentCaptor<Runnable> siguienteVencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(gestorTemporizadorMock).programarTemporizador(
+                eq("RONDA-TIEMPO"), eq(30), siguienteVencimiento.capture());
+
+        siguienteVencimiento.getValue().run();
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    public void turnoPerdidoConsumeLaOportunidadSinEsperarOtraVueltaDelJugador() {
+        Partida partida = prepararRondaConTresJugadores("RONDA-PENALIZADA");
+        partida.getJugadores().get(1).setPierdeTurno(true);
+
+        servicioPartida.avanzarTurno("RONDA-PENALIZADA");
+
+        assertEquals(2, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertFalse(partida.getJugadores().get(1).getPierdeTurno());
+
+        servicioPartida.avanzarTurno("RONDA-PENALIZADA");
+
+        assertEquals(2, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+
+    private Partida prepararRondaConTresJugadores(String codigo) {
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        Jugador primero = new Jugador();
+        primero.setId(1L);
+        primero.setOrden(0);
+        Jugador segundo = new Jugador();
+        segundo.setId(2L);
+        segundo.setOrden(1);
+        Jugador tercero = new Jugador();
+        tercero.setId(3L);
+        tercero.setOrden(2);
+        partida.setJugadores(List.of(primero, segundo, tercero));
+        partida.setIndiceTurnoActual(0);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+        return partida;
+    }
 }

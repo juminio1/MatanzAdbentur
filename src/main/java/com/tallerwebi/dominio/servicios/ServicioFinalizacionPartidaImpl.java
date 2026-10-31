@@ -6,8 +6,10 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.FinalizarPartida;
 import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.infraestructura.RepositorioFinalizarPartida;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +21,29 @@ import java.util.List;
 
 @Service
 public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPartida {
+    private static final int MAXIMO_RONDAS = 30;
+    private static final long UNICO_JUGADOR_ACTIVO = 1L;
+
+    @Override
+    public boolean cumpleCondicionFinalizacion(Partida partida) {
+        if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
+            return false;
+        }
+        long activos = partida.getJugadores().stream()
+                .filter(participacion::estaActivo)
+                .count();
+        if (activos == 0) {
+            return false;
+        }
+        return activos == UNICO_JUGADOR_ACTIVO
+                || partida.getRondaActual() != null && partida.getRondaActual() > MAXIMO_RONDAS;
+    }
+
     private final RepositorioPropiedad repositorioPropiedad;
     private final RepositorioDeudaPendiente repositorioDeudaPendiente;
     private final RepositorioFinalizarPartida repositorioFinalizarPartida;
     private final ServicioParticipacion participacion;
+    private final RepositorioPartida repositorioPartida;
 
     public ServicioFinalizacionPartidaImpl() {
         this(null, null);
@@ -33,15 +54,53 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         this(repositorioPropiedad, repositorioDeudaPendiente, null, null);
     }
 
-    @Autowired
     public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
                                           RepositorioDeudaPendiente repositorioDeudaPendiente,
                                           RepositorioFinalizarPartida repositorioFinalizarPartida,
                                           ServicioParticipacion participacion) {
+        this(repositorioPropiedad, repositorioDeudaPendiente, repositorioFinalizarPartida,
+                participacion, null);
+    }
+
+    @Autowired
+    public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
+                                          RepositorioDeudaPendiente repositorioDeudaPendiente,
+                                          RepositorioFinalizarPartida repositorioFinalizarPartida,
+                                          ServicioParticipacion participacion,
+                                          RepositorioPartida repositorioPartida) {
         this.repositorioPropiedad = repositorioPropiedad;
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
         this.repositorioFinalizarPartida = repositorioFinalizarPartida;
         this.participacion = participacion;
+        this.repositorioPartida = repositorioPartida;
+    }
+
+    @Override
+    @Transactional
+    public boolean finalizarSiCorresponde(Partida partida) {
+        if (!cumpleCondicionFinalizacion(partida)) {
+            return false;
+        }
+        verificarResultadosDeEliminados(partida);
+        for (Jugador jugador : partida.getJugadores()) {
+            if (participacion.estaActivo(jugador)) {
+                conservarResultadoEconomico(partida, jugador, EstadoParticipante.ACTIVO);
+            }
+        }
+        determinarGanadores(partida);
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        repositorioPartida.guardarPartida(partida);
+        return true;
+    }
+
+    private void verificarResultadosDeEliminados(Partida partida) {
+        for (Jugador jugador : partida.getJugadores()) {
+            if (!participacion.estaActivo(jugador)
+                    && repositorioFinalizarPartida.buscarPorPartidaYJugador(
+                            partida.getId(), jugador.getId()) == null) {
+                throw new IllegalStateException("Falta el resultado economico de un jugador eliminado.");
+            }
+        }
     }
 
     @Override

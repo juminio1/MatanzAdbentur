@@ -8,6 +8,8 @@ import com.tallerwebi.dominio.enums.EstadoParticipante;
 import java.util.List;
 
 public interface ServicioFinalizacionPartida {
+    boolean finalizarSiCorresponde(Partida partida);
+    boolean cumpleCondicionFinalizacion(Partida partida);
     List<FinalizarPartida> determinarGanadores(Partida partida);
     Integer calcularValorPatrimonial(Propiedad propiedad);
     Integer calcularPatrimonioTotal(String codigoPartida, Jugador jugador);

@@ -125,8 +125,8 @@ class EfectosPartidaIntegracionTest {
         }
         @Bean
         ObservadorVictoria observadorVictoria(
-                RepositorioPartida repositorioPartida) {
-            return new ObservadorVictoria(repositorioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                ServicioFinalizacionPartida finalizacion) {
+            return new ObservadorVictoria(finalizacion);
         }
 
         @Bean

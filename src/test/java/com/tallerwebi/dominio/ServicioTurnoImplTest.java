@@ -40,6 +40,7 @@ class ServicioTurnoImplTest {
         assertEquals(1, partida.getRondaActual());
         assertEquals(1, partida.getTurnosFinalizadosEnRonda());
         assertSame(maria, servicioTurno.resolverSiguienteJugador(partida, 0));
+        partida.setIndiceTurnoActual(maria.getOrden());
         servicioTurno.incrementarRondas(partida);
         assertEquals(2, partida.getRondaActual());
         assertEquals(0, partida.getTurnosFinalizadosEnRonda());
