@@ -34,6 +34,7 @@ public class ServicioFinalizacionPartidaTest {
     private Jugador jugadorCaptura;
     private com.tallerwebi.infraestructura.RepositorioPartida partidasCierre;
     private List<FinalizarPartida> resultadosCierre;
+    private com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida temporizadorCierre;
 
     @BeforeEach
     public void prepararCaptura() {
@@ -42,8 +43,9 @@ public class ServicioFinalizacionPartidaTest {
         resultadosCaptura = mock(RepositorioFinalizarPartida.class);
         partidasCierre = mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
         resultadosCierre = new java.util.ArrayList<>();
+        temporizadorCierre = mock(com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida.class);
         servicioCaptura = new ServicioFinalizacionPartidaImpl(propiedadesCaptura, deudasCaptura,
-                resultadosCaptura, new ServicioParticipacionImpl(), partidasCierre);
+                resultadosCaptura, new ServicioParticipacionImpl(), partidasCierre, temporizadorCierre);
         partidaCaptura = new Partida();
         partidaCaptura.setId(10L);
         partidaCaptura.setCodigoUnico("CAPTURA");
@@ -895,13 +897,19 @@ public class ServicioFinalizacionPartidaTest {
     }
 
     private org.springframework.context.annotation.AnnotationConfigApplicationContext crearContextoParaCierre() {
-        return new org.springframework.context.annotation.AnnotationConfigApplicationContext(
+        org.springframework.context.annotation.AnnotationConfigApplicationContext contexto =
+                new org.springframework.context.annotation.AnnotationConfigApplicationContext();
+        contexto.registerBean(com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida.class,
+                () -> temporizadorCierre);
+        contexto.register(
                 com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig.class,
                 ServicioFinalizacionPartidaImpl.class, ServicioParticipacionImpl.class,
                 com.tallerwebi.infraestructura.RepositorioPropiedadImpl.class,
                 com.tallerwebi.infraestructura.RepositorioDeudaPendienteImpl.class,
                 com.tallerwebi.infraestructura.RepositorioFinalizarPartidaImpl.class,
                 com.tallerwebi.infraestructura.RepositorioPartidaImpl.class);
+        contexto.refresh();
+        return contexto;
     }
 
     private Partida persistirPartidaParaCierre(org.hibernate.SessionFactory sesiones) {
@@ -922,5 +930,95 @@ public class ServicioFinalizacionPartidaTest {
         partida.getJugadores().add(segundo);
         sesiones.getCurrentSession().persist(partida);
         return partida;
+    }
+
+    @Test
+    public void cierrePorUnicoActivoCancelaSoloDespuesDelCommit() {
+        verificarCancelacionAlConfirmarCierre(true);
+    }
+
+    @Test
+    public void cierrePorRondasCancelaSoloDespuesDelCommit() {
+        verificarCancelacionAlConfirmarCierre(false);
+    }
+
+    @Test
+    public void rollbackDelCierreNoCancelaElTemporizador() {
+        try (org.springframework.context.annotation.AnnotationConfigApplicationContext contexto =
+                     crearContextoParaCierre()) {
+            org.springframework.transaction.support.TransactionTemplate transaccion =
+                    new org.springframework.transaction.support.TransactionTemplate(
+                            contexto.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+            org.hibernate.SessionFactory sesiones = contexto.getBean(org.hibernate.SessionFactory.class);
+            Long idPartida = transaccion.execute(estado -> persistirPartidaParaCierre(sesiones).getId());
+            ServicioFinalizacionPartida cierre = contexto.getBean(ServicioFinalizacionPartida.class);
+
+            transaccion.executeWithoutResult(estado -> {
+                org.junit.jupiter.api.Assertions.assertTrue(cierre.finalizarSiCorresponde(
+                        sesiones.getCurrentSession().find(Partida.class, idPartida)));
+                verifyNoInteractions(temporizadorCierre);
+                estado.setRollbackOnly();
+            });
+
+            verifyNoInteractions(temporizadorCierre);
+            transaccion.executeWithoutResult(estado -> {
+                assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO,
+                        sesiones.getCurrentSession().find(Partida.class, idPartida).getEstado());
+                assertEquals(0, contexto.getBean(RepositorioFinalizarPartida.class)
+                        .buscarPorPartida(idPartida).size());
+            });
+        }
+    }
+
+    @Test
+    public void sinCondicionDeCierreNoCancelaElTemporizador() {
+        prepararDosActivosParaCondicion();
+
+        org.junit.jupiter.api.Assertions.assertFalse(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        verifyNoInteractions(temporizadorCierre);
+    }
+
+    @Test
+    public void partidaYaFinalizadaNoVuelveACancelarElTemporizador() {
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+
+        org.junit.jupiter.api.Assertions.assertFalse(servicioCaptura.finalizarSiCorresponde(partidaCaptura));
+
+        verifyNoInteractions(temporizadorCierre);
+    }
+
+    private void verificarCancelacionAlConfirmarCierre(boolean unicoActivo) {
+        try (org.springframework.context.annotation.AnnotationConfigApplicationContext contexto =
+                     crearContextoParaCierre()) {
+            org.springframework.transaction.support.TransactionTemplate transaccion =
+                    new org.springframework.transaction.support.TransactionTemplate(
+                            contexto.getBean(org.springframework.transaction.PlatformTransactionManager.class));
+            org.hibernate.SessionFactory sesiones = contexto.getBean(org.hibernate.SessionFactory.class);
+            Long idPartida = transaccion.execute(estado -> {
+                Partida partida = persistirPartidaParaCierre(sesiones);
+                if (unicoActivo) {
+                    partida.setRondaActual(1);
+                    Jugador eliminado = partida.getJugadores().get(1);
+                    contexto.getBean(ServicioFinalizacionPartida.class).conservarResultadoEconomico(
+                            partida, eliminado, EstadoParticipante.QUEBRADO);
+                    eliminado.setEnBancarrota(true);
+                }
+                return partida.getId();
+            });
+            ServicioFinalizacionPartida cierre = contexto.getBean(ServicioFinalizacionPartida.class);
+
+            transaccion.executeWithoutResult(estado -> {
+                org.junit.jupiter.api.Assertions.assertTrue(cierre.finalizarSiCorresponde(
+                        sesiones.getCurrentSession().find(Partida.class, idPartida)));
+                verifyNoInteractions(temporizadorCierre);
+            });
+
+            verify(temporizadorCierre).cancelarTemporizador("CIERRE");
+            transaccion.executeWithoutResult(estado ->
+                    org.junit.jupiter.api.Assertions.assertFalse(cierre.finalizarSiCorresponde(
+                            sesiones.getCurrentSession().find(Partida.class, idPartida))));
+            verifyNoMoreInteractions(temporizadorCierre);
+        }
     }
 }

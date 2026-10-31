@@ -10,6 +10,8 @@ import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.infraestructura.RepositorioFinalizarPartida;
 import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
+import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,7 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
     private final RepositorioFinalizarPartida repositorioFinalizarPartida;
     private final ServicioParticipacion participacion;
     private final RepositorioPartida repositorioPartida;
+    private final GestorTemporizadorPartida gestorTemporizador;
 
     public ServicioFinalizacionPartidaImpl() {
         this(null, null);
@@ -62,17 +65,28 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
                 participacion, null);
     }
 
-    @Autowired
     public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
                                           RepositorioDeudaPendiente repositorioDeudaPendiente,
                                           RepositorioFinalizarPartida repositorioFinalizarPartida,
                                           ServicioParticipacion participacion,
                                           RepositorioPartida repositorioPartida) {
+        this(repositorioPropiedad, repositorioDeudaPendiente, repositorioFinalizarPartida,
+                participacion, repositorioPartida, null);
+    }
+
+    @Autowired
+    public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
+                                          RepositorioDeudaPendiente repositorioDeudaPendiente,
+                                          RepositorioFinalizarPartida repositorioFinalizarPartida,
+                                          ServicioParticipacion participacion,
+                                          RepositorioPartida repositorioPartida,
+                                          GestorTemporizadorPartida gestorTemporizador) {
         this.repositorioPropiedad = repositorioPropiedad;
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
         this.repositorioFinalizarPartida = repositorioFinalizarPartida;
         this.participacion = participacion;
         this.repositorioPartida = repositorioPartida;
+        this.gestorTemporizador = gestorTemporizador;
     }
 
     @Override
@@ -90,6 +104,8 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         determinarGanadores(partida);
         partida.setEstado(EstadoPartida.FINALIZADA);
         repositorioPartida.guardarPartida(partida);
+        String codigoPartida = partida.getCodigoUnico();
+        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoPartida));
         return true;
     }
 

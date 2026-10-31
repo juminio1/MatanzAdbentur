@@ -27,6 +27,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
 
     @Override
     public void incrementarRondas(Partida partida) {
+        participacion.validarPartidaEnCurso(partida);
         if (partida.getJugadores().isEmpty()) {
             return;
         }
@@ -81,6 +82,7 @@ public class ServicioTurnoImpl implements ServicioTurno {
 
     @Override
     public Jugador resolverSiguienteJugador(Partida partida, Integer indiceActual) {
+        participacion.validarPartidaEnCurso(partida);
         Jugador candidato = buscarSiguienteJugadorActivo(partida, indiceActual, false);
         if (candidato != null) {
             return candidato;

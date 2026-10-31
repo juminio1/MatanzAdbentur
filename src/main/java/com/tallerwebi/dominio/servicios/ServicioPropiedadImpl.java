@@ -66,6 +66,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throws EstadoPartidaInvalidoException {
         // La consulta y la materialización participan de la transacción del servicio.
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        participacion.validarPartidaEnCurso(partida);
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return null;
         Jugador jugador = turnos.obtenerJugadorActual(partida);
         if (jugador == null) {
@@ -96,6 +97,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private void ejecutarCompra(Long idPropiedad, Jugador comprador) {
+        validarPartidaDelJugador(comprador.getId());
         Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
         if (!estaDisponible(propiedadEncontrada)) {
             throw new PropiedadNoDisponibleException("La propiedad no está disponible.");
@@ -114,6 +116,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
             throws EstadoPartidaInvalidoException {
+        participacion.validarPartidaEnCurso(partida);
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
@@ -135,6 +138,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
         Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
+        validarPartidaDelJugador(idJugador);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
         Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
@@ -151,6 +155,11 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (precio == null || precio < 0) throw new PropiedadInvalidaException("El precio ofrecido no es válido.");
         Jugador vendedor = obtenerJugadorExistente(idVendedor, "No se encontró el jugador que vende.");
         Jugador comprador = obtenerJugadorExistente(idComprador, "No se encontró el jugador que vende.");
+        Partida partidaVendedor = validarPartidaDelJugador(idVendedor);
+        Partida partidaComprador = validarPartidaDelJugador(idComprador);
+        if (!Objects.equals(partidaVendedor.getId(), partidaComprador.getId())) {
+            throw new IllegalStateException("Los jugadores no pertenecen a la misma partida.");
+        }
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idVendedor);
         if (Objects.equals(idVendedor, idComprador)) {
@@ -172,6 +181,12 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Jugador vendedor = repositorioPartida.buscarJugadorPorId(idJugador);
         if (vendedor == null) throw new JugadorInvalidoException(mensajeNoEncontrado);
         return vendedor;
+    }
+
+    private Partida validarPartidaDelJugador(Long idJugador) {
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
+        participacion.validarPartidaEnCurso(partida);
+        return partida;
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
@@ -198,6 +213,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (montoAlquiler == null || montoAlquiler < 0) {
             throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
         }
+        validarPartidaDelJugador(jugador.getId());
         Propiedad propiedadPersistida = repositorioPropiedad.buscarPropiedadPorId(propiedad.getId());
         if (propiedadPersistida == null) propiedadPersistida = propiedad;
         Jugador propietario = propiedadPersistida.getPropietario();
@@ -254,6 +270,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public void mejorarPropiedad(Long idPropiedad, Jugador jugador) {
         validarJugador(jugador);
+        validarPartidaDelJugador(jugador.getId());
 
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
 

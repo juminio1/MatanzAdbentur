@@ -7,6 +7,7 @@ public interface RepositorioPartida {
     void guardarPartida(Partida partida);
     void actualizarJugador(Jugador jugador);
     Jugador buscarJugadorPorId(Long idJugador);
+    Partida buscarPartidaPorJugador(Long idJugador);
 
     Partida buscarPartidaActiva();
 

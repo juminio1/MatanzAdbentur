@@ -56,6 +56,7 @@ public class ServicioPartidaTest {
     private ServicioPartida servicioPartida;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
     private ServicioFinalizacionPartida finalizacion;
+    private org.springframework.transaction.PlatformTransactionManager transacciones;
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -67,6 +68,9 @@ public class ServicioPartidaTest {
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         publicadorAbandonoMock = mock(PublicadorEventos.class);
         finalizacion = mock(ServicioFinalizacionPartida.class);
+        transacciones = mock(org.springframework.transaction.PlatformTransactionManager.class);
+        when(transacciones.getTransaction(any()))
+                .thenReturn(mock(org.springframework.transaction.TransactionStatus.class));
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -74,8 +78,10 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
-            publicadorAbandonoMock, null, null, finalizacion
+            publicadorAbandonoMock, null, null, finalizacion, transacciones
         );
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "participacion",
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
     }
 
     @Test
@@ -191,6 +197,7 @@ public class ServicioPartidaTest {
     public void dadoQueEsTurnoDelPrimerJugadorCuandoSeAvanzaTurnoDaComoResultadoElSegundoJugador() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -213,8 +220,10 @@ public class ServicioPartidaTest {
     public void lasOperacionesDeTurnoIgnoranPartidasSinJugadores() {
         String codigo = "SIN-JUGADORES";
         Partida sinLista = new Partida();
+        sinLista.setEstado(EstadoPartida.EN_CURSO);
         sinLista.setJugadores(null);
         Partida listaVacia = new Partida();
+        listaVacia.setEstado(EstadoPartida.EN_CURSO);
         listaVacia.setJugadores(List.of());
 
         for (Partida partida : Arrays.asList(null, sinLista, listaVacia)) {
@@ -235,6 +244,7 @@ public class ServicioPartidaTest {
     public void alAvanzarTurnoSeOmiteAlJugadorEnBancarrota() {
         String codigo = "BANCARROTA";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador activo = new Jugador();
         activo.setOrden(0);
@@ -259,6 +269,7 @@ public class ServicioPartidaTest {
     public void alIniciarTemporizadorSinJugadorActivoNoSeNotificaTurno() {
         String codigo = "SIN-JUGADORES";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         partida.setJugadores(List.of());
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
@@ -275,6 +286,7 @@ public class ServicioPartidaTest {
     public void alAvanzarTurnoSinNotificadorSeProgramaElTemporizadorIgualmente() {
         String codigo = "SIN-NOTIFICADOR";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador jugador = new Jugador();
         jugador.setOrden(0);
@@ -285,8 +297,10 @@ public class ServicioPartidaTest {
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
             repositorioPartidaMock,
             new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
-            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock);
+            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock, null, null, finalizacion, transacciones);
 
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioSinNotificador, "participacion",
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         servicioSinNotificador.avanzarTurno(codigo);
 
         assertEquals(0, partida.getIndiceTurnoActual());
@@ -299,6 +313,7 @@ public class ServicioPartidaTest {
     public void alAvanzarConTodosPenalizadosSeRestablecenPenalizacionesYContinuaLaPartida() {
         String codigo = "TODOS-PENALIZADOS";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -326,6 +341,7 @@ public class ServicioPartidaTest {
     public void alAvanzarConTodosEnBancarrotaSeGuardaSinCambiarTurnoNiProgramarTemporizador() {
         String codigo = "TODOS-EN-BANCARROTA";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -358,6 +374,7 @@ public class ServicioPartidaTest {
     public void dadoQueSeAvanzaTurnoSeNotificaNuevoTurnoConDuracion() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setId(1L);
@@ -391,6 +408,7 @@ public class ServicioPartidaTest {
     public void dadoQueEsElUltimoJugadorCuandoSeAvanzaTurnoDaComoResultadoElPrimero() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -415,6 +433,7 @@ public class ServicioPartidaTest {
     public void dadoQueElSiguienteJugadorPierdeTurnoCuandoSeAvanzaDaComoResultadoQueSeLoSaltea() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -613,6 +632,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueFaltanJugadoresCuandoSeIncrementanRondasDaComoResultadoMismaRonda() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -630,6 +650,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueTodosJugaronCuandoSeIncrementanRondasDaComoResultadoNuevaRonda() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -652,6 +673,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueLosContadoresSonNulosCuandoSeIncrementanRondasDaComoResultadoValoresInicializados() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos));
@@ -678,6 +700,7 @@ public class ServicioPartidaTest {
         jugadorCuatro.setOrden(3);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigoPrueba);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setIndiceTurnoActual(2);
@@ -981,6 +1004,7 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         Long idJugador = 1L;
 
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
 
         Jugador jugadorSimulado = new Jugador();
@@ -1041,6 +1065,7 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
 
     private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -1223,5 +1248,357 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         partida.setIndiceTurnoActual(0);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
         return partida;
+    }
+
+    @Test
+    public void rondaTreintaIncompletaContinuaSiElCierreDevuelveFalse() {
+        Partida partida = prepararRondaConTresJugadores("CIERRE-INCOMPLETA");
+        partida.setRondaActual(30);
+
+        servicioPartida.avanzarTurno("CIERRE-INCOMPLETA");
+
+        assertEquals(30, partida.getRondaActual());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
+        verify(finalizacion, times(2)).finalizarSiCorresponde(partida);
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CIERRE-INCOMPLETA"), any(TurnoDTO.class));
+    }
+
+    @Test
+    public void ultimaOportunidadDeLaRondaTreintaCierraAntesDeAsignarONotificarOtroTurno() {
+        Partida partida = prepararRondaConTresJugadores("CIERRE-ULTIMA");
+        partida.setRondaActual(30);
+        partida.setIndiceTurnoActual(2);
+        partida.getJugadores().get(0).setUltimaRondaConOportunidad(30);
+        partida.getJugadores().get(1).setUltimaRondaConOportunidad(30);
+        partida.getJugadores().get(0).setTiroEnTurno(true);
+        when(finalizacion.finalizarSiCorresponde(partida)).thenAnswer(invocacion -> {
+            assertEquals(31, partida.getRondaActual());
+            partida.setEstado(EstadoPartida.FINALIZADA);
+            return true;
+        });
+
+        servicioPartida.avanzarTurno("CIERRE-ULTIMA");
+
+        assertEquals(EstadoPartida.FINALIZADA, partida.getEstado());
+        assertEquals(2, partida.getIndiceTurnoActual());
+        assertTrue(partida.getJugadores().get(0).getTiroEnTurno());
+        verify(finalizacion, times(1)).finalizarSiCorresponde(partida);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verifyNoInteractions(notificadorPartidaMock);
+        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), any(), any());
+    }
+
+    @Test
+    public void ultimaOportunidadPenalizadaCierraTrasResolverSinAsignarElCandidato() {
+        Partida partida = prepararRondaConTresJugadores("CIERRE-PENALIZACION");
+        partida.setRondaActual(30);
+        partida.setIndiceTurnoActual(1);
+        partida.getJugadores().get(0).setUltimaRondaConOportunidad(30);
+        partida.getJugadores().get(0).setTiroEnTurno(true);
+        partida.getJugadores().get(2).setPierdeTurno(true);
+        when(finalizacion.finalizarSiCorresponde(partida)).thenAnswer(invocacion -> {
+            if (partida.getRondaActual() > 30) {
+                partida.setEstado(EstadoPartida.FINALIZADA);
+                return true;
+            }
+            return false;
+        });
+
+        servicioPartida.avanzarTurno("CIERRE-PENALIZACION");
+
+        assertEquals(31, partida.getRondaActual());
+        assertEquals(EstadoPartida.FINALIZADA, partida.getEstado());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertEquals(30, partida.getJugadores().get(2).getUltimaRondaConOportunidad());
+        assertFalse(partida.getJugadores().get(2).getPierdeTurno());
+        assertTrue(partida.getJugadores().get(0).getTiroEnTurno());
+        verify(finalizacion, times(2)).finalizarSiCorresponde(partida);
+        verifyNoInteractions(notificadorPartidaMock);
+        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), any(), any());
+    }
+
+    @Test
+    public void siElServicioNoCierraSeContinuaSinDuplicarSuCondicionEnElAvance() {
+        Partida partida = prepararRondaConTresJugadores("CIERRE-FALSE");
+        partida.setRondaActual(30);
+        partida.setIndiceTurnoActual(2);
+        partida.getJugadores().get(0).setUltimaRondaConOportunidad(30);
+        partida.getJugadores().get(1).setUltimaRondaConOportunidad(30);
+        when(finalizacion.finalizarSiCorresponde(partida)).thenReturn(false);
+
+        servicioPartida.avanzarTurno("CIERRE-FALSE");
+
+        assertEquals(31, partida.getRondaActual());
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
+        verify(finalizacion, times(2)).finalizarSiCorresponde(partida);
+        verify(repositorioPartidaMock).guardarPartida(partida);
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CIERRE-FALSE"), any(TurnoDTO.class));
+    }
+
+    @Test
+    public void unaPartidaFinalizadaNoModificaTurnosNiConsultaOtroCierre() {
+        Partida partida = prepararRondaConTresJugadores("CIERRE-YA-FINALIZADA");
+        partida.setEstado(EstadoPartida.FINALIZADA);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPartida.avanzarTurno("CIERRE-YA-FINALIZADA"));
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getJugadores().get(0).getUltimaRondaConOportunidad());
+        verifyNoInteractions(finalizacion, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), any(), any());
+    }
+
+    @Test
+    public void callbackPendienteNoProgramaNiNotificaSiLaConsultaVigenteYaNoEncuentraPartidaActiva() {
+        Partida original = prepararRondaConTresJugadores("CALLBACK-CERRADO");
+        List<org.springframework.transaction.support.TransactionSynchronization> callbacks =
+                registrarCallbackPendiente("CALLBACK-CERRADO");
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("CALLBACK-CERRADO")).thenReturn(null);
+
+        callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+
+        assertEquals(EstadoPartida.EN_CURSO, original.getEstado());
+        verifyNoInteractions(gestorTemporizadorMock, notificadorPartidaMock);
+    }
+
+    @Test
+    public void callbackPendienteRechazaUnaPartidaVigenteFinalizadaAunqueLaCapturadaSigaEnCurso() {
+        Partida original = prepararRondaConTresJugadores("CALLBACK-FINALIZADA");
+        List<org.springframework.transaction.support.TransactionSynchronization> callbacks =
+                registrarCallbackPendiente("CALLBACK-FINALIZADA");
+        Partida actualizada = new Partida();
+        actualizada.setCodigoUnico("CALLBACK-FINALIZADA");
+        actualizada.setJugadores(original.getJugadores());
+        actualizada.setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("CALLBACK-FINALIZADA"))
+                .thenReturn(actualizada);
+
+        callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+
+        assertEquals(EstadoPartida.EN_CURSO, original.getEstado());
+        verifyNoInteractions(gestorTemporizadorMock, notificadorPartidaMock);
+    }
+
+    @Test
+    public void callbackConMarcaAntiguaNoProgramaNiPublicaUnTurnoNuevo() {
+        Partida original = prepararRondaConTresJugadores("CALLBACK-ANTIGUO");
+        List<org.springframework.transaction.support.TransactionSynchronization> callbacks =
+                registrarCallbackPendiente("CALLBACK-ANTIGUO");
+        Partida actualizada = new Partida();
+        actualizada.setCodigoUnico("CALLBACK-ANTIGUO");
+        actualizada.setEstado(EstadoPartida.EN_CURSO);
+        actualizada.setJugadores(original.getJugadores());
+        actualizada.setIndiceTurnoActual(1);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("CALLBACK-ANTIGUO"))
+                .thenReturn(actualizada);
+
+        callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+
+        assertEquals(0, original.getIndiceTurnoActual());
+        verifyNoInteractions(gestorTemporizadorMock, notificadorPartidaMock);
+    }
+
+    @Test
+    public void callbackConMarcaVigenteProgramaYNotificaNormalmente() {
+        prepararRondaConTresJugadores("CALLBACK-VALIDO");
+        List<org.springframework.transaction.support.TransactionSynchronization> callbacks =
+                registrarCallbackPendiente("CALLBACK-VALIDO");
+        verifyNoInteractions(gestorTemporizadorMock, notificadorPartidaMock);
+
+        callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+
+        verify(gestorTemporizadorMock).programarTemporizador(
+                eq("CALLBACK-VALIDO"), eq(30), any(Runnable.class));
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CALLBACK-VALIDO"), any(TurnoDTO.class));
+    }
+
+    @Test
+    public void vencimientoTardioDePartidaFinalizadaNoAplicaPenalizacionesNiAvanza() {
+        Partida original = prepararRondaConTresJugadores("VENCIMIENTO-CERRADO");
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento("VENCIMIENTO-CERRADO");
+        Partida actualizada = new Partida();
+        actualizada.setCodigoUnico("VENCIMIENTO-CERRADO");
+        actualizada.setJugadores(original.getJugadores());
+        actualizada.setEstado(EstadoPartida.FINALIZADA);
+        Jugador jugador = actualizada.getJugadores().get(0);
+        jugador.getEstadoCarcel().encarcelar();
+        int intentos = jugador.getEstadoCarcel().getIntentosSalirCarcel();
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("VENCIMIENTO-CERRADO"))
+                .thenReturn(actualizada);
+        clearInvocations(gestorTemporizadorMock, notificadorPartidaMock, finalizacion);
+
+        vencimiento.run();
+
+        assertEquals(intentos, jugador.getEstadoCarcel().getIntentosSalirCarcel());
+        assertEquals(0, actualizada.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verifyNoInteractions(finalizacion, gestorTemporizadorMock, notificadorPartidaMock);
+    }
+
+    private List<org.springframework.transaction.support.TransactionSynchronization> registrarCallbackPendiente(
+            String codigo) {
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            servicioPartida.prepararTiempoTurno(codigo, 0);
+            return org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+    }
+    @Test
+    public void avanzarTurnoRechazaEN_ESPERASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.avanzarTurno("BLOQUEO"));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void iniciarTemporizadorTurnoSiNoExisteRechazaEN_ESPERASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.iniciarTemporizadorTurnoSiNoExiste("BLOQUEO"));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void abandonarPartidaRechazaEN_ESPERASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.abandonarPartida("BLOQUEO", 1L));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void avanzarTurnoRechazaFINALIZADASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.avanzarTurno("BLOQUEO"));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void iniciarTemporizadorTurnoSiNoExisteRechazaFINALIZADASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.iniciarTemporizadorTurnoSiNoExiste("BLOQUEO"));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void abandonarPartidaRechazaFINALIZADASinEfectos() {
+        Partida partida = prepararRondaConTresJugadores("BLOQUEO");
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        Jugador jugador = partida.getJugadores().get(0);
+        when(repositorioPartidaMock.buscarJugadorPorId(1L)).thenReturn(jugador);
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThrows(IllegalStateException.class, () -> servicioPartida.abandonarPartida("BLOQUEO", 1L));
+            assertTrue(org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().isEmpty());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, jugador.getUltimaRondaConOportunidad());
+        assertFalse(Boolean.TRUE.equals(jugador.getAbandono()));
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock, notificadorPartidaMock);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+    @Test
+    public void inicializarTurnosPermiteUnaPartidaEnEspera() {
+        Partida partida = prepararRondaConTresJugadores("PREPARACION");
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.getJugadores().forEach(jugador -> jugador.setOrden(null));
+
+        servicioPartida.inicializarTurnos("PREPARACION");
+
+        assertEquals(EstadoPartida.EN_ESPERA, partida.getEstado());
+        assertEquals(0, partida.getJugadores().get(0).getOrden());
+        assertEquals(1, partida.getJugadores().get(1).getOrden());
+        assertEquals(2, partida.getJugadores().get(2).getOrden());
+        verify(repositorioPartidaMock).guardarPartida(partida);
+        verifyNoInteractions(gestorTemporizadorMock, finalizacion, publicadorAbandonoMock);
     }
 }

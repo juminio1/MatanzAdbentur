@@ -162,4 +162,91 @@ public class RepositorioPartidaTest {
             this.sessionFactory.getCurrentSession().flush();
         });
     }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraLaPartidaEnCursoDeUnJugador() {
+        Partida partida = crearPartidaConJugador("JUGADOR-CURSO", EstadoPartida.EN_CURSO);
+        verificarPartidaDelJugador(partida);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraLaPartidaFinalizadaDeUnJugador() {
+        Partida partida = crearPartidaConJugador("JUGADOR-FINALIZADA", EstadoPartida.FINALIZADA);
+        verificarPartidaDelJugador(partida);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraLaPartidaEnEsperaDeUnJugador() {
+        Partida partida = crearPartidaConJugador("JUGADOR-ESPERA", EstadoPartida.EN_ESPERA);
+        verificarPartidaDelJugador(partida);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void devuelveNullSiElJugadorNoPerteneceANingunaPartida() {
+        crearPartidaConJugador("OTRA-PARTIDA", EstadoPartida.EN_CURSO);
+        Jugador sinPartida = new Jugador();
+        sessionFactory.getCurrentSession().persist(sinPartida);
+        Long idJugador = sinPartida.getId();
+        vaciarSesionParaBuscarPartida();
+
+        assertThat(repositorioPartida.buscarPartidaPorJugador(idJugador), is(nullValue()));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void noConfundeLaPartidaDelJugadorConOtraPartidaActiva() {
+        Partida otra = crearPartidaConJugador("OTRA-ACTIVA", EstadoPartida.EN_CURSO);
+        Partida buscada = crearPartidaConJugador("BUSCADA-FINALIZADA", EstadoPartida.FINALIZADA);
+        Long idOtroJugador = otra.getJugadores().get(0).getId();
+        Long idJugador = buscada.getJugadores().get(0).getId();
+        vaciarSesionParaBuscarPartida();
+
+        Partida encontrada = repositorioPartida.buscarPartidaPorJugador(idJugador);
+
+        assertThat(encontrada, is(notNullValue()));
+        assertThat(encontrada.getId(), is(buscada.getId()));
+        assertThat(encontrada.getEstado(), is(EstadoPartida.FINALIZADA));
+        assertThat(repositorioPartida.buscarPartidaPorJugador(idOtroJugador).getId(), is(otra.getId()));
+    }
+
+    private Partida crearPartidaConJugador(String codigo, EstadoPartida estado) {
+        Usuario creador = new Usuario();
+        creador.setEmail(codigo + "@test.com");
+        creador.setUsername(codigo);
+        sessionFactory.getCurrentSession().persist(creador);
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setEstado(estado);
+        partida.setCreador(creador);
+        partida.getJugadores().add(new Jugador());
+        repositorioPartida.guardarPartida(partida);
+        return partida;
+    }
+
+    private void verificarPartidaDelJugador(Partida partida) {
+        Long idJugador = partida.getJugadores().get(0).getId();
+        Long idPartida = partida.getId();
+        EstadoPartida estado = partida.getEstado();
+        vaciarSesionParaBuscarPartida();
+
+        Partida encontrada = repositorioPartida.buscarPartidaPorJugador(idJugador);
+
+        assertThat(encontrada, is(notNullValue()));
+        assertThat(encontrada.getId(), is(idPartida));
+        assertThat(encontrada.getEstado(), is(estado));
+    }
+
+    private void vaciarSesionParaBuscarPartida() {
+        sessionFactory.getCurrentSession().flush();
+        sessionFactory.getCurrentSession().clear();
+    }
 }

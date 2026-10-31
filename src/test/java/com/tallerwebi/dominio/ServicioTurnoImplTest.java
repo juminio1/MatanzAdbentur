@@ -32,6 +32,7 @@ class ServicioTurnoImplTest {
         Jugador maria = new Jugador();
         maria.setOrden(3);
         Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
         partida.setJugadores(List.of(ana, ausente, quebrado, maria));
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(0);
@@ -67,6 +68,7 @@ class ServicioTurnoImplTest {
         maria.setAbandono(false);
 
         Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
         partida.setJugadores(List.of(ana, lucas, maria));
         partida.setIndiceTurnoActual(0);
 
@@ -77,5 +79,105 @@ class ServicioTurnoImplTest {
         assertNotNull(siguiente);
         assertEquals(maria.getId(), siguiente.getId());
         assertFalse(siguiente.getEnBancarrota());
+    }
+    @Test
+    void incrementarRondasRechazaEN_ESPERASinCambiarContadoresNiPenalizaciones() {
+        Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(0);
+        Jugador actual = new Jugador();
+        actual.setOrden(0);
+        actual.setUltimaRondaConOportunidad(3);
+        Jugador penalizado = new Jugador();
+        penalizado.setOrden(1);
+        penalizado.setPierdeTurno(true);
+        penalizado.setUltimaRondaConOportunidad(3);
+        partida.setJugadores(List.of(actual, penalizado));
+
+        assertThrows(IllegalStateException.class, () -> servicioTurno.incrementarRondas(partida));
+
+        assertEquals(4, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(3, actual.getUltimaRondaConOportunidad());
+        assertEquals(3, penalizado.getUltimaRondaConOportunidad());
+        assertTrue(penalizado.getPierdeTurno());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+    @Test
+    void resolverSiguienteJugadorRechazaEN_ESPERASinCambiarContadoresNiPenalizaciones() {
+        Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(0);
+        Jugador actual = new Jugador();
+        actual.setOrden(0);
+        actual.setUltimaRondaConOportunidad(3);
+        Jugador penalizado = new Jugador();
+        penalizado.setOrden(1);
+        penalizado.setPierdeTurno(true);
+        penalizado.setUltimaRondaConOportunidad(3);
+        partida.setJugadores(List.of(actual, penalizado));
+
+        assertThrows(IllegalStateException.class, () -> servicioTurno.resolverSiguienteJugador(partida, 0));
+
+        assertEquals(4, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(3, actual.getUltimaRondaConOportunidad());
+        assertEquals(3, penalizado.getUltimaRondaConOportunidad());
+        assertTrue(penalizado.getPierdeTurno());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+    @Test
+    void incrementarRondasRechazaFINALIZADASinCambiarContadoresNiPenalizaciones() {
+        Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(0);
+        Jugador actual = new Jugador();
+        actual.setOrden(0);
+        actual.setUltimaRondaConOportunidad(3);
+        Jugador penalizado = new Jugador();
+        penalizado.setOrden(1);
+        penalizado.setPierdeTurno(true);
+        penalizado.setUltimaRondaConOportunidad(3);
+        partida.setJugadores(List.of(actual, penalizado));
+
+        assertThrows(IllegalStateException.class, () -> servicioTurno.incrementarRondas(partida));
+
+        assertEquals(4, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(3, actual.getUltimaRondaConOportunidad());
+        assertEquals(3, penalizado.getUltimaRondaConOportunidad());
+        assertTrue(penalizado.getPierdeTurno());
+        assertEquals(0, partida.getIndiceTurnoActual());
+    }
+    @Test
+    void resolverSiguienteJugadorRechazaFINALIZADASinCambiarContadoresNiPenalizaciones() {
+        Partida partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(0);
+        Jugador actual = new Jugador();
+        actual.setOrden(0);
+        actual.setUltimaRondaConOportunidad(3);
+        Jugador penalizado = new Jugador();
+        penalizado.setOrden(1);
+        penalizado.setPierdeTurno(true);
+        penalizado.setUltimaRondaConOportunidad(3);
+        partida.setJugadores(List.of(actual, penalizado));
+
+        assertThrows(IllegalStateException.class, () -> servicioTurno.resolverSiguienteJugador(partida, 0));
+
+        assertEquals(4, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(3, actual.getUltimaRondaConOportunidad());
+        assertEquals(3, penalizado.getUltimaRondaConOportunidad());
+        assertTrue(penalizado.getPierdeTurno());
+        assertEquals(0, partida.getIndiceTurnoActual());
     }
 }
