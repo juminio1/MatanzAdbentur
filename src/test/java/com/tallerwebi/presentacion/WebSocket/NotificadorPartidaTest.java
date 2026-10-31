@@ -72,8 +72,8 @@ public class NotificadorPartidaTest {
         // Ejecución
         NotificadorPartida.notificarSaldos(templateMock, servicioPartidaMock, "ABC123");
         // Verificación
-        verify(templateMock).convertAndSend("/topic/partida/ABC123/dinero", Map.of("idJugador", 1L, "dinero", 125, "enBancarrota", false));
-        verify(templateMock).convertAndSend("/topic/partida/ABC123/dinero", Map.of("idJugador", 2L, "dinero", 300, "enBancarrota", false));
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/dinero", Map.of("idJugador", 1L, "dinero", 125, "enBancarrota", false, "encarcelado", false, "intentosCarcel", 0));
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/dinero", Map.of("idJugador", 2L, "dinero", 300, "enBancarrota", false, "encarcelado", false, "intentosCarcel", 0));
         verify(templateMock, times(2)).convertAndSend(eq("/topic/partida/ABC123/dinero"), any(Map.class));
     }
 

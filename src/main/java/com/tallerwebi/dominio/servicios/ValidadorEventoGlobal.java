@@ -2,7 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;

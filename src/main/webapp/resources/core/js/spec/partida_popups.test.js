@@ -172,6 +172,51 @@ describe("Popups de eventos globales y deudas", function () {
         expect(ventana.cargarPropiedadesPropias).toHaveBeenCalled();
     });
 
+    it("dadoQueElJugadorEstaPresoCuandoLlegaSuSaldoEntoncesSeActualizanElImporteYElBotonDeFianza", function () {
+        ventana.turnoActualId = 1;
+        ventana.document.getElementById("1").dataset.encarcelado = "true";
+
+        runInContext("actualizarDineroJugador(1, 50)", contexto);
+
+        expect(ventana.document.getElementById("deuda-saldo").textContent).toBe("$50");
+        expect(ventana.document.getElementById("carcel-turno").hidden).toBeFalse();
+        expect(ventana.document.getElementById("btn-pagar-fianza").disabled).toBeTrue();
+
+        runInContext("actualizarDineroJugador(2, 9000)", contexto);
+
+        expect(ventana.document.getElementById("deuda-saldo").textContent).toBe("$50");
+        expect(ventana.document.getElementById("btn-pagar-fianza").disabled).toBeTrue();
+
+        runInContext("actualizarDineroJugador(1, 150)", contexto);
+
+        expect(ventana.document.getElementById("deuda-saldo").textContent).toBe("$150");
+        expect(ventana.document.getElementById("btn-pagar-fianza").disabled).toBeFalse();
+    });
+
+    it("dadoQueHayUnResultadoGlobalCuandoLlegaElEstadoDeCarcelEntoncesSeConservanAmbasPresentaciones", function () {
+        const tarjeta = ventana.document.getElementById("1");
+        tarjeta.dataset.encarcelado = "true";
+        tarjeta.dataset.intentosCarcel = "1";
+        const etiqueta = ventana.document.createElement("span");
+        etiqueta.className = "estado-carcel";
+        tarjeta.appendChild(etiqueta);
+        ventana.resultadoGlobal = {
+            fase: "FINALIZADO", tipo: "TRAMITES_AFIP", etapa: 0, idJugadorElegido: 2,
+            participantes: [1, 2], tiradas: { 1: 3, 2: 5 }, confirmados: [1], segundosRestantes: 35,
+            detalle: "se moverá del casillero 5 al 20 cuando se reanude la partida.",
+        };
+        runInContext("mostrarEstadoEventoGlobal(resultadoGlobal)", contexto);
+
+        runInContext("actualizarEstadoCarcel(1, true, 2, {tipo: 'saldo'})", contexto);
+
+        expect(etiqueta.hidden).toBeFalse();
+        expect(etiqueta.textContent).toBe("Preso (2/3)");
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+        expect(ventana.document.getElementById("evento-global-fase").textContent).toBe("Evento finalizado");
+        expect(ventana.document.getElementById("evento-global-resultado").textContent)
+            .toBe("test123 se moverá de «UNLaM» a «EVENTOS» cuando se reanude la partida.");
+    });
+
     it("dadoQueHayDeudaCuandoSeUsanLosBotonesEntoncesSeConservanLaConfirmacionYElAccesoAPropiedades", function () {
         mostrarDeuda("ALQUILER");
         ventana.cargarPropiedadesPropias = jasmine.createSpy("cargarPropiedadesPropias").and.resolveTo();

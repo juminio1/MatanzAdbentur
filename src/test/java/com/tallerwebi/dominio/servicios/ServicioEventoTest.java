@@ -2,7 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.eventos.EventoGlobalActualizado;
 import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;

@@ -259,6 +259,57 @@ class ServicioGestionQuiebraImplTest {
                 () -> servicio.declararQuiebra("PARTIDA123", 1L)));
     }
 
+    @Test
+    void dadoQueHaySaldoParaLaMultaCuandoSeProcesaEntoncesSeDescuentaSinCrearDeuda() throws Exception {
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(150);
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        var resultado = servicio.procesarMulta("PARTIDA123", jugador, 100, "FIANZA_CARCEL");
+
+        assertEquals(com.tallerwebi.dominio.enums.ResultadoDeuda.RESUELTA, resultado);
+        assertEquals(50, jugador.getDinero());
+        verify(repositorioPartida).actualizarJugador(jugador);
+        verify(repositorioDeuda, never()).guardar(any());
+        verifyNoInteractions(publicadorQuiebra);
+    }
+
+    @Test
+    void dadoQueLaMultaProvocaQuiebraCuandoFallaElObservadorEntoncesSePropagaLaExcepcionOriginal() throws Exception {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(0);
+        deuda.setMontoPendiente(100);
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null, null, deuda);
+        EventoGlobalInvalidoException causa = new EventoGlobalInvalidoException("Fallo del observador global");
+        doThrow(causa).when(publicadorQuiebra).notificar(any(EventoJugadorQuebrado.class));
+
+        EventoGlobalInvalidoException error = assertThrows(EventoGlobalInvalidoException.class,
+                () -> servicio.procesarMulta("PARTIDA123", jugador, 100, "FIANZA_CARCEL"));
+
+        assertSame(causa, error);
+        verify(repositorioDeuda).guardar(argThat(registrada -> registrada.getMontoPendiente() == 100
+                && "FIANZA_CARCEL".equals(registrada.getMotivo())));
+        verify(publicadorQuiebra).notificar(any(EventoJugadorQuebrado.class));
+    }
+
+    @Test
+    void dadoQueYaExisteUnaDeudaCuandoSeProcesaOtraMultaEntoncesSeConservaLaValidacion() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicio.procesarMulta("PARTIDA123", jugador, 100, "FIANZA_CARCEL"));
+
+        assertEquals(100, jugador.getDinero());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(publicadorQuiebra);
+    }
+
     // Prepara una partida en curso con un jugador endeudado.
     private DeudaPendiente prepararDeudaParaQuiebra() {
         Jugador jugador = new Jugador();

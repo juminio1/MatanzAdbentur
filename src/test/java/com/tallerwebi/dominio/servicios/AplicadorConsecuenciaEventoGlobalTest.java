@@ -2,7 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;

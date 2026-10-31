@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.entidades;
+package com.tallerwebi.dominio.entidades.Evento;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Column;

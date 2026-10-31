@@ -5,6 +5,7 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.*;
 
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 
@@ -29,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 // La jugada se ejecuta dentro de una trasaccion de base de datos. Protege los cambios transaccionales de base de datos.
 
 public class ServicioJugadaImpl implements ServicioJugada {
+
+    private static final Integer POSICION_COMISARIA = 8;
+    private static final Integer COSTO_FIANZA = EstadoCarcel.COSTO_FIANZA;
 
     private final ServicioParticipacion participacion;
 
@@ -108,6 +112,15 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         ResultadoTirada tirada = dados.tirarDados();
 
+        // --- VALIDACIÓN DE CÁRCEL ---
+        if (!puedeAvanzarDesdeCarcel(codigo, jugador, tirada)) {
+            partidas.actualizarJugador(jugador);
+            avanzarTurnoSiCorresponde(codigo, jugador, false);
+
+            return new ResultadoJugada(idJugador, anterior, anterior, anterior, tirada, null, 0,
+                    partida.getJugadores().stream().map(SaldoJugador::desdeJugador).toList(), null);
+        }
+
         //Obtiene la suma de ambos dados y le solicita a ServicioMovimiento que avance al jugador.
 
         Integer premio = movimiento.avanzar(jugador, tirada.sumarDados());
@@ -183,7 +196,35 @@ public class ServicioJugadaImpl implements ServicioJugada {
                         .toList(),//crea la lista
 
                 destino.alquiler());
+    }
 
+    @Override
+    public void pagarFianzaVoluntaria(String codigo, Long idJugador)
+            throws PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalInvalidoException,
+            EventoGlobalActivoException, EventoInexistenteException {
+
+        Partida partida = partidas.obtenerPartida(codigo);
+        if (partida == null) throw new PartidaNoEncontradaException();
+
+        Jugador jugador = obtenerJugador(partida, idJugador);
+
+        if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
+            throw new IllegalStateException("No podés pagar fianza porque no estás en la cárcel.");
+        }
+
+        if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new IllegalStateException("Ya tiraste los dados, debés esperar al próximo turno.");
+        }
+
+        if (jugador.getDinero() == null || jugador.getDinero() < COSTO_FIANZA) {
+            throw new DineroInsuficienteException("No tenés los $100 necesarios para pagar la fianza anticipada.");
+        }
+
+        quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+
+        jugador.getEstadoCarcel().liberar();
+
+        partidas.actualizarJugador(jugador);
     }
 
     //busca al jugador por id.
@@ -264,6 +305,11 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
     private Destino resolverDestino(Partida partida, Jugador jugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
 
+        if (jugador.getPosicionActual() != null && jugador.getPosicionActual().equals(POSICION_COMISARIA)) {
+            jugador.getEstadoCarcel().encarcelar();
+            return new Destino(false, null);
+        }
+
         //si el jugador no esta activo o pierde el turno, no procesa la propiedad
 
         if (!participacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno()))
@@ -314,6 +360,31 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         partidas.avanzarTurno(codigo);
 
+    }
+
+    private boolean puedeAvanzarDesdeCarcel(String codigo, Jugador jugador, ResultadoTirada tirada)
+            throws PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalInvalidoException,
+            EventoGlobalActivoException, EventoInexistenteException {
+        if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
+            return true;
+        }
+
+        if (tirada.getDado1().equals(tirada.getDado2())) {
+            jugador.getEstadoCarcel().liberar();
+            return true;
+        }
+
+        // Al último intento fallido se cobra la fianza, pero se queda en el lugar hasta el próximo turno (castigo).
+        if (jugador.getEstadoCarcel().registrarIntentoFallido()) {
+
+            quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+
+            jugador.getEstadoCarcel().liberar();
+
+            return false;
+        }
+
+        return false;
     }
 
     //Record: crea clases pequeñas para guardar datos

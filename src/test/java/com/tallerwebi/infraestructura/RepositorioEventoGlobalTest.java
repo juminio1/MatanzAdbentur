@@ -1,8 +1,8 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.Evento;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.Evento;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;

@@ -6,7 +6,8 @@ import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
 import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
-@FunctionalInterface
+
 public interface ServicioJugada {
     ResultadoJugada tirarYMover(String codigo, Long idJugador) throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException;
+    void pagarFianzaVoluntaria(String codigo, Long idJugador) throws PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException;
 }

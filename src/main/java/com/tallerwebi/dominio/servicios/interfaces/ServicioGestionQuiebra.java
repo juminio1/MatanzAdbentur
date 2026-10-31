@@ -28,5 +28,6 @@ public interface ServicioGestionQuiebra {
     Partida declararQuiebra(String codigoPartida, Long idJugador) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException;
     ResultadoDeuda procesarAlquiler(String codigoPartida, Propiedad propiedad, Jugador jugador, Integer montoAlquiler) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException;
 
+    ResultadoDeuda procesarMulta(String codigoPartida, Jugador jugador, Integer montoMulta, String motivo) throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException;
 
 }

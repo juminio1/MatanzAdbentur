@@ -6,6 +6,7 @@ import static org.mockito.Mockito.times;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;

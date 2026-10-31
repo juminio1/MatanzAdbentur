@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +24,8 @@ import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
+import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.resultados.PosicionFicha;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
@@ -36,6 +39,7 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.infraestructura.RepositorioSalaDeEspera;
 
@@ -59,6 +63,8 @@ public class ServicioPartidaTest {
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
     private ServicioEvento servicioEventoMock;
+    private ServicioGestionQuiebra quiebrasMock;
+    private PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcelMock;
 
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
 
@@ -69,6 +75,8 @@ public class ServicioPartidaTest {
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         servicioEventoMock = mock(ServicioEvento.class);
+        quiebrasMock = mock(ServicioGestionQuiebra.class);
+        publicadorCarcelMock = mock(PublicadorEventos.class);
         publicadorAbandonoMock = mock(PublicadorEventos.class);
 
         servicioPartida = new ServicioPartidaImpl(
@@ -77,7 +85,7 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
-            publicadorAbandonoMock, servicioEventoMock
+            publicadorAbandonoMock, servicioEventoMock, quiebrasMock, publicadorCarcelMock
         );
 
     }
@@ -1572,6 +1580,120 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
 
         verify(gestorTemporizadorMock, never()).programarTemporizador(any(), anyInt(), any(Runnable.class));
         verifyNoInteractions(notificadorPartidaMock);
+    }
+
+    @Test
+    public void dadoQueUnEventoGlobalPausaLaPartidaCuandoVenceElTurnoEntoncesNoSeRegistraIntentoDeCarcel() {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.getEstadoCarcel().encarcelar();
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+        when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(true);
+
+        vencimiento.run();
+
+        assertEquals(0, jugador.getEstadoCarcel().getIntentosSalirCarcel());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertEquals(0, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+        verifyNoInteractions(quiebrasMock, publicadorCarcelMock);
+        verify(notificadorPartidaMock, times(1)).notificarCambioDeTurno(eq(CODIGO), any(TurnoDTO.class));
+        verifyNoMoreInteractions(notificadorPartidaMock);
+    }
+
+    @Test
+    public void dadoQueElJugadorEstaPresoCuandoVenceDosVecesElMismoTurnoEntoncesCuentaUnSoloIntento() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.getEstadoCarcel().encarcelar();
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+
+        vencimiento.run();
+        vencimiento.run();
+
+        assertEquals(1, jugador.getEstadoCarcel().getIntentosSalirCarcel());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+        verify(repositorioPartidaMock, times(1)).actualizarJugador(jugador);
+        verify(quiebrasMock, never()).procesarMulta(any(), any(), any(), any());
+        verify(publicadorCarcelMock, times(1)).notificar(any(EventoTiempoAgotadoEnCarcel.class));
+    }
+
+    @Test
+    public void dadoQueSeAgotaronLosIntentosCuandoVenceElTurnoEntoncesSeCobraFianzaYSeLiberaUnaVez() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.setId(1L);
+        jugador.getEstadoCarcel().encarcelar();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+
+        vencimiento.run();
+        vencimiento.run();
+
+        assertFalse(jugador.getEstadoCarcel().getEncarcelado());
+        assertEquals(0, jugador.getEstadoCarcel().getIntentosSalirCarcel());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(quiebrasMock, times(1)).procesarMulta(CODIGO, jugador, 100, "FIANZA_CARCEL");
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+        verify(publicadorCarcelMock, times(1)).notificar(any(EventoTiempoAgotadoEnCarcel.class));
+    }
+
+    @Test
+    public void dadoQueLaFianzaProvocaQuiebraCuandoElObservadorAvanzaEntoncesElTemporizadorNoAvanzaOtraVez() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.getEstadoCarcel().encarcelar();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        when(quiebrasMock.procesarMulta(CODIGO, jugador, 100, "FIANZA_CARCEL")).thenAnswer(invocacion -> {
+            servicioPartida.avanzarTurno(CODIGO);
+            return ResultadoDeuda.QUIEBRA;
+        });
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+
+        vencimiento.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    @Test
+    public void dadoQueFallaLaMultaCuandoVenceElTurnoEntoncesSePropagaLaCausaSinLiberarNiAvanzar() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.getEstadoCarcel().encarcelar();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        jugador.getEstadoCarcel().registrarIntentoFallido();
+        EventoGlobalInvalidoException causa = new EventoGlobalInvalidoException("Fallo del observador global");
+        when(quiebrasMock.procesarMulta(CODIGO, jugador, 100, "FIANZA_CARCEL")).thenThrow(causa);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, vencimiento::run);
+
+        assertSame(causa, error.getCause());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertEquals(0, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verifyNoInteractions(publicadorCarcelMock);
+    }
+
+    @Test
+    public void dadoQueFallaElAvisoDeCarcelCuandoSePublicaEntoncesSeConservaLaCausaOriginal() throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        partida.getJugadores().get(0).getEstadoCarcel().encarcelar();
+        EventoGlobalInvalidoException causa = new EventoGlobalInvalidoException("Fallo del observador de cárcel");
+        doThrow(causa).when(publicadorCarcelMock).notificar(any(EventoTiempoAgotadoEnCarcel.class));
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, vencimiento::run);
+
+        assertSame(causa, error.getCause());
+        verify(publicadorCarcelMock).notificar(any(EventoTiempoAgotadoEnCarcel.class));
     }
 
     private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {

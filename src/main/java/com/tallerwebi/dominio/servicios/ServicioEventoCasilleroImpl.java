@@ -1,9 +1,9 @@
 
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException;

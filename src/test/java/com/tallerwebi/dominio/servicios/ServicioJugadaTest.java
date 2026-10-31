@@ -1,11 +1,11 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.dominio.excepcion.EventoInexistenteException;

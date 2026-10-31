@@ -1,12 +1,13 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.eventos.EventoGlobal;
 import java.util.List;
 import java.util.Random;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 
 @Repository("repositorioEvento")
 public class RepositorioEventoImpl implements RepositorioEvento {

@@ -1,11 +1,12 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.entidades.EstadoCarcel;
 import com.tallerwebi.dominio.entidades.Jugador;
 
 import com.tallerwebi.dominio.entidades.Partida;
 
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
-
+import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
@@ -36,6 +37,7 @@ import com.tallerwebi.dominio.resultados.PosicionFicha;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
@@ -54,7 +56,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Propagation;
@@ -96,25 +98,47 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final GestorTemporizadorPartida gestorTemporizador;
 
     private final PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono;
+    // Se usan cuando a un jugador preso se le acaba el tiempo (pueden ser null en los tests).
+    private final ServicioGestionQuiebra quiebras;
+    private final PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel;
+
+    public ServicioPartidaImpl(
+            RepositorioPartida repositorioPartida,
+            ServicioInicioPartida servicioInicioPartida,
+            GestorTemporizadorPartida gestorTemporizador,
+            ServicioTurno servicioTurno,
+            PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
+    ) {
+        this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
+                publicadorTurno, publicadorAbandono, null, null, null);
+    }
+
+    public ServicioPartidaImpl(
+            RepositorioPartida repositorioPartida,
+            ServicioInicioPartida servicioInicioPartida,
+            GestorTemporizadorPartida gestorTemporizador,
+            ServicioTurno servicioTurno,
+            PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
+            ServicioEvento servicioEvento
+    ) {
+        this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
+                publicadorTurno, publicadorAbandono, servicioEvento, null, null);
+    }
 
     @Autowired
 
     public ServicioPartidaImpl(
-
-        RepositorioPartida repositorioPartida,
-
-        ServicioInicioPartida servicioInicioPartida,
-
-        GestorTemporizadorPartida gestorTemporizador,
-
-        ServicioTurno servicioTurno,
-
-        @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
-
-        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
-
-        ServicioEvento servicioEvento
-
+            RepositorioPartida repositorioPartida,
+            ServicioInicioPartida servicioInicioPartida,
+            GestorTemporizadorPartida gestorTemporizador,
+            ServicioTurno servicioTurno,
+            @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
+            ServicioEvento servicioEvento,
+            @Lazy ServicioGestionQuiebra quiebras,
+            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel
     ) {
 
         this.repositorioPartida = repositorioPartida;
@@ -131,6 +155,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         this.servicioEvento = servicioEvento;
 
+        this.quiebras = quiebras;
+        this.publicadorCarcel = publicadorCarcel;
     }
 
     @Override
@@ -478,13 +504,69 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Partida partida = obtenerPartida(codigoUnico);
 
-        if (partida == null || !marcaProgramada.equals(MarcaTurno.de(partida))) {
+        if (partida == null || !marcaProgramada.equals(MarcaTurno.de(partida))
+                || verificarSiHayEventoGlobalActivo(codigoUnico)) {
 
             return;
 
         }
+        try {
+            registrarTiempoAgotadoEnCarcel(codigoUnico);
+        } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException
+                | EventoGlobalActivoException | EventoInexistenteException exception) {
+            throw new IllegalStateException("Error al procesar el vencimiento del turno en cárcel", exception);
+        }
+
+        // Si cobrar la fianza terminó en quiebra, el turno ya lo avanzó el observador de quiebra.
+        Partida actualizada = obtenerPartida(codigoUnico);
+        if (actualizada == null || !marcaProgramada.equals(MarcaTurno.de(actualizada))) {
+            return;
+        }
         avanzarTurno(codigoUnico);
 
+    }
+
+    /*
+     * Si al jugador del turno se le acabó el tiempo estando preso y sin tirar, ese turno
+     * cuenta como intento fallido. Al último intento se le cobra la fianza y queda libre
+     * para su próximo turno (igual que cuando tira y no saca dobles).
+     */
+    private void registrarTiempoAgotadoEnCarcel(String codigoUnico)
+            throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException,
+            EventoGlobalActivoException, EventoInexistenteException {
+        Jugador jugador = obtenerJugadorActual(codigoUnico);
+        if (jugador == null
+                || !Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())
+                || Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            return;
+        }
+
+        boolean usoTodosLosIntentos = jugador.getEstadoCarcel().registrarIntentoFallido();
+        // Con una deuda pendiente no se puede cobrar otra; la fianza se cobra cuando vuelva a tirar.
+        boolean puedeCobrarFianza = quiebras != null
+                && quiebras.obtenerDeudaPendiente(codigoUnico, jugador.getId()) == null;
+        if (usoTodosLosIntentos && puedeCobrarFianza) {
+            quiebras.procesarMulta(codigoUnico, jugador, EstadoCarcel.COSTO_FIANZA, "FIANZA_CARCEL");
+            jugador.getEstadoCarcel().liberar();
+        }
+        actualizarJugador(jugador);
+
+        if (publicadorCarcel != null) {
+            EventoTiempoAgotadoEnCarcel evento = new EventoTiempoAgotadoEnCarcel(
+                    codigoUnico,
+                    jugador.getId(),
+                    jugador.getEstadoCarcel().getEncarcelado(),
+                    jugador.getEstadoCarcel().getIntentosSalirCarcel(),
+                    jugador.getDinero());
+            DespuesDeConfirmar.ejecutar(() -> {
+                try {
+                    publicadorCarcel.notificar(evento);
+                } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException
+                        | EventoGlobalActivoException | EventoInexistenteException exception) {
+                    throw new IllegalStateException("Error al notificar el tiempo agotado en cárcel", exception);
+                }
+            });
+        }
     }
 
     // Identifica un turno concreto: cambia cada vez que se avanza el turno.

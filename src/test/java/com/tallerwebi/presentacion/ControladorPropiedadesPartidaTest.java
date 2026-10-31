@@ -973,9 +973,8 @@ class ControladorPropiedadesPartidaTest {
         orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), eq(respuesta.getBody()));
 
         orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"),
-
-                eq(Map.of("idJugador", vendedor.getId(), "dinero", 850, "enBancarrota", false)));
-
+                eq(Map.of("idJugador", vendedor.getId(), "dinero", 850, "enBancarrota", false,
+                        "encarcelado", false, "intentosCarcel", 0)));
         verify(servicioPartida, never()).obtenerJugadorActual(any());
 
         verify(servicioPartida, never()).avanzarTurno(any());
