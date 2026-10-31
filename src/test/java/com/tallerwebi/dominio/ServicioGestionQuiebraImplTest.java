@@ -4,6 +4,8 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import org.mockito.ArgumentCaptor;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
@@ -27,6 +29,7 @@ class ServicioGestionQuiebraImplTest {
     private ServicioPropiedad servicioPropiedad;
     private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
     private ServicioGestionQuiebraImpl servicio;
+    private ServicioFinalizacionPartida finalizacion;
 
     @BeforeEach
     void preparar() {
@@ -35,13 +38,15 @@ class ServicioGestionQuiebraImplTest {
         repositorioPropiedad = mock(RepositorioPropiedad.class);
         servicioPropiedad = mock(ServicioPropiedad.class);
         publicadorQuiebra = mock(PublicadorEventos.class);
+        finalizacion = mock(ServicioFinalizacionPartida.class);
 
         servicio = new ServicioGestionQuiebraImpl(repositorioDeuda,
                 repositorioPartida,
                 servicioPropiedad,
                 repositorioPropiedad,
                 publicadorQuiebra,
-                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(),
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), finalizacion);
     }
 
     @Test
@@ -279,5 +284,58 @@ class ServicioGestionQuiebraImplTest {
         verify(repositorioPartida, never()).actualizarJugador(any());
         verify(repositorioDeuda, never()).eliminar(any());
         verifyNoInteractions(publicadorQuiebra);
+    }
+    @Test
+    void capturaLaQuiebraAntesDeCambiarElJugadorEliminarLaDeudaYPublicar() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = spy(deuda.getJugadorDeudor());
+        deuda.setJugadorDeudor(jugador);
+        deuda.getPartida().setJugadores(java.util.List.of(jugador));
+        clearInvocations(jugador);
+
+        servicio.declararQuiebra("PARTIDA123", 1L);
+
+        org.mockito.InOrder orden = inOrder(finalizacion, jugador, repositorioPartida,
+                repositorioDeuda, publicadorQuiebra);
+        orden.verify(finalizacion).conservarResultadoEconomico(
+                deuda.getPartida(), jugador, EstadoParticipante.QUEBRADO);
+        orden.verify(jugador).setEnBancarrota(true);
+        orden.verify(repositorioPartida).actualizarJugador(jugador);
+        orden.verify(repositorioDeuda).eliminar(deuda);
+        orden.verify(publicadorQuiebra).notificar(new EventoJugadorQuebrado(deuda.getPartida(), jugador));
+    }
+
+    @Test
+    void siFallaLaCapturaNoDeclaraQuiebraNiEliminaDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        IllegalStateException fallo = new IllegalStateException("No se pudo guardar");
+        when(finalizacion.conservarResultadoEconomico(
+                deuda.getPartida(), jugador, EstadoParticipante.QUEBRADO)).thenThrow(fallo);
+
+        assertSame(fallo, assertThrows(IllegalStateException.class,
+                () -> servicio.declararQuiebra("PARTIDA123", 1L)));
+
+        assertFalse(jugador.getEnBancarrota());
+        assertFalse(jugador.getAbandono());
+        assertEquals(100, jugador.getDinero());
+        assertEquals(400, deuda.getMontoPendiente());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(publicadorQuiebra);
+    }
+
+    @Test
+    void unaQuiebraRepetidaNoVuelveACapturarLaFotografia() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        servicio.declararQuiebra("PARTIDA123", 1L);
+        clearInvocations(finalizacion, repositorioDeuda, repositorioPartida, publicadorQuiebra);
+
+        assertThrows(DeclaracionQuiebraInvalidaException.class,
+                () -> servicio.declararQuiebra("PARTIDA123", 1L));
+
+        verifyNoInteractions(finalizacion, publicadorQuiebra);
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
     }
 }

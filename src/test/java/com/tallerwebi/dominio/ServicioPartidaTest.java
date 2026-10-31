@@ -20,6 +20,8 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.ColorFicha;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
@@ -53,6 +55,7 @@ public class ServicioPartidaTest {
     private GestorTemporizadorPartida gestorTemporizadorMock;
     private ServicioPartida servicioPartida;
     private PublicadorEventos<EventoJugadorAbandonado> publicadorAbandonoMock;
+    private ServicioFinalizacionPartida finalizacion;
 
     private static final int TOTAL_CASILLEROS = 30;
 
@@ -63,6 +66,7 @@ public class ServicioPartidaTest {
         notificadorPartidaMock = mock(NotificadorPartida.class);
         gestorTemporizadorMock = mock(GestorTemporizadorPartida.class);
         publicadorAbandonoMock = mock(PublicadorEventos.class);
+        finalizacion = mock(ServicioFinalizacionPartida.class);
 
         servicioPartida = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -70,7 +74,7 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
-            publicadorAbandonoMock
+            publicadorAbandonoMock, null, null, finalizacion
         );
     }
 
@@ -748,6 +752,93 @@ public class ServicioPartidaTest {
 
     verify(repositorioPartidaMock, never()).guardarPartida(any());
 }
+
+    @Test
+    public void capturaElAbandonoAntesDeMarcarActualizarYPublicar() throws PartidaNoEncontradaException {
+        Jugador jugador = spy(new Jugador());
+        jugador.setId(1L);
+        Partida partida = prepararPartidaParaCapturarAbandono(jugador);
+        clearInvocations(jugador);
+
+        servicioPartida.abandonarPartida("CAPTURA", 1L);
+
+        org.mockito.InOrder orden = inOrder(finalizacion, jugador, repositorioPartidaMock,
+                publicadorAbandonoMock);
+        orden.verify(finalizacion).conservarResultadoEconomico(
+                partida, jugador, EstadoParticipante.ABANDONADO);
+        orden.verify(jugador).setAbandono(true);
+        orden.verify(repositorioPartidaMock).actualizarJugador(jugador);
+        orden.verify(publicadorAbandonoMock).notificar(new EventoJugadorAbandonado(partida, jugador));
+    }
+
+    @Test
+    public void siFallaLaCapturaNoMarcaNiPublicaElAbandono() {
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        Partida partida = prepararPartidaParaCapturarAbandono(jugador);
+        IllegalStateException fallo = new IllegalStateException("No se pudo guardar");
+        when(finalizacion.conservarResultadoEconomico(
+                partida, jugador, EstadoParticipante.ABANDONADO)).thenThrow(fallo);
+
+        org.junit.jupiter.api.Assertions.assertSame(fallo,
+                assertThrows(IllegalStateException.class,
+                        () -> servicioPartida.abandonarPartida("CAPTURA", 1L)));
+
+        assertFalse(jugador.getAbandono());
+        assertEquals(500, jugador.getDinero());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+        verifyNoInteractions(publicadorAbandonoMock);
+    }
+
+    @Test
+    public void abandonoRepetidoConservaLaFotografiaOriginal() throws PartidaNoEncontradaException {
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        Partida partida = prepararPartidaParaCapturarAbandono(jugador);
+        partida.setId(10L);
+        com.tallerwebi.infraestructura.RepositorioPropiedad propiedades =
+                mock(com.tallerwebi.infraestructura.RepositorioPropiedad.class);
+        com.tallerwebi.infraestructura.RepositorioDeudaPendiente deudas =
+                mock(com.tallerwebi.infraestructura.RepositorioDeudaPendiente.class);
+        com.tallerwebi.infraestructura.RepositorioFinalizarPartida resultados =
+                mock(com.tallerwebi.infraestructura.RepositorioFinalizarPartida.class);
+        ServicioFinalizacionPartida capturaReal =
+                new com.tallerwebi.dominio.servicios.ServicioFinalizacionPartidaImpl(
+                        propiedades, deudas, resultados,
+                        new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+        when(finalizacion.conservarResultadoEconomico(
+                partida, jugador, EstadoParticipante.ABANDONADO))
+                .thenAnswer(invocacion -> capturaReal.conservarResultadoEconomico(
+                        partida, jugador, EstadoParticipante.ABANDONADO));
+        servicioPartida.abandonarPartida("CAPTURA", 1L);
+        ArgumentCaptor<com.tallerwebi.dominio.entidades.FinalizarPartida> captura =
+                ArgumentCaptor.forClass(com.tallerwebi.dominio.entidades.FinalizarPartida.class);
+        verify(resultados).guardar(captura.capture());
+        com.tallerwebi.dominio.entidades.FinalizarPartida original = captura.getValue();
+        when(resultados.buscarPorPartidaYJugador(10L, 1L)).thenReturn(original);
+        jugador.setDinero(0);
+        clearInvocations(propiedades, deudas);
+
+        servicioPartida.abandonarPartida("CAPTURA", 1L);
+
+        assertEquals(500, original.getDineroFinal());
+        assertEquals(500, original.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.ABANDONADO, original.getEstadoParticipante());
+        verify(resultados, times(1)).guardar(any());
+        verifyNoInteractions(propiedades, deudas);
+    }
+
+    private Partida prepararPartidaParaCapturarAbandono(Jugador jugador) {
+        Partida partida = new Partida();
+        partida.setCodigoUnico("CAPTURA");
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.getJugadores().add(jugador);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("CAPTURA")).thenReturn(partida);
+        when(repositorioPartidaMock.buscarJugadorPorId(jugador.getId())).thenReturn(jugador);
+        return partida;
+    }
 
 @Test
 public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDaComoResultadoLasFichasConvertidas() {

@@ -81,6 +81,8 @@ class EfectosPartidaIntegracionTest {
             ServicioCasilleroImpl.class,
             ServicioPropiedadImpl.class,
             ServicioGestionQuiebraImpl.class,
+            ServicioFinalizacionPartidaImpl.class,
+            RepositorioFinalizarPartidaImpl.class,
             RepositorioPartidaImpl.class,
             RepositorioCasilleroImpl.class,
             RepositorioPropiedadImpl.class,

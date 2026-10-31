@@ -1,6 +1,12 @@
 package com.tallerwebi.dominio;
 
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.FinalizarPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
+import com.tallerwebi.infraestructura.RepositorioFinalizarPartida;
+import org.junit.jupiter.api.BeforeEach;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
@@ -12,10 +18,36 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class ServicioFinalizacionPartidaTest {
+    private RepositorioPropiedad propiedadesCaptura;
+    private RepositorioDeudaPendiente deudasCaptura;
+    private RepositorioFinalizarPartida resultadosCaptura;
+    private ServicioFinalizacionPartida servicioCaptura;
+    private Partida partidaCaptura;
+    private Jugador jugadorCaptura;
+
+    @BeforeEach
+    public void prepararCaptura() {
+        propiedadesCaptura = mock(RepositorioPropiedad.class);
+        deudasCaptura = mock(RepositorioDeudaPendiente.class);
+        resultadosCaptura = mock(RepositorioFinalizarPartida.class);
+        servicioCaptura = new ServicioFinalizacionPartidaImpl(propiedadesCaptura, deudasCaptura,
+                resultadosCaptura, new ServicioParticipacionImpl());
+        partidaCaptura = new Partida();
+        partidaCaptura.setId(10L);
+        partidaCaptura.setCodigoUnico("CAPTURA");
+        jugadorCaptura = new Jugador();
+        jugadorCaptura.setId(1L);
+        jugadorCaptura.setDinero(1000);
+        partidaCaptura.getJugadores().add(jugadorCaptura);
+    }
 
     @Test
     public void propiedadSinMejorasDeberiaTenerComoValorPatrimonialSuPrecioDeCompra() {
@@ -274,4 +306,282 @@ public class ServicioFinalizacionPartidaTest {
         assertEquals(-400, patrimonio);
     }
 
+
+    @Test
+    public void capturaDineroPropiedadesConMejorasYDeuda() {
+        Propiedad primera = new Propiedad();
+        primera.setPrecioCompra(500);
+        primera.setNivelMejora(1);
+        Propiedad segunda = new Propiedad();
+        segunda.setPrecioCompra(800);
+        segunda.setNivelMejora(2);
+        when(propiedadesCaptura.buscarPropiedadesPorPropietario(jugadorCaptura))
+                .thenReturn(List.of(primera, segunda));
+        DeudaPendiente deuda = new DeudaPendiente();
+        deuda.setMontoPendiente(300);
+        when(deudasCaptura.buscarPorPartidaYJugador("CAPTURA", 1L)).thenReturn(deuda);
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.QUEBRADO);
+
+        assertSame(partidaCaptura, resultado.getPartida());
+        assertSame(jugadorCaptura, resultado.getJugador());
+        assertEquals(1000, resultado.getDineroFinal());
+        assertEquals(2000, resultado.getValorPropiedades());
+        assertEquals(300, resultado.getDeudaPendiente());
+        assertEquals(2700, resultado.getPatrimonioTotal());
+        assertEquals(false, resultado.getGanador());
+        assertEquals(EstadoParticipante.QUEBRADO, resultado.getEstadoParticipante());
+        verify(resultadosCaptura).buscarPorPartidaYJugador(10L, 1L);
+        verify(propiedadesCaptura).buscarPropiedadesPorPropietario(jugadorCaptura);
+        verify(deudasCaptura).buscarPorPartidaYJugador("CAPTURA", 1L);
+        verify(resultadosCaptura).guardar(resultado);
+        verifyNoMoreInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura);
+    }
+
+    @Test
+    public void capturaJugadorSinPropiedadesNiDeuda() {
+        when(propiedadesCaptura.buscarPropiedadesPorPropietario(jugadorCaptura))
+                .thenReturn(List.of());
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ACTIVO);
+
+        assertEquals(1000, resultado.getDineroFinal());
+        assertEquals(0, resultado.getValorPropiedades());
+        assertEquals(0, resultado.getDeudaPendiente());
+        assertEquals(1000, resultado.getPatrimonioTotal());
+        assertEquals(false, resultado.getGanador());
+        assertEquals(EstadoParticipante.ACTIVO, resultado.getEstadoParticipante());
+        verify(resultadosCaptura).guardar(resultado);
+    }
+
+    @Test
+    public void capturaPatrimonioNegativoDeUnJugadorAbandonado() {
+        jugadorCaptura.setDinero(100);
+        Propiedad propiedad = new Propiedad();
+        propiedad.setPrecioCompra(500);
+        propiedad.setNivelMejora(3);
+        when(propiedadesCaptura.buscarPropiedadesPorPropietario(jugadorCaptura))
+                .thenReturn(List.of(propiedad));
+        DeudaPendiente deuda = new DeudaPendiente();
+        deuda.setMontoPendiente(2000);
+        when(deudasCaptura.buscarPorPartidaYJugador("CAPTURA", 1L)).thenReturn(deuda);
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ABANDONADO);
+
+        assertEquals(100, resultado.getDineroFinal());
+        assertEquals(1500, resultado.getValorPropiedades());
+        assertEquals(2000, resultado.getDeudaPendiente());
+        assertEquals(-400, resultado.getPatrimonioTotal());
+        assertEquals(false, resultado.getGanador());
+        assertEquals(EstadoParticipante.ABANDONADO, resultado.getEstadoParticipante());
+        verify(resultadosCaptura).guardar(resultado);
+    }
+
+    @Test
+    public void conservaElResultadoPrevioSinSobrescribirNiConsultarLaEconomiaActual() {
+        FinalizarPartida previo = new FinalizarPartida();
+        previo.setPartida(partidaCaptura);
+        previo.setJugador(jugadorCaptura);
+        previo.setDineroFinal(100);
+        previo.setValorPropiedades(1500);
+        previo.setDeudaPendiente(2000);
+        previo.setPatrimonioTotal(-400);
+        previo.setEstadoParticipante(EstadoParticipante.QUEBRADO);
+        when(resultadosCaptura.buscarPorPartidaYJugador(10L, 1L)).thenReturn(previo);
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ABANDONADO);
+
+        assertSame(previo, resultado);
+        assertEquals(100, resultado.getDineroFinal());
+        assertEquals(1500, resultado.getValorPropiedades());
+        assertEquals(2000, resultado.getDeudaPendiente());
+        assertEquals(-400, resultado.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.QUEBRADO, resultado.getEstadoParticipante());
+        assertEquals(false, resultado.getGanador());
+        verify(resultadosCaptura).buscarPorPartidaYJugador(10L, 1L);
+        verifyNoMoreInteractions(resultadosCaptura);
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura);
+    }
+
+    @Test
+    public void rechazaJugadorAjenoAntesDeConsultarOGuardarResultados() {
+        Jugador ajeno = new Jugador();
+        ajeno.setId(2L);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> servicioCaptura.conservarResultadoEconomico(
+                        partidaCaptura, ajeno, EstadoParticipante.ACTIVO));
+
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura, resultadosCaptura);
+    }
+
+    @Test
+    public void unUnicoActivoGanaAunqueUnEliminadoTengaMayorPatrimonio() {
+        FinalizarPartida activo = prepararResultadoGanador(1L, -500, EstadoParticipante.ACTIVO);
+        FinalizarPartida eliminado = prepararResultadoGanador(2L, 9000, EstadoParticipante.QUEBRADO);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(eliminado, activo));
+
+        List<FinalizarPartida> ganadores = servicioCaptura.determinarGanadores(partidaCaptura);
+
+        assertEquals(List.of(activo), ganadores);
+        assertEquals(true, activo.getGanador());
+        assertEquals(false, eliminado.getGanador());
+    }
+
+    @Test
+    public void entreVariosActivosGanaElDeMayorPatrimonio() {
+        FinalizarPartida menor = prepararResultadoGanador(1L, 1000, EstadoParticipante.ACTIVO);
+        FinalizarPartida mayor = prepararResultadoGanador(2L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida intermedio = prepararResultadoGanador(3L, 2000, EstadoParticipante.ACTIVO);
+        menor.setGanador(true);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(menor, mayor, intermedio));
+
+        assertEquals(List.of(mayor), servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(false, menor.getGanador());
+        assertEquals(true, mayor.getGanador());
+        assertEquals(false, intermedio.getGanador());
+    }
+
+    @Test
+    public void dosActivosConElMaximoPatrimonioSonGanadores() {
+        FinalizarPartida primero = prepararResultadoGanador(1L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida segundo = prepararResultadoGanador(2L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida menor = prepararResultadoGanador(3L, 1000, EstadoParticipante.ACTIVO);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(primero, menor, segundo));
+
+        assertEquals(List.of(primero, segundo), servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(true, primero.getGanador());
+        assertEquals(true, segundo.getGanador());
+        assertEquals(false, menor.getGanador());
+    }
+
+    @Test
+    public void tresActivosEmpatadosSonGanadores() {
+        FinalizarPartida primero = prepararResultadoGanador(1L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida segundo = prepararResultadoGanador(2L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida tercero = prepararResultadoGanador(3L, 3000, EstadoParticipante.ACTIVO);
+        List<FinalizarPartida> resultados = List.of(primero, segundo, tercero);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(resultados);
+
+        assertEquals(resultados, servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(true, primero.getGanador());
+        assertEquals(true, segundo.getGanador());
+        assertEquals(true, tercero.getGanador());
+    }
+
+    @Test
+    public void quebradoConMayorPatrimonioNoPuedeGanar() {
+        FinalizarPartida menor = prepararResultadoGanador(1L, 1000, EstadoParticipante.ACTIVO);
+        FinalizarPartida mayor = prepararResultadoGanador(2L, 2000, EstadoParticipante.ACTIVO);
+        FinalizarPartida quebrado = prepararResultadoGanador(3L, 9000, EstadoParticipante.QUEBRADO);
+        quebrado.setGanador(true);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(quebrado, menor, mayor));
+
+        assertEquals(List.of(mayor), servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(false, quebrado.getGanador());
+        assertEquals(false, menor.getGanador());
+    }
+
+    @Test
+    public void abandonadoConMayorPatrimonioNoPuedeGanar() {
+        FinalizarPartida menor = prepararResultadoGanador(1L, 1000, EstadoParticipante.ACTIVO);
+        FinalizarPartida mayor = prepararResultadoGanador(2L, 2000, EstadoParticipante.ACTIVO);
+        FinalizarPartida abandonado = prepararResultadoGanador(3L, 9000, EstadoParticipante.ABANDONADO);
+        abandonado.setGanador(true);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(abandonado, mayor, menor));
+
+        assertEquals(List.of(mayor), servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(false, abandonado.getGanador());
+        assertEquals(false, menor.getGanador());
+    }
+
+    @Test
+    public void conPatrimoniosNegativosGanaElMayorAunqueNoSeaPositivo() {
+        FinalizarPartida primero = prepararResultadoGanador(1L, -1000, EstadoParticipante.ACTIVO);
+        FinalizarPartida segundo = prepararResultadoGanador(2L, -200, EstadoParticipante.ACTIVO);
+        FinalizarPartida tercero = prepararResultadoGanador(3L, -500, EstadoParticipante.ACTIVO);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(primero, segundo, tercero));
+
+        assertEquals(List.of(segundo), servicioCaptura.determinarGanadores(partidaCaptura));
+
+        assertEquals(false, primero.getGanador());
+        assertEquals(true, segundo.getGanador());
+        assertEquals(false, tercero.getGanador());
+    }
+
+    @Test
+    public void determinarGanadoresConservaTodosLosDatosEconomicosYElEstadoDeLaPartida() {
+        FinalizarPartida activo = prepararResultadoGanador(1L, 500, EstadoParticipante.ACTIVO);
+        FinalizarPartida quebrado = prepararResultadoGanador(2L, -400, EstadoParticipante.QUEBRADO);
+        quebrado.setDineroFinal(100);
+        quebrado.setValorPropiedades(1500);
+        quebrado.setDeudaPendiente(2000);
+        partidaCaptura.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(activo, quebrado));
+
+        servicioCaptura.determinarGanadores(partidaCaptura);
+
+        assertEquals(500, activo.getDineroFinal());
+        assertEquals(0, activo.getValorPropiedades());
+        assertEquals(0, activo.getDeudaPendiente());
+        assertEquals(500, activo.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.ACTIVO, activo.getEstadoParticipante());
+        assertEquals(100, quebrado.getDineroFinal());
+        assertEquals(1500, quebrado.getValorPropiedades());
+        assertEquals(2000, quebrado.getDeudaPendiente());
+        assertEquals(-400, quebrado.getPatrimonioTotal());
+        assertEquals(EstadoParticipante.QUEBRADO, quebrado.getEstadoParticipante());
+        assertSame(partidaCaptura, quebrado.getPartida());
+        assertEquals(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO, partidaCaptura.getEstado());
+        verify(resultadosCaptura).buscarPorPartida(10L);
+        verifyNoMoreInteractions(resultadosCaptura);
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura);
+    }
+
+    @Test
+    public void repetirLaDeterminacionNoDuplicaResultadosNiModificaLosGanadores() {
+        FinalizarPartida primero = prepararResultadoGanador(1L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida segundo = prepararResultadoGanador(2L, 3000, EstadoParticipante.ACTIVO);
+        FinalizarPartida menor = prepararResultadoGanador(3L, 1000, EstadoParticipante.ACTIVO);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(primero, segundo, menor));
+
+        List<FinalizarPartida> iniciales = servicioCaptura.determinarGanadores(partidaCaptura);
+        List<FinalizarPartida> repetidos = servicioCaptura.determinarGanadores(partidaCaptura);
+
+        assertEquals(List.of(primero, segundo), iniciales);
+        assertEquals(iniciales, repetidos);
+        assertEquals(true, primero.getGanador());
+        assertEquals(true, segundo.getGanador());
+        assertEquals(false, menor.getGanador());
+        verify(resultadosCaptura, org.mockito.Mockito.times(2)).buscarPorPartida(10L);
+        verifyNoMoreInteractions(resultadosCaptura);
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura);
+    }
+
+    private FinalizarPartida prepararResultadoGanador(
+            Long idJugador, Integer patrimonio, EstadoParticipante estado) {
+        Jugador jugador = new Jugador();
+        jugador.setId(idJugador);
+        jugador.setEnBancarrota(estado == EstadoParticipante.QUEBRADO);
+        jugador.setAbandono(estado == EstadoParticipante.ABANDONADO);
+        partidaCaptura.getJugadores().add(jugador);
+        FinalizarPartida resultado = new FinalizarPartida();
+        resultado.setPartida(partidaCaptura);
+        resultado.setJugador(jugador);
+        resultado.setDineroFinal(patrimonio);
+        resultado.setValorPropiedades(0);
+        resultado.setDeudaPendiente(0);
+        resultado.setPatrimonioTotal(patrimonio);
+        resultado.setEstadoParticipante(estado);
+        return resultado;
+    }
 }

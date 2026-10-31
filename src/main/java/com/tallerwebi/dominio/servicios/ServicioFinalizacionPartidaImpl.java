@@ -3,27 +3,117 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.FinalizarPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+import com.tallerwebi.infraestructura.RepositorioFinalizarPartida;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPartida {
     private final RepositorioPropiedad repositorioPropiedad;
     private final RepositorioDeudaPendiente repositorioDeudaPendiente;
+    private final RepositorioFinalizarPartida repositorioFinalizarPartida;
+    private final ServicioParticipacion participacion;
 
     public ServicioFinalizacionPartidaImpl() {
         this(null, null);
     }
 
-    @Autowired
     public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
                                           RepositorioDeudaPendiente repositorioDeudaPendiente) {
+        this(repositorioPropiedad, repositorioDeudaPendiente, null, null);
+    }
+
+    @Autowired
+    public ServicioFinalizacionPartidaImpl(RepositorioPropiedad repositorioPropiedad,
+                                          RepositorioDeudaPendiente repositorioDeudaPendiente,
+                                          RepositorioFinalizarPartida repositorioFinalizarPartida,
+                                          ServicioParticipacion participacion) {
         this.repositorioPropiedad = repositorioPropiedad;
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
+        this.repositorioFinalizarPartida = repositorioFinalizarPartida;
+        this.participacion = participacion;
+    }
+
+    @Override
+    @Transactional
+    //devuelve una lista de rtdo ganadores. Se decidio por una lista porque puede haber empates.
+    public List<FinalizarPartida> determinarGanadores(Partida partida) {
+       //obtiene todos los rtdos economicos de esa partida.
+        List<FinalizarPartida> resultados = repositorioFinalizarPartida.buscarPorPartida(partida.getId());
+        List<FinalizarPartida> activos = new ArrayList<>();//lista donde se guardan los rtdos de aquellos jugadores que pueden ganar.
+        int patrimonioMaximo = Integer.MIN_VALUE;
+        //1° for: encontrar el patrimonio máximo entre los jugadores activos.
+        for (FinalizarPartida resultado : resultados) {
+            if (resultado.getEstadoParticipante() == EstadoParticipante.ACTIVO
+                    && participacion.estaActivo(resultado.getJugador())) {
+                //agrega ese rtdo a la lista de participantes activos.
+                activos.add(resultado);
+                //compara los dos patrimonios y devuelve el mayor.
+                patrimonioMaximo = Math.max(patrimonioMaximo, resultado.getPatrimonioTotal());
+            }
+        }
+        List<FinalizarPartida> ganadores = new ArrayList<>();
+        //2° for: compara a todos los jugadores contra ese máximo y marca a quienes ganaron.
+        for (FinalizarPartida resultado : resultados) {
+            //Encuentra el ganador, si esta activo y si su patrimonio es el maximo.
+            boolean ganador = activos.contains(resultado)
+                    && resultado.getPatrimonioTotal() == patrimonioMaximo;
+            resultado.setGanador(ganador); //actualiza el ganador
+            //Si ganó, lo agrega a la lista q despues se devuelve.
+            if (ganador) {
+                ganadores.add(resultado);
+            }
+        }
+        return ganadores;
+    }
+
+    @Override
+    @Transactional
+    //guardar el resultado económico de un jugador antes de que abandone o quiebre
+    public FinalizarPartida conservarResultadoEconomico(
+            Partida partida, Jugador jugador, EstadoParticipante estado) {
+        //verifica que el jugador pertenezca a la partida
+        if (jugador == null || !participacion.pertenece(partida, jugador.getId())) {
+            throw new IllegalArgumentException("El jugador no pertenece a la partida.");
+        }
+        //busca en la base de datos si ese jugador ya tiene un resultado económico guardado para esa partida.
+        FinalizarPartida previo = repositorioFinalizarPartida
+                .buscarPorPartidaYJugador(partida.getId(), jugador.getId());
+        if (previo != null) {
+            return previo;
+        }
+        //Calcula el valor de todas las propiedades
+        Integer valorPropiedades = 0;
+        for (Propiedad propiedad : repositorioPropiedad.buscarPropiedadesPorPropietario(jugador)) {
+            valorPropiedades += calcularValorPatrimonial(propiedad);
+        }
+        DeudaPendiente deuda = repositorioDeudaPendiente
+                .buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador.getId());
+        Integer montoDeuda = deuda == null ? 0 : deuda.getMontoPendiente();
+        //Se crea una nueva entidad, la cual se completa con los datos de la partida.
+        FinalizarPartida resultado = new FinalizarPartida();
+        resultado.setPartida(partida);
+        resultado.setJugador(jugador);
+        resultado.setDineroFinal(jugador.getDinero());
+        resultado.setValorPropiedades(valorPropiedades);
+        resultado.setDeudaPendiente(montoDeuda);
+        //guarda una copia de los importes economicos del jugador en ese momento
+        resultado.setPatrimonioTotal(jugador.getDinero() + valorPropiedades - montoDeuda);
+        resultado.setGanador(false);
+        resultado.setEstadoParticipante(estado);
+        //guarda y devuelve el rtdo.
+        repositorioFinalizarPartida.guardar(resultado);
+        return resultado;
     }
 
     @Override

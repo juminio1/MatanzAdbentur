@@ -1,6 +1,8 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional//permite que la operación se realice dentro de una transacción de base de datos.
 public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private final ServicioParticipacion participacion;
+    private final ServicioFinalizacionPartida finalizacion;
 
     //se necesitan dos repositorios:
     //guarda la deuda
@@ -42,8 +45,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
             PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra,
-            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia, ServicioParticipacion participacion) {
+            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia,
+            ServicioParticipacion participacion, ServicioFinalizacionPartida finalizacion) {
         this.participacion = participacion;
+        this.finalizacion = finalizacion;
         this.economia = economia;
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
@@ -190,6 +195,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
+        finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.QUEBRADO);
         jugador.setEnBancarrota(true);
         repositorioPartida.actualizarJugador(jugador);
         repositorioDeudaPendiente.eliminar(deuda);

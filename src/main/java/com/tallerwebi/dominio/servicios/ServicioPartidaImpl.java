@@ -20,6 +20,8 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
 
 import java.util.List;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
@@ -46,6 +48,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     // Se usan cuando a un jugador preso se le acaba el tiempo (pueden ser null en los tests).
     private final ServicioGestionQuiebra quiebras;
     private final PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel;
+    private final ServicioFinalizacionPartida finalizacion;
 
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
@@ -56,7 +59,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
     ) {
         this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
-                publicadorTurno, publicadorAbandono, null, null);
+                publicadorTurno, publicadorAbandono, null, null, null);
     }
 
     @Autowired
@@ -68,7 +71,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
             @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
             @Lazy ServicioGestionQuiebra quiebras,
-            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel
+            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel,
+            ServicioFinalizacionPartida finalizacion
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
@@ -78,6 +82,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.publicadorAbandono = publicadorAbandono;
         this.quiebras = quiebras;
         this.publicadorCarcel = publicadorCarcel;
+        this.finalizacion = finalizacion;
     }
 
     @Override
@@ -211,6 +216,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             throw new IllegalArgumentException("El jugador especificado no existe.");
         }
 
+        finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.ABANDONADO);
         jugador.setAbandono(true);
         actualizarJugador(jugador);
 
