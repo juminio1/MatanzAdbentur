@@ -4,6 +4,8 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import org.mockito.ArgumentCaptor;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
@@ -27,6 +29,7 @@ class ServicioGestionQuiebraImplTest {
     private ServicioPropiedad servicioPropiedad;
     private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
     private ServicioGestionQuiebraImpl servicio;
+    private ServicioFinalizacionPartida finalizacion;
 
     @BeforeEach
     void preparar() {
@@ -35,13 +38,15 @@ class ServicioGestionQuiebraImplTest {
         repositorioPropiedad = mock(RepositorioPropiedad.class);
         servicioPropiedad = mock(ServicioPropiedad.class);
         publicadorQuiebra = mock(PublicadorEventos.class);
+        finalizacion = mock(ServicioFinalizacionPartida.class);
 
         servicio = new ServicioGestionQuiebraImpl(repositorioDeuda,
                 repositorioPartida,
                 servicioPropiedad,
                 repositorioPropiedad,
                 publicadorQuiebra,
-                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(),
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), finalizacion);
     }
 
     @Test
@@ -55,6 +60,12 @@ class ServicioGestionQuiebraImplTest {
         jugador.setDinero(100);
 
         DeudaPendiente deuda = new DeudaPendiente();
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setJugadores(java.util.List.of(jugador));
+        when(repositorioPartida.buscarPartidaPorJugador(idJugador)).thenReturn(partida);
+        deuda.setPartida(partida);
         deuda.setJugadorDeudor(jugador);
         deuda.setMontoPendiente(200);
 
@@ -91,6 +102,12 @@ class ServicioGestionQuiebraImplTest {
         jugador.setDinero(100);
 
         DeudaPendiente deuda = new DeudaPendiente();
+        Partida partida = new Partida();
+        partida.setCodigoUnico(codigo);
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.setJugadores(java.util.List.of(jugador));
+        when(repositorioPartida.buscarPartidaPorJugador(idJugador)).thenReturn(partida);
+        deuda.setPartida(partida);
         deuda.setJugadorDeudor(jugador);
         deuda.setMontoPendiente(400);
 
@@ -133,6 +150,7 @@ class ServicioGestionQuiebraImplTest {
         partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setJugadores(java.util.List.of(jugador));
         when(repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
+        when(repositorioPartida.buscarPartidaPorJugador(idJugador)).thenReturn(partida);
 
         DeudaPendiente deuda = new DeudaPendiente();
         deuda.setPartida(partida);
@@ -269,6 +287,7 @@ class ServicioGestionQuiebraImplTest {
         deuda.setJugadorDeudor(jugador);
         deuda.setMontoPendiente(400);
         when(repositorioPartida.buscarPartidaActivaPorCodigoUnico("PARTIDA123")).thenReturn(partida);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(partida);
         when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(deuda);
         return deuda;
     }
@@ -279,5 +298,447 @@ class ServicioGestionQuiebraImplTest {
         verify(repositorioPartida, never()).actualizarJugador(any());
         verify(repositorioDeuda, never()).eliminar(any());
         verifyNoInteractions(publicadorQuiebra);
+    }
+    @Test
+    void capturaLaQuiebraAntesDeCambiarElJugadorEliminarLaDeudaYPublicar() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = spy(deuda.getJugadorDeudor());
+        deuda.setJugadorDeudor(jugador);
+        deuda.getPartida().setJugadores(java.util.List.of(jugador));
+        clearInvocations(jugador);
+
+        servicio.declararQuiebra("PARTIDA123", 1L);
+
+        org.mockito.InOrder orden = inOrder(finalizacion, jugador, repositorioPartida,
+                repositorioDeuda, publicadorQuiebra);
+        orden.verify(finalizacion).conservarResultadoEconomico(
+                deuda.getPartida(), jugador, EstadoParticipante.QUEBRADO);
+        orden.verify(jugador).setEnBancarrota(true);
+        orden.verify(repositorioPartida).actualizarJugador(jugador);
+        orden.verify(repositorioDeuda).eliminar(deuda);
+        orden.verify(publicadorQuiebra).notificar(new EventoJugadorQuebrado(deuda.getPartida(), jugador));
+    }
+
+    @Test
+    void siFallaLaCapturaNoDeclaraQuiebraNiEliminaDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        IllegalStateException fallo = new IllegalStateException("No se pudo guardar");
+        when(finalizacion.conservarResultadoEconomico(
+                deuda.getPartida(), jugador, EstadoParticipante.QUEBRADO)).thenThrow(fallo);
+
+        assertSame(fallo, assertThrows(IllegalStateException.class,
+                () -> servicio.declararQuiebra("PARTIDA123", 1L)));
+
+        assertFalse(jugador.getEnBancarrota());
+        assertFalse(jugador.getAbandono());
+        assertEquals(100, jugador.getDinero());
+        assertEquals(400, deuda.getMontoPendiente());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(publicadorQuiebra);
+    }
+
+    @Test
+    void unaQuiebraRepetidaNoVuelveACapturarLaFotografia() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        servicio.declararQuiebra("PARTIDA123", 1L);
+        clearInvocations(finalizacion, repositorioDeuda, repositorioPartida, publicadorQuiebra);
+
+        assertThrows(DeclaracionQuiebraInvalidaException.class,
+                () -> servicio.declararQuiebra("PARTIDA123", 1L));
+
+        verifyNoInteractions(finalizacion, publicadorQuiebra);
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+    }
+
+    @Test
+    void rechazaRegistroDeDeudaEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.registrarDeuda("PARTIDA123", jugador, acreedor, 300, "ALQUILER"));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaRegistroDeDeudaEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.registrarDeuda("PARTIDA123", jugador, acreedor, 300, "ALQUILER"));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaResolucionDeDeudaEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.intentarResolverDeuda("PARTIDA123", 1L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaResolucionDeDeudaEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.intentarResolverDeuda("PARTIDA123", 1L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaVentaParaPagarDeudaEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.venderPropiedadYResolverDeuda("PARTIDA123", 1L, 10L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaVentaParaPagarDeudaEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.venderPropiedadYResolverDeuda("PARTIDA123", 1L, 10L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaEvaluacionDeDeudaEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.evaluarDeuda("PARTIDA123", 1L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaEvaluacionDeDeudaEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+        assertThrows(IllegalStateException.class, () -> servicio.evaluarDeuda("PARTIDA123", 1L));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaProcesamientoDeAlquilerEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.procesarAlquiler("PARTIDA123", propiedad, jugador, 300));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaProcesamientoDeAlquilerEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.procesarAlquiler("PARTIDA123", propiedad, jugador, 300));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaMultaEnPartidaFinalizadaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.FINALIZADA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.procesarMulta("PARTIDA123", jugador, 300, "MULTA"));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
+    }
+
+
+    @Test
+    void rechazaMultaEnPartidaEnEsperaSinModificarDatos() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        jugador.setDinero(1000);
+        Jugador acreedor = new Jugador();
+        acreedor.setId(2L);
+        acreedor.setDinero(200);
+        deuda.setJugadorAcreedor(acreedor);
+        com.tallerwebi.dominio.entidades.Propiedad propiedad =
+                new com.tallerwebi.dominio.entidades.Propiedad();
+        propiedad.setPropietario(acreedor);
+        propiedad.setNivelMejora(2);
+        deuda.getPartida().setEstado(EstadoPartida.EN_ESPERA);
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(deuda.getPartida());
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        assertThrows(IllegalStateException.class, () -> servicio.procesarMulta("PARTIDA123", jugador, 300, "MULTA"));
+
+        assertEquals(1000, jugador.getDinero());
+        assertEquals(200, acreedor.getDinero());
+        assertSame(acreedor, propiedad.getPropietario());
+        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(400, deuda.getMontoPendiente());
+        assertFalse(jugador.getEnBancarrota());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, finalizacion, publicadorQuiebra);
     }
 }

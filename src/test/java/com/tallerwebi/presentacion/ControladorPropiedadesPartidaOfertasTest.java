@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.ServicioOfertaPropiedadImpl;
 import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -63,6 +64,7 @@ class ControladorPropiedadesPartidaOfertasTest {
                 servicioPropiedad, mock(ServicioGestionQuiebra.class), participacion,
                 new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
         partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);
         vendedor = crearJugador(ID_VENDEDOR, "Ana");

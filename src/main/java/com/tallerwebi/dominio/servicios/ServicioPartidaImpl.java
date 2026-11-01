@@ -3,6 +3,7 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.EstadoCarcel;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
@@ -20,6 +21,8 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
 
 import java.util.List;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
@@ -28,6 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 //  Coordino las operaciones de la partida.
 @Service("servicioPartida")
@@ -46,6 +52,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
     // Se usan cuando a un jugador preso se le acaba el tiempo (pueden ser null en los tests).
     private final ServicioGestionQuiebra quiebras;
     private final PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel;
+    private final ServicioFinalizacionPartida finalizacion;
+    private final TransactionTemplate lecturaTurno;
+    @Autowired
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion participacion;
 
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
@@ -56,7 +66,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
     ) {
         this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
-                publicadorTurno, publicadorAbandono, null, null);
+                publicadorTurno, publicadorAbandono, null, null, null, null);
     }
 
     @Autowired
@@ -68,7 +78,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
             @Autowired(required = false) PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
             @Lazy ServicioGestionQuiebra quiebras,
-            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel
+            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel,
+            ServicioFinalizacionPartida finalizacion,
+            PlatformTransactionManager transactionManager
     ) {
         this.repositorioPartida = repositorioPartida;
         this.servicioInicioPartida = servicioInicioPartida;
@@ -78,12 +90,24 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.publicadorAbandono = publicadorAbandono;
         this.quiebras = quiebras;
         this.publicadorCarcel = publicadorCarcel;
+        this.finalizacion = finalizacion;
+        this.lecturaTurno = new TransactionTemplate(transactionManager);
+        this.lecturaTurno.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.lecturaTurno.setReadOnly(true);
     }
 
+    //Devuelve partidas que todavía no finalizaron (EN_ESPERA o EN_CURSO).
     @Override
     @Transactional(readOnly = true)
     public Partida obtenerPartida(String codigoUnico) {
         return repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    }
+
+    //Devuelve partidas de cualquier estado, incluso FINALIZADA.
+    @Override
+    @Transactional(readOnly = true)
+    public Partida obtenerPartidaParaVisualizacion(String codigoPartida) {
+        return repositorioPartida.buscarPartidaPorCodigoUnico(codigoPartida);
     }
 
     @Override
@@ -133,6 +157,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico) {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
+        participacion.validarPartidaEnCurso(partida);
         MarcaTurno marca = MarcaTurno.de(partida);
         Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
                 codigoUnico,
@@ -156,17 +181,22 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void avanzarTurno(String codigoUnico) {
-        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
-
         Partida partida = obtenerPartida(codigoUnico);
         if (esPartidaConJugadoresInvalida(partida)) {
             return;
         }
-
+        participacion.validarPartidaEnCurso(partida);
+        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
         Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
         incrementarRondas(partida);
+        if (finalizacion.finalizarSiCorresponde(partida)) {
+            return;
+        }
 
         Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
+        if (finalizacion.finalizarSiCorresponde(partida)) {
+            return;
+        }
         if (candidato == null) {
             repositorioPartida.guardarPartida(partida);
             DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
@@ -205,12 +235,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (partida == null) {
             throw new PartidaNoEncontradaException();
         }
-
+        participacion.validarPartidaEnCurso(partida);
         Jugador jugador = obtenerJugadorPorId(idJugador);
         if (jugador == null) {
             throw new IllegalArgumentException("El jugador especificado no existe.");
         }
 
+        finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.ABANDONADO);
         jugador.setAbandono(true);
         actualizarJugador(jugador);
 
@@ -234,12 +265,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return;
         }
         MarcaTurno marca = MarcaTurno.de(partida);
-        DespuesDeConfirmar.ejecutar(() -> {
-        if (iniciarTemporizador && partida.getCodigoUnico() != null) {
+        String codigo = partida.getCodigoUnico();
+        DespuesDeConfirmar.ejecutar(() -> lecturaTurno.executeWithoutResult(estado ->
+                notificarTurnoSiSigueVigente(codigo, marca, iniciarTemporizador, segundosTotales)));
+    }
+
+    private void notificarTurnoSiSigueVigente(String codigo, MarcaTurno marca,
+                                             Boolean iniciarTemporizador, Integer segundosTotales) {
+        Partida partida = obtenerPartida(codigo);
+        if (!turnoSigueVigente(partida, marca)) {
+            return;
+        }
+        Jugador jugadorActual = servicioTurno.obtenerJugadorActual(partida);
+        if (jugadorActual == null) {
+            return;
+        }
+        if (iniciarTemporizador && codigo != null) {
             gestorTemporizador.programarTemporizador(
                     partida.getCodigoUnico(),
                     segundosTotales,
-                    () -> avanzarTurnoSiSigueVigente(partida.getCodigoUnico(), marca)
+                    () -> avanzarTurnoSiSigueVigente(codigo, marca)
             );
         }
         if (publicadorTurno != null) {
@@ -254,7 +299,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
             );
             publicadorTurno.notificar(evento);
         }
-        });
+    }
+
+    private boolean turnoSigueVigente(Partida partida, MarcaTurno marca) {
+        return partida != null && partida.getEstado() == EstadoPartida.EN_CURSO
+                && marca.equals(MarcaTurno.de(partida));
     }
 
     /*
@@ -263,14 +312,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
      */
     private void avanzarTurnoSiSigueVigente(String codigoUnico, MarcaTurno marcaProgramada) {
         Partida partida = obtenerPartida(codigoUnico);
-        if (partida == null || !marcaProgramada.equals(MarcaTurno.de(partida))) {
+        if (!turnoSigueVigente(partida, marcaProgramada)) {
             return;
         }
         registrarTiempoAgotadoEnCarcel(codigoUnico);
 
         // Si cobrar la fianza terminó en quiebra, el turno ya lo avanzó el observador de quiebra.
         Partida actualizada = obtenerPartida(codigoUnico);
-        if (actualizada == null || !marcaProgramada.equals(MarcaTurno.de(actualizada))) {
+        if (!turnoSigueVigente(actualizada, marcaProgramada)) {
             return;
         }
         avanzarTurno(codigoUnico);

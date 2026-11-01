@@ -102,6 +102,14 @@ public class Jugador {
         return getEstadoJugador().getTiroEnTurno();
     }
 
+    public Integer getUltimaRondaConOportunidad() {
+        return getEstadoJugador().getUltimaRondaConOportunidad();
+    }
+
+    public void setUltimaRondaConOportunidad(Integer ultimaRondaConOportunidad) {
+        getEstadoJugador().setUltimaRondaConOportunidad(ultimaRondaConOportunidad);
+    }
+
     public void setTiroEnTurno(Boolean tiroEnTurno) {
         getEstadoJugador().setTiroEnTurno(tiroEnTurno);
     }

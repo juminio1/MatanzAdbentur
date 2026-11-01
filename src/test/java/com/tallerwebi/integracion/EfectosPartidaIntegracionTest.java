@@ -70,7 +70,9 @@ import static org.mockito.ArgumentMatchers.any;
 @ContextConfiguration(classes = EfectosPartidaIntegracionTest.Config.class)
 class EfectosPartidaIntegracionTest {
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
-    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultasMovimiento = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia,
+            consultasMovimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()));
 
     @Configuration
     @Import({
@@ -81,6 +83,8 @@ class EfectosPartidaIntegracionTest {
             ServicioCasilleroImpl.class,
             ServicioPropiedadImpl.class,
             ServicioGestionQuiebraImpl.class,
+            ServicioFinalizacionPartidaImpl.class,
+            RepositorioFinalizarPartidaImpl.class,
             RepositorioPartidaImpl.class,
             RepositorioCasilleroImpl.class,
             RepositorioPropiedadImpl.class,
@@ -123,8 +127,8 @@ class EfectosPartidaIntegracionTest {
         }
         @Bean
         ObservadorVictoria observadorVictoria(
-                RepositorioPartida repositorioPartida) {
-            return new ObservadorVictoria(repositorioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                ServicioFinalizacionPartida finalizacion) {
+            return new ObservadorVictoria(finalizacion);
         }
 
         @Bean
@@ -161,7 +165,9 @@ class EfectosPartidaIntegracionTest {
     @Autowired private SimpMessagingTemplate notificador;
 
     @BeforeEach
-    void preparar() {
+    void preparar() {        var partidaMovimiento = new com.tallerwebi.dominio.entidades.Partida();
+        partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
         controlador = new ControladorPartida(servicioPartida,

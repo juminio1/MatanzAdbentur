@@ -2,19 +2,31 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+import com.tallerwebi.infraestructura.RepositorioPartida;
 import com.tallerwebi.dominio.catalogo.CatalogoTablero;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class ServicioMovimientoImpl implements ServicioMovimiento {
     public static final int PREMIO_INICIO = 200;
     private final ServicioEconomia economia;
-    public ServicioMovimientoImpl(ServicioEconomia economia) { this.economia = economia; }
+    private final RepositorioPartida repositorioPartida;
+    private final ServicioParticipacion participacion;
+    public ServicioMovimientoImpl(ServicioEconomia economia, RepositorioPartida repositorioPartida,
+                                  ServicioParticipacion participacion) {
+        this.economia = economia;
+        this.repositorioPartida = repositorioPartida;
+        this.participacion = participacion;
+    }
     @Override
     public void moverJugador(Jugador jugador, Integer avance, Integer totalCasilleros) {
         if (jugador == null || jugador.getPosicionActual() == null || avance == null || totalCasilleros == null || totalCasilleros <= 0) {
             throw new IllegalArgumentException("Movimiento inválido");
         }
+        participacion.validarPartidaEnCurso(repositorioPartida.buscarPartidaPorJugador(jugador.getId()));
         jugador.setPosicionActual(Math.floorMod(Math.addExact(jugador.getPosicionActual(), avance), totalCasilleros));
     }
     @Override

@@ -9,6 +9,15 @@ public class EstadoJugador {
     private Boolean pierdeTurno = false;
     private Boolean enBancarrota = false;
     private Boolean abandono = false;
+    private Integer ultimaRondaConOportunidad = 0;
+
+    public Integer getUltimaRondaConOportunidad() {
+        return ultimaRondaConOportunidad;
+    }
+
+    public void setUltimaRondaConOportunidad(Integer ultimaRondaConOportunidad) {
+        this.ultimaRondaConOportunidad = ultimaRondaConOportunidad;
+    }
 
     public EstadoJugador() {
         // Constructor vacío requerido por Hibernate

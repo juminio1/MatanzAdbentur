@@ -60,6 +60,7 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     @Override
     public Oferta crearOferta(Partida partida, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
+        participacion.validarPartidaEnCurso(partida);
         if (!participantesValidos(partida, idVendedor, idComprador) || precio == null || precio < 0) {
             throw new OfertaInvalidaException("La oferta no es válida.");
         }
@@ -88,12 +89,15 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     @Override
     public void rechazar(String codigoPartida, String idOferta, Long idComprador) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        participacion.validarPartidaEnCurso(partida);
         Oferta oferta = obtenerVigente(codigoPartida, idOferta, idComprador);
         ofertas.remove(oferta.id(), oferta);
     }
 
     @Override
     public OfertaAceptada aceptar(Partida partida, String idOferta, Long idComprador) {
+        participacion.validarPartidaEnCurso(partida);
         Oferta oferta = obtenerVigente(partida.getCodigoUnico(), idOferta, idComprador);
         // Evita que dos respuestas a la misma oferta transfieran la propiedad dos veces.
         synchronized (oferta) {

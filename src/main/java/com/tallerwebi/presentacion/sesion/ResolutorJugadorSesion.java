@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Identifico al jugador desde la sesión. */
+//Identifico al jugador desde la sesión.
 public final class ResolutorJugadorSesion {
 
     private ResolutorJugadorSesion() {
@@ -24,7 +24,7 @@ public final class ResolutorJugadorSesion {
         return id != null ? id : (Long) request.getSession().getAttribute("IDUSUARIO");
     }
 
-    /** Usa el nombre autenticado en sesión; los identificadores de usuario y jugador no son equivalentes. */
+    //Usa el nombre autenticado en sesión; los identificadores de usuario y jugador no son equivalentes.
     public static Long resolverAutenticado(Partida partida, HttpServletRequest request) {
         String nombre = (String) request.getSession().getAttribute("NOMBRE");
         if (nombre == null || partida == null || partida.getJugadores() == null) return null;
@@ -33,10 +33,8 @@ public final class ResolutorJugadorSesion {
                 .map(Jugador::getId).findFirst().orElse(null);
     }
 
-    /**
-     * Devuelve el jugador autenticado en sesión y exige que pertenezca a la partida.
-     * Responde 401 si no hay sesión y 403 si el jugador es ajeno a la partida.
-     */
+    // Devuelve el jugador autenticado en sesión y exige que pertenezca a la partida.
+    // Responde 401 si no hay sesión y 403 si el jugador es ajeno a la partida.
     public static Long resolverParticipante(Partida partida, HttpServletRequest request,
                                             ServicioParticipacion participacion) {
         if (resolverUsuarioSesionId(request) == null && request.getSession().getAttribute("NOMBRE") == null) {
