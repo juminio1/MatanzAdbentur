@@ -20,6 +20,10 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.resultados.ResultadoFinalJugador;
+import com.tallerwebi.dominio.resultados.ResultadosFinalesPartida;
 
 @Service
 public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPartida {
@@ -169,8 +173,11 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         }
         //Calcula el valor de todas las propiedades
         Integer valorPropiedades = 0;
-        for (Propiedad propiedad : repositorioPropiedad.buscarPropiedadesPorPropietario(jugador)) {
+        int cantidadMejoras = 0;
+        List<Propiedad> propiedades = repositorioPropiedad.buscarPropiedadesPorPropietario(jugador);
+        for (Propiedad propiedad : propiedades) {
             valorPropiedades += calcularValorPatrimonial(propiedad);
+            cantidadMejoras += propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
         }
         DeudaPendiente deuda = repositorioDeudaPendiente
                 .buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador.getId());
@@ -180,6 +187,8 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         resultado.setPartida(partida);
         resultado.setJugador(jugador);
         resultado.setDineroFinal(jugador.getDinero());
+        resultado.setCantidadPropiedades(propiedades.size());
+        resultado.setCantidadMejoras(cantidadMejoras);
         resultado.setValorPropiedades(valorPropiedades);
         resultado.setDeudaPendiente(montoDeuda);
         //guarda una copia de los importes economicos del jugador en ese momento
@@ -233,5 +242,40 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
             valorPatrimonial += costosMejoras[nivel];
         }
         return valorPatrimonial;
+    }
+
+    //obtiene los resultados finales de una partida, verifica que el jugador tenga acceso y arma el ranking con los ganadores primero
+    @Override
+    @Transactional(readOnly = true)
+    public ResultadosFinalesPartida consultar(String codigoPartida, String nombreAutenticado)
+            throws PartidaNoEncontradaException {
+        Partida partida = repositorioPartida.buscarPartidaPorCodigoUnico(codigoPartida);
+        if (partida == null) {
+            throw new PartidaNoEncontradaException();
+        }
+        if (nombreAutenticado == null || partida.getJugadores().stream()
+                .noneMatch(jugador -> nombreAutenticado.equalsIgnoreCase(jugador.getApodo()))) {
+            throw new SecurityException("No pertenecés a esta partida.");
+        }
+        List<ResultadoFinalJugador> ranking = List.of();
+        if (partida.getEstado() == EstadoPartida.FINALIZADA) {
+            ranking = repositorioFinalizarPartida.buscarPorPartida(partida.getId()).stream()
+                    .map(this::mapear)
+                    .sorted(Comparator.comparing(
+                            (ResultadoFinalJugador resultado) -> Boolean.TRUE.equals(resultado.ganador()))
+                            .reversed()
+                            .thenComparing(ResultadoFinalJugador::patrimonioTotal, Comparator.reverseOrder())
+                            .thenComparing(ResultadoFinalJugador::idJugador))
+                    .toList();
+        }
+        return new ResultadosFinalesPartida(partida.getCodigoUnico(), partida.getEstado(), ranking);
+    }
+
+    private ResultadoFinalJugador mapear(FinalizarPartida resultado) {
+        return new ResultadoFinalJugador(resultado.getJugador().getId(),
+                resultado.getJugador().getApodo(), resultado.getEstadoParticipante(),
+                resultado.getGanador(), resultado.getDineroFinal(), resultado.getCantidadPropiedades(),
+                resultado.getCantidadMejoras(), resultado.getValorPropiedades(),
+                resultado.getDeudaPendiente(), resultado.getPatrimonioTotal());
     }
 }

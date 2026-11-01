@@ -2,6 +2,7 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
@@ -129,7 +130,7 @@ public class ControladorPartida {
             return new ModelAndView("redirect:/home");
         }
 
-        Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+        Partida partidaReal = servicioPartida.obtenerPartidaParaVisualizacion(codigoFinal);
         if (partidaReal == null) {
             return new ModelAndView("redirect:/sala-de-espera?codigoUnico=" + codigoFinal);
         }
@@ -141,20 +142,20 @@ public class ControladorPartida {
             return new ModelAndView("redirect:/login");
         }
 
-        Long jugadorSesionId = ResolutorJugadorSesion.resolver(
-                partidaReal,
-                usuarioSesionId,
-                nombreSesion
-        );
-        Jugador jugadorSesion =
-                jugadorSesionId == null ? null : servicioPartida.obtenerJugadorPorId(jugadorSesionId);
+        Long jugadorSesionId = ResolutorJugadorSesion.resolverAutenticado(partidaReal, request);
+        if (!participacion.pertenece(partidaReal, jugadorSesionId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR_JUGADOR_AJENO);
+        }
+        Jugador jugadorSesion = partidaReal.getJugadores().stream()
+                .filter(jugador -> jugadorSesionId.equals(jugador.getId())).findFirst().orElseThrow();
 
         Map<String, Object> model = new HashMap<>();
         model.put("partida", partidaReal);
         model.put("usuarioSesionId", jugadorSesionId);
         model.put("dineroUsuarioSesion", jugadorSesion == null ? 0 : jugadorSesion.getDinero());
         model.put("usuarioEnBancarrota", jugadorSesion != null && jugadorSesion.getEnBancarrota());
-        model.put("turnoActualId", resolverTurnoActualId(codigoFinal));
+        model.put("turnoActualId", partidaReal.getEstado() == EstadoPartida.FINALIZADA
+                ? null : resolverTurnoActualId(codigoFinal));
         model.put("propiedadesTablero", mapeadorPropiedad.catalogoTablero(partidaReal));
 
         return new ModelAndView(VISTA_PARTIDA, model);

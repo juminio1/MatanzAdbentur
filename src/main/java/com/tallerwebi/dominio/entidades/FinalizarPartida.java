@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
+@SuppressWarnings("PMD.TooManyFields")
 @Table(name = "finalizar_partida", uniqueConstraints = @UniqueConstraint(
         name = "uk_resultado_partida_jugador", columnNames = {"partida_id", "jugador_id"}))
 public class FinalizarPartida {
@@ -30,6 +31,8 @@ public class FinalizarPartida {
     private Jugador jugador;
 
     private Integer dineroFinal;
+    private Integer cantidadPropiedades;
+    private Integer cantidadMejoras;
     private Integer valorPropiedades;
     private Integer deudaPendiente;
     private Integer patrimonioTotal;
@@ -65,6 +68,22 @@ public class FinalizarPartida {
 
     public void setDineroFinal(Integer dineroFinal) {
         this.dineroFinal = dineroFinal;
+    }
+
+    public Integer getCantidadPropiedades() {
+        return cantidadPropiedades;
+    }
+
+    public void setCantidadPropiedades(Integer cantidadPropiedades) {
+        this.cantidadPropiedades = cantidadPropiedades;
+    }
+
+    public Integer getCantidadMejoras() {
+        return cantidadMejoras;
+    }
+
+    public void setCantidadMejoras(Integer cantidadMejoras) {
+        this.cantidadMejoras = cantidadMejoras;
     }
 
     public Integer getValorPropiedades() {

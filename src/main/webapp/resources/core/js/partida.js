@@ -11,6 +11,7 @@ let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
 const avisosPartidaPendientes = [];
 const quiebrasNotificadas = new Set();
+const advertenciasRondaMostradas = new Set();
 
 let yaTiroEnEsteTurno = false;
 
@@ -68,7 +69,7 @@ function validarRespuestaDeuda(datos) {
 
 // consulta al servidor si el jugador tiene una deuda pendiente y actualiza el estado local.
 function consultarDeudaPendiente(huboCambio = false) {
-    if (!codigoPartida) return Promise.resolve();
+    if (!codigoPartida || partidaFinalizada) return Promise.resolve();
     //Comprueba si hubo un cambio en la partida. Ya que la info. anterior de la deuda podria dejar de ser valida.
     if (huboCambio) {
         revisionDeudaLocal++;
@@ -278,6 +279,7 @@ function iniciarSincronizacionPosiciones() {
 }
 
 function solicitarPosicionesPartida() {
+    if (partidaFinalizada) return;
     if (clienteWebSocketPartida?.connected) {
         clienteWebSocketPartida.send(
             `/app/partida/${codigoPartida}/solicitar-posiciones`,
@@ -288,6 +290,7 @@ function solicitarPosicionesPartida() {
 }
 
 async function actualizarTurnoDesdeServidor(base, codigo) {
+    if (partidaFinalizada) return;
     consultarDeudaPendiente();
     if (consultaTurnoEnCurso) return;
     consultaTurnoEnCurso = true;
@@ -317,6 +320,7 @@ function conectarWebSocketTurnos(base, codigo) {
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
+            consultarResultadosFinales();
             consultarDeudaPendiente(true);
 
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
@@ -395,6 +399,7 @@ function conectarWebSocketTurnos(base, codigo) {
             revisarOfertasPendientes();
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {
                 const datos = JSON.parse(mensaje.body);
+                consultarResultadosFinales();
                 if (datos.motivo === "QUIEBRA") {
                     procesarNotificacionQuiebra(datos);
                     await sincronizarPropiedadesTrasAbandono(datos.idJugador);
@@ -409,12 +414,6 @@ function conectarWebSocketTurnos(base, codigo) {
 
                 await sincronizarPropiedadesTrasAbandono(datos.idJugador);
 
-                if (
-                    datos.victoriaPorAbandono === true &&
-                    String(datos.idGanador) === String(window.usuarioSesionId)
-                ) {
-                    mostrarVictoria(datos);
-                }
             });
 
             // Pido las posiciones después de suscribirme al canal.
@@ -629,6 +628,7 @@ function mostrarSiguienteAvisoPartida() {
 }
 
 async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
+    if (partidaFinalizada) return;
     const popup =
         String(idJugador) === String(window.usuarioSesionId)
             ? document.getElementById("aviso-evento")
@@ -705,6 +705,7 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
 }
 
 async function procesarMovimiento(movimiento) {
+    if (partidaFinalizada) return;
     if (movimiento.turnoSiguiente) aplicarTurnoDTO(movimiento.turnoSiguiente);
     const clave = movimiento.idMovimiento
         ? String(movimiento.idMovimiento)
@@ -727,6 +728,7 @@ async function procesarMovimiento(movimiento) {
         }
         actualizarBotonTirada();
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
+        if (partidaFinalizada) return;
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
         if (Number.isInteger(posicionCaida)) {
             moverFichaEnTablero(movimiento.idJugador, posicionCaida);
@@ -747,6 +749,7 @@ async function procesarMovimiento(movimiento) {
                 movimiento.nombreEvento,
                 movimiento.descripcionEvento,
             );
+            if (partidaFinalizada) return;
         }
         const posicionFinal = Number(movimiento.nuevaPosicion);
         if (Number.isInteger(posicionFinal)) {
@@ -757,6 +760,7 @@ async function procesarMovimiento(movimiento) {
                 const pasosEvento =
                     (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
                 await animarMovimientoFicha(movimiento.idJugador, pasosEvento, posicionCaida);
+                if (partidaFinalizada) return;
                 moverFichaEnTablero(movimiento.idJugador, posicionFinal);
                 registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
             }
@@ -884,6 +888,22 @@ function actualizarRondaActual(rondaActual) {
     if (contadorRonda && rondaActual != null) {
         contadorRonda.textContent = rondaActual;
     }
+    advertirFinalProximo(Number(rondaActual));
+}
+
+function advertirFinalProximo(ronda) {
+    if (partidaFinalizada || !Number.isInteger(ronda) || ronda < 27 || ronda > 30
+            || !codigoPartida || window.usuarioSesionId == null) return;
+    const clave = `matancero:advertencia-final:${JSON.stringify([codigoPartida, window.usuarioSesionId])}`;
+    if (advertenciasRondaMostradas.has(clave)) return;
+    try {
+        if (window.localStorage.getItem(clave) === "mostrada") return;
+        window.localStorage.setItem(clave, "mostrada");
+    } catch {
+        advertenciasRondaMostradas.add(clave);
+    }
+    advertenciasRondaMostradas.add(clave);
+    mostrarAvisoPartida(`¡Ojo! Ronda ${ronda} de 30. La partida está por terminar.`);
 }
 
 const modalCompra = document.getElementById("modal-compra-propiedad");
@@ -963,7 +983,7 @@ function abrirAvisoDeuda(solicitudManual = false) {
     document.getElementById("deuda-confirmacion").hidden = true;
     aperturaDeudaPendiente = false;
     avisoDeudaPresentado = true;
-    modalDeuda.showModal();
+    abrirModalPartida(modalDeuda);
     document.getElementById("btn-cerrar-deuda").focus();
 }
 
@@ -973,7 +993,7 @@ function abrirPropiedadesDesdeDeuda() {
     regresoDesdePropiedadesDeuda = true;
     aperturaDeudaPendiente = false;
     modalDeuda.close();
-    if (!modalBonoPropiedades.open) modalBonoPropiedades.showModal();
+    if (!modalBonoPropiedades.open) abrirModalPartida(modalBonoPropiedades);
     cargarPropiedadesPropias();
 }
 
@@ -1279,7 +1299,7 @@ async function cargarInfoPropiedad(posicion, abrirPopup = false) {
     if (!respuesta.ok) throw new Error("No se pudo consultar la propiedad");
     const propiedad = await respuesta.json();
     mostrarInfoPropiedad(propiedad);
-    if (abrirPopup && !modalInfoPropiedad.open) modalInfoPropiedad.showModal();
+    if (abrirPopup && !modalInfoPropiedad.open) abrirModalPartida(modalInfoPropiedad);
     return propiedad;
 }
 
@@ -1427,7 +1447,7 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
     document.getElementById("btn-modal-comprar").disabled = false;
     document.getElementById("btn-modal-pasar").disabled = false;
     document.getElementById("tiempo-compra").textContent = tiempoRestante;
-    modalCompra.showModal();
+    abrirModalPartida(modalCompra);
 }
 
 document.querySelectorAll(".casillero[data-casillero]").forEach((casillero) => {
@@ -1447,7 +1467,7 @@ document.getElementById("btn-modal-comprar")?.addEventListener("click", comprarP
 document.getElementById("btn-modal-pasar")?.addEventListener("click", pasarTurnoPropiedad);
 
 document.getElementById("btn-bono-propiedades")?.addEventListener("click", () => {
-    if (!modalBonoPropiedades.open) modalBonoPropiedades.showModal();
+    if (!modalBonoPropiedades.open) abrirModalPartida(modalBonoPropiedades);
     cargarPropiedadesPropias();
 });
 document
@@ -1652,7 +1672,7 @@ function abrirOpcionesVenta(propiedad) {
         opcion.hidden = opcion.dataset.bancarrota === "true";
         opcion.disabled = opcion.hidden;
     });
-    if (!modalVenderPropiedad.open) modalVenderPropiedad.showModal();
+    if (!modalVenderPropiedad.open) abrirModalPartida(modalVenderPropiedad);
 }
 
 let ultimoTurnoSolicitadoPorPagoDeuda = null;
@@ -1758,7 +1778,7 @@ function mostrarOfertaRecibida(oferta) {
     document.getElementById("oferta-recibida-detalle").textContent =
         `${oferta.apodoVendedor} te ofrece ${oferta.nombrePropiedad} por $${oferta.precio}.`;
     mensajeOfertaRecibida.textContent = "";
-    modalOfertaRecibida.showModal();
+    abrirModalPartida(modalOfertaRecibida);
 }
 
 async function responderOfertaVenta(aceptar) {
@@ -1951,6 +1971,8 @@ function alinearHistorialConTablero() {
 
 window.addEventListener("DOMContentLoaded", () => {
     alinearHistorialConTablero();
+    consultarResultadosFinales();
+    window.setInterval(consultarResultadosFinales, 10000);
     posicionesInicialesSincronizadas = true;
     pintarLocalidadesTablero();
     if (Array.isArray(window.propiedadesIniciales)) {
@@ -1991,8 +2013,9 @@ const mensajeAbandono = document.getElementById("mensaje-abandono");
 let abandonandoPartida = false;
 
 botonAbandonar.addEventListener("click", () => {
+    if (partidaFinalizada) return;
     mensajeAbandono.textContent = "";
-    modalAbandonar.showModal();
+    abrirModalPartida(modalAbandonar);
 });
 
 botonCancelarAbandono.addEventListener("click", () => {
@@ -2002,7 +2025,7 @@ botonCancelarAbandono.addEventListener("click", () => {
 botonConfirmarAbandono.addEventListener("click", confirmarAbandono);
 
 async function confirmarAbandono() {
-    if (abandonandoPartida) {
+    if (abandonandoPartida || partidaFinalizada) {
         return;
     }
 
@@ -2030,13 +2053,13 @@ async function confirmarAbandono() {
             throw new Error(datos.error || "No se pudo abandonar la partida.");
         }
 
-        window.location.assign(`${basePath}/home`);
+        if (!partidaFinalizada) window.location.assign(`${basePath}/home`);
     } catch (error) {
         mensajeAbandono.textContent = error.message;
     } finally {
         abandonandoPartida = false;
-        botonConfirmarAbandono.disabled = false;
-        botonCancelarAbandono.disabled = false;
+        botonConfirmarAbandono.disabled = partidaFinalizada;
+        botonCancelarAbandono.disabled = partidaFinalizada;
         botonConfirmarAbandono.textContent = "Sí, abandonar";
     }
 }
@@ -2157,14 +2180,19 @@ function procesarNotificacionQuiebra(datos) {
         tarjeta?.querySelector(".contenedor-turno")?.replaceChildren();
     }
     if (datos.partidaFinalizada === true) {
-        if (String(datos.idGanador) === String(window.usuarioSesionId)) mostrarVictoria(datos);
-        else detenerPartidaEnPantalla();
+        detenerPartidaEnPantalla();
+        consultarResultadosFinales();
     }
 }
 
 // Detiene la presentación y evita que respuestas anteriores reactiven el turno.
 function detenerPartidaEnPantalla() {
+    document.getElementById("btn-continuar-evento")?.click();
     partidaFinalizada = true;
+    document.querySelectorAll("dialog[open]:not(#modal-victoria)").forEach(modal => modal.close());
+    document.getElementById("aviso-evento")?.classList.remove("aviso-evento--visible");
+    document.getElementById("aviso-evento")?.setAttribute("aria-hidden", "true");
+    bloquearAccionesFinalizadas();
     if (modalOfertaRecibida?.open) modalOfertaRecibida.close();
     if (modalVenderPropiedad?.open) modalVenderPropiedad.close();
     ofertaActiva = null;
@@ -2188,17 +2216,98 @@ function detenerPartidaEnPantalla() {
 
 }
 
-function mostrarVictoria(datos) {
-    detenerPartidaEnPantalla();
-    const mensaje = document.getElementById("mensaje-victoria");
+let consultaResultadosEnCurso = null;
+let resultadosFinalesMostrados = false;
 
-    mensaje.textContent = datos.motivo === "QUIEBRA"
-        ? `${datos.apodo} se declaró en quiebra. ¡Sos el ganador!`
-        : `${datos.apodo} abandonó la partida. ¡Sos el ganador!`;
+function abrirModalPartida(modal) {
+    if (!partidaFinalizada && !modal.open) modal.showModal();
+}
 
-    const modal = document.getElementById("modal-victoria");
+function bloquearAccionesFinalizadas() {
+    if (!partidaFinalizada) return;
+    document.querySelectorAll("button").forEach(boton => {
+        if (!boton.closest("#modal-victoria") && !boton.disabled) boton.disabled = true;
+    });
+}
 
-    if (!modal.open) {
-        modal.showModal();
+const observadorFinalizacion = new MutationObserver(bloquearAccionesFinalizadas);
+observadorFinalizacion.observe(document.body, {
+    subtree: true, childList: true, attributes: true, attributeFilter: ["disabled"],
+});
+window.addEventListener("pagehide", () => observadorFinalizacion.disconnect());
+
+document.addEventListener("click", evento => {
+    if (partidaFinalizada && !evento.target.closest("#modal-victoria")) {
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
     }
+}, true);
+
+document.getElementById("modal-victoria").addEventListener("cancel", evento => evento.preventDefault());
+
+function consultarResultadosFinales() {
+    if (!codigoPartida || resultadosFinalesMostrados) return Promise.resolve();
+    if (consultaResultadosEnCurso) return consultaResultadosEnCurso;
+    consultaResultadosEnCurso = (async () => {
+        try {
+            const respuesta = await fetch(
+                `${basePath}/partida/${encodeURIComponent(codigoPartida)}/resultados-finales`,
+                { cache: "no-store", credentials: "same-origin" },
+            );
+            if (!respuesta.ok) return;
+            const datos = await respuesta.json();
+            if (datos.estado !== "FINALIZADA" || !Array.isArray(datos.resultados)) return;
+            detenerPartidaEnPantalla();
+            mostrarResultadosFinales(datos);
+            resultadosFinalesMostrados = true;
+        } catch {
+            return;
+        } finally {
+            consultaResultadosEnCurso = null;
+        }
+    })();
+    return consultaResultadosEnCurso;
+}
+
+function mostrarResultadosFinales(datos) {
+    const mensaje = document.getElementById("mensaje-victoria");
+    mensaje.textContent = datos.motivo || "";
+    mensaje.hidden = !datos.motivo;
+    const ganadores = datos.resultados.filter(resultado => resultado.ganador === true);
+    document.getElementById("ganadores-partida").textContent =
+        `${ganadores.length === 1 ? "Ganador" : "Ganadores"}: ${ganadores.map(resultado => resultado.apodo).join(" · ")}`;
+    const ranking = document.getElementById("ranking-final");
+    ranking.replaceChildren();
+    datos.resultados.forEach((resultado, indice) => {
+        const fila = document.createElement("li");
+        if (resultado.ganador === true) fila.classList.add("resultado-ganador");
+        const detalle = document.createElement("details");
+        const resumen = document.createElement("summary");
+        const estado = { QUEBRADO: "En quiebra", ABANDONADO: "Abandonó" }[resultado.estadoParticipante];
+        resumen.textContent = `${indice + 1}. ${resultado.apodo}${estado ? ` · ${estado}` : ""}${resultado.ganador === true ? " · GANADOR" : ""}`;
+        const lista = document.createElement("dl");
+        const campos = [
+            ["Dinero final", resultado.dineroFinal, true],
+            ["Cantidad de propiedades", resultado.cantidadPropiedades, false],
+            ["Cantidad de mejoras", resultado.cantidadMejoras, false],
+            ["Valor de propiedades incluyendo mejoras", resultado.valorPropiedades, true],
+            ["Deuda pendiente", resultado.deudaPendiente, true],
+            ["Patrimonio total", resultado.patrimonioTotal, true],
+        ];
+        campos.forEach(([nombre, valor, dinero]) => {
+            const campo = document.createElement("div");
+            const etiqueta = document.createElement("dt");
+            etiqueta.textContent = nombre;
+            const dato = document.createElement("dd");
+            dato.textContent = valor == null ? "No disponible"
+                : `${dinero ? "$" : ""}${Number(valor).toLocaleString("es-AR")}`;
+            campo.append(etiqueta, dato);
+            lista.append(campo);
+        });
+        detalle.append(resumen, lista);
+        fila.append(detalle);
+        ranking.append(fila);
+    });
+    const modal = document.getElementById("modal-victoria");
+    if (!modal.open) modal.showModal();
 }

@@ -60,6 +60,40 @@ public class ServicioPartidaTest {
 
     private static final int TOTAL_CASILLEROS = 30;
 
+    @Test
+    public void visualizacionConsultaTodosLosEstadosSinEfectos() {
+        for (EstadoPartida estado : EstadoPartida.values()) {
+            Partida partida = new Partida();
+            partida.setEstado(estado);
+            when(repositorioPartidaMock.buscarPartidaPorCodigoUnico("VISTA")).thenReturn(partida);
+
+            org.junit.jupiter.api.Assertions.assertSame(partida,
+                    servicioPartida.obtenerPartidaParaVisualizacion("VISTA"));
+
+            assertEquals(estado, partida.getEstado());
+        }
+        verify(repositorioPartidaMock, times(EstadoPartida.values().length))
+                .buscarPartidaPorCodigoUnico("VISTA");
+        verifyNoMoreInteractions(repositorioPartidaMock);
+        verifyNoInteractions(finalizacion, gestorTemporizadorMock, notificadorPartidaMock,
+                publicadorAbandonoMock);
+    }
+
+    @Test
+    public void visualizacionInexistenteDevuelveNull() {
+        org.junit.jupiter.api.Assertions.assertNull(servicioPartida.obtenerPartidaParaVisualizacion("NO-EXISTE"));
+        verify(repositorioPartidaMock).buscarPartidaPorCodigoUnico("NO-EXISTE");
+        verifyNoMoreInteractions(repositorioPartidaMock);
+    }
+
+    @Test
+    public void visualizacionEsTransaccionalDeSoloLectura() throws Exception {
+        var transaccion = ServicioPartidaImpl.class.getMethod("obtenerPartidaParaVisualizacion", String.class)
+                .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+        assertNotNull(transaccion);
+        assertTrue(transaccion.readOnly());
+    }
+
     @BeforeEach
     public void init() {
         repositorioPartidaMock = mock(RepositorioPartida.class);

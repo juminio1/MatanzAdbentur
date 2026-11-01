@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=carcel-3)}"
-            href="../../../resources/core/css/partida.css?v=carcel-3"
+            th:href="@{/css/partida.css(v=finalizacion-2)}"
+            href="../../../resources/core/css/partida.css?v=finalizacion-2"
         />
     </head>
     <body class="pagina-partida">
@@ -967,11 +967,13 @@
             </div>
         </dialog>
 
-        <dialog id="modal-victoria" class="modal-propiedad modal-victoria">
+        <dialog id="modal-victoria" class="modal-propiedad modal-victoria" aria-labelledby="titulo-finalizacion">
             <div class="modal-propiedad__contenido">
-                <h2>¡GANASTE LA PARTIDA!</h2>
+                <h2 id="titulo-finalizacion">¡PARTIDA FINALIZADA!</h2>
 
-                <p id="mensaje-victoria"></p>
+                <p id="mensaje-victoria" hidden></p>
+                <p id="ganadores-partida" class="ganadores-partida" aria-live="polite"></p>
+                <ol id="ranking-final" class="ranking-final" aria-label="Ranking final"></ol>
 
                 <a th:href="@{/home}" class="btn-victoria"> Volver al inicio </a>
             </div>
@@ -1011,7 +1013,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=carcel-3)}" src="../../../resources/core/js/partida.js?v=carcel-3" charset="UTF-8" defer></script>
+<script th:src="@{/js/partida.js(v=finalizacion-2)}" src="../../../resources/core/js/partida.js?v=finalizacion-2" charset="UTF-8" defer></script>
 
 </body>
 

@@ -96,10 +96,18 @@ public class ServicioPartidaImpl implements ServicioPartida {
         this.lecturaTurno.setReadOnly(true);
     }
 
+    //Devuelve partidas que todavía no finalizaron (EN_ESPERA o EN_CURSO).
     @Override
     @Transactional(readOnly = true)
     public Partida obtenerPartida(String codigoUnico) {
         return repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
+    }
+
+    //Devuelve partidas de cualquier estado, incluso FINALIZADA.
+    @Override
+    @Transactional(readOnly = true)
+    public Partida obtenerPartidaParaVisualizacion(String codigoPartida) {
+        return repositorioPartida.buscarPartidaPorCodigoUnico(codigoPartida);
     }
 
     @Override

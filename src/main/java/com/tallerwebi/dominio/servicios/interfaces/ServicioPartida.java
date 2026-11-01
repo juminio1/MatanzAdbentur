@@ -12,6 +12,7 @@ import com.tallerwebi.dominio.resultados.PosicionFicha;
 import java.util.List;
 
 public interface ServicioPartida {
+    Partida obtenerPartidaParaVisualizacion(String codigoPartida);
     Partida obtenerPartida(String codigoUnico); //da la info del tablero y sus posiciones
     void iniciarPartida(String codigo, Long idUsuario)
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException;

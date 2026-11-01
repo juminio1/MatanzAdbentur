@@ -12,6 +12,14 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 import java.util.List;
+import java.util.ArrayList;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import org.springframework.transaction.annotation.Transactional;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import com.tallerwebi.dominio.servicios.ServicioFinalizacionPartidaImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import org.junit.jupiter.api.Test;
@@ -53,6 +61,83 @@ public class ServicioFinalizacionPartidaTest {
         jugadorCaptura.setId(1L);
         jugadorCaptura.setDinero(1000);
         partidaCaptura.getJugadores().add(jugadorCaptura);
+    }
+
+    @Test
+    public void propiedadSinMejorasCuentaComoPropiedad() {
+        Propiedad propiedad = new Propiedad();
+        propiedad.setPrecioCompra(500);
+        propiedad.setNivelMejora(0);
+        when(propiedadesCaptura.buscarPropiedadesPorPropietario(jugadorCaptura))
+                .thenReturn(List.of(propiedad));
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ACTIVO);
+
+        assertEquals(1, resultado.getCantidadPropiedades());
+        assertEquals(0, resultado.getCantidadMejoras());
+    }
+
+    @Test
+    public void conservaCantidadesTrasLiberacionPorQuiebra() {
+        verificarCantidadesTrasLiberacion(EstadoParticipante.QUEBRADO);
+    }
+
+    @Test
+    public void conservaCantidadesTrasLiberacionPorAbandono() {
+        verificarCantidadesTrasLiberacion(EstadoParticipante.ABANDONADO);
+    }
+
+    private void verificarCantidadesTrasLiberacion(EstadoParticipante estado) {
+        Propiedad propiedad = new Propiedad();
+        propiedad.setPrecioCompra(500);
+        propiedad.setNivelMejora(3);
+        propiedad.setPropietario(jugadorCaptura);
+        when(propiedadesCaptura.buscarPropiedadesPorPropietario(jugadorCaptura))
+                .thenReturn(List.of(propiedad));
+        FinalizarPartida original = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, estado);
+        var liberacion = new com.tallerwebi.dominio.servicios.ServicioLiberacionPropiedadesImpl(
+                propiedadesCaptura);
+        if (estado == EstadoParticipante.QUEBRADO) {
+            new com.tallerwebi.dominio.observadores.ObservadorLiberarPropiedadesQuiebra(liberacion)
+                    .actualizar(new com.tallerwebi.dominio.eventos.EventoJugadorQuebrado(
+                            partidaCaptura, jugadorCaptura));
+        } else {
+            new com.tallerwebi.dominio.observadores.ObservadorLiberarPropiedades(liberacion)
+                    .actualizar(new com.tallerwebi.dominio.eventos.EventoJugadorAbandonado(
+                            partidaCaptura, jugadorCaptura));
+        }
+        org.junit.jupiter.api.Assertions.assertNull(propiedad.getPropietario());
+        assertEquals(0, propiedad.getNivelMejora());
+        when(resultadosCaptura.buscarPorPartidaYJugador(10L, 1L)).thenReturn(original);
+        org.mockito.Mockito.clearInvocations(propiedadesCaptura, deudasCaptura);
+
+        FinalizarPartida repetido = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ACTIVO);
+
+        assertSame(original, repetido);
+        assertEquals(1, repetido.getCantidadPropiedades());
+        assertEquals(3, repetido.getCantidadMejoras());
+        assertEquals(estado, repetido.getEstadoParticipante());
+        verify(resultadosCaptura).guardar(original);
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura);
+    }
+
+    @Test
+    public void segundaCapturaConservaCantidadesDesconocidas() {
+        FinalizarPartida previo = new FinalizarPartida();
+        when(resultadosCaptura.buscarPorPartidaYJugador(10L, 1L)).thenReturn(previo);
+
+        FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
+                partidaCaptura, jugadorCaptura, EstadoParticipante.ACTIVO);
+
+        assertSame(previo, resultado);
+        org.junit.jupiter.api.Assertions.assertNull(resultado.getCantidadPropiedades());
+        org.junit.jupiter.api.Assertions.assertNull(resultado.getCantidadMejoras());
+        verifyNoInteractions(propiedadesCaptura, deudasCaptura);
+        verify(resultadosCaptura).buscarPorPartidaYJugador(10L, 1L);
+        verifyNoMoreInteractions(resultadosCaptura);
     }
 
     @Test
@@ -333,6 +418,8 @@ public class ServicioFinalizacionPartidaTest {
         assertSame(partidaCaptura, resultado.getPartida());
         assertSame(jugadorCaptura, resultado.getJugador());
         assertEquals(1000, resultado.getDineroFinal());
+        assertEquals(2, resultado.getCantidadPropiedades());
+        assertEquals(3, resultado.getCantidadMejoras());
         assertEquals(2000, resultado.getValorPropiedades());
         assertEquals(300, resultado.getDeudaPendiente());
         assertEquals(2700, resultado.getPatrimonioTotal());
@@ -353,6 +440,8 @@ public class ServicioFinalizacionPartidaTest {
         FinalizarPartida resultado = servicioCaptura.conservarResultadoEconomico(
                 partidaCaptura, jugadorCaptura, EstadoParticipante.ACTIVO);
 
+        assertEquals(0, resultado.getCantidadPropiedades());
+        assertEquals(0, resultado.getCantidadMejoras());
         assertEquals(1000, resultado.getDineroFinal());
         assertEquals(0, resultado.getValorPropiedades());
         assertEquals(0, resultado.getDeudaPendiente());
@@ -1020,5 +1109,133 @@ public class ServicioFinalizacionPartidaTest {
                             sesiones.getCurrentSession().find(Partida.class, idPartida))));
             verifyNoMoreInteractions(temporizadorCierre);
         }
+    }
+
+    private void prepararConsultaResultados() {
+        partidaCaptura.setCodigoUnico("FINAL");
+        partidaCaptura.setEstado(EstadoPartida.FINALIZADA);
+        jugadorCaptura.setApodo("Ana");
+        when(partidasCierre.buscarPartidaPorCodigoUnico("FINAL")).thenReturn(partidaCaptura);
+    }
+
+    @Test
+    void devuelveFotografiasYOrdenaGanadoresSinAlterarEntidades() throws Exception {
+        prepararConsultaResultados();
+        FinalizarPartida quebrado = resultado(3L, EstadoParticipante.QUEBRADO, false, 9000);
+        FinalizarPartida segundoGanador = resultado(2L, EstadoParticipante.ACTIVO, true, 0);
+        FinalizarPartida abandonado = resultado(4L, EstadoParticipante.ABANDONADO, false, -100);
+        FinalizarPartida primerGanador = resultado(1L, EstadoParticipante.ACTIVO, true, 0);
+        List<FinalizarPartida> originales = new ArrayList<>(
+                List.of(quebrado, segundoGanador, abandonado, primerGanador));
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(originales);
+
+        var respuesta = servicioCaptura.consultar("FINAL", "ana");
+
+        assertEquals(EstadoPartida.FINALIZADA, respuesta.estado());
+        assertEquals("FINAL", respuesta.codigoPartida());
+        assertEquals(List.of(1L, 2L, 3L, 4L), respuesta.resultados().stream()
+                .map(r -> r.idJugador()).toList());
+        var primero = respuesta.resultados().get(0);
+        assertEquals("Jugador1", primero.apodo());
+        assertEquals(0, primero.dineroFinal());
+        assertEquals(2, primero.cantidadPropiedades());
+        assertEquals(3, primero.cantidadMejoras());
+        assertEquals(500, primero.valorPropiedades());
+        assertEquals(600, primero.deudaPendiente());
+        assertEquals(0, primero.patrimonioTotal());
+        assertTrue(primero.ganador());
+        assertTrue(respuesta.resultados().get(1).ganador());
+        assertFalse(respuesta.resultados().get(2).ganador());
+        assertEquals(EstadoParticipante.QUEBRADO, respuesta.resultados().get(2).estadoParticipante());
+        assertEquals(EstadoParticipante.ABANDONADO, respuesta.resultados().get(3).estadoParticipante());
+        assertEquals(-100, respuesta.resultados().get(3).patrimonioTotal());
+        assertEquals(List.of(quebrado, segundoGanador, abandonado, primerGanador), originales);
+        assertEquals(EstadoPartida.FINALIZADA, partidaCaptura.getEstado());
+        assertFalse(quebrado.getGanador());
+        assertEquals(9000, quebrado.getPatrimonioTotal());
+        verify(partidasCierre).buscarPartidaPorCodigoUnico("FINAL");
+        verify(resultadosCaptura).buscarPorPartida(10L);
+        verifyNoMoreInteractions(partidasCierre, resultadosCaptura);
+    }
+
+    @Test
+    void conservaCantidadesNulasYCeros() throws Exception {
+        prepararConsultaResultados();
+        FinalizarPartida historico = resultado(1L, EstadoParticipante.ACTIVO, true, -5);
+        historico.setCantidadPropiedades(null);
+        historico.setCantidadMejoras(null);
+        historico.setDeudaPendiente(0);
+        when(resultadosCaptura.buscarPorPartida(10L)).thenReturn(List.of(historico));
+
+        var consultado = servicioCaptura.consultar("FINAL", "Ana").resultados().get(0);
+
+        assertNull(consultado.cantidadPropiedades());
+        assertNull(consultado.cantidadMejoras());
+        assertEquals(0, consultado.deudaPendiente());
+        assertEquals(-5, consultado.patrimonioTotal());
+    }
+
+    @Test
+    void noPublicaResultadosAntesDelCierre() throws Exception {
+        prepararConsultaResultados();
+        for (EstadoPartida estado : List.of(EstadoPartida.EN_CURSO, EstadoPartida.EN_ESPERA)) {
+            partidaCaptura.setEstado(estado);
+            var respuesta = servicioCaptura.consultar("FINAL", "Ana");
+            assertEquals(estado, respuesta.estado());
+            assertTrue(respuesta.resultados().isEmpty());
+        }
+        verifyNoInteractions(resultadosCaptura);
+    }
+
+    @Test
+    void codigoInexistenteNoConsultaResultados() {
+        prepararConsultaResultados();
+        assertThrows(PartidaNoEncontradaException.class, () -> servicioCaptura.consultar("OTRA", "Ana"));
+        verifyNoInteractions(resultadosCaptura);
+    }
+
+    @Test
+    void rechazaUsuarioAjenoONombreAusente() {
+        prepararConsultaResultados();
+        assertThrows(SecurityException.class, () -> servicioCaptura.consultar("FINAL", "Ajeno"));
+        assertThrows(SecurityException.class, () -> servicioCaptura.consultar("FINAL", null));
+        verifyNoInteractions(resultadosCaptura);
+    }
+
+    @Test
+    void autorizaEspectadoresQuebradosYAbandonados() throws Exception {
+        prepararConsultaResultados();
+        Jugador jugador = partidaCaptura.getJugadores().get(0);
+        jugador.setEnBancarrota(true);
+        assertEquals(EstadoPartida.FINALIZADA, servicioCaptura.consultar("FINAL", "Ana").estado());
+        jugador.setEnBancarrota(false);
+        jugador.setAbandono(true);
+        assertEquals(EstadoPartida.FINALIZADA, servicioCaptura.consultar("FINAL", "Ana").estado());
+    }
+
+    @Test
+    void consultaDeclaradaTransaccionalDeSoloLectura() throws Exception {
+        prepararConsultaResultados();
+        Transactional transaccion = ServicioFinalizacionPartidaImpl.class
+                .getMethod("consultar", String.class, String.class).getAnnotation(Transactional.class);
+        assertNotNull(transaccion);
+        assertTrue(transaccion.readOnly());
+    }
+
+    private FinalizarPartida resultado(Long id, EstadoParticipante estado, boolean ganador, int patrimonio) {
+        Jugador jugador = new Jugador();
+        jugador.setId(id);
+        jugador.setApodo("Jugador" + id);
+        FinalizarPartida resultado = new FinalizarPartida();
+        resultado.setJugador(jugador);
+        resultado.setEstadoParticipante(estado);
+        resultado.setGanador(ganador);
+        resultado.setDineroFinal(0);
+        resultado.setCantidadPropiedades(2);
+        resultado.setCantidadMejoras(3);
+        resultado.setValorPropiedades(500);
+        resultado.setDeudaPendiente(600);
+        resultado.setPatrimonioTotal(patrimonio);
+        return resultado;
     }
 }

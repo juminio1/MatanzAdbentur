@@ -12,4 +12,5 @@ public interface RepositorioPartida {
     Partida buscarPartidaActiva();
 
     Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico);
+    Partida buscarPartidaPorCodigoUnico(String codigoUnico);
 }

@@ -218,6 +218,97 @@ public class RepositorioPartidaTest {
         assertThat(repositorioPartida.buscarPartidaPorJugador(idOtroJugador).getId(), is(otra.getId()));
     }
 
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraPorCodigoUnaPartidaEnCurso() {
+        verificarBusquedaPorCodigo(EstadoPartida.EN_CURSO);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraPorCodigoUnaPartidaFinalizada() {
+        verificarBusquedaPorCodigo(EstadoPartida.FINALIZADA);
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void encuentraPorCodigoUnaPartidaEnEspera() {
+        verificarBusquedaPorCodigo(EstadoPartida.EN_ESPERA);
+    }
+
+    private void verificarBusquedaPorCodigo(EstadoPartida estado) {
+        crearPartidaConJugador("OTRA", EstadoPartida.EN_CURSO);
+        Partida esperada = crearPartidaConJugador("POR-CODIGO", estado);
+        vaciarSesionParaBuscarPartida();
+
+        Partida encontrada = repositorioPartida.buscarPartidaPorCodigoUnico("POR-CODIGO");
+
+        assertThat(encontrada, is(notNullValue()));
+        assertThat(encontrada.getId(), is(esperada.getId()));
+        assertThat(encontrada.getEstado(), is(estado));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void busquedaSinFiltroDevuelveNullParaCodigoInexistente() {
+        crearPartidaConJugador("EXISTENTE", EstadoPartida.EN_CURSO);
+        vaciarSesionParaBuscarPartida();
+
+        assertThat(repositorioPartida.buscarPartidaPorCodigoUnico("INEXISTENTE"), is(nullValue()));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void busquedaActivaSigueExcluyendoLaFinalizadaConsultadaSinFiltro() {
+        Partida finalizada = crearPartidaConJugador("FINALIZADA", EstadoPartida.FINALIZADA);
+        vaciarSesionParaBuscarPartida();
+
+        assertThat(repositorioPartida.buscarPartidaPorCodigoUnico("FINALIZADA").getId(),
+                is(finalizada.getId()));
+        assertThat(repositorioPartida.buscarPartidaActivaPorCodigoUnico("FINALIZADA"), is(nullValue()));
+        assertThat(repositorioPartida.buscarPartidaActiva(), is(nullValue()));
+    }
+
+    @Test
+    @Transactional
+    @Rollback
+    public void consultarPorCodigoNoModificaLosDatosPersistidos() {
+        Partida original = crearPartidaConJugador("INMUTABLE", EstadoPartida.FINALIZADA);
+        Instant inicio = Instant.parse("2026-10-31T12:00:00Z");
+        original.setTiempoInicio(inicio);
+        original.setRondaActual(31);
+        original.setTurnosFinalizadosEnRonda(2);
+        original.setIndiceTurnoActual(3);
+        Jugador jugador = original.getJugadores().get(0);
+        jugador.setApodo("Historico");
+        jugador.setDinero(700);
+        Long idCreador = original.getCreador().getId();
+        Long idJugador = jugador.getId();
+        vaciarSesionParaBuscarPartida();
+
+        Partida encontrada = repositorioPartida.buscarPartidaPorCodigoUnico("INMUTABLE");
+
+        assertThat(encontrada.getId(), is(original.getId()));
+        vaciarSesionParaBuscarPartida();
+        Partida persistida = sessionFactory.getCurrentSession().find(Partida.class, original.getId());
+        assertThat(persistida.getEstado(), is(EstadoPartida.FINALIZADA));
+        assertThat(persistida.getCodigoUnico(), is("INMUTABLE"));
+        assertThat(persistida.getTiempoInicio(), is(inicio));
+        assertThat(persistida.getRondaActual(), is(31));
+        assertThat(persistida.getTurnosFinalizadosEnRonda(), is(2));
+        assertThat(persistida.getIndiceTurnoActual(), is(3));
+        assertThat(persistida.getCreador().getId(), is(idCreador));
+        assertThat(persistida.getJugadores().size(), is(1));
+        assertThat(persistida.getJugadores().get(0).getId(), is(idJugador));
+        assertThat(persistida.getJugadores().get(0).getApodo(), is("Historico"));
+        assertThat(persistida.getJugadores().get(0).getDinero(), is(700));
+    }
+
     private Partida crearPartidaConJugador(String codigo, EstadoPartida estado) {
         Usuario creador = new Usuario();
         creador.setEmail(codigo + "@test.com");

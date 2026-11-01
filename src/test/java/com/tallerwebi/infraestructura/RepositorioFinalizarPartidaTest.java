@@ -137,6 +137,37 @@ public class RepositorioFinalizarPartidaTest {
         assertTrue(repositorio.buscarPorPartida(sinResultados.getId()).isEmpty());
     }
 
+    @Test
+    public void persisteCantidadesHistoricas() {
+        Partida partida = crearPartida("CANTIDADES");
+        Jugador jugador = partida.getJugadores().get(0);
+        FinalizarPartida resultado = crearResultado(partida, jugador);
+        resultado.setCantidadPropiedades(2);
+        resultado.setCantidadMejoras(5);
+        repositorio.guardar(resultado);
+        vaciarSesion();
+
+        FinalizarPartida recuperado = repositorio.buscarPorPartidaYJugador(
+                partida.getId(), jugador.getId());
+
+        assertEquals(2, recuperado.getCantidadPropiedades());
+        assertEquals(5, recuperado.getCantidadMejoras());
+    }
+
+    @Test
+    public void resultadoAnteriorConservaCantidadesDesconocidas() {
+        Partida partida = crearPartida("HISTORICO");
+        Jugador jugador = partida.getJugadores().get(0);
+        repositorio.guardar(crearResultado(partida, jugador));
+        vaciarSesion();
+
+        FinalizarPartida recuperado = repositorio.buscarPorPartidaYJugador(
+                partida.getId(), jugador.getId());
+
+        assertNull(recuperado.getCantidadPropiedades());
+        assertNull(recuperado.getCantidadMejoras());
+    }
+
     private Partida crearPartida(String codigo) {
         Usuario creador = new Usuario();
         creador.setEmail(codigo + "@test.com");

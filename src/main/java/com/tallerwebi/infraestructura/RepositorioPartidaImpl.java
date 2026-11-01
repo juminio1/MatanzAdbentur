@@ -68,6 +68,14 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
         return partidas.isEmpty() ? null : partidas.get(0);
     }
 
+    @Override
+    public Partida buscarPartidaPorCodigoUnico(String codigoUnico) {
+        Query<Partida> consulta = this.sessionFactory.getCurrentSession()
+                .createQuery("FROM Partida WHERE codigoUnico = :codigo", Partida.class)
+                .setParameter("codigo", codigoUnico);
+        return obtenerResultadoUnicoONull(consulta);
+    }
+
     private Query<Partida> crearConsultaPartidasActivas(String hql) {
         return this.sessionFactory.getCurrentSession()
             .createQuery(hql, Partida.class)

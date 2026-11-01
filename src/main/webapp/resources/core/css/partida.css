@@ -1178,6 +1178,9 @@
 
 
 .modal-victoria {
+    width: min(640px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
     border: 3px solid #f3c44e;
     border-radius: 16px;
     text-align: center;
@@ -1202,6 +1205,64 @@
     color: #111;
     font-weight: bold;
     text-decoration: none;
+}
+
+.ganadores-partida {
+    color: #f3c44e;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.ranking-final {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+
+.ranking-final li {
+    border: 1px solid #718096;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ranking-final .resultado-ganador {
+    border: 2px solid #f3c44e;
+    background: rgba(243, 196, 78, 0.18);
+    box-shadow: 0 0 14px rgba(243, 196, 78, 0.16);
+}
+
+.ranking-final summary {
+    padding: 14px;
+    cursor: pointer;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.ranking-final summary:focus-visible {
+    outline: 3px solid #f3c44e;
+    outline-offset: -3px;
+}
+
+.ranking-final dl {
+    display: grid;
+    gap: 10px;
+    padding: 0 14px 14px;
+    margin: 0;
+}
+
+.ranking-final dl div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+}
+
+.ranking-final dd {
+    margin: 0;
+    font-weight: 700;
 }
 
 /* --- Cárcel --- */

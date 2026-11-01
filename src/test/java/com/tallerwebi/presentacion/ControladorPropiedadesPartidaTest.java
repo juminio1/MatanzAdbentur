@@ -383,6 +383,8 @@ class ControladorPropiedadesPartidaTest {
         partida.setJugadores(List.of(jugador));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", jugador.getId());
+        request.getSession().setAttribute("NOMBRE", jugador.getApodo());
+        when(servicioPartida.obtenerPartidaParaVisualizacion(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorPorId(jugador.getId())).thenReturn(jugador);
         when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
