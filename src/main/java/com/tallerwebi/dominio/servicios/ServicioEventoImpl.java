@@ -83,6 +83,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     private final Map<String, Set<Long>> confirmacionesPorPartida = new ConcurrentHashMap<>();
     private final Map<String, Long> jugadoresMovimientoPendiente = new ConcurrentHashMap<>();
     private final Map<String, EventoGlobal> eventosMovimientoPendiente = new ConcurrentHashMap<>();
+    private final Set<String> partidasEnReanudacion = ConcurrentHashMap.newKeySet();
 
     @Autowired
     public ServicioEventoImpl(RepositorioEvento repositorioEvento, ServicioDado servicioDado, ApplicationEventPublisher publicadorEventos, GestorTemporizadorPartida gestorTemporizador, RepositorioPartida repositorioPartida) {
@@ -222,7 +223,7 @@ public class ServicioEventoImpl implements ServicioEvento {
                 partidasEnPausaPorEmpate.contains(codigoPartida),
                 () -> relojEventoGlobal.vencioOProgramacionAgotada(codigoPartida,
                         gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEvento(codigoPartida))))) {
-            ejecutarVencimientoEventoGlobal(codigoPartida, etapa);
+            ejecutarVencimientoEventoGlobal(codigoPartida, etapa, relojEventoGlobal.obtenerVencimiento(codigoPartida));
         }
     }
 
@@ -230,7 +231,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         if (ValidadorEventoGlobal.puedeFinalizarPausaEmpate(partidasEnPausaPorEmpate.contains(codigoPartida),
                 () -> relojPausaEmpate.vencioOProgramacionAgotada(codigoPartida,
                         gestorTemporizador.obtenerSegundosRestantes(obtenerClaveTemporizadorEmpate(codigoPartida))))) {
-            iniciarDesempate(codigoPartida, etapaTiradasPorPartida.get(codigoPartida));
+            iniciarDesempate(codigoPartida, etapaTiradasPorPartida.get(codigoPartida),
+                    relojPausaEmpate.obtenerVencimiento(codigoPartida));
         }
     }
 
@@ -257,17 +259,19 @@ public class ServicioEventoImpl implements ServicioEvento {
         
         List<Long> activos = obtenerJugadoresActivos(partida).stream().map(Jugador::getId).toList();
         
-        Boolean elegidoSigueActivo = activos.contains(resultado.idJugadorElegido());
+        Boolean conservarElegido = ValidadorEventoGlobal.debeConservarElegido(resultado, partida, activos);
 
-        String detalle = elegidoSigueActivo || resultado.idJugadorElegido() == null
+        String detalle = conservarElegido || resultado.idJugadorElegido() == null
                 ? resultado.detalle() : "El jugador seleccionado abandonó la partida; no recibirá la consecuencia.";
 
         return new EstadoEventoGlobal(codigoPartida, resultado.fase(), resultado.tipo(), resultado.descripcion(),
                 resultado.etapa(), segundosRestantes == null ? DURACION_CONFIRMACION_SEGUNDOS : segundosRestantes,
                 activos, filtrarDatosDeParticipantes(resultado.tiradas(), activos),
-                elegidoSigueActivo ? resultado.idJugadorElegido() : null, detalle,
+                conservarElegido ? resultado.idJugadorElegido() : null, detalle,
                 filtrarDatosDeParticipantes(resultado.posiciones(), activos),
-                filtrarDatosDeParticipantes(resultado.saldos(), activos), obtenerConfirmaciones(codigoPartida));
+                filtrarDatosDeParticipantes(AplicadorConsecuenciaEventoGlobal.obtenerSaldosResultado(
+                        resultado, obtenerJugadoresActivos(partida)), activos), obtenerConfirmaciones(codigoPartida),
+                resultado.rondaActivacion());
     }
 
     @Override
@@ -382,17 +386,18 @@ public class ServicioEventoImpl implements ServicioEvento {
     private void programarTiempoEventoGlobal(String codigoPartida, Integer etapa) {
 
         DespuesDeConfirmar.ejecutar(() -> {
-            relojEventoGlobal.iniciar(codigoPartida, DURACION_EVENTO_GLOBAL_SEGUNDOS);
-            gestorTemporizador.programarTemporizador(obtenerClaveTemporizadorEvento(codigoPartida), DURACION_EVENTO_GLOBAL_SEGUNDOS, () -> ejecutarVencimientoEventoGlobal(codigoPartida, etapa));
+            Long vencimiento = relojEventoGlobal.iniciar(codigoPartida, DURACION_EVENTO_GLOBAL_SEGUNDOS);
+            gestorTemporizador.programarTemporizador(obtenerClaveTemporizadorEvento(codigoPartida), DURACION_EVENTO_GLOBAL_SEGUNDOS, () -> ejecutarVencimientoEventoGlobal(codigoPartida, etapa, vencimiento));
         });
     }
 
-    private synchronized void ejecutarVencimientoEventoGlobal(String codigoPartida, Integer etapa) {
+    private synchronized void ejecutarVencimientoEventoGlobal(String codigoPartida, Integer etapa, Long vencimiento) {
 
         if (ValidadorEventoGlobal.puedeEjecutarVencimiento(
                 eventosActivosPorPartida.containsKey(codigoPartida),
                 Objects.equals(etapa, etapaTiradasPorPartida.get(codigoPartida)),
-                partidasEnPausaPorEmpate.contains(codigoPartida))) {
+                partidasEnPausaPorEmpate.contains(codigoPartida),
+                relojEventoGlobal.correspondeAlVencimiento(codigoPartida, vencimiento))) {
 
             Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
 
@@ -427,9 +432,9 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         DespuesDeConfirmar.ejecutar(() -> {
             gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEvento(codigoPartida));
-            relojPausaEmpate.iniciar(codigoPartida, DURACION_PAUSA_EMPATE_SEGUNDOS);
+            Long vencimiento = relojPausaEmpate.iniciar(codigoPartida, DURACION_PAUSA_EMPATE_SEGUNDOS);
             gestorTemporizador.programarTemporizador(obtenerClaveTemporizadorEmpate(codigoPartida),
-                    DURACION_PAUSA_EMPATE_SEGUNDOS, () -> iniciarDesempate(codigoPartida, nuevaEtapa));
+                    DURACION_PAUSA_EMPATE_SEGUNDOS, () -> iniciarDesempate(codigoPartida, nuevaEtapa, vencimiento));
         });
     }
 
@@ -437,10 +442,11 @@ public class ServicioEventoImpl implements ServicioEvento {
         return PREFIJO_TEMPORIZADOR_EMPATE + codigoPartida;
     }
 
-    private synchronized void iniciarDesempate(String codigoPartida, Integer etapa) {
+    private synchronized void iniciarDesempate(String codigoPartida, Integer etapa, Long vencimiento) {
         if (ValidadorEventoGlobal.puedeIniciarDesempate(
                 partidasEnPausaPorEmpate.contains(codigoPartida),
-                etapa, etapaTiradasPorPartida.get(codigoPartida))) {
+                etapa, etapaTiradasPorPartida.get(codigoPartida),
+                relojPausaEmpate.correspondeAlVencimiento(codigoPartida, vencimiento))) {
             Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
             EventoGlobal evento = eventosActivosPorPartida.get(codigoPartida);
             if (partida != null && evento != null) {
@@ -482,7 +488,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         Map<Long, Integer> saldos = obtenerValoresRegistrables(activos, ValidadorEventoGlobal::tieneSaldoRegistrable, Jugador::getDinero);
 
         return new EstadoEventoGlobal(codigoPartida, fase, eventoGlobal.getTipoEventoGlobal(), eventoGlobal.getDescripcion(),
-                etapa, segundos, List.copyOf(habilitados), Map.copyOf(tiradas), elegido, detalle, posiciones, saldos);
+                etapa, segundos, List.copyOf(habilitados), Map.copyOf(tiradas), elegido, detalle, posiciones, saldos,
+                List.of(), partida.getRondaActual());
     }
 
     private Integer obtenerTiempoRestante(String codigoPartida, FaseEventoGlobal fase) {
@@ -525,7 +532,8 @@ public class ServicioEventoImpl implements ServicioEvento {
             snapshot = new EstadoEventoGlobal(snapshot.codigoPartida(), snapshot.fase(), snapshot.tipo(), snapshot.descripcion(),
                     snapshot.etapa(), fase == FaseEventoGlobal.EMPATE ? DURACION_PAUSA_EMPATE_SEGUNDOS : DURACION_EVENTO_GLOBAL_SEGUNDOS,
                     snapshot.participantes(), snapshot.tiradas(), snapshot.idJugadorElegido(),
-                    snapshot.detalle(), snapshot.posiciones(), snapshot.saldos());
+                    snapshot.detalle(), snapshot.posiciones(), snapshot.saldos(), snapshot.confirmados(),
+                    snapshot.rondaActivacion());
         }
         publicarSnapshot(snapshot);
     }
@@ -586,19 +594,23 @@ public class ServicioEventoImpl implements ServicioEvento {
         ValidadorEventoGlobal.validarResultadoPendiente(codigoPartida, resultadosEnPresentacionPorPartida);
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
         ValidadorEventoGlobal.validarReanudacion(partida, codigoPartida, servicioGestionQuiebra);
-        aplicarMovimientoReservado(codigoPartida, partida);
-        resultadosEnPresentacionPorPartida.remove(codigoPartida);
-        confirmacionesPorPartida.remove(codigoPartida);
-        relojResultadoGlobal.limpiar(codigoPartida);
-        DespuesDeConfirmar.ejecutar(() -> {
-            gestorTemporizador.cancelarTemporizador(PREFIJO_TEMPORIZADOR_RESULTADO + codigoPartida);
-            publicadorEventos.publishEvent(new EventoGlobalFinalizado(codigoPartida));
-        });
+        if (!partidasEnReanudacion.add(codigoPartida)) return;
+        // Conserva la pausa y el movimiento reservado hasta confirmar la persistencia.
+        DespuesDeConfirmar.ejecutarConConfirmacion(
+                () -> aplicarMovimientoReservado(codigoPartida, partida), () -> {
+                jugadoresMovimientoPendiente.remove(codigoPartida);
+                eventosMovimientoPendiente.remove(codigoPartida);
+                resultadosEnPresentacionPorPartida.remove(codigoPartida);
+                confirmacionesPorPartida.remove(codigoPartida);
+                relojResultadoGlobal.limpiar(codigoPartida);
+                gestorTemporizador.cancelarTemporizador(PREFIJO_TEMPORIZADOR_RESULTADO + codigoPartida);
+                publicadorEventos.publishEvent(new EventoGlobalFinalizado(codigoPartida));
+            }, () -> partidasEnReanudacion.remove(codigoPartida));
     }
 
     private void aplicarMovimientoReservado(String codigoPartida, Partida partida) {
-        Long idJugador = jugadoresMovimientoPendiente.remove(codigoPartida);
-        EventoGlobal evento = eventosMovimientoPendiente.remove(codigoPartida);
+        Long idJugador = jugadoresMovimientoPendiente.get(codigoPartida);
+        EventoGlobal evento = eventosMovimientoPendiente.get(codigoPartida);
         if (ValidadorEventoGlobal.hayMovimientoPendiente(idJugador, evento)) {
             partida.getJugadores().stream()
                     .filter(jugador -> idJugador.equals(jugador.getId()))

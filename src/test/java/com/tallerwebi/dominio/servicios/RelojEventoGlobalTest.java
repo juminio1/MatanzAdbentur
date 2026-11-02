@@ -10,6 +10,19 @@ import org.junit.jupiter.api.Test;
 public class RelojEventoGlobalTest {
 
     @Test
+    public void dadoQueSeReprogramoCuandoLlegaElVencimientoAnteriorEntoncesSoloReconoceElActual() {
+        RelojEventoGlobal reloj = new RelojEventoGlobal();
+        Long anterior = reloj.iniciar("ABC", 8);
+        Long actual = reloj.iniciar("ABC", 30);
+
+        assertFalse(reloj.correspondeAlVencimiento("ABC", anterior));
+        assertTrue(reloj.correspondeAlVencimiento("ABC", actual));
+        reloj.limpiar("ABC");
+        assertFalse(reloj.correspondeAlVencimiento("ABC", actual));
+        assertFalse(reloj.correspondeAlVencimiento("ABC", null));
+    }
+
+    @Test
     public void dadoQueSeProgramaElRelojConTreintaSegundosCuandoSeConsultaYDaTiempoDisponible() {
         RelojEventoGlobal reloj = new RelojEventoGlobal();
         reloj.iniciar("ABC", 30);

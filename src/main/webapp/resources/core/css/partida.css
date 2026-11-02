@@ -338,6 +338,7 @@
 }
 
 .dados { display: flex; gap: 8px; }
+.dados[hidden], .btn-tirar[hidden] { display: none !important; }
 .dado {
     display: grid;
     place-items: center;

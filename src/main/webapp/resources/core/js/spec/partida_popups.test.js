@@ -41,6 +41,124 @@ describe("Popups de eventos globales y deudas", function () {
         runInContext("estadoDeudaLocal = { estado: 'actualizado', deuda: validarRespuestaDeuda(respuestaDeuda), error: null }; actualizarAvisoDeuda();", contexto);
     }
 
+    function prepararEstadoGlobal(rondaActivacion, fase = "FINALIZADO", tipo = "ACCIDENTE_SARMIENTO", etapa = 0) {
+        return {
+            codigoPartida: "ABC", rondaActivacion, fase, tipo, etapa, idJugadorElegido: 2,
+            participantes: [1, 2, 3, 4], tiradas: {}, confirmados: [], segundosRestantes: 30,
+            posiciones: {}, saldos: {},
+        };
+    }
+
+    function prepararConsultasGlobales() {
+        ventana.eventoConsultado = null;
+        for (const id of [1, 2]) {
+            const ficha = ventana.document.createElement("div");
+            ficha.className = "ficha";
+            ficha.dataset.jugadorId = String(id);
+            ventana.document.querySelector('[data-casillero="20"] .fichas-en-casillero').appendChild(ficha);
+        }
+        ventana.fetch.and.callFake(async (url) => ({
+            ok: true,
+            status: url.endsWith("/evento-global") && ventana.eventoConsultado === null ? 204 : 200,
+            json: async () => url.endsWith("/evento-global") ? ventana.eventoConsultado
+                : url.endsWith("/evento-global/posiciones") ? [{ idJugador: 1, posicion: 20 }, { idJugador: 2, posicion: 17 }]
+                : { tieneDeudaPendiente: false, montoPendiente: null, motivo: null, acreedor: null },
+        }));
+    }
+
+    it("dadoQueSalePiqueteCuandoSeMuestraElEventoEntoncesSeTitulaNoSePasa", function () {
+        expect(runInContext("obtenerNombreEventoGlobal('PIQUETE')", contexto)).toBe("No se pasa");
+    });
+
+    it("dadoQueParticipanCuatroCuandoSePresentaElResultadoEntoncesElAvisoPideLaConfirmacionDeTodos", function () {
+        ventana.resultadoGlobal = prepararEstadoGlobal(5);
+
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+
+        expect(ventana.document.getElementById("evento-global-mensaje").textContent)
+            .toContain("Todos los jugadores activos deben confirmar");
+    });
+
+    for (const idJugador of [1, 2, 3, 4]) {
+        it(`dadoQueElJugador${idJugador}CerroSarmientoEnRondaCincoCuandoSeRepiteEnDiezEntoncesVeElNuevoPopup`, async function () {
+            prepararConsultasGlobales();
+            ventana.usuarioSesionId = idJugador;
+            runInContext("window.turnoActualId = window.usuarioSesionId; posicionesInicialesSincronizadas = true; estadoEventoGlobalSincronizado = true; estadoDeudaLocal = { estado: 'actualizado', deuda: null, error: null }; actualizarBotonTirada();", contexto);
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeFalse();
+            ventana.primerEvento = prepararEstadoGlobal(5);
+            ventana.segundoEvento = prepararEstadoGlobal(10);
+            runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+            await runInContext("consultarEstadoEventoGlobal()", contexto);
+            await runInContext("consultaDeudaEnCurso", contexto);
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeFalse();
+
+            const aceptado = runInContext("procesarEstadoEventoGlobal(segundoEvento)", contexto);
+
+            expect(aceptado).toBeTrue();
+            expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeTrue();
+            expect(ventana.document.getElementById("cronometro-nro").textContent).toBe("PAUSA");
+            expect(runInContext("estadoEventoGlobal?.rondaActivacion", contexto)).toBe(10);
+        });
+    }
+
+    it("dadoQueSeCerroSarmientoEnCincoCuandoRestDevuelveOtroIgualEnDiezEntoncesSeMuestraElPopup", async function () {
+        prepararConsultasGlobales();
+        ventana.primerEvento = prepararEstadoGlobal(5);
+        runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+        ventana.eventoConsultado = prepararEstadoGlobal(10);
+
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+        expect(runInContext("estadoEventoGlobal?.rondaActivacion", contexto)).toBe(10);
+    });
+
+    it("dadoQueElPrimerEventoTuvoDesempatesCuandoComienzaElDeRondaDiezEntoncesAceptaSuEtapaCero", function () {
+        ventana.primerEvento = prepararEstadoGlobal(5, "FINALIZADO", "TRAMITES_AFIP", 2);
+        ventana.segundoEvento = prepararEstadoGlobal(10, "INICIADO", "INUNDACION");
+        runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+
+        const aceptado = runInContext("procesarEstadoEventoGlobal(segundoEvento)", contexto);
+
+        expect(aceptado).toBeTrue();
+        expect(runInContext("estadoEventoGlobal.rondaActivacion", contexto)).toBe(10);
+        expect(ventana.document.getElementById("btn-tirar-evento-global").disabled).toBeFalse();
+    });
+
+    it("dadoQueSigueVisibleElResultadoAnteriorCuandoLlegaOtroSarmientoEnDiezEntoncesRenuevaElPopup", function () {
+        ventana.primerEvento = prepararEstadoGlobal(5);
+        ventana.segundoEvento = prepararEstadoGlobal(10);
+        runInContext("procesarEstadoEventoGlobal(primerEvento); procesarEstadoEventoGlobal(segundoEvento)", contexto);
+
+        expect(runInContext("estadoEventoGlobal.rondaActivacion", contexto)).toBe(10);
+        expect(ventana.document.querySelectorAll(".historial__lista li").length).toBe(2);
+    });
+
+    it("dadoQueComenzoElEventoDeDiezCuandoLlegaUnMensajeViejoDeCincoEntoncesConservaElActual", function () {
+        ventana.primerEvento = prepararEstadoGlobal(5, "TIRADA", "INUNDACION", 2);
+        ventana.segundoEvento = prepararEstadoGlobal(10, "INICIADO", "INUNDACION");
+        runInContext("procesarEstadoEventoGlobal(segundoEvento)", contexto);
+
+        const aceptado = runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+
+        expect(aceptado).toBeFalse();
+        expect(runInContext("estadoEventoGlobal.rondaActivacion", contexto)).toBe(10);
+    });
+
+    it("dadoQueSeCerroUnResultadoCuandoLlegaSuWebSocketRetrasadoEntoncesNoLoReabre", async function () {
+        prepararConsultasGlobales();
+        ventana.primerEvento = prepararEstadoGlobal(5);
+        runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        const aceptado = runInContext("procesarEstadoEventoGlobal(primerEvento)", contexto);
+
+        expect(aceptado).toBeFalse();
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeFalse();
+    });
+
     it("dadoQueElServidorConservaLosNombresDeLasFasesCuandoSeMuestraElEstadoEntoncesElFrontendReconoceTodasLasFases", function () {
         const fases = {
             INICIADO: "Evento iniciado", TIRADA: "Tiradas en curso", EMPATE: "Empate",
@@ -91,7 +209,7 @@ describe("Popups de eventos globales y deudas", function () {
     it("dadoQueKevinGeneraUnaDeudaCuandoSeAbreElAvisoEntoncesSeMuestranElMotivoElSaldoYElImporteReales", function () {
         mostrarDeuda("EVENTO_GLOBAL_ROBO");
 
-        expect(ventana.document.getElementById("deuda-motivo").textContent).toBe("Robo de dinero — El Kevin");
+        expect(ventana.document.getElementById("deuda-motivo").textContent).toBe("Robo de dinero");
         expect(ventana.document.getElementById("deuda-saldo").textContent).toBe("$500");
         expect(ventana.document.getElementById("deuda-importe").textContent).toBe("$1.000");
         expect(ventana.document.getElementById("deuda-acreedor-contenedor").hidden).toBeTrue();
@@ -103,6 +221,109 @@ describe("Popups de eventos globales y deudas", function () {
         expect(ventana.document.getElementById("deuda-motivo").textContent).toBe("Alquiler de propiedad");
         expect(ventana.document.getElementById("deuda-acreedor").textContent).toBe("José");
         expect(ventana.document.getElementById("deuda-acreedor-contenedor").hidden).toBeFalse();
+    });
+
+    for (const motivo of ["Robo de dinero — El Kevin", "Robo de dinero - El Kevin", "El Kevin", "ROBO"]) {
+        it(`dadoQueUnaDeudaAntiguaGuarda${motivo}CuandoSeMuestraEntoncesDiceExactamenteRoboDeDinero`, function () {
+            mostrarDeuda(motivo);
+
+            expect(ventana.document.getElementById("deuda-motivo").textContent).toBe("Robo de dinero");
+            expect(ventana.document.getElementById("modal-deuda-pendiente").textContent).not.toContain("El Kevin");
+        });
+    }
+
+    it("dadoQueSoloYoConfirmeCuandoElServidorMantieneElResultadoEntoncesElPopupSigueAbiertoYLosDadosNormalesOcultos", async function () {
+        prepararConsultasGlobales();
+        ventana.eventoConsultado = prepararEstadoGlobal(5);
+        ventana.eventoConsultado.confirmados = [1];
+        runInContext("procesarEstadoEventoGlobal(eventoConsultado)", contexto);
+
+        await runInContext("continuarPartidaDespuesDeEventoGlobal()", contexto);
+
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+        expect(ventana.document.getElementById("btn-tirar").hidden).toBeTrue();
+        expect(ventana.document.querySelector(".dados").hidden).toBeTrue();
+        expect(ventana.document.getElementById("btn-continuar-partida-global").textContent).toBe("Esperando a los demás...");
+        expect(ventana.document.getElementById("cronometro-nro").textContent).toBe("PAUSA");
+    });
+
+    it("dadoQueHayUnResultadoCuandoVenceElRelojLocalEntoncesNoCierraSinAutorizacionDelServidor", function () {
+        ventana.resultadoGlobal = prepararEstadoGlobal(5);
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+
+        runInContext("cerrarResultadoEventoGlobal()", contexto);
+
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+        expect(ventana.document.getElementById("btn-tirar").hidden).toBeTrue();
+    });
+
+    it("dadoQueSePerdioLaNotificacionCuandoRestAutorizaReanudarEntoncesRecuperaLasPosicionesAntesDeMostrarLosDados", async function () {
+        prepararConsultasGlobales();
+        ventana.resultadoGlobal = prepararEstadoGlobal(5, "FINALIZADO", "INUNDACION");
+        const ficha = ventana.document.querySelector('.ficha[data-jugador-id="2"]');
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        expect(ventana.fetch).toHaveBeenCalledWith("/spring/partida/ABC/evento-global/posiciones", jasmine.any(Object));
+        expect(ficha.closest(".casillero").dataset.casillero).toBe("17");
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeFalse();
+        expect(ventana.document.getElementById("btn-tirar").hidden).toBeFalse();
+        expect(ventana.document.querySelector(".dados").hidden).toBeFalse();
+    });
+
+    it("dadoQueUnaNotificacionLlegaDuranteUnaConsultaViejaCuandoElServidorReanudaEntoncesConsultaOtraVezYActualizaLaFicha", async function () {
+        prepararConsultasGlobales();
+        ventana.resultadoGlobal = prepararEstadoGlobal(5, "FINALIZADO", "INUNDACION");
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        let responderConsulta;
+        const respuestaVieja = new Promise((resolver) => { responderConsulta = resolver; });
+        let consultas = 0;
+        ventana.fetch.and.callFake(async (url) => {
+            if (url.endsWith("/evento-global") && consultas++ === 0) return respuestaVieja;
+            return { ok: true, status: url.endsWith("/evento-global") ? 204 : 200,
+                json: async () => url.endsWith("/posiciones") ? [{ idJugador: 2, posicion: 17 }]
+                    : { tieneDeudaPendiente: false, montoPendiente: null, motivo: null, acreedor: null } };
+        });
+        const consulta = runInContext("consultarEstadoEventoGlobal()", contexto);
+        const notificacion = runInContext("procesarReanudacionEventoGlobal({codigoPartida: 'ABC'})", contexto);
+
+        responderConsulta({ ok: true, status: 200, json: async () => ventana.resultadoGlobal });
+        await consulta;
+        await notificacion;
+
+        expect(consultas).toBe(2);
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeFalse();
+        expect(ventana.document.querySelector('.ficha[data-jugador-id="2"]').closest(".casillero").dataset.casillero).toBe("17");
+        expect(runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto)).toBeFalse();
+    });
+
+    it("dadoQueFallaRecuperarLasPosicionesCuandoSeConsultaLaReanudacionEntoncesNoHabilitaLosDadosConUnTableroViejo", async function () {
+        prepararConsultasGlobales();
+        ventana.resultadoGlobal = prepararEstadoGlobal(5);
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        ventana.fetch.and.resolveTo({ ok: false, status: 204 });
+
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+        expect(ventana.document.getElementById("btn-tirar").hidden).toBeTrue();
+    });
+
+    it("dadoQueLaAnimacionAnteriorSigueEnCursoCuandoSeConfirmaInundacionEntoncesAlTerminarConservaLaPosicionPersistida", async function () {
+        prepararConsultasGlobales();
+        ventana.animacionDemorada = new Promise((resolver) => { ventana.terminarAnimacion = resolver; });
+        runInContext("animarMovimientoFicha = async () => animacionDemorada; atenderCaidaEnCasillero = async () => {};", contexto);
+        const movimiento = runInContext("procesarMovimiento({idJugador: 2, posicionAnterior: 15, posicionCaidaEvento: 20, nuevaPosicion: 20, dado1: 2, dado2: 3, saldos: []})", contexto);
+        ventana.resultadoGlobal = prepararEstadoGlobal(5, "FINALIZADO", "INUNDACION");
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        ventana.terminarAnimacion();
+        await movimiento;
+
+        expect(ventana.document.querySelector('.ficha[data-jugador-id="2"]').closest(".casillero").dataset.casillero).toBe("17");
+        expect(runInContext("posicionesGlobalesPendientesDeAnimacion.size", contexto)).toBe(0);
     });
 
     it("dadoQueElMotivoTieneUnaDescripcionCuandoSeAbreElAvisoEntoncesSeConservaLaDescripcion", function () {

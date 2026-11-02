@@ -1,6 +1,7 @@
 package com.tallerwebi.presentacion.WebSocket.observadores;
 
 import com.tallerwebi.dominio.eventos.EventoGlobalActualizado;
+import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -20,5 +21,10 @@ public class ObservadorEventoGlobalWebSocket {
     public void notificarEventoGlobal(EventoGlobalActualizado evento) {
         String destino = TOPIC_PARTIDA + evento.estado().codigoPartida() + "/evento-global";
         template.convertAndSend(destino, evento.estado());
+    }
+
+    @EventListener
+    public void notificarReanudacion(EventoGlobalFinalizado evento) {
+        template.convertAndSend(TOPIC_PARTIDA + evento.codigoPartida() + "/evento-global/reanudado", evento);
     }
 }

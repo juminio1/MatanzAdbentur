@@ -19,7 +19,17 @@ public record EstadoEventoGlobal(
         String detalle,
         Map<Long, Integer> posiciones,
         Map<Long, Integer> saldos,
-        List<Long> confirmados) {
+        List<Long> confirmados,
+        Integer rondaActivacion) {
+
+    // Conserva las llamadas existentes; la ronda distingue activaciones consecutivas del mismo evento.
+    public EstadoEventoGlobal(String codigoPartida, FaseEventoGlobal fase, TipoEventoGlobal tipo, String descripcion,
+            Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas,
+            Long idJugadorElegido, String detalle, Map<Long, Integer> posiciones, Map<Long, Integer> saldos,
+            List<Long> confirmados) {
+        this(codigoPartida, fase, tipo, descripcion, etapa, segundosRestantes, participantes, tiradas,
+                idJugadorElegido, detalle, posiciones, saldos, confirmados, null);
+    }
 
     // Conserva las llamadas que construyen el estado sin confirmaciones.
     public EstadoEventoGlobal(String codigoPartida, FaseEventoGlobal fase, TipoEventoGlobal tipo, String descripcion,

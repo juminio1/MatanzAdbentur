@@ -849,10 +849,14 @@ public class ServicioEventoTest {
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearKevin());
 
         servicioEvento.verificarActivacionEventoGlobal(partida);
+        assertEquals(5, servicioEvento.consultarEstadoEventoGlobal("ABC").rondaActivacion());
+        continuarEventoFinalizado(partida);
+        assertNull(servicioEvento.consultarEstadoEventoGlobal("ABC"));
         partida.setRondaActual(10);
         servicioEvento.verificarActivacionEventoGlobal(partida);
 
         assertEquals(800, uno.getDinero());
+        assertEquals(10, servicioEvento.consultarEstadoEventoGlobal("ABC").rondaActivacion());
         verify(repositorioEventoMock, times(2)).obtenerEventoGlobalAleatorio();
     }
 
@@ -904,6 +908,59 @@ public class ServicioEventoTest {
         verify(repositorioEventoMock, times(2)).obtenerEventoGlobalAleatorio();
     }
 
+
+    @Test
+    public void dadoQueInundacionFinalizoEnCincoCuandoVenceSuRelojViejoDuranteDiezEntoncesNoTiraLosDadosDelNuevoEvento() throws Exception {
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 20), crearJugador(2L, 1000, 25));
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearInundacion());
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(4, 3), new ResultadoTirada(3, 3),
+                new ResultadoTirada(5, 3), new ResultadoTirada(2, 3));
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        Runnable vencimientoAnterior = vencimientosPorClave.get("evento-global:ABC");
+        servicioEvento.tirarDadosEventoGlobal("ABC", 1L);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 2L);
+        continuarEventoFinalizado(partida);
+        partida.setRondaActual(10);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+
+        vencimientoAnterior.run();
+
+        EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal("ABC");
+        assertEquals(FaseEventoGlobal.INICIADO, estado.fase());
+        assertEquals(10, estado.rondaActivacion());
+        assertEquals(Map.of(), estado.tiradas());
+        verify(servicioDadoMock, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueElEmpateDeCincoTerminoCuandoLlegaSuPausaViejaDuranteDiezEntoncesRespetaLaNuevaPausa() throws Exception {
+        Partida partida = crearPartida("ABC", 5, crearJugador(1L, 1000, 20), crearJugador(2L, 1000, 25));
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(crearInundacion());
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(2, 3), new ResultadoTirada(3, 2),
+                new ResultadoTirada(5, 3), new ResultadoTirada(1, 2), new ResultadoTirada(3, 3), new ResultadoTirada(2, 4));
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 1L);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 2L);
+        Runnable pausaAnterior = vencimientosPorClave.get("evento-global-empate:ABC");
+        pausaAnterior.run();
+        servicioEvento.tirarDadosEventoGlobal("ABC", 1L);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 2L);
+        continuarEventoFinalizado(partida);
+        partida.setRondaActual(10);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 1L);
+        servicioEvento.tirarDadosEventoGlobal("ABC", 2L);
+        Runnable pausaActual = vencimientosPorClave.get("evento-global-empate:ABC");
+
+        pausaAnterior.run();
+
+        assertEquals(FaseEventoGlobal.EMPATE, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+        assertEquals(Map.of(1L, 6, 2L, 6), servicioEvento.consultarEstadoEventoGlobal("ABC").tiradas());
+        pausaActual.run();
+        assertEquals(FaseEventoGlobal.DESEMPATE, servicioEvento.consultarEstadoEventoGlobal("ABC").fase());
+    }
 
     // Nuevas pruebas: estado del evento, temporizadores, tiradas automáticas y desempates.
     // El mock del gestor no espera 30 segundos reales: almacena las acciones programadas.

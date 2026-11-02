@@ -9,8 +9,18 @@ public final class RelojEventoGlobal {
 
     private final Map<String, Long> vencimientosPorPartida = new ConcurrentHashMap<>();
 
-    public void iniciar(String codigoPartida, Integer duracionSegundos) {
-        vencimientosPorPartida.put(codigoPartida, System.nanoTime() + TimeUnit.SECONDS.toNanos(duracionSegundos));
+    public Long iniciar(String codigoPartida, Integer duracionSegundos) {
+        Long vencimiento = System.nanoTime() + TimeUnit.SECONDS.toNanos(duracionSegundos);
+        vencimientosPorPartida.put(codigoPartida, vencimiento);
+        return vencimiento;
+    }
+
+    public Long obtenerVencimiento(String codigoPartida) {
+        return vencimientosPorPartida.get(codigoPartida);
+    }
+
+    public Boolean correspondeAlVencimiento(String codigoPartida, Long vencimiento) {
+        return vencimiento != null && vencimiento.equals(obtenerVencimiento(codigoPartida));
     }
 
     public Boolean vencio(String codigoPartida) {

@@ -14,14 +14,19 @@ import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.dominio.servicios.ServicioEventoImpl;
+import com.tallerwebi.dominio.servicios.ServicioJugadaImpl;
 import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import com.tallerwebi.dominio.servicios.ServicioPartidaImpl;
 import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.dominio.observadores.ObservadorReanudarPartida;
 import com.tallerwebi.infraestructura.RepositorioEvento;
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
@@ -417,5 +422,125 @@ public class EventosGlobalesIntegracionTest {
 
     private org.springframework.test.web.servlet.ResultActions realizarTiradaRest(String nombre) throws Exception {
         return mockMvc.perform(post("/partida/{codigoPartida}/evento-global/tirar", codigoPartida).sessionAttr("NOMBRE", nombre));
+    }
+
+    @Test
+    public void dadoQueSarmientoSeRepiteCuandoLleganLasRondasCincoYDiezEntoncesRestYWebSocketPublicanCadaActivacion() throws Exception {
+        eventoGlobal.setTipoEventoGlobal(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
+        eventoGlobal.setTipoEfecto(TipoEfecto.PERDER_TURNO);
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(1);
+
+        for (Integer ronda : List.of(5, 10)) {
+            while (partida.getRondaActual() < ronda) {
+                servicioPartida.avanzarTurno(codigoPartida);
+            }
+
+            for (String nombre : List.of("Ana", "Beto")) {
+                JsonNode estado = consultarEstadoRest(nombre);
+                assertEquals(ronda.intValue(), estado.path("rondaActivacion").asInt());
+                assertEquals("FINALIZADO", estado.path("fase").asText());
+                assertEquals("ACCIDENTE_SARMIENTO", estado.path("tipo").asText());
+                assertEquals(0, estado.path("confirmados").size());
+            }
+            verify(mensajeriaWebSocketMock).convertAndSend(eq(canalEvento), (Object) argThat(
+                    (EstadoEventoGlobal estado) -> ronda.equals(estado.rondaActivacion())
+                            && estado.fase() == FaseEventoGlobal.FINALIZADO));
+            Integer indicePausado = partida.getIndiceTurnoActual();
+            servicioPartida.avanzarTurno(codigoPartida);
+            servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigoPartida);
+            assertEquals(ronda, partida.getRondaActual());
+            assertEquals(indicePausado, partida.getIndiceTurnoActual());
+            assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+
+            confirmarContinuacionRest("Ana");
+            assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+            confirmarContinuacionRest("Beto");
+            assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+            mockMvc.perform(get("/partida/{codigoPartida}/evento-global", codigoPartida).sessionAttr("NOMBRE", "Ana"))
+                    .andExpect(status().isNoContent());
+        }
+        verify(repositorioEventoMock, times(2)).obtenerEventoGlobalAleatorio();
+        verify(gestorTemporizadorMock, times(2)).programarTemporizador(
+                eq("evento-global-resultado:" + codigoPartida), eq(60), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueAfipTuvoDesempateEnCincoCuandoSeActivaEnDiezEntoncesReiniciaLasTiradasYConservaElMovimientoDiferido() throws Exception {
+        partida.setRondaActual(4);
+        partida.setTurnosFinalizadosEnRonda(1);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 3), new ResultadoTirada(2, 4),
+                new ResultadoTirada(5, 5), new ResultadoTirada(1, 2), new ResultadoTirada(1, 1), new ResultadoTirada(4, 4));
+        servicioPartida.avanzarTurno(codigoPartida);
+        realizarTiradaRest("Ana").andExpect(status().isOk());
+        realizarTiradaRest("Beto").andExpect(status().isOk());
+        assertEquals("EMPATE", consultarEstadoRest("Ana").path("fase").asText());
+        vencimientosPorClave.get("evento-global-empate:" + codigoPartida).run();
+        realizarTiradaRest("Ana").andExpect(status().isOk());
+        realizarTiradaRest("Beto").andExpect(status().isOk());
+        assertEquals(1, consultarEstadoRest("Ana").path("etapa").asInt());
+        assertEquals(2, jugadorUno.getPosicionActual());
+        confirmarContinuacionRest("Ana");
+        confirmarContinuacionRest("Beto");
+        assertEquals(7, jugadorUno.getPosicionActual());
+        jugadorUno.setPosicionActual(12);
+
+        while (partida.getRondaActual() < 10) {
+            servicioPartida.avanzarTurno(codigoPartida);
+        }
+
+        JsonNode nuevo = consultarEstadoRest("Beto");
+        assertEquals(10, nuevo.path("rondaActivacion").asInt());
+        assertEquals("INICIADO", nuevo.path("fase").asText());
+        assertEquals(0, nuevo.path("etapa").asInt());
+        assertEquals(0, nuevo.path("tiradas").size());
+        assertEquals(0, nuevo.path("confirmados").size());
+        vencimientosPorClave.get("evento-global:" + codigoPartida).run();
+        assertEquals("FINALIZADO", consultarEstadoRest("Beto").path("fase").asText());
+        assertEquals(7, jugadorDos.getPosicionActual());
+        confirmarContinuacionRest("Ana");
+        confirmarContinuacionRest("Beto");
+        assertEquals(12, jugadorDos.getPosicionActual());
+        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        verify(servicioDadoMock, times(6)).tirarDados();
+    }
+
+    private JsonNode consultarEstadoRest(String nombre) throws Exception {
+        String respuesta = mockMvc.perform(get("/partida/{codigoPartida}/evento-global", codigoPartida).sessionAttr("NOMBRE", nombre))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return new ObjectMapper().readTree(respuesta);
+    }
+
+    @Test
+    public void dadoQueElUltimoJugadorPagaFianzaCuandoTerminaSuTurnoEntoncesSeActivaElEventoDeDiez() throws Exception {
+        ServicioGestionQuiebra quiebras = mock(ServicioGestionQuiebra.class);
+        ServicioJugadaImpl jugadas = new ServicioJugadaImpl(servicioPartida, mock(ServicioCasillero.class),
+                mock(ServicioPropiedad.class), mock(ServicioEventoCasillero.class), quiebras,
+                mock(ServicioMovimiento.class), new ServicioParticipacionImpl(), servicioDadoMock);
+        jugadorUno.setDinero(200);
+        jugadorUno.getEstadoCarcel().encarcelar();
+        partida.setRondaActual(9);
+        partida.setTurnosFinalizadosEnRonda(1);
+
+        jugadas.pagarFianzaVoluntaria(codigoPartida, jugadorUno.getId());
+
+        assertFalse(jugadorUno.getEstadoCarcel().getEncarcelado());
+        assertEquals(9, partida.getRondaActual());
+        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        verify(quiebras).procesarMulta(codigoPartida, jugadorUno, 100, "FIANZA_CARCEL");
+
+        servicioPartida.avanzarTurno(codigoPartida);
+
+        JsonNode estado = consultarEstadoRest("Ana");
+        assertEquals("INICIADO", estado.path("fase").asText());
+        assertEquals(10, estado.path("rondaActivacion").asInt());
+        assertTrue(servicioEvento.verificarSiHayEventoGlobalActivo(codigoPartida));
+        verify(gestorTemporizadorMock, never()).programarTemporizador(
+                eq(codigoPartida), any(Integer.class), any(Runnable.class));
+    }
+
+    private void confirmarContinuacionRest(String nombre) throws Exception {
+        mockMvc.perform(post("/partida/{codigoPartida}/evento-global/continuar", codigoPartida).sessionAttr("NOMBRE", nombre))
+                .andExpect(status().isOk());
     }
 }

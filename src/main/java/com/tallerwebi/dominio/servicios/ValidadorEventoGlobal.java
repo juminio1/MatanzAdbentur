@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
@@ -29,14 +30,14 @@ public final class ValidadorEventoGlobal {
         }
     }
 
-    public static boolean confirmaronTodosLosActivos(Partida partida, Set<Long> confirmados) {
+    public static Boolean confirmaronTodosLosActivos(Partida partida, Set<Long> confirmados) {
         return partida.getJugadores().stream()
                 .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota())
                         && !Boolean.TRUE.equals(jugador.getAbandono()))
                 .allMatch(jugador -> confirmados.contains(jugador.getId()));
     }
 
-    public static boolean tieneDeudasPendientes(Partida partida, String codigoPartida,
+    public static Boolean tieneDeudasPendientes(Partida partida, String codigoPartida,
             com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra gestionQuiebra) {
         return gestionQuiebra != null && partida.getJugadores().stream()
                 .filter(ValidadorEventoGlobal::estaActivo).anyMatch(jugador ->
@@ -76,24 +77,26 @@ public final class ValidadorEventoGlobal {
         }
     }
 
-    public static boolean puedeCompletarTiradasVencidas(Integer etapa, boolean enPausaPorEmpate, BooleanSupplier plazoVencido) {
+    public static Boolean puedeCompletarTiradasVencidas(Integer etapa, Boolean enPausaPorEmpate, BooleanSupplier plazoVencido) {
         return etapa != null && !enPausaPorEmpate && plazoVencido.getAsBoolean();
     }
 
-    public static boolean puedeFinalizarPausaEmpate(boolean enPausaPorEmpate, BooleanSupplier plazoVencido) {
+    public static Boolean puedeFinalizarPausaEmpate(Boolean enPausaPorEmpate, BooleanSupplier plazoVencido) {
         return enPausaPorEmpate && plazoVencido.getAsBoolean();
     }
 
-    public static boolean puedeEjecutarVencimiento(boolean hayEventoActivo, boolean esMismaEtapa, boolean enPausaPorEmpate) {
-        return hayEventoActivo && esMismaEtapa && !enPausaPorEmpate;
+    public static Boolean puedeEjecutarVencimiento(boolean hayEventoActivo, boolean esMismaEtapa,
+            Boolean enPausaPorEmpate, boolean esMismoVencimiento) {
+        return hayEventoActivo && esMismaEtapa && !enPausaPorEmpate && esMismoVencimiento;
     }
 
-    public static boolean puedeIniciarDesempate(boolean enPausaPorEmpate, Integer etapa, Integer etapaActual) {
-        return enPausaPorEmpate && etapa != null && etapa.equals(etapaActual);
+    public static Boolean puedeIniciarDesempate(boolean enPausaPorEmpate, Integer etapa, Integer etapaActual,
+            Boolean esMismoVencimiento) {
+        return enPausaPorEmpate && etapa != null && etapa.equals(etapaActual) && esMismoVencimiento;
     }
 
-    public static boolean puedeReanudarResultado(Partida partida, String codigoPartida, ServicioGestionQuiebra gestionQuiebra,
-            boolean vencioPlazo, Set<Long> confirmaciones) {
+    public static Boolean puedeReanudarResultado(Partida partida, String codigoPartida, ServicioGestionQuiebra gestionQuiebra,
+            Boolean vencioPlazo, Set<Long> confirmaciones) {
         return partida != null && !tieneDeudasPendientes(partida, codigoPartida, gestionQuiebra)
                 && (vencioPlazo || confirmaronTodosLosActivos(partida, confirmaciones));
     }
@@ -130,15 +133,22 @@ public final class ValidadorEventoGlobal {
         return !habilitados.isEmpty() && habilitados.stream().allMatch(jugador -> tiradas.containsKey(jugador.getId()));
     }
 
-    public static boolean tienePosicionRegistrable(Jugador jugador) {
+    public static Boolean tienePosicionRegistrable(Jugador jugador) {
         return jugador.getId() != null && jugador.getPosicionActual() != null;
     }
 
-    public static boolean tieneSaldoRegistrable(Jugador jugador) {
+    public static Boolean tieneSaldoRegistrable(Jugador jugador) {
         return jugador.getId() != null && jugador.getDinero() != null;
     }
 
-    public static boolean hayMovimientoPendiente(Long idJugador, EventoGlobal evento) {
+    public static Boolean debeConservarElegido(EstadoEventoGlobal resultado, Partida partida, List<Long> activos) {
+        return activos.contains(resultado.idJugadorElegido())
+                || resultado.tipo() == TipoEventoGlobal.ROBO && partida != null && partida.getJugadores().stream()
+                .anyMatch(jugador -> jugador.getId().equals(resultado.idJugadorElegido())
+                        && Boolean.TRUE.equals(jugador.getEnBancarrota()) && !Boolean.TRUE.equals(jugador.getAbandono()));
+    }
+
+    public static Boolean hayMovimientoPendiente(Long idJugador, EventoGlobal evento) {
         return idJugador != null && evento != null;
     }
 

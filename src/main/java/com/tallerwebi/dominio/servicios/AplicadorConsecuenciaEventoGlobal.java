@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 // Separa las consecuencias de la coordinación de tiradas para cumplir el límite de PMD.
 public final class AplicadorConsecuenciaEventoGlobal {
@@ -79,6 +81,14 @@ public final class AplicadorConsecuenciaEventoGlobal {
         return evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP
                 || evento.getTipoEventoGlobal() == TipoEventoGlobal.PIQUETE
                 || evento.getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION;
+    }
+
+    // La deuda del robo puede pagarse durante la presentación: su saldo debe reflejar ese cobro.
+    public static Map<Long, Integer> obtenerSaldosResultado(EstadoEventoGlobal resultado, List<Jugador> activos) {
+        return resultado.tipo() == TipoEventoGlobal.ROBO
+                ? activos.stream().filter(ValidadorEventoGlobal::tieneSaldoRegistrable)
+                        .collect(Collectors.toMap(Jugador::getId, Jugador::getDinero))
+                : resultado.saldos();
     }
 
     public static String previsualizarMovimiento(Partida partida, Jugador jugador, EventoGlobal evento) {

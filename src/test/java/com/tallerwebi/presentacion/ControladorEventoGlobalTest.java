@@ -18,6 +18,7 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.dominio.excepcion.TiradasFaltantesException;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
@@ -54,6 +55,31 @@ public class ControladorEventoGlobalTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("NOMBRE", "JugadorUno");
         return request;
+    }
+
+    @Test
+    public void dadoQueSeReanudoElEventoCuandoSeRecuperanLasPosicionesEntoncesDevuelveLosDatosDelServidorSinCache() {
+        Partida partida = crearPartidaConJugador();
+        List<PosicionFicha> posiciones = List.of(new PosicionFicha(1L, "JugadorUno", "ROJO", 17));
+        when(servicioPartidaMock.obtenerPartida(CODIGO)).thenReturn(partida);
+        when(participacionMock.pertenece(partida, 1L)).thenReturn(true);
+        when(servicioPartidaMock.obtenerPosicionesFichas(CODIGO)).thenReturn(posiciones);
+
+        ResponseEntity<List<PosicionFicha>> respuesta = controladorEventoGlobal.consultarPosiciones(CODIGO, crearRequestAutenticado());
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals("no-store", respuesta.getHeaders().getCacheControl());
+        assertEquals(posiciones, respuesta.getBody());
+    }
+
+    @Test
+    public void dadoQueNoHaySesionCuandoSeSolicitanPosicionesEntoncesNoExponeLosDatosDeLaPartida() {
+        when(servicioPartidaMock.obtenerPartida(CODIGO)).thenReturn(crearPartidaConJugador());
+
+        ResponseStatusException error = assertThrows(ResponseStatusException.class,
+                () -> controladorEventoGlobal.consultarPosiciones(CODIGO, new MockHttpServletRequest()));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, error.getStatusCode());
     }
 
     @Test

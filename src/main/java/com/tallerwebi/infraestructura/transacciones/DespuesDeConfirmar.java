@@ -20,4 +20,30 @@ public final class DespuesDeConfirmar {
             }
         });
     }
+
+    // Mantiene una operación reservada hasta el commit; libera la reserva también ante un rollback.
+    public static void ejecutarConConfirmacion(Runnable operacion, Runnable alConfirmar, Runnable alFinalizar) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            try {
+                operacion.run();
+                alConfirmar.run();
+            } finally {
+                alFinalizar.run();
+            }
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                alConfirmar.run();
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                alFinalizar.run();
+            }
+        });
+        operacion.run();
+    }
 }

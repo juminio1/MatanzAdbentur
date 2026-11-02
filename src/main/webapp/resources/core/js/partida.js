@@ -336,6 +336,10 @@ function conectarWebSocketTurnos(base, codigo) {
                 }
             });
 
+            stompClient.subscribe(`/topic/partida/${codigo}/evento-global/reanudado`, (mensaje) => {
+                procesarReanudacionEventoGlobal(JSON.parse(mensaje.body));
+            });
+
             consultarEstadoEventoGlobal();
 
             stompClient.subscribe(`/topic/partida/${codigo}/posiciones`, (mensaje) => {
@@ -448,7 +452,10 @@ const estadoPropiedadesConocido = new Map();
 let temporizadorAvisoAlquiler;
 
 function actualizarBotonTirada() {
+    const ocultarDadosNormales = hayEventoGlobalEnCurso();
+    document.querySelector(".dados")?.toggleAttribute("hidden", ocultarDadosNormales);
     if (botonTirar) {
+        botonTirar.hidden = ocultarDadosNormales;
         botonTirar.disabled =
             partidaFinalizada ||
             !estadoEventoGlobalSincronizado ||
@@ -788,6 +795,11 @@ async function procesarMovimiento(movimiento) {
             consultarDeudaPendiente(true);
         }
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
+        const idJugador = String(movimiento.idJugador);
+        if (posicionesGlobalesPendientesDeAnimacion.has(idJugador)) {
+            moverFichaEnTablero(idJugador, posicionesGlobalesPendientesDeAnimacion.get(idJugador));
+            posicionesGlobalesPendientesDeAnimacion.delete(idJugador);
+        }
         actualizarBotonTirada();
         actualizarAvisoDeuda();
     }
@@ -951,11 +963,14 @@ function actualizarAvisoDeuda() {
         ? `$${window.dineroUsuarioSesion.toLocaleString("es-AR")}` : "No disponible";
     const motivos = {
         ALQUILER: "Alquiler de propiedad",
-        EVENTO_GLOBAL_ROBO: "Robo de dinero — El Kevin",
+        EVENTO_GLOBAL_ROBO: "Robo de dinero",
         EVENTO_RESTA: "Pago por un evento del tablero",
     };
+    // También traduce motivos antiguos al mostrarlos, sin modificar los registros guardados.
+    const motivo = /^(?:robo(?: de dinero)?(?:\s*[-—–:]\s*el kevin)?|el kevin(?:\s*:\s*robo(?: de dinero)?)?)$/i.test(deuda.motivo.trim())
+        ? "EVENTO_GLOBAL_ROBO" : deuda.motivo;
     document.getElementById("deuda-motivo").textContent =
-        motivos[deuda.motivo] || (/^[A-Z][A-Z0-9_]*$/.test(deuda.motivo)
+        motivos[motivo] || (/^[A-Z][A-Z0-9_]*$/.test(deuda.motivo)
             ? "Pago pendiente del juego" : deuda.motivo);
     document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
     document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
@@ -2246,9 +2261,15 @@ let ultimoResultadoEventoGlobalCerrado = null;
 let temporizadorVisualizacionUltimasTiradas = null;
 const SEGUNDOS_VISUALIZACION_TIRADAS = 5;
 const eventosGlobalesRegistradosEnHistorial = new Set();
+const posicionesGlobalesPendientesDeAnimacion = new Map();
 
 function hayEventoGlobalEnCurso() {
     return estadoEventoGlobal !== null;
+}
+
+// La etapa y el jugador elegido pueden repetirse en otra ronda de la misma partida.
+function obtenerClaveEventoGlobal(estado) {
+    return `${estado.codigoPartida}:${estado.rondaActivacion}:${estado.tipo}`;
 }
 
 function obtenerCampoEventoGlobal(idElemento) {
@@ -2258,7 +2279,7 @@ function obtenerCampoEventoGlobal(idElemento) {
 function obtenerNombreEventoGlobal(tipo) {
     const nombres = {
         TRAMITES_AFIP: "Un día de trámites",
-        PIQUETE: "¡Hasta acá llegaste!",
+        PIQUETE: "No se pasa",
         INUNDACION: "¡Sacá el bote!",
         ROBO: "¡Te regalaste!",
         FIAT_600: "El fitito",
@@ -2363,7 +2384,7 @@ function actualizarBotonTiradaEventoGlobal() {
 }
 
 function registrarEventoGlobalEnHistorial(estado) {
-    const marca = `${estado.tipo}:${estado.etapa}:${estado.fase}`;
+    const marca = `${obtenerClaveEventoGlobal(estado)}:${estado.etapa}:${estado.fase}`;
     if (!eventosGlobalesRegistradosEnHistorial.has(marca)) {
         eventosGlobalesRegistradosEnHistorial.add(marca);
         if (estado.fase === FASES_EVENTO_GLOBAL.INICIADO && Number(estado.etapa) === 0) {
@@ -2494,7 +2515,7 @@ function mostrarEstadoEventoGlobal(estado) {
                 ? `Hay una deuda por resolver. Ya confirmaron ${confirmados.length} jugadores.`
                 : yoConfirme
                     ? `Ya confirmaste. Confirmaciones registradas: ${confirmados.length}. Esperando al resto o al vencimiento del plazo.`
-                    : `Confirmaciones registradas: ${confirmados.length}. Ambos jugadores deben confirmar o esperar hasta 60 segundos.`;
+                    : `Confirmaciones registradas: ${confirmados.length}. Todos los jugadores activos deben confirmar o esperar hasta 60 segundos.`;
     } else {
         const participa = (estado.participantes || []).some((id) => String(id) === String(window.usuarioSesionId));
         const yaTiro = Object.prototype.hasOwnProperty.call(estado.tiradas || {}, String(window.usuarioSesionId));
@@ -2547,12 +2568,12 @@ function sincronizarConsecuenciaEventoGlobal(estado) {
 }
 
 function programarCierreAutomaticoEventoGlobal(estado) {
-    const clave = `${estado.tipo}:${estado.etapa}:${estado.idJugadorElegido}`;
+    const clave = `${obtenerClaveEventoGlobal(estado)}:${estado.etapa}:${estado.idJugadorElegido}`;
     if (claveResultadoEventoGlobal !== clave) {
         clearTimeout(temporizadorCierreResultadoEventoGlobal);
         claveResultadoEventoGlobal = clave;
         const segundos = Math.max(0, Number(estado.segundosRestantes) || 0);
-        temporizadorCierreResultadoEventoGlobal = window.setTimeout(cerrarResultadoEventoGlobal, segundos * 1000);
+        temporizadorCierreResultadoEventoGlobal = window.setTimeout(() => consultarEstadoEventoGlobal(true), segundos * 1000);
     }
 }
 
@@ -2562,21 +2583,26 @@ function procesarEstadoEventoGlobal(estado) {
         return false;
     }
 
-    const claveResultadoRecibido = `${estado.tipo}:${estado.etapa}:${estado.idJugadorElegido}`;
-    if (estado.fase === FASES_EVENTO_GLOBAL.FINALIZADO && ultimoResultadoEventoGlobalCerrado === claveResultadoRecibido) {
+    const claveEvento = obtenerClaveEventoGlobal(estado);
+    const ultimoEvento = estadoEventoGlobal || ultimoResultadoEventoGlobalCerrado;
+    if (ultimoEvento?.rondaActivacion != null && estado.rondaActivacion != null
+            && Number(estado.rondaActivacion) < Number(ultimoEvento.rondaActivacion)) {
         return false;
     }
-    if (estado.fase === FASES_EVENTO_GLOBAL.INICIADO) ultimoResultadoEventoGlobalCerrado = null;
+    if (ultimoResultadoEventoGlobalCerrado && obtenerClaveEventoGlobal(ultimoResultadoEventoGlobalCerrado) === claveEvento) {
+        return false;
+    }
+    const mismaActivacion = estadoEventoGlobal !== null && obtenerClaveEventoGlobal(estadoEventoGlobal) === claveEvento;
 
     // Un mensaje de tirada retrasado no debe reabrir un evento que ya finalizó.
-    if (estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO && estado.fase !== FASES_EVENTO_GLOBAL.FINALIZADO && estadoEventoGlobal.tipo === estado.tipo) {
+    if (mismaActivacion && estadoEventoGlobal.fase === FASES_EVENTO_GLOBAL.FINALIZADO && estado.fase !== FASES_EVENTO_GLOBAL.FINALIZADO) {
         return false;
     }
 
-    if (estadoEventoGlobal && Number(estado.etapa) < Number(estadoEventoGlobal.etapa)) {
+    if (mismaActivacion && Number(estado.etapa) < Number(estadoEventoGlobal.etapa)) {
         return false;
     }
-    if (estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.EMPATE
+    if (mismaActivacion && estadoEventoGlobal.fase === FASES_EVENTO_GLOBAL.EMPATE
             && estado.fase === FASES_EVENTO_GLOBAL.TIRADA
             && Number(estado.etapa) === Number(estadoEventoGlobal.etapa)) {
         return false;
@@ -2586,10 +2612,10 @@ function procesarEstadoEventoGlobal(estado) {
     revisionEventoGlobal++;
     estadoEventoGlobalSincronizado = true;
     const anterior = estadoEventoGlobal;
-    if (anterior === null && estado.fase === FASES_EVENTO_GLOBAL.INICIADO) {
+    if (!mismaActivacion) {
         eventosGlobalesRegistradosEnHistorial.clear();
     }
-    const etapaActual = `${estado.tipo}:${estado.etapa}`;
+    const etapaActual = `${claveEvento}:${estado.etapa}`;
     const nuevaEtapa = claveEtapaEvento !== etapaActual || anterior?.fase === FASES_EVENTO_GLOBAL.FINALIZADO
         || (anterior?.fase === FASES_EVENTO_GLOBAL.EMPATE && estado.fase === FASES_EVENTO_GLOBAL.DESEMPATE);
     claveEtapaEvento = etapaActual;
@@ -2597,13 +2623,13 @@ function procesarEstadoEventoGlobal(estado) {
     registrarEventoGlobalEnHistorial(estado);
 
     if (estado.fase === FASES_EVENTO_GLOBAL.FINALIZADO) {
-        if (anterior?.fase !== FASES_EVENTO_GLOBAL.FINALIZADO) {
+        if (!mismaActivacion || anterior?.fase !== FASES_EVENTO_GLOBAL.FINALIZADO) {
             detenerRelojEventoGlobal();
             mostrarUltimasTiradasDuranteCincoSegundos(estado);
             sincronizarConsecuenciaEventoGlobal(estado);
         }
         pausarRelojNormalPorEventoGlobal();
-        iniciarRelojEventoGlobal(estado, anterior?.fase !== FASES_EVENTO_GLOBAL.FINALIZADO);
+        iniciarRelojEventoGlobal(estado, !mismaActivacion || anterior?.fase !== FASES_EVENTO_GLOBAL.FINALIZADO);
         // El resultado se cierra solo después de confirmar la reanudación en el servidor.
     } else {
         if (nuevaEtapa) {
@@ -2618,8 +2644,27 @@ function procesarEstadoEventoGlobal(estado) {
     return true;
 }
 
-async function consultarEstadoEventoGlobal() {
-    if (consultaEventoGlobalPendiente !== null) return consultaEventoGlobalPendiente;
+async function procesarReanudacionEventoGlobal(aviso) {
+    if (!aviso || String(aviso.codigoPartida) !== String(codigoPartida)) return false;
+    // Una notificación atrasada nunca autoriza por sí sola a cerrar un evento nuevo.
+    await consultarEstadoEventoGlobal(true);
+    return true;
+}
+
+function sincronizarPosicionesTrasEventoGlobal(posiciones) {
+    if (!Array.isArray(posiciones)) throw new Error("Las posiciones del evento global no son válidas.");
+    posiciones.forEach((jugador) => {
+        if (movimientosDeJugadoresEnCurso.has(String(jugador.idJugador))) {
+            posicionesGlobalesPendientesDeAnimacion.set(String(jugador.idJugador), jugador.posicion);
+        }
+    });
+    sincronizarPosicionesFichas(posiciones);
+}
+
+async function consultarEstadoEventoGlobal(forzarConsulta = false) {
+    if (consultaEventoGlobalPendiente !== null) {
+        return forzarConsulta ? consultaEventoGlobalPendiente.then(() => consultarEstadoEventoGlobal()) : consultaEventoGlobalPendiente;
+    }
     const revisionInicial = revisionEventoGlobal;
     consultaEventoGlobalPendiente = (async () => {
         try {
@@ -2630,14 +2675,24 @@ async function consultarEstadoEventoGlobal() {
                 if (revisionInicial === revisionEventoGlobal) {
                     estadoEventoGlobalSincronizado = true;
                     if (estadoEventoGlobal !== null) {
-                        cerrarResultadoEventoGlobal(true);
+                        const respuestaPosiciones = await fetch(`${basePath}/partida/${encodeURIComponent(codigoPartida)}/evento-global/posiciones`, {
+                            credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }
+                        });
+                        if (!respuestaPosiciones.ok) throw new Error("No se pudieron recuperar las posiciones del evento global.");
+                        const posiciones = await respuestaPosiciones.json();
+                        if (revisionInicial === revisionEventoGlobal) {
+                            sincronizarPosicionesTrasEventoGlobal(posiciones);
+                            revisionEventoGlobal++;
+                            cerrarResultadoEventoGlobal(true);
+                        }
                     }
                     actualizarBotonTirada();
                 }
             } else if (respuesta.ok) {
                 const estado = await respuesta.json();
                 if (revisionInicial === revisionEventoGlobal) {
-                    const mismaEtapa = estadoEventoGlobal?.tipo === estado.tipo && Number(estadoEventoGlobal?.etapa) === Number(estado.etapa);
+                    const mismaEtapa = estadoEventoGlobal !== null && obtenerClaveEventoGlobal(estadoEventoGlobal) === obtenerClaveEventoGlobal(estado)
+                        && Number(estadoEventoGlobal.etapa) === Number(estado.etapa);
                     const consultaRetrocedeFase = mismaEtapa && estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.TIRADA && estado.fase === FASES_EVENTO_GLOBAL.INICIADO;
                     procesarEstadoEventoGlobal(consultaRetrocedeFase ? { ...estado, fase: FASES_EVENTO_GLOBAL.TIRADA } : estado);
                 }
@@ -2689,14 +2744,14 @@ async function tirarDadosEventoGlobal() {
 }
 
 function cerrarResultadoEventoGlobal(forzar = false) {
-    if (forzar || estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO) {
+    if (forzar === true) {
         clearTimeout(temporizadorVisualizacionUltimasTiradas);
         modalEventoGlobal?.classList.remove("modal-evento-global--mostrando-tiradas");
         clearTimeout(temporizadorCierreResultadoEventoGlobal);
         temporizadorCierreResultadoEventoGlobal = null;
         if (estadoEventoGlobal?.fase === FASES_EVENTO_GLOBAL.FINALIZADO) {
             // Impide que un WebSocket retrasado vuelva a abrir el resultado final.
-            ultimoResultadoEventoGlobalCerrado = `${estadoEventoGlobal.tipo}:${estadoEventoGlobal.etapa}:${estadoEventoGlobal.idJugadorElegido}`;
+            ultimoResultadoEventoGlobalCerrado = estadoEventoGlobal;
         }
         claveResultadoEventoGlobal = null;
         resultadoGlobalOcultoParaPagarDeuda = false;

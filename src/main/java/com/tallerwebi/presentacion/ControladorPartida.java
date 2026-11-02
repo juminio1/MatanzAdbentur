@@ -45,14 +45,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.stereotype.Controller;
 
 
-/**
-
- * Atiendo el tablero, los turnos, las tiradas y el abandono de la partida.
-
- * Las acciones sobre propiedades están en {@link ControladorPropiedadesPartida}.
-
- */
-
 @Controller
 public class ControladorPartida {
 

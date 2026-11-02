@@ -31,7 +31,7 @@ public class ControladorPosicionesWebSocket {
     }
 
     @MessageMapping("/partida/{codigo}/solicitar-posiciones")
-    public void solicitarPosiciones(@DestinationVariable String codigo) {
+    public void solicitarPosiciones(@DestinationVariable("codigo") String codigo) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Solicitud de posiciones recibida via WebSocket para la partida: {}", codigo);
         }

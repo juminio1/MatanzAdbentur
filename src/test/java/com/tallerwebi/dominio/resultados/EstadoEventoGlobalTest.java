@@ -20,12 +20,12 @@ public class EstadoEventoGlobalTest {
         ObjectMapper mapper = new ObjectMapper();
         Set<String> camposEsperados = Set.of("codigoPartida", "fase", "tipo", "descripcion", "etapa",
                 "segundosRestantes", "participantes", "tiradas", "idJugadorElegido", "detalle",
-                "posiciones", "saldos", "confirmados");
+                "posiciones", "saldos", "confirmados", "rondaActivacion");
 
         for (FaseEventoGlobal fase : FaseEventoGlobal.values()) {
             EstadoEventoGlobal estado = new EstadoEventoGlobal("ABC", fase, TipoEventoGlobal.INUNDACION,
                     "Evento de prueba", 1, 8, List.of(1L, 2L), Map.of(1L, 9, 2L, 4), 1L,
-                    "Detalle del resultado", Map.of(1L, 10, 2L, 15), Map.of(1L, 500, 2L, 900), List.of(2L));
+                    "Detalle del resultado", Map.of(1L, 10, 2L, 15), Map.of(1L, 500, 2L, 900), List.of(2L), 5);
 
             String json = mapper.writeValueAsString(estado);
             JsonNode contenido = mapper.readTree(json);
@@ -33,6 +33,7 @@ public class EstadoEventoGlobalTest {
             contenido.fieldNames().forEachRemaining(campos::add);
 
             assertEquals(fase.name(), contenido.path("fase").asText());
+            assertEquals(5, contenido.path("rondaActivacion").asInt());
             assertEquals(camposEsperados, campos);
             assertEquals(estado, mapper.readValue(json, EstadoEventoGlobal.class));
         }
@@ -49,6 +50,7 @@ public class EstadoEventoGlobalTest {
         assertEquals(Map.of(), estado.posiciones());
         assertEquals(Map.of(), estado.saldos());
         assertEquals(List.of(), estado.confirmados());
+        assertNull(estado.rondaActivacion());
     }
 
     @Test

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.tallerwebi.dominio.enums.FaseEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.eventos.EventoGlobalActualizado;
+import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 
 import java.util.List;
@@ -22,6 +23,16 @@ public class ObservadorEventoGlobalWebSocketTest {
 
     private final SimpMessagingTemplate templateMock = mock(SimpMessagingTemplate.class);
     private final ObservadorEventoGlobalWebSocket observador = new ObservadorEventoGlobalWebSocket(templateMock);
+
+    @Test
+    public void dadoQueElServidorReanudaCuandoFinalizanLasConfirmacionesEntoncesAvisaATodosLosClientes() {
+        EventoGlobalFinalizado evento = new EventoGlobalFinalizado(CODIGO);
+
+        observador.notificarReanudacion(evento);
+
+        verify(templateMock).convertAndSend("/topic/partida/MATANZA123/evento-global/reanudado", evento);
+        verifyNoMoreInteractions(templateMock);
+    }
 
     @Test
     public void dadoQueComienzaUnEventoGlobalCuandoElObservadorRecibeElInicioYDaLaNotificacionPorWebSocket() {

@@ -8,6 +8,7 @@ import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.dominio.excepcion.TiradasFaltantesException;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
@@ -15,6 +16,8 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.List;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/partida/{codigoPartida}/evento-global")
 public class ControladorEventoGlobal {
+    private static final String CODIGO_PARTIDA = "codigoPartida";
 
     private final ServicioPartida servicioPartida;
     private final ServicioEvento servicioEvento;
@@ -46,7 +50,7 @@ public class ControladorEventoGlobal {
 
     @GetMapping
     public ResponseEntity<EstadoEventoGlobal> consultarEvento(
-            @PathVariable("codigoPartida") String codigoPartida,
+            @PathVariable(CODIGO_PARTIDA) String codigoPartida,
             HttpServletRequest request) {
         validarAcceso(codigoPartida, request);
         EstadoEventoGlobal estado = servicioEvento.consultarEstadoEventoGlobal(codigoPartida);
@@ -55,9 +59,18 @@ public class ControladorEventoGlobal {
                 : ResponseEntity.ok(estado);
     }
 
+    // Recupera las posiciones persistidas cuando se perdió la notificación de reanudación.
+    @GetMapping("/posiciones")
+    public ResponseEntity<List<PosicionFicha>> consultarPosiciones(
+            @PathVariable(CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) {
+        validarAcceso(codigoPartida, request);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(servicioPartida.obtenerPosicionesFichas(codigoPartida));
+    }
+
     @PostMapping("/tirar")
     public ResponseEntity<Map<String, Integer>> tirarDadosEvento(
-            @PathVariable("codigoPartida") String codigoPartida,
+            @PathVariable(CODIGO_PARTIDA) String codigoPartida,
             HttpServletRequest request)
             throws PartidaNoEncontradaException, DatosEnventoInvalidoExceptions,
                    TiradaDadoInvalidaException, JugadorNoEncontradoException,
@@ -72,7 +85,7 @@ public class ControladorEventoGlobal {
 
     @PostMapping("/continuar")
     public ResponseEntity<Map<String, String>> continuarPartida(
-            @PathVariable("codigoPartida") String codigoPartida, HttpServletRequest request) {
+            @PathVariable(CODIGO_PARTIDA) String codigoPartida, HttpServletRequest request) {
         Long idJugador = validarAcceso(codigoPartida, request);
         try {
             servicioEvento.confirmarContinuacion(codigoPartida, idJugador);
