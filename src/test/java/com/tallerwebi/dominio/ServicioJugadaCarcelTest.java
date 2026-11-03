@@ -396,4 +396,182 @@ class ServicioJugadaCarcelTest {
         assertFalse(usoTodos);
         assertEquals(1, jugador.getEstadoCarcel().getIntentosSalirCarcel());
     }
+    @Test
+    void tirarYMoverRechazaFINALIZADASinModificarJugador() throws Exception {
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(8);
+        jugador.getEstadoCarcel().encarcelar();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("PRUEBA")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("PRUEBA")).thenReturn(jugador);
+        when(servicioParticipacionMock.estaActivo(jugador)).thenReturn(true);
+        servicioJugada = new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock,
+                servicioPropiedadMock, servicioEventoMock, servicioQuiebraMock, servicioMovimientoMock,
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), servicioDadoMock);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.tirarYMover("PRUEBA", 1L));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(8, jugador.getPosicionActual());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDadoMock, servicioMovimientoMock, servicioEventoMock, servicioQuiebraMock);
+        verify(servicioPartidaMock, never()).actualizarJugador(any());
+        verify(servicioPartidaMock, never()).avanzarTurno(any());
+    }
+    @Test
+    void pagarFianzaVoluntariaRechazaFINALIZADASinModificarJugador() throws Exception {
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(8);
+        jugador.getEstadoCarcel().encarcelar();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("PRUEBA")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("PRUEBA")).thenReturn(jugador);
+        when(servicioParticipacionMock.estaActivo(jugador)).thenReturn(true);
+        servicioJugada = new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock,
+                servicioPropiedadMock, servicioEventoMock, servicioQuiebraMock, servicioMovimientoMock,
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), servicioDadoMock);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.pagarFianzaVoluntaria("PRUEBA", 1L));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(8, jugador.getPosicionActual());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDadoMock, servicioMovimientoMock, servicioEventoMock, servicioQuiebraMock);
+        verify(servicioPartidaMock, never()).actualizarJugador(any());
+        verify(servicioPartidaMock, never()).avanzarTurno(any());
+    }
+    @Test
+    void eventosRechazanFINALIZADASinModificarJugador() {
+        var consultas = mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+        var repositorioEventos = mock(com.tallerwebi.infraestructura.RepositorioEventoCasillero.class);
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(3);
+        partida.setJugadores(List.of(jugador));
+        when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+        when(servicioCasilleroMock.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                new com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento(null, 3, "Evento", "", null, null)));
+        when(repositorioEventos.obtenerTodos()).thenReturn(List.of(
+                new com.tallerwebi.dominio.entidades.Evento.EventoCasillero(null, "Premio", "",
+                        com.tallerwebi.dominio.enums.TipoEfectoEvento.SUMA, 200, null, null)));
+        var eventos = new com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl(
+                repositorioEventos, servicioCasilleroMock,
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(), servicioMovimientoMock, servicioQuiebraMock,
+                consultas, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+
+        assertThrows(IllegalStateException.class, () -> eventos.aplicarSiCorresponde("PRUEBA", jugador));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(3, jugador.getPosicionActual());
+        assertFalse(Boolean.TRUE.equals(jugador.getPierdeTurno()));
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+        verifyNoInteractions(servicioMovimientoMock, servicioQuiebraMock);
+    }
+    @Test
+    void tirarYMoverRechazaEN_ESPERASinModificarJugador() throws Exception {
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(8);
+        jugador.getEstadoCarcel().encarcelar();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("PRUEBA")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("PRUEBA")).thenReturn(jugador);
+        when(servicioParticipacionMock.estaActivo(jugador)).thenReturn(true);
+        servicioJugada = new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock,
+                servicioPropiedadMock, servicioEventoMock, servicioQuiebraMock, servicioMovimientoMock,
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), servicioDadoMock);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.tirarYMover("PRUEBA", 1L));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(8, jugador.getPosicionActual());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDadoMock, servicioMovimientoMock, servicioEventoMock, servicioQuiebraMock);
+        verify(servicioPartidaMock, never()).actualizarJugador(any());
+        verify(servicioPartidaMock, never()).avanzarTurno(any());
+    }
+    @Test
+    void pagarFianzaVoluntariaRechazaEN_ESPERASinModificarJugador() throws Exception {
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(8);
+        jugador.getEstadoCarcel().encarcelar();
+        partida.setJugadores(List.of(jugador));
+        when(servicioPartidaMock.obtenerPartida("PRUEBA")).thenReturn(partida);
+        when(servicioPartidaMock.obtenerJugadorActual("PRUEBA")).thenReturn(jugador);
+        when(servicioParticipacionMock.estaActivo(jugador)).thenReturn(true);
+        servicioJugada = new ServicioJugadaImpl(servicioPartidaMock, servicioCasilleroMock,
+                servicioPropiedadMock, servicioEventoMock, servicioQuiebraMock, servicioMovimientoMock,
+                new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), servicioDadoMock);
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.pagarFianzaVoluntaria("PRUEBA", 1L));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(8, jugador.getPosicionActual());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDadoMock, servicioMovimientoMock, servicioEventoMock, servicioQuiebraMock);
+        verify(servicioPartidaMock, never()).actualizarJugador(any());
+        verify(servicioPartidaMock, never()).avanzarTurno(any());
+    }
+    @Test
+    void eventosRechazanEN_ESPERASinModificarJugador() {
+        var consultas = mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+        var repositorioEventos = mock(com.tallerwebi.infraestructura.RepositorioEventoCasillero.class);
+        Partida partida = new Partida();
+        partida.setCodigoUnico("PRUEBA");
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setDinero(500);
+        jugador.setPosicionActual(3);
+        partida.setJugadores(List.of(jugador));
+        when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+        when(servicioCasilleroMock.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                new com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento(null, 3, "Evento", "", null, null)));
+        when(repositorioEventos.obtenerTodos()).thenReturn(List.of(
+                new com.tallerwebi.dominio.entidades.Evento.EventoCasillero(null, "Premio", "",
+                        com.tallerwebi.dominio.enums.TipoEfectoEvento.SUMA, 200, null, null)));
+        var eventos = new com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl(
+                repositorioEventos, servicioCasilleroMock,
+                new com.tallerwebi.dominio.servicios.ServicioEconomiaImpl(), servicioMovimientoMock, servicioQuiebraMock,
+                consultas, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+
+        assertThrows(IllegalStateException.class, () -> eventos.aplicarSiCorresponde("PRUEBA", jugador));
+
+        assertEquals(500, jugador.getDinero());
+        assertEquals(3, jugador.getPosicionActual());
+        assertFalse(Boolean.TRUE.equals(jugador.getPierdeTurno()));
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+        verifyNoInteractions(servicioMovimientoMock, servicioQuiebraMock);
+    }
 }

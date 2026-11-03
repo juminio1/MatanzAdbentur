@@ -100,7 +100,7 @@ describe("Popups de eventos globales y deudas", function () {
         runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
         expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
 
-        runInContext("mostrarVictoria({idJugador: 2, idGanador: 1, apodo: 'test123'})", contexto);
+        runInContext("procesarNotificacionQuiebra({idJugador: 2, apodo: 'test123', partidaFinalizada: true})", contexto);
         const aceptado = runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
         runInContext("aplicarTurnoDTO({idJugadorActual: 1, rondaActual: 10, turnosFinalizadosEnRonda: 1, duracionSegundos: 30})", contexto);
 

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,6 +16,36 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ValidadorEventoGlobalTest {
+
+    @Test
+    public void dadoQueUnJugadorAbandonoYOtroQuebroCuandoSeConfirmaEntoncesSoloSeEsperaAlActivo() {
+        Jugador activo = new Jugador();
+        activo.setId(1L);
+        Jugador abandonado = new Jugador();
+        abandonado.setId(2L);
+        abandonado.setAbandono(true);
+        Jugador quebrado = new Jugador();
+        quebrado.setId(3L);
+        quebrado.setEnBancarrota(true);
+        Partida partida = new Partida();
+        partida.setJugadores(List.of(activo, abandonado, quebrado));
+
+        assertFalse(ValidadorEventoGlobal.confirmaronTodosLosActivos(partida, Set.of()));
+        assertTrue(ValidadorEventoGlobal.confirmaronTodosLosActivos(partida, Set.of(1L)));
+        assertDoesNotThrow(() -> ValidadorEventoGlobal.validarConfirmacion(partida, 1L));
+        assertThrows(IllegalStateException.class, () -> ValidadorEventoGlobal.validarConfirmacion(partida, 2L));
+        assertThrows(IllegalStateException.class, () -> ValidadorEventoGlobal.validarConfirmacion(partida, 3L));
+    }
+
+    @Test
+    public void dadoQueLasMarcasDeEliminacionSonNulasCuandoSeValidaLaParticipacionEntoncesElJugadorSigueActivo() {
+        Jugador jugador = new Jugador();
+        jugador.setAbandono(null);
+        jugador.setEnBancarrota(null);
+
+        assertTrue(ValidadorEventoGlobal.estaActivo(jugador));
+        assertFalse(ValidadorEventoGlobal.estaActivo(null));
+    }
 
     @Test
     public void dadoQueUnJugadorAbandonoCuandoElOtroYaTiroEntoncesPuedeResolverElEvento() {
@@ -78,7 +109,7 @@ public class ValidadorEventoGlobalTest {
 
         assertTrue(ValidadorEventoGlobal.tienePosicionRegistrable(jugador));
         assertTrue(ValidadorEventoGlobal.tieneSaldoRegistrable(jugador));
-        assertTrue(ValidadorEventoGlobal.hayMovimientoPendiente(1L, new EventoGlobal()));
-        assertFalse(ValidadorEventoGlobal.hayMovimientoPendiente(null, new EventoGlobal()));
+        assertTrue(AplicadorConsecuenciaEventoGlobal.hayMovimientoPendiente(1L, new EventoGlobal()));
+        assertFalse(AplicadorConsecuenciaEventoGlobal.hayMovimientoPendiente(null, new EventoGlobal()));
     }
 }

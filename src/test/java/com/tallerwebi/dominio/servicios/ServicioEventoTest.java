@@ -141,6 +141,60 @@ public class ServicioEventoTest {
     }
 
     @Test
+    public void dadoQueHayUnEventoDeTiradasCuandoSeIntentaIniciarUnoInmediatoEntoncesNoSeAplicaNiSeNotificaOtroEvento() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        servicioEvento.iniciarEventoGlobal(partida, crearPiquete());
+        EventoGlobal fiat = crearEventoGlobal(5, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400);
+
+        assertThrows(EventoGlobalActivoException.class, () -> servicioEvento.iniciarEventoGlobal(partida, fiat));
+
+        assertEquals(1000, uno.getDinero());
+        assertEquals(1000, dos.getDinero());
+        verify(repositorioPartidaMock, never()).actualizarJugador(any(Jugador.class));
+        verify(publicadorEventosMock, times(1)).publishEvent(any(EventoGlobalActualizado.class));
+        verify(gestorTemporizadorMock, times(1)).programarTemporizador(anyString(), anyInt(), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueHayEventosDistintosEnCincoDiezYQuinceCuandoSeVerificaDosVecesCadaRondaEntoncesCadaConsecuenciaYReanudacionOcurrenUnaVez() throws Exception {
+        Jugador uno = crearJugador(1L, 1000, 10);
+        Jugador dos = crearJugador(2L, 1000, 15);
+        Partida partida = crearPartida("ABC", 5, uno, dos);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico("ABC")).thenReturn(partida);
+        when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(
+                crearEventoGlobal(5, TipoEventoGlobal.FIAT_600, TipoEfecto.GANAR_PLATA, 400), crearPiquete(),
+                crearEventoGlobal(6, TipoEventoGlobal.ACCIDENTE_SARMIENTO, TipoEfecto.PERDER_TURNO, 1));
+        when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(1, 3), new ResultadoTirada(5, 5));
+
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        assertEquals(2400, uno.getDinero() + dos.getDinero());
+        continuarEventoFinalizado(partida);
+        partida.setRondaActual(10);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.realizarTiradasAutomaticasPendientes(partida);
+        assertEquals(10, uno.getPosicionActual());
+        continuarEventoFinalizado(partida);
+        assertEquals(0, uno.getPosicionActual());
+        assertEquals(15, dos.getPosicionActual());
+        partida.setRondaActual(15);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        servicioEvento.verificarActivacionEventoGlobal(partida);
+        continuarEventoFinalizado(partida);
+
+        assertEquals(2400, uno.getDinero() + dos.getDinero());
+        assertEquals(1, partida.getJugadores().stream().filter(jugador -> Boolean.TRUE.equals(jugador.getPierdeTurno())).count());
+        assertFalse(servicioEvento.verificarSiHayEventoGlobalActivo("ABC"));
+        verify(repositorioEventoMock, times(3)).obtenerEventoGlobalAleatorio();
+        verify(repositorioPartidaMock, times(3)).actualizarJugador(any(Jugador.class));
+        verify(servicioDadoMock, times(2)).tirarDados();
+        verify(publicadorEventosMock, times(3)).publishEvent(new EventoGlobalFinalizado("ABC"));
+    }
+
+    @Test
     public void dadoQueElRepositorioTieneUnEventoGlobalCuandoSeObtieneUnoAleatorioEntoncesDevuelveSusDatos() {
         EventoGlobal evento = crearEvento(TipoEfecto.GANAR_PLATA, 300);
         when(repositorioEventoMock.obtenerEventoGlobalAleatorio()).thenReturn(evento);

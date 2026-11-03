@@ -5,6 +5,8 @@ import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 
@@ -35,6 +37,7 @@ class ServicioPropiedadOperacionesTest {
     private Jugador vendedor;
     private Jugador comprador;
     private Propiedad propiedad;
+    private Partida partida;
 
     @BeforeEach
     void preparar() {
@@ -48,6 +51,12 @@ class ServicioPropiedadOperacionesTest {
                 new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
         vendedor = jugador(1L, 1000);
         comprador = jugador(2L, 800);
+        partida = new Partida();
+        partida.setId(100L);
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.getJugadores().addAll(List.of(vendedor, comprador));
+        when(partidas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+        when(partidas.buscarPartidaPorJugador(2L)).thenReturn(partida);
         propiedad = new Propiedad(10L, "Barrio Marina", 300, 50, vendedor,
                 GrupoPropiedades.VILLA_LUZURIAGA);
         when(repositorio.buscarPropiedadPorId(10L)).thenReturn(propiedad);
@@ -181,6 +190,165 @@ class ServicioPropiedadOperacionesTest {
 
         assertEquals(0, propiedad.getNivelMejora());
         verify(economia, never()).restarDinero(any(), anyInt());
+    }
+
+    @Test
+    void rechazaCompraConJugadorEnPartidaFinalizadaSinModificarDatos() {
+        propiedad.setPropietario(null);
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        verificarRechazoSinCambios(() -> servicio.comprarPropiedad(10L, comprador));
+    }
+
+
+    @Test
+    void rechazaCompraConJugadorEnPartidaEnEsperaSinModificarDatos() {
+        propiedad.setPropietario(null);
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        verificarRechazoSinCambios(() -> servicio.comprarPropiedad(10L, comprador));
+    }
+
+
+    @Test
+    void rechazaCompraPorIdentificadorEnPartidaFinalizadaSinModificarDatos() {
+        propiedad.setPropietario(null);
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        verificarRechazoSinCambios(() -> servicio.comprarPropiedadParaJugador(10L, 2L));
+    }
+
+
+    @Test
+    void rechazaCompraPorIdentificadorEnPartidaEnEsperaSinModificarDatos() {
+        propiedad.setPropietario(null);
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        verificarRechazoSinCambios(() -> servicio.comprarPropiedadParaJugador(10L, 2L));
+    }
+
+
+    @Test
+    void rechazaVentaEnPartidaFinalizadaSinModificarDatos() {
+
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        verificarRechazoSinCambios(() -> servicio.venderPropiedadParaJugador(10L, 1L));
+    }
+
+
+    @Test
+    void rechazaVentaEnPartidaEnEsperaSinModificarDatos() {
+
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        verificarRechazoSinCambios(() -> servicio.venderPropiedadParaJugador(10L, 1L));
+    }
+
+
+    @Test
+    void rechazaMejoraEnPartidaFinalizadaSinModificarDatos() {
+        Propiedad vecina = new Propiedad(11L, "Vecina", 300, 50, vendedor,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                casillero(propiedad, 1, 100L), casillero(vecina, 2, 100L)));
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        verificarRechazoSinCambios(() -> servicio.mejorarPropiedad(10L, vendedor));
+    }
+
+
+    @Test
+    void rechazaMejoraEnPartidaEnEsperaSinModificarDatos() {
+        Propiedad vecina = new Propiedad(11L, "Vecina", 300, 50, vendedor,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                casillero(propiedad, 1, 100L), casillero(vecina, 2, 100L)));
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        verificarRechazoSinCambios(() -> servicio.mejorarPropiedad(10L, vendedor));
+    }
+
+
+    @Test
+    void rechazaTransferenciaEnPartidaFinalizadaSinModificarDatos() {
+
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        verificarRechazoSinCambios(() -> servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 450));
+    }
+
+
+    @Test
+    void rechazaTransferenciaEnPartidaEnEsperaSinModificarDatos() {
+
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        verificarRechazoSinCambios(() -> servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 450));
+    }
+
+    @Test
+    void rechazaTransferenciaEntrePartidasDiferentesSinModificarDatos() {
+        Partida otra = new Partida();
+        otra.setId(200L);
+        otra.setEstado(EstadoPartida.EN_CURSO);
+        otra.getJugadores().add(comprador);
+        when(partidas.buscarPartidaPorJugador(2L)).thenReturn(otra);
+
+        verificarRechazoSinCambios(() -> servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 450));
+    }
+
+    @Test
+    void compraPorIdentificadorEnCursoConservaElPrecioYConsultaUnaSolaPartida() {
+        propiedad.setPropietario(null);
+
+        servicio.comprarPropiedadParaJugador(10L, 2L);
+
+        assertSame(comprador, propiedad.getPropietario());
+        assertEquals(500, comprador.getDinero());
+        verify(partidas, times(1)).buscarPartidaPorJugador(2L);
+    }
+
+    @Test
+    void rechazaCompraDeJugadorSinPartida() {
+        propiedad.setPropietario(null);
+        when(partidas.buscarPartidaPorJugador(2L)).thenReturn(null);
+
+        verificarRechazoSinCambios(() -> servicio.comprarPropiedadParaJugador(10L, 2L));
+    }
+
+    @Test
+    void prepararCompraRechazaPartidasFueraDeCursoAntesDeMaterializarPropiedades() {
+        when(partidas.buscarPartidaActivaPorCodigoUnico("PROPIEDADES")).thenReturn(partida);
+        when(casilleros.existePosicionDePropiedad(partida, 1)).thenReturn(true);
+        vendedor.setOrden(0);
+        vendedor.setPosicionActual(1);
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+
+        assertThrows(IllegalStateException.class, () -> servicio.prepararCompra("PROPIEDADES", 1));
+
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        assertThrows(IllegalStateException.class, () -> servicio.prepararCompra("PROPIEDADES", 1));
+        verify(casilleros, never()).buscarOCrearPropiedadEnPosicion(any(), any());
+        verifyNoInteractions(economia);
+    }
+
+    @Test
+    void prepararVentaRechazaPartidasFueraDeCursoAntesDeConsultarElCasillero() {
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        assertThrows(IllegalStateException.class, () -> servicio.prepararVenta(partida, 1L, 1));
+
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        assertThrows(IllegalStateException.class, () -> servicio.prepararVenta(partida, 1L, 1));
+        verifyNoInteractions(casilleros, economia);
+    }
+
+    private void verificarRechazoSinCambios(Runnable operacion) {
+        Jugador propietario = propiedad.getPropietario();
+        Integer nivel = propiedad.getNivelMejora();
+        Integer dineroVendedor = vendedor.getDinero();
+        Integer dineroComprador = comprador.getDinero();
+
+        assertThrows(IllegalStateException.class, operacion::run);
+
+        assertSame(propietario, propiedad.getPropietario());
+        assertEquals(nivel, propiedad.getNivelMejora());
+        assertEquals(dineroVendedor, vendedor.getDinero());
+        assertEquals(dineroComprador, comprador.getDinero());
+        verifyNoInteractions(economia);
+        verify(repositorio, never()).guardarPropiedad(any());
+        verify(partidas, never()).actualizarJugador(any());
+        verify(casilleros, never()).guardarCasillero(any());
     }
 
     private Jugador jugador(Long id, int dinero) {

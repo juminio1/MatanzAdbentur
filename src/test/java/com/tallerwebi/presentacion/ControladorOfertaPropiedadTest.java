@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.ServicioOfertaPropiedadImpl;
 import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -49,7 +50,7 @@ public class ControladorOfertaPropiedadTest {
     private ServicioPropiedad servicioPropiedad;
     private ServicioGestionQuiebra servicioGestionQuiebra;
     private SimpMessagingTemplate notificador;
-    private ControladorOfertaPropiedad controlador;
+    private ControladorPropiedadesPartida controlador;
     private Partida partida;
     private Jugador vendedor;
     private Jugador comprador;
@@ -64,10 +65,11 @@ public class ControladorOfertaPropiedadTest {
         servicioGestionQuiebra = mock(ServicioGestionQuiebra.class);
         notificador = mock(SimpMessagingTemplate.class);
         ServicioParticipacionImpl participacion = new ServicioParticipacionImpl();
-        controlador = new ControladorOfertaPropiedad(servicioPartida, notificador, servicioCasillero,
+        controlador = new ControladorPropiedadesPartida(servicioPartida, notificador, servicioCasillero,
                 servicioPropiedad, servicioGestionQuiebra, participacion,
                 new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
         partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);
         vendedor = crearJugador(ID_VENDEDOR, "Ana");
@@ -89,15 +91,14 @@ public class ControladorOfertaPropiedadTest {
 
     @Test
     public void lasRutasDeOfertaTienenUnSoloControladorRegistrado() {
-        ControladorPropiedadesPartida propiedades = new ControladorPropiedadesPartida(servicioPartida,
-                notificador, servicioCasillero, servicioPropiedad, servicioGestionQuiebra,
-                new ServicioParticipacionImpl());
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(controlador, propiedades).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controlador).build();
         RequestMappingHandlerMapping rutas = mvc.getDispatcherServlet().getWebApplicationContext()
                 .getBean(RequestMappingHandlerMapping.class);
 
         assertEquals(3L, rutas.getHandlerMethods().values().stream()
-                .filter(metodo -> metodo.getBeanType().equals(ControladorOfertaPropiedad.class))
+                .filter(metodo -> metodo.getMethod().getName().equals("crearOferta")
+                        || metodo.getMethod().getName().equals("ofertasPendientes")
+                        || metodo.getMethod().getName().equals("responderOferta"))
                 .count());
     }
 

@@ -6,6 +6,7 @@ import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
@@ -21,19 +22,20 @@ import java.util.function.BooleanSupplier;
 // Concentra las validaciones de eventos globales sin depender de Spring ni del estado de la partida.
 public final class ValidadorEventoGlobal {
 
+    // Reutiliza las reglas sin estado de main sin depender del contenedor de Spring.
+    private static final ServicioParticipacion PARTICIPACION = new ServicioParticipacionImpl();
+
     public static void validarConfirmacion(Partida partida, Long idJugador) {
         if (partida == null || idJugador == null || partida.getJugadores().stream()
                 .noneMatch(jugador -> idJugador.equals(jugador.getId())
-                        && !Boolean.TRUE.equals(jugador.getEnBancarrota())
-                        && !Boolean.TRUE.equals(jugador.getAbandono()))) {
+                        && estaActivo(jugador))) {
             throw new IllegalStateException("El jugador no está habilitado para confirmar el evento.");
         }
     }
 
     public static Boolean confirmaronTodosLosActivos(Partida partida, Set<Long> confirmados) {
         return partida.getJugadores().stream()
-                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota())
-                        && !Boolean.TRUE.equals(jugador.getAbandono()))
+                .filter(ValidadorEventoGlobal::estaActivo)
                 .allMatch(jugador -> confirmados.contains(jugador.getId()));
     }
 
@@ -145,17 +147,6 @@ public final class ValidadorEventoGlobal {
         return jugador.getId() != null && jugador.getDinero() != null;
     }
 
-    public static Boolean debeConservarElegido(EstadoEventoGlobal resultado, Partida partida, List<Long> activos) {
-        return activos.contains(resultado.idJugadorElegido())
-                || resultado.tipo() == TipoEventoGlobal.ROBO && partida != null && partida.getJugadores().stream()
-                .anyMatch(jugador -> jugador.getId().equals(resultado.idJugadorElegido())
-                        && Boolean.TRUE.equals(jugador.getEnBancarrota()) && !Boolean.TRUE.equals(jugador.getAbandono()));
-    }
-
-    public static Boolean hayMovimientoPendiente(Long idJugador, EventoGlobal evento) {
-        return idJugador != null && evento != null;
-    }
-
     private ValidadorEventoGlobal() {
     }
 
@@ -181,6 +172,9 @@ public final class ValidadorEventoGlobal {
         if (partida == null || partida.getCodigoUnico() == null || partida.getCodigoUnico().isBlank()) {
             throw new PartidaNoEncontradaException();
         }
+        if (partida.getEstado() == com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA) {
+            throw new IllegalStateException("La partida ya finalizó.");
+        }
     }
 
     public static void validarQueNoExistaEventoActivo(String codigoPartida, Map<String, EventoGlobal> eventosActivosPorPartida) throws EventoGlobalActivoException {
@@ -200,7 +194,7 @@ public final class ValidadorEventoGlobal {
     }
 
     public static void validarJugadorEnPartida(Partida partida, Jugador jugador) throws DatosEnventoInvalidoExceptions, JugadorNoEncontradoException {
-        Boolean perteneceAPartida = partida.getJugadores().stream().anyMatch(participante -> participante.getId().equals(jugador.getId()));
+        Boolean perteneceAPartida = PARTICIPACION.pertenece(partida, jugador.getId());
 
         if (!perteneceAPartida) {
             throw new JugadorNoEncontradoException("El jugador no pertenece a la partida");
@@ -249,8 +243,7 @@ public final class ValidadorEventoGlobal {
     }
 
     public static boolean estaActivo(Jugador jugador) {
-        return jugador != null && !Boolean.TRUE.equals(jugador.getAbandono())
-                && !Boolean.TRUE.equals(jugador.getEnBancarrota());
+        return PARTICIPACION.estaActivo(jugador);
     }
 
     public static boolean correspondeActivarEnRonda(Integer ronda, Integer intervalo) {

@@ -4,16 +4,23 @@ import com.tallerwebi.dominio.entidades.EstadoCarcel;
 import com.tallerwebi.dominio.entidades.Jugador;
 
 import com.tallerwebi.dominio.entidades.Partida;
-
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
+import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
+import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
+import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
+import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
+import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
+import com.tallerwebi.dominio.resultados.PosicionFicha;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 
-import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 
-import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 
@@ -21,19 +28,14 @@ import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
 
 import com.tallerwebi.dominio.excepcion.EventoInexistenteException;
 
-import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
 
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 
-import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 
-import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 
-import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 
-import com.tallerwebi.dominio.resultados.PosicionFicha;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 
@@ -43,12 +45,12 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
 
-import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.infraestructura.RepositorioDeudaPendiente;
 
-import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 
@@ -64,6 +66,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 //  Coordino las operaciones de la partida.
 
@@ -105,6 +110,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
     // Se usan cuando a un jugador preso se le acaba el tiempo (pueden ser null en los tests).
     private final ServicioGestionQuiebra quiebras;
     private final PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel;
+    private final ServicioFinalizacionPartida finalizacion;
+    private final TransactionTemplate lecturaTurno;
+    @Autowired
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion participacion = new ServicioParticipacionImpl();
 
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
@@ -115,7 +124,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono
     ) {
         this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
-                publicadorTurno, publicadorAbandono, null, null, null);
+                publicadorTurno, publicadorAbandono, null, null, null, null, null);
     }
 
     public ServicioPartidaImpl(
@@ -128,7 +137,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
             ServicioEvento servicioEvento
     ) {
         this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno,
-                publicadorTurno, publicadorAbandono, servicioEvento, null, null);
+                publicadorTurno, publicadorAbandono, servicioEvento, null, null, null, null);
+    }
+
+    public ServicioPartidaImpl(RepositorioPartida repositorioPartida, ServicioInicioPartida servicioInicioPartida,
+            GestorTemporizadorPartida gestorTemporizador, ServicioTurno servicioTurno,
+            PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono, ServicioEvento servicioEvento,
+            ServicioGestionQuiebra quiebras, PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel) {
+        this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno, publicadorTurno,
+                publicadorAbandono, servicioEvento, quiebras, publicadorCarcel, null, null);
+    }
+
+    public ServicioPartidaImpl(RepositorioPartida repositorioPartida, ServicioInicioPartida servicioInicioPartida,
+            GestorTemporizadorPartida gestorTemporizador, ServicioTurno servicioTurno,
+            PublicadorEventos<EventoTurnoCambiado> publicadorTurno,
+            PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono, ServicioGestionQuiebra quiebras,
+            PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel,
+            ServicioFinalizacionPartida finalizacion, PlatformTransactionManager transactionManager) {
+        this(repositorioPartida, servicioInicioPartida, gestorTemporizador, servicioTurno, publicadorTurno,
+                publicadorAbandono, null, quiebras, publicadorCarcel, finalizacion, transactionManager);
     }
 
     @Autowired
@@ -142,7 +170,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
             PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono,
             ServicioEvento servicioEvento,
             @Lazy ServicioGestionQuiebra quiebras,
-            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel
+            @Autowired(required = false) PublicadorEventos<EventoTiempoAgotadoEnCarcel> publicadorCarcel,
+            ServicioFinalizacionPartida finalizacion,
+            PlatformTransactionManager transactionManager
     ) {
 
         this.repositorioPartida = repositorioPartida;
@@ -161,8 +191,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         this.quiebras = quiebras;
         this.publicadorCarcel = publicadorCarcel;
+        this.finalizacion = finalizacion;
+        this.lecturaTurno = new TransactionTemplate();
+        lecturaTurno.setTransactionManager(transactionManager);
+        if (transactionManager != null) {
+            lecturaTurno.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            lecturaTurno.setReadOnly(true);
+        }
     }
 
+    //Devuelve partidas que todavía no finalizaron (EN_ESPERA o EN_CURSO).
     @Override
 
     @Transactional(readOnly = true)
@@ -171,6 +209,13 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         return repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoUnico);
 
+    }
+
+    //Devuelve partidas de cualquier estado, incluso FINALIZADA.
+    @Override
+    @Transactional(readOnly = true)
+    public Partida obtenerPartidaParaVisualizacion(String codigoPartida) {
+        return repositorioPartida.buscarPartidaPorCodigoUnico(codigoPartida);
     }
 
     @Override
@@ -251,12 +296,15 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Partida partida = obtenerPartida(codigoUnico);
 
-        if (!esPartidaConJugadoresInvalida(partida) && !verificarSiHayEventoGlobalActivo(codigoUnico)
+        if (esPartidaConJugadoresInvalida(partida)) return;
+        participacion.validarPartidaEnCurso(partida);
+        if (!verificarSiHayEventoGlobalActivo(codigoUnico)
 
                 && !tieneDeudasPendientes(partida)) {
 
             omitirTurnoPenalizadoTrasEvento(partida);
 
+            if (verificarSiHayEventoGlobalActivo(codigoUnico)) return;
             MarcaTurno marca = MarcaTurno.de(partida);
             Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(codigoUnico, DURACION_TURNO_SEGUNDOS, () -> avanzarTurnoSiSigueVigente(codigoUnico, marca));
 
@@ -279,7 +327,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
         // Si abandonó durante la pausa, su turno tampoco puede recibir el reloj de reanudación.
         if (actual == null || Boolean.TRUE.equals(actual.getPierdeTurno())) {
 
+            Integer rondaAnterior = Objects.requireNonNullElse(partida.getRondaActual(), 1);
             if (actual != null) actual.setPierdeTurno(false);
+            // main recalcula la ronda también si el seleccionado abandonó durante la pausa.
+            incrementarRondas(partida);
 
             Jugador siguiente = servicioTurno.resolverSiguienteJugador(partida, servicioTurno.obtenerIndiceTurnoActual(partida));
 
@@ -292,7 +343,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             }
 
             repositorioPartida.guardarPartida(partida);
-
+            if (!rondaAnterior.equals(partida.getRondaActual())) verificarEventoGlobalAlCambiarRonda(partida);
         }
 
     }
@@ -343,12 +394,22 @@ public class ServicioPartidaImpl implements ServicioPartida {
                 () -> cambiosDeTurnoEnCurso.remove(codigoUnico, actual));
     }
 
+    private void verificarEventoGlobalSiCambioRonda(Partida partida, Integer rondaAnterior) {
+        if (!rondaAnterior.equals(partida.getRondaActual())) verificarEventoGlobalAlCambiarRonda(partida);
+    }
+
+    private boolean finalizarSiCorresponde(Partida partida) {
+        return partida.getEstado() == EstadoPartida.FINALIZADA
+                || finalizacion != null && finalizacion.finalizarSiCorresponde(partida);
+    }
+
     private void avanzarTurnoActual(String codigoUnico) {
 
         Partida partida = obtenerPartida(codigoUnico);
 
         if (!esPartidaConJugadoresInvalida(partida) && !verificarSiHayEventoGlobalActivo(codigoUnico) && !tieneDeudasPendientes(partida)) {
 
+            participacion.validarPartidaEnCurso(partida);
             DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
 
             Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
@@ -357,27 +418,26 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
             incrementarRondas(partida);
 
-            Boolean cambioRonda = !rondaAnterior.equals(partida.getRondaActual());
-
-            if (cambioRonda) {
-
-                verificarEventoGlobalAlCambiarRonda(partida);
-
-            }
-
+            if (finalizarSiCorresponde(partida)) return;
+            verificarEventoGlobalSiCambioRonda(partida, rondaAnterior);
+            // ROBO puede finalizar la partida durante la activación: no se busca otro turno en ese caso.
+            if (finalizarSiCorresponde(partida)) return;
+            Integer rondaAntesDeResolver = partida.getRondaActual();
             Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, indiceActual);
 
-            if (candidato != null) {
-
-                candidato.setTiroEnTurno(false);
-
-                partida.setIndiceTurnoActual(candidato.getOrden());
-
+            if (candidato == null) {
+                repositorioPartida.guardarPartida(partida);
+                DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
+                return;
             }
+            candidato.setTiroEnTurno(false);
+            partida.setIndiceTurnoActual(candidato.getOrden());
 
             repositorioPartida.guardarPartida(partida);
+            // Las oportunidades perdidas también pueden completar una ronda según main.
+            verificarEventoGlobalSiCambioRonda(partida, rondaAntesDeResolver);
 
-            if (candidato != null && !verificarSiHayEventoGlobalActivo(codigoUnico)) {
+            if (!verificarSiHayEventoGlobalActivo(codigoUnico)) {
 
                 notificarTurnoActual(partida, true);
 
@@ -432,7 +492,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             throw new PartidaNoEncontradaException();
 
         }
-
+        participacion.validarPartidaEnCurso(partida);
         Jugador jugador = obtenerJugadorPorId(idJugador);
 
         if (jugador == null) {
@@ -441,6 +501,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         }
 
+        if (finalizacion != null) finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.ABANDONADO);
         jugador.setAbandono(true);
 
         actualizarJugador(jugador);
@@ -455,7 +516,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     public Boolean verificarSiHayEventoGlobalActivo(String codigoUnico) {
 
-        return Boolean.TRUE.equals(this.servicioEvento.verificarSiHayEventoGlobalActivo(codigoUnico));
+        return servicioEvento != null && Boolean.TRUE.equals(servicioEvento.verificarSiHayEventoGlobalActivo(codigoUnico));
 
     }
 
@@ -479,24 +540,46 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private void notificarTurnoActual(Partida partida, Boolean iniciarTemporizador, Integer segundosTotales) {
         Jugador jugadorActual = obtenerJugadorActual(partida.getCodigoUnico());
-        if (jugadorActual != null) {
-            MarcaTurno marca = MarcaTurno.de(partida);
-            DespuesDeConfirmar.ejecutar(() -> {
-                if (Boolean.TRUE.equals(iniciarTemporizador) && partida.getCodigoUnico() != null) {
-                    gestorTemporizador.programarTemporizador(
-                        partida.getCodigoUnico(), segundosTotales,
-                        () -> avanzarTurnoSiSigueVigente(partida.getCodigoUnico(), marca)
-                    );
-                }
-                if (publicadorTurno != null) {
-                    EventoTurnoCambiado evento = new EventoTurnoCambiado(
-                        partida.getCodigoUnico(), jugadorActual.getId(), jugadorActual.getApodo(),
-                        jugadorActual.getOrden(), obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
-                        partida.getRondaActual(), partida.getTurnosFinalizadosEnRonda()
-                    );
-                    publicarTurnoCambiado(evento);
-                }
-            });
+        if (jugadorActual == null) {
+            return;
+        }
+        MarcaTurno marca = MarcaTurno.de(partida);
+        String codigo = partida.getCodigoUnico();
+        DespuesDeConfirmar.ejecutar(() -> {
+            if (lecturaTurno.getTransactionManager() == null) notificarTurnoSiSigueVigente(codigo, marca, iniciarTemporizador, segundosTotales);
+            else lecturaTurno.executeWithoutResult(estado ->
+                    notificarTurnoSiSigueVigente(codigo, marca, iniciarTemporizador, segundosTotales));
+        });
+    }
+
+    private void notificarTurnoSiSigueVigente(String codigo, MarcaTurno marca,
+                                             Boolean iniciarTemporizador, Integer segundosTotales) {
+        Partida partida = obtenerPartida(codigo);
+        if (!turnoSigueVigente(partida, marca)) {
+            return;
+        }
+        Jugador jugadorActual = servicioTurno.obtenerJugadorActual(partida);
+        if (jugadorActual == null) {
+            return;
+        }
+        if (iniciarTemporizador && codigo != null) {
+            gestorTemporizador.programarTemporizador(
+                    partida.getCodigoUnico(),
+                    segundosTotales,
+                    () -> avanzarTurnoSiSigueVigente(codigo, marca)
+            );
+        }
+        if (publicadorTurno != null) {
+            EventoTurnoCambiado evento = new EventoTurnoCambiado(
+                    partida.getCodigoUnico(),
+                    jugadorActual.getId(),
+                    jugadorActual.getApodo(),
+                    jugadorActual.getOrden(),
+                    obtenerSegundosRestantesTurno(partida.getCodigoUnico()),
+                    partida.getRondaActual(),
+                    partida.getTurnosFinalizadosEnRonda()
+            );
+            publicarTurnoCambiado(evento);
         }
     }
 
@@ -520,6 +603,12 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     }
 
+    private boolean turnoSigueVigente(Partida partida, MarcaTurno marca) {
+        return partida != null && partida.getEstado() == EstadoPartida.EN_CURSO
+                && !verificarSiHayEventoGlobalActivo(partida.getCodigoUnico())
+                && !tieneDeudasPendientes(partida) && marca.equals(MarcaTurno.de(partida));
+    }
+
     /*
      * Lo usa el temporizador al vencer. Si el turno que se programó ya terminó
      * (por ejemplo, el jugador lo cerró justo antes), no avanza de nuevo.
@@ -533,10 +622,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private void avanzarTurnoProgramado(String codigoUnico, MarcaTurno marcaProgramada) {
 
         Partida partida = obtenerPartida(codigoUnico);
-
-        if (partida == null || !marcaProgramada.equals(MarcaTurno.de(partida))
-                || verificarSiHayEventoGlobalActivo(codigoUnico)) {
-
+        if (!turnoSigueVigente(partida, marcaProgramada)) {
             return;
 
         }
@@ -549,7 +635,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         // Si cobrar la fianza terminó en quiebra, el turno ya lo avanzó el observador de quiebra.
         Partida actualizada = obtenerPartida(codigoUnico);
-        if (actualizada == null || !marcaProgramada.equals(MarcaTurno.de(actualizada))) {
+        if (!turnoSigueVigente(actualizada, marcaProgramada)) {
             return;
         }
         avanzarTurno(codigoUnico);
@@ -635,7 +721,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         try {
 
-            servicioEvento.verificarActivacionEventoGlobal(partida);
+            if (servicioEvento != null) servicioEvento.verificarActivacionEventoGlobal(partida);
 
         } catch (PartidaNoEncontradaException | EventoGlobalInvalidoException | JugadorNoEncontradoException | EventoGlobalActivoException | EventoInexistenteException excption) {
 

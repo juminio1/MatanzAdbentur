@@ -101,10 +101,12 @@ public class ServicioPartidaTest {
     public void dadoQueHayDosJugadoresCuandoSeInicializanTurnosYDaUnOrdenParaCadaUno() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador1 = new Jugador();
         Jugador jugador2 = new Jugador();
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
                 partidaSimulada
         );
@@ -121,6 +123,7 @@ public class ServicioPartidaTest {
     public void dadoQueHayJugadoresConEstadoAnteriorCuandoSeInicializanTurnosYDaJugadoresRestablecidos() {
         String codigo = "MATANZA123";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador = new Jugador();
         jugador.setOrden(3);
         jugador.setPierdeTurno(true);
@@ -129,6 +132,7 @@ public class ServicioPartidaTest {
         jugador.setPosicionActual(7);
         partida.setJugadores(List.of(jugador));
         partida.setIndiceTurnoActual(2);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
 
@@ -148,6 +152,7 @@ public class ServicioPartidaTest {
         // partida falsa
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
 
         Jugador jugador1 = new Jugador();
         jugador1.setPosicionActual(0);
@@ -155,6 +160,7 @@ public class ServicioPartidaTest {
         jugador2.setPosicionActual(7);
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -171,10 +177,12 @@ public class ServicioPartidaTest {
     public void dadoQueExistenJugadoresCuandoSeInicializanTurnosYDaOrdenDesdeCero() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador1 = new Jugador();
         Jugador jugador2 = new Jugador();
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
 
         servicioPartida.inicializarTurnos(codigoPrueba);
@@ -189,6 +197,7 @@ public class ServicioPartidaTest {
     public void dadoQueElIndiceEsUnoCuandoSeObtieneJugadorActualYDaJugadorDos() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
         Jugador jugador2 = new Jugador();
@@ -196,6 +205,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
         partidaSimulada.setIndiceTurnoActual(1);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -210,6 +220,7 @@ public class ServicioPartidaTest {
     public void dadoQueJuegaElPrimeroCuandoSeAvanzaTurnoYDaElSegundo() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -219,6 +230,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
         partidaSimulada.setIndiceTurnoActual(0);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -232,12 +244,15 @@ public class ServicioPartidaTest {
     public void dadoQueLaPartidaNoTieneJugadoresCuandoSeEjecutanOperacionesDeTurnoYDaSinCambios() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "SIN-JUGADORES";
         Partida sinLista = new Partida();
+        sinLista.setEstado(EstadoPartida.EN_CURSO);
         sinLista.setJugadores(null);
         Partida listaVacia = new Partida();
+        listaVacia.setEstado(EstadoPartida.EN_CURSO);
         listaVacia.setJugadores(List.of());
 
         for (Partida partida : Arrays.asList(null, sinLista, listaVacia)) {
-            when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
+            dadasLasOportunidadesAnteriores(partida);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
                 .thenReturn(partida);
 
             servicioPartida.inicializarTurnos(codigo);
@@ -254,6 +269,7 @@ public class ServicioPartidaTest {
     public void dadoQueHayJugadorEnBancarrotaCuandoSeAvanzaTurnoYDaJugadorActivo() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "BANCARROTA";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador activo = new Jugador();
         activo.setOrden(0);
@@ -262,6 +278,7 @@ public class ServicioPartidaTest {
         enBancarrota.setEnBancarrota(true);
         partida.setJugadores(List.of(activo, enBancarrota));
         partida.setIndiceTurnoActual(1);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
 
@@ -278,8 +295,10 @@ public class ServicioPartidaTest {
     public void dadoQueNoHayJugadorActivoCuandoSeIniciaTemporizadorYDaSinNotificacion() {
         String codigo = "SIN-JUGADORES";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         partida.setJugadores(List.of());
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
@@ -294,11 +313,13 @@ public class ServicioPartidaTest {
     public void dadoQueNoHayPublicadorCuandoSeAvanzaTurnoYDaTemporizadorProgramado() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "SIN-NOTIFICADOR";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador jugador = new Jugador();
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
         partida.setIndiceTurnoActual(null);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
             repositorioPartidaMock,
@@ -317,6 +338,7 @@ public class ServicioPartidaTest {
     public void dadoQueTodosPierdenTurnoCuandoSeAvanzaYDaPenalizacionesRestablecidas() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "TODOS-PENALIZADOS";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -326,6 +348,7 @@ public class ServicioPartidaTest {
         segundo.setPierdeTurno(true);
         partida.setJugadores(List.of(primero, segundo));
         partida.setIndiceTurnoActual(0);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
         servicioPartida.avanzarTurno(codigo);
@@ -343,6 +366,7 @@ public class ServicioPartidaTest {
     public void dadoQueTodosEstanEnBancarrotaCuandoSeAvanzaYDaPartidaSinTurnoNuevo() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigo = "TODOS-EN-BANCARROTA";
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -355,6 +379,8 @@ public class ServicioPartidaTest {
         partida.setIndiceTurnoActual(0);
         partida.setRondaActual(3);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
         servicioPartida.avanzarTurno(codigo);
@@ -364,7 +390,8 @@ public class ServicioPartidaTest {
         assertEquals(1, partida.getTurnosFinalizadosEnRonda());
         assertTrue(segundo.getPierdeTurno());
         verify(repositorioPartidaMock).guardarPartida(partida);
-        verify(gestorTemporizadorMock, times(1)).cancelarTemporizador(codigo);
+        // main cancela al cerrar el turno y nuevamente cuando no encuentra candidato.
+        verify(gestorTemporizadorMock, times(2)).cancelarTemporizador(codigo);
         verify(gestorTemporizadorMock, never()).programarTemporizador(
             any(), anyInt(), any(Runnable.class));
         verifyNoInteractions(notificadorPartidaMock);
@@ -374,6 +401,7 @@ public class ServicioPartidaTest {
     public void dadoQueSeAvanzaTurnoCuandoSeNotificaYDaNuevoTurnoConDuracion() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setId(1L);
@@ -388,6 +416,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
         partidaSimulada.setIndiceTurnoActual(0);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -407,6 +436,7 @@ public class ServicioPartidaTest {
     public void dadoQueJuegaElUltimoCuandoSeAvanzaTurnoYDaElPrimero() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -418,6 +448,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2, jugador3));
         partidaSimulada.setIndiceTurnoActual(2);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -431,6 +462,7 @@ public class ServicioPartidaTest {
     public void dadoQueElSiguientePierdeTurnoCuandoSeAvanzaYDaTurnoSalteado() throws ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
         Jugador jugador1 = new Jugador();
         jugador1.setOrden(0);
@@ -442,6 +474,7 @@ public class ServicioPartidaTest {
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2, jugador3));
         partidaSimulada.setIndiceTurnoActual(0);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -469,12 +502,14 @@ public class ServicioPartidaTest {
         sala.setCreador(creador);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(sala.getCodigoUnico());
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
 
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(sala.getCodigoUnico()))
             .thenReturn(sala);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(sala.getCodigoUnico()))
             .thenReturn(partida);
 
@@ -505,6 +540,7 @@ public class ServicioPartidaTest {
         sala.setCreador(creador);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(sala.getCodigoUnico());
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos));
@@ -529,6 +565,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueNoHayJugadoresCuandoSeIniciaPartidaYDaExcepcion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList());
 
@@ -598,6 +635,7 @@ public class ServicioPartidaTest {
         Jugador jugadorCuatro = new Jugador();
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
 
@@ -629,6 +667,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueFaltanTurnosCuandoSeIncrementanRondasYDaMismaRonda() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -636,6 +675,7 @@ public class ServicioPartidaTest {
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(0);
+        dadasLasOportunidadesAnteriores(partida);
 
         servicioPartida.incrementarRondas(partida);
 
@@ -646,6 +686,7 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueTodosJugaronCuandoSeIncrementanRondasYDaNuevaRonda() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         Jugador jugadorTres = new Jugador();
@@ -653,6 +694,7 @@ public class ServicioPartidaTest {
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(3);
+        dadasLasOportunidadesAnteriores(partida);
 
         servicioPartida.incrementarRondas(partida);
 
@@ -663,11 +705,13 @@ public class ServicioPartidaTest {
     @Test
     public void dadoQueContadoresSonNulosCuandoSeIncrementanRondasYDaValoresInicializados() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugadorUno = new Jugador();
         Jugador jugadorDos = new Jugador();
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos));
         partida.setRondaActual(null);
         partida.setTurnosFinalizadosEnRonda(null);
+        dadasLasOportunidadesAnteriores(partida);
 
         servicioPartida.incrementarRondas(partida);
 
@@ -689,12 +733,15 @@ public class ServicioPartidaTest {
         jugadorCuatro.setOrden(3);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigoPrueba);
         partida.setJugadores(Arrays.asList(jugadorUno, jugadorDos, jugadorTres, jugadorCuatro));
         partida.setIndiceTurnoActual(2);
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(0);
+        dadasLasOportunidadesAnteriores(partida);
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partida
         );
@@ -717,6 +764,7 @@ public class ServicioPartidaTest {
     public void dadoQueHayJugadoresCuandoSeObtienePartidaPorCodigoYDaPosiciones() {
         String codigoPrueba = "MATANZA123";
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
 
         Jugador jugador1 = new Jugador();
         jugador1.setPosicionActual(0);
@@ -724,6 +772,7 @@ public class ServicioPartidaTest {
         jugador2.setPosicionActual(7);
         partidaSimulada.setJugadores(Arrays.asList(jugador1, jugador2));
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(
             partidaSimulada
         );
@@ -749,6 +798,7 @@ public class ServicioPartidaTest {
         sala.setCreador(creador);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setEstado(EstadoPartida.EN_ESPERA);
         partida.setJugadores(
             Arrays.asList(new Jugador(), new Jugador(), new Jugador(), new Jugador(), new Jugador())
@@ -756,6 +806,7 @@ public class ServicioPartidaTest {
 
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
         assertThrows(CantidadMaximaJugadoresSuperadaException.class, () ->
@@ -798,6 +849,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     ));
 
     Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
     partida.setEstado(EstadoPartida.EN_ESPERA);
 
     when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo))
@@ -888,10 +940,12 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
 
         // Simulamos que ya existe una partida en curso para este código
         Partida partidaExistente = new Partida();
+        partidaExistente.setEstado(EstadoPartida.EN_CURSO);
         partidaExistente.setCodigoUnico(codigo);
         partidaExistente.setEstado(EstadoPartida.EN_CURSO); // o como identifiques que ya está iniciada
 
         when(repositorioSalaDeEsperaMock.buscarPorCodigo(codigo)).thenReturn(sala);
+        dadasLasOportunidadesAnteriores(partidaExistente);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partidaExistente);
 
         assertThrows(PartidaIniciadaException.class, () -> {
@@ -905,12 +959,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         Long idJugador = 1L;
 
         Partida partidaSimulada = new Partida();
+        partidaSimulada.setEstado(EstadoPartida.EN_CURSO);
         partidaSimulada.setCodigoUnico(codigoPrueba);
 
         Jugador jugadorSimulado = new Jugador();
         jugadorSimulado.setId(idJugador);
         jugadorSimulado.setAbandono(false);
 
+        dadasLasOportunidadesAnteriores(partidaSimulada);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigoPrueba)).thenReturn(partidaSimulada);
         when(repositorioPartidaMock.buscarJugadorPorId(idJugador)).thenReturn(jugadorSimulado);
 
@@ -951,12 +1007,15 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         jugadorDos.setEnBancarrota(false);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(codigo)).thenReturn(false, true);
@@ -990,12 +1049,15 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         jugadorDos.setEnBancarrota(false);
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         partida.setRondaActual(5);
         partida.setTurnosFinalizadosEnRonda(0);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
 
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(codigo)).thenReturn(true);
@@ -1017,8 +1079,10 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         String codigo = "MATANZA123";
 
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(codigo)).thenReturn(true);
 
@@ -1107,12 +1171,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueLaPartidaNoTieneEventoCuandoSeIniciaTemporizadorYDaRelojProgramado() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
@@ -1130,11 +1196,13 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueElTemporizadorYaExisteCuandoSeIntentaIniciarYDaSinOtraNotificacion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
             eq(CODIGO), eq(30), any(Runnable.class))).thenReturn(false);
@@ -1149,11 +1217,13 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueElTemporizadorDevuelveNullCuandoSeIntentaIniciarYDaSinNotificacion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
             eq(CODIGO), eq(30), any(Runnable.class))).thenReturn(null);
@@ -1166,12 +1236,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueTerminaElEventoGlobalCuandoSeReanudaYDaTemporizadorNormal() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(true, false);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
@@ -1197,12 +1269,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueLaPartidaExisteCuandoSePreparaTiempoTurnoYDaDuracionDePresentacion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
 
         servicioPartida.prepararTiempoTurno(CODIGO, 8);
@@ -1215,12 +1289,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueLaPosicionEsNulaCuandoSeConsultanFichasYDaPosicionInicial() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador = new Jugador();
         jugador.setId(5L);
         jugador.setApodo("Primero");
         jugador.setPosicionActual(null);
         jugador.setFicha(ColorFicha.ROJO);
         partida.setJugadores(List.of(jugador));
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
 
         List<PosicionFicha> posiciones = servicioPartida.obtenerPosicionesFichas(CODIGO);
@@ -1235,11 +1311,13 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueLaFichaEsNulaCuandoSeConsultanPosicionesYDaColorNulo() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador = new Jugador();
         jugador.setId(5L);
         jugador.setPosicionActual(4);
         jugador.setFicha(null);
         partida.setJugadores(List.of(jugador));
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
 
         List<PosicionFicha> posiciones = servicioPartida.obtenerPosicionesFichas(CODIGO);
@@ -1251,15 +1329,18 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQuePartidaEstaEnRondaCuatroCuandoNoCambiaRondaYDaEventoSinVerificar() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(0);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         Jugador primero = new Jugador();
         primero.setOrden(0);
         Jugador segundo = new Jugador();
         segundo.setOrden(1);
         partida.setJugadores(List.of(primero, segundo));
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
 
         servicioPartida.avanzarTurno(CODIGO);
@@ -1275,9 +1356,11 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQuePartidaCompletaRondaCuandoNoSeActivaEventoYDaTemporizadorNormal() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(3);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -1285,6 +1368,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         segundo.setOrden(1);
         partida.setJugadores(List.of(primero, segundo));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
 
@@ -1301,6 +1385,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueElEventoEstaActivoCuandoSeBloqueaTurnoYDaSinCancelarTemporizador() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(5);
         partida.setIndiceTurnoActual(0);
@@ -1308,6 +1393,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(true);
 
@@ -1323,9 +1409,11 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueElSiguienteJugadorYaTiroCuandoSeAvanzaTurnoYDaTiradaReiniciada() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(1);
         partida.setTurnosFinalizadosEnRonda(0);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -1333,6 +1421,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         segundo.setOrden(1);
         segundo.setTiroEnTurno(true);
         partida.setJugadores(List.of(primero, segundo));
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
 
         servicioPartida.avanzarTurno(CODIGO);
@@ -1344,9 +1433,11 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueEventoGlobalLanzaExcepcionCuandoSeVerificaActivacionYDaIllegalStateException() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -1354,6 +1445,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         segundo.setOrden(1);
         partida.setJugadores(List.of(primero, segundo));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         doThrow(new EventoGlobalActivoException("Evento activo"))
             .when(servicioEventoMock).verificarActivacionEventoGlobal(partida);
@@ -1369,15 +1461,18 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueNoExisteLaPartidaDelEventoCuandoSeVerificaActivacionYDaIllegalStateException() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         Jugador primero = new Jugador();
         primero.setOrden(0);
         Jugador segundo = new Jugador();
         segundo.setOrden(1);
         partida.setJugadores(List.of(primero, segundo));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         doThrow(new PartidaNoEncontradaException())
             .when(servicioEventoMock).verificarActivacionEventoGlobal(partida);
@@ -1392,7 +1487,9 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueNoExisteJugadorCuandoSeIntentaAbandonarYDaIllegalArgumentException() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(repositorioPartidaMock.buscarJugadorPorId(44L)).thenReturn(null);
 
@@ -1406,6 +1503,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueElPublicadorLanzaExcepcionCuandoSeNotificaTurnoYDaIllegalStateException() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
@@ -1422,6 +1520,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
             publicadorTurnoMock, publicadorAbandonoMock, servicioEventoMock
         );
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
             eq(CODIGO), eq(30), any(Runnable.class))).thenReturn(true);
@@ -1439,11 +1538,13 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueLaPartidaNoTieneCodigoCuandoSePreparaTiempoYDaSinTemporizador() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(null)).thenReturn(partida);
 
         servicioPartida.prepararTiempoTurno(null, 5);
@@ -1459,12 +1560,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueHayEventoGlobalActivoCuandoSePreparaTiempoTurnoYDaSinTemporizadorNiNotificacion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(true);
 
@@ -1478,9 +1581,11 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueSeActivaEventoGlobalCuandoAvanzaLaRondaYDaTurnoPreparadoSinNotificacionNormal() throws Exception {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         partida.setIndiceTurnoActual(0);
 
         Jugador jugadorUno = new Jugador();
@@ -1494,6 +1599,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
 
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false, true);
 
@@ -1511,6 +1617,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
     @Test
     public void dadoQueFinalizoEventoGlobalCuandoSeIntentaReanudarDosVecesYDaUnaNotificacion() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(CODIGO);
 
         Jugador jugador = new Jugador();
@@ -1519,6 +1626,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         jugador.setOrden(0);
         partida.setJugadores(List.of(jugador));
 
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenReturn(partida);
         when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any(Runnable.class))).thenReturn(true, false);
@@ -1563,6 +1671,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
         partida.setRondaActual(null);
         partida.setTurnosFinalizadosEnRonda(null);
+        dadasLasOportunidadesAnteriores(partida);
 
         servicioPartida.avanzarTurno(CODIGO);
 
@@ -1705,6 +1814,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
 
     private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigo);
         Jugador primero = new Jugador();
         primero.setOrden(0);
@@ -1712,6 +1822,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         segundo.setOrden(1);
         partida.setJugadores(List.of(primero, segundo));
         partida.setIndiceTurnoActual(0);
+        dadasLasOportunidadesAnteriores(partida);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
         return partida;
     }
@@ -1723,6 +1834,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         for (Partida partida : List.of(cierreManual, cierrePorTiempo)) {
             partida.setRondaActual(24);
             partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
             partida.getJugadores().get(0).setId(1L);
             partida.getJugadores().get(1).setId(2L);
         }
@@ -1854,10 +1966,14 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         servicioPartida.iniciarTemporizadorTurnoSiNoExiste(CODIGO);
         relojAnterior.run();
         assertEquals(1, partida.getIndiceTurnoActual());
-        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        // main cuenta también la oportunidad perdida por Sarmiento.
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(25, partida.getJugadores().get(0).getUltimaRondaConOportunidad());
         reanudado.get().run();
         assertEquals(0, partida.getIndiceTurnoActual());
-        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertEquals(26, partida.getRondaActual());
+        assertEquals(25, partida.getJugadores().get(1).getUltimaRondaConOportunidad());
         assertFalse(partida.getJugadores().get(0).getTiroEnTurno());
     }
 
@@ -1903,6 +2019,7 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         partida.setIndiceTurnoActual(1);
         partida.setRondaActual(24);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         partida.getJugadores().get(0).setId(1L);
         partida.getJugadores().get(1).setId(2L);
         doAnswer(invocacion -> {
@@ -1937,4 +2054,21 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         return vencimiento.get();
     }
 
+
+    private void dadasLasOportunidadesAnteriores(Partida preparada) {
+        if (preparada == null || preparada.getJugadores() == null) return;
+        int pendientes = java.util.Objects.requireNonNullElse(preparada.getTurnosFinalizadosEnRonda(), 0);
+        int ronda = java.util.Objects.requireNonNullElse(preparada.getRondaActual(), 1);
+        int actual = java.util.Objects.requireNonNullElse(preparada.getIndiceTurnoActual(), 0);
+        for (int orden = 0; orden < preparada.getJugadores().size(); orden++) {
+            if (preparada.getJugadores().get(orden).getOrden() == null) preparada.getJugadores().get(orden).setOrden(orden);
+        }
+        for (Jugador jugador : preparada.getJugadores()) {
+            if (pendientes > 0 && jugador.getOrden() != null && jugador.getOrden() != actual
+                    && !jugador.getAbandono() && !jugador.getEnBancarrota()) {
+                jugador.setUltimaRondaConOportunidad(ronda);
+                pendientes--;
+            }
+        }
+    }
 }

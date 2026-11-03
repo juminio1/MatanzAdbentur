@@ -43,7 +43,6 @@ import com.tallerwebi.infraestructura.RepositorioPartidaImpl;
 import com.tallerwebi.infraestructura.RepositorioPropiedadImpl;
 import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.integracion.config.HibernateTestConfig;
-import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
 import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
 import com.tallerwebi.presentacion.ControladorEventoGlobal;
 import com.tallerwebi.presentacion.ControladorGestionQuiebra;
@@ -111,13 +110,13 @@ import static org.mockito.Mockito.when;
 @ContextConfiguration(classes = ConsecuenciasGlobalesIntegracionTest.Config.class)
 public class ConsecuenciasGlobalesIntegracionTest {
     @Configuration
-    @Import({ServicioEventoImpl.class, ServicioPartidaImpl.class, ServicioTurnoImpl.class,
+    @Import({com.tallerwebi.dominio.servicios.ServicioFinalizacionPartidaImpl.class,
+            com.tallerwebi.infraestructura.RepositorioFinalizarPartidaImpl.class, ServicioEventoImpl.class, ServicioPartidaImpl.class, ServicioTurnoImpl.class,
             ServicioParticipacionImpl.class, ServicioGestionQuiebraImpl.class, ServicioEconomiaImpl.class,
             ServicioPropiedadImpl.class, ServicioCasilleroImpl.class, ServicioOfertaPropiedadImpl.class,
             RepositorioPartidaImpl.class, RepositorioPropiedadImpl.class, RepositorioCasilleroImpl.class,
             RepositorioDeudaPendienteImpl.class, ObservadorReanudarPartida.class,
-            ObservadorEventoGlobalWebSocket.class, ControladorPropiedadesPartida.class,
-            ControladorOfertaPropiedad.class})
+            ObservadorEventoGlobalWebSocket.class, ControladorPropiedadesPartida.class})
     static class Config extends HibernateTestConfig {
         @Bean @Override public DataSource dataSource() {
             return new DriverManagerDataSource("jdbc:hsqldb:mem:consecuencias_globales", "sa", "");
@@ -143,7 +142,7 @@ public class ConsecuenciasGlobalesIntegracionTest {
     @Autowired private ServicioTurno turnos;
     @Autowired private ServicioGestionQuiebra quiebras;
     @Autowired private ServicioOfertaPropiedad ofertas;
-    @Autowired private ControladorOfertaPropiedad controladorOfertas;
+    @Autowired private ControladorPropiedadesPartida controladorOfertas;
     @Autowired private ControladorPropiedadesPartida controladorPropiedades;
     @Autowired private RepositorioPartida partidas;
     @Autowired private RepositorioEvento catalogo;
@@ -614,6 +613,7 @@ public class ConsecuenciasGlobalesIntegracionTest {
             actual.setRondaActual(34);
             actual.setTurnosFinalizadosEnRonda(1);
             partidas.buscarJugadorPorId(elegido).setPosicionActual(0);
+                    dadasLasOportunidadesAnteriores(actual);
         });
         when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.INUNDACION));
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(4, 4), new ResultadoTirada(1, 2));
@@ -646,7 +646,8 @@ public class ConsecuenciasGlobalesIntegracionTest {
                     actual.setRondaActual(ronda - 1);
                     actual.setTurnosFinalizadosEnRonda(cantidad - 1);
                     actual.setIndiceTurnoActual(cantidad - 1);
-                });
+                            dadasLasOportunidadesAnteriores(actual);
+        });
                 when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.ACCIDENTE_SARMIENTO));
 
                 servicioPartida.avanzarTurno(codigo);
@@ -689,7 +690,8 @@ public class ConsecuenciasGlobalesIntegracionTest {
                 actual.setRondaActual(ronda - 1);
                 actual.setTurnosFinalizadosEnRonda(3);
                 partida = actual;
-            });
+                        dadasLasOportunidadesAnteriores(actual);
+        });
             when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.FIAT_600));
             servicioPartida.avanzarTurno(codigo);
             assertEquals(ronda, eventos.consultarEstadoEventoGlobal(codigo).rondaActivacion());
@@ -880,6 +882,20 @@ public class ConsecuenciasGlobalesIntegracionTest {
             }
         } catch (Exception exception) {
             throw new IllegalStateException("Falló el puente del navegador de prueba", exception);
+        }
+    }
+
+    private void dadasLasOportunidadesAnteriores(Partida preparada) {
+        if (preparada == null || preparada.getJugadores() == null) return;
+        int pendientes = java.util.Objects.requireNonNullElse(preparada.getTurnosFinalizadosEnRonda(), 0);
+        int ronda = java.util.Objects.requireNonNullElse(preparada.getRondaActual(), 1);
+        int actual = java.util.Objects.requireNonNullElse(preparada.getIndiceTurnoActual(), 0);
+        for (Jugador jugador : preparada.getJugadores()) {
+            if (pendientes > 0 && jugador.getOrden() != null && jugador.getOrden() != actual
+                    && !jugador.getAbandono() && !jugador.getEnBancarrota()) {
+                jugador.setUltimaRondaConOportunidad(ronda);
+                pendientes--;
+            }
         }
     }
 }

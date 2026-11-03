@@ -26,6 +26,17 @@ import java.util.stream.Collectors;
 // Separa las consecuencias de la coordinación de tiradas para cumplir el límite de PMD.
 public final class AplicadorConsecuenciaEventoGlobal {
 
+    public static Boolean debeConservarElegido(EstadoEventoGlobal resultado, Partida partida, List<Long> activos) {
+        return activos.contains(resultado.idJugadorElegido())
+                || resultado.tipo() == TipoEventoGlobal.ROBO && partida != null && partida.getJugadores().stream()
+                .anyMatch(jugador -> jugador.getId().equals(resultado.idJugadorElegido())
+                        && Boolean.TRUE.equals(jugador.getEnBancarrota()) && !Boolean.TRUE.equals(jugador.getAbandono()));
+    }
+
+    public static Boolean hayMovimientoPendiente(Long idJugador, EventoGlobal evento) {
+        return idJugador != null && evento != null;
+    }
+
     private AplicadorConsecuenciaEventoGlobal() {
     }
 
@@ -57,7 +68,7 @@ public final class AplicadorConsecuenciaEventoGlobal {
                                     BiConsumer<Jugador, String> alResolver) throws JugadorNoEncontradoException, EventoInexistenteException {
         List<Jugador> jugadores = partida.getJugadores();
         List<Jugador> activos = jugadores == null ? List.of() : jugadores.stream()
-                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEnBancarrota()) && !Boolean.TRUE.equals(jugador.getAbandono()))
+                .filter(ValidadorEventoGlobal::estaActivo)
                 .toList();
         if (activos.isEmpty()) {
             throw new JugadorNoEncontradoException("No hay jugadores activos en la partida");

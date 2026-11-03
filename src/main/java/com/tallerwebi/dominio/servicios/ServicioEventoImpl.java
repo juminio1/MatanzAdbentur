@@ -126,8 +126,12 @@ public class ServicioEventoImpl implements ServicioEvento {
     @Override
     public void iniciarEventoGlobal(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {
         ValidadorEventoGlobal.validarEventoGlobal(eventoGlobal);
-        ValidadorEventoGlobal.validarPartida(partida);
+        ValidadorEventoGlobal.validarPartidaParaActivacion(partida);
         ValidadorEventoGlobal.validarJugadores(partida);
+
+        // Reserva la pausa antes de aplicar la consecuencia: una quiebra no debe adelantar el turno en medio del evento.
+        EventoGlobal eventoAnterior = eventosActivosPorPartida.putIfAbsent(partida.getCodigoUnico(), eventoGlobal);
+        ValidadorEventoGlobal.validarAusenciaDeEventoAnterior(eventoAnterior);
 
         if (EVENTOS_CON_TIRADA.contains(eventoGlobal.getTipoEventoGlobal())) {
             prepararTiradasEventoGlobal(partida, eventoGlobal);
@@ -136,12 +140,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         }
     }
 
-    // Reserva la pausa antes de aplicar la consecuencia: una quiebra no debe adelantar el turno en medio del evento.
-    private void ejecutarEventoInmediato(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalActivoException, JugadorNoEncontradoException, EventoInexistenteException {
+    private void ejecutarEventoInmediato(Partida partida, EventoGlobal eventoGlobal) throws JugadorNoEncontradoException, EventoInexistenteException {
         String codigoPartida = partida.getCodigoUnico();
-        EventoGlobal eventoAnterior = eventosActivosPorPartida.putIfAbsent(codigoPartida, eventoGlobal);
-
-        ValidadorEventoGlobal.validarAusenciaDeEventoAnterior(eventoAnterior);
 
         try {
             AplicadorConsecuenciaEventoGlobal.aplicarAlAzar(partida, eventoGlobal, random, repositorioPartida,
@@ -208,7 +208,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     public synchronized void actualizar(EventoJugadorAbandonado evento) {
         String codigoPartida = evento.partida().getCodigoUnico();
         if (obtenerJugadoresActivos(evento.partida()).size() < MINIMO_JUGADORES_ACTIVOS) {
-            limpiarEventoDePartidaFinalizada(codigoPartida);
+            cancelarEventoDePartidaFinalizada(codigoPartida);
         } else {
             Optional.ofNullable(consultarEstadoEventoGlobal(codigoPartida))
                     .filter(estado -> !partidasEnReanudacion.contains(codigoPartida)).ifPresent(estado ->
@@ -280,7 +280,7 @@ public class ServicioEventoImpl implements ServicioEvento {
         
         List<Long> activos = obtenerJugadoresActivos(partida).stream().map(Jugador::getId).toList();
         
-        Boolean conservarElegido = ValidadorEventoGlobal.debeConservarElegido(resultado, partida, activos);
+        Boolean conservarElegido = AplicadorConsecuenciaEventoGlobal.debeConservarElegido(resultado, partida, activos);
         Boolean deudaPendiente = AplicadorConsecuenciaEventoGlobal.obtenerDeudaRoboPendiente(
                 resultado.tipo(), codigoPartida, resultado.idJugadorElegido(), servicioGestionQuiebra);
 
@@ -387,12 +387,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         jugador.setPosicionActual(nuevaPosicion);
     }
 
-    private void prepararTiradasEventoGlobal(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalActivoException {
+    private void prepararTiradasEventoGlobal(Partida partida, EventoGlobal eventoGlobal) {
          String codigoPartida = partida.getCodigoUnico();
-
-        EventoGlobal eventoAnterior = eventosActivosPorPartida.putIfAbsent(codigoPartida, eventoGlobal);
-
-        ValidadorEventoGlobal.validarAusenciaDeEventoAnterior(eventoAnterior);
 
         tiradasPorPartida.put(codigoPartida, new ConcurrentHashMap<>());
         etapaTiradasPorPartida.put(codigoPartida, 0);
@@ -634,7 +630,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     private void aplicarMovimientoReservado(String codigoPartida, Partida partida) {
         Long idJugador = jugadoresMovimientoPendiente.get(codigoPartida);
         EventoGlobal evento = eventosMovimientoPendiente.get(codigoPartida);
-        if (ValidadorEventoGlobal.hayMovimientoPendiente(idJugador, evento)) {
+        if (AplicadorConsecuenciaEventoGlobal.hayMovimientoPendiente(idJugador, evento)) {
             partida.getJugadores().stream()
                     .filter(jugador -> idJugador.equals(jugador.getId()))
                     .filter(ValidadorEventoGlobal::estaActivo)
@@ -663,13 +659,6 @@ public class ServicioEventoImpl implements ServicioEvento {
         partidasEnPausaPorEmpate.remove(codigoPartida);
 
         etapaTiradasPorPartida.remove(codigoPartida);
-        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEmpate(codigoPartida)));
-
-        DespuesDeConfirmar.ejecutar(() ->
-            gestorTemporizador.cancelarTemporizador(
-                obtenerClaveTemporizadorEvento(codigoPartida)
-            )
-        );
     }
 
     private void finalizarEventoGlobal(Partida partida) {
@@ -677,19 +666,21 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         limpiarEstadoEventoGlobal(codigoPartida);
 
+        DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEmpate(codigoPartida)));
+
+        DespuesDeConfirmar.ejecutar(() ->
+            gestorTemporizador.cancelarTemporizador(
+                obtenerClaveTemporizadorEvento(codigoPartida)
+            )
+        );
         // La reanudación se notifica cuando vence la presentación del resultado.
     }
 
-    private void limpiarEventoDePartidaFinalizada(String codigoPartida) {
+    @Override
+    public synchronized void cancelarEventoDePartidaFinalizada(String codigoPartida) {
         // Si el abandono revierte, se conservan el evento y sus relojes para los jugadores originales.
         DespuesDeConfirmar.ejecutar(() -> {
-            relojEventoGlobal.limpiar(codigoPartida);
-            relojPausaEmpate.limpiar(codigoPartida);
-            eventosActivosPorPartida.remove(codigoPartida);
-            tiradasPorPartida.remove(codigoPartida);
-            participantesDesempatePorPartida.remove(codigoPartida);
-            partidasEnPausaPorEmpate.remove(codigoPartida);
-            etapaTiradasPorPartida.remove(codigoPartida);
+            limpiarEstadoEventoGlobal(codigoPartida);
             jugadoresMovimientoPendiente.remove(codigoPartida);
             eventosMovimientoPendiente.remove(codigoPartida);
             resultadosEnPresentacionPorPartida.remove(codigoPartida);

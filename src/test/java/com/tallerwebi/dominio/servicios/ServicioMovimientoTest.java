@@ -6,7 +6,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ServicioMovimientoTest {
-    private final ServicioMovimientoImpl movimiento = new ServicioMovimientoImpl(new ServicioEconomiaImpl());
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultas = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimientoImpl movimiento = new ServicioMovimientoImpl(new ServicioEconomiaImpl(), consultas,
+            new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+
+    @org.junit.jupiter.api.BeforeEach
+    void prepararPartida() {
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partida);
+    }
 
     @Test
     void acreditaCadaVueltaIncluyendoLaCaidaExactaEnInicio() {
@@ -75,4 +84,106 @@ class ServicioMovimientoTest {
         assertEquals(0, jugador.getPosicionActual());
     }
 
+    @Test
+    void moverJugadorRechazaFINALIZADASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.moverJugador(jugador, 4, 30));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
+    @Test
+    void avanzarRechazaFINALIZADASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.avanzar(jugador, 4));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
+    @Test
+    void avanzarAPosicionRechazaFINALIZADASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.avanzarAPosicion(jugador, 2));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
+    @Test
+    void moverJugadorRechazaEN_ESPERASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.moverJugador(jugador, 4, 30));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
+    @Test
+    void avanzarRechazaEN_ESPERASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.avanzar(jugador, 4));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
+    @Test
+    void avanzarAPosicionRechazaEN_ESPERASinModificarJugador() {
+
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_ESPERA);
+        Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(100);
+        org.mockito.Mockito.when(consultas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class, () -> movimiento.avanzarAPosicion(jugador, 2));
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(100, jugador.getDinero());
+        assertFalse(Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()));
+    }
 }

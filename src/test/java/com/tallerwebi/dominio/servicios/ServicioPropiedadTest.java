@@ -5,6 +5,9 @@ import com.tallerwebi.infraestructura.RepositorioPartida;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.servicios.ServicioPropiedadImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
 import com.tallerwebi.infraestructura.RepositorioPropiedad;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,8 @@ public class ServicioPropiedadTest {
     public void jugadorDeberiaComprarUnaPropiedadDisponible() {
         Long idPropiedad = 1L;
         Jugador jugador = new Jugador();
+        jugador.setId(1L);
+        prepararPartidaEnCurso(jugador);
         jugador.setDinero(1000);
         Propiedad propiedad = new Propiedad(1L,"Plaza San Justo",  500, 100, null, SAN_JUSTO);
         when(repositorioPropiedadMock.buscarPropiedadPorId(idPropiedad)).thenReturn(propiedad);
@@ -76,6 +81,7 @@ public class ServicioPropiedadTest {
         Jugador visitante = new Jugador();
         visitante.setId(1L);
         visitante.setDinero(1000);
+        prepararPartidaEnCurso(visitante);
         Jugador propietario = new Jugador();
         propietario.setId(2L);
         propietario.setDinero(500);
@@ -106,6 +112,7 @@ public class ServicioPropiedadTest {
         Jugador propietario = new Jugador();
         propietario.setId(1L);
         propietario.setDinero(1000);
+        prepararPartidaEnCurso(propietario);
         Propiedad propiedad = new Propiedad(1L,"Plaza San Justo", 500, 100, propietario,  SAN_JUSTO);
         servicioPropiedad.pagarAlquiler(propiedad, propietario);
         assertEquals(1000, propietario.getDinero());
@@ -115,6 +122,7 @@ public class ServicioPropiedadTest {
     public void jugadorDeberiaMejorarPropiedadSiEsDuenioDeTodoElGrupo() {
         Jugador jugador = new Jugador();
         jugador.setId(1L);
+        prepararPartidaEnCurso(jugador);
         jugador.setDinero(2000);
 
         Propiedad propiedad1 = new Propiedad(1L, "Plaza San Justo", 500, 100, jugador, SAN_JUSTO);
@@ -154,5 +162,132 @@ public class ServicioPropiedadTest {
     public void alquilerSinMejorasDeberiaMantenerElPrecioBase() {
         Propiedad propiedad = new Propiedad(1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
         assertEquals(100, servicioPropiedad.calcularAlquiler(propiedad));
+    }
+
+    private void prepararPartidaEnCurso(Jugador jugador) {
+        Partida partida = new Partida();
+        partida.setId(1L);
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.getJugadores().add(jugador);
+        when(servicioPartidaMock.buscarPartidaPorJugador(jugador.getId())).thenReturn(partida);
+    }
+
+    @Test
+    public void rechazaAlquilerCalculadoEnPartidaFinalizadaSinCambiarSaldos() {
+        Jugador pagador = new Jugador();
+        pagador.setId(1L);
+        pagador.setDinero(1000);
+        Jugador propietario = new Jugador();
+        propietario.setId(2L);
+        propietario.setDinero(500);
+        Propiedad propiedad = new Propiedad(1L, "Plaza", 500, 100, propietario, SAN_JUSTO);
+        propiedad.setNivelMejora(1);
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        partida.getJugadores().addAll(List.of(pagador, propietario));
+        when(servicioPartidaMock.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, pagador));
+
+        assertEquals(1000, pagador.getDinero());
+        assertEquals(500, propietario.getDinero());
+        assertSame(propietario, propiedad.getPropietario());
+        assertEquals(1, propiedad.getNivelMejora());
+        org.mockito.Mockito.verifyNoInteractions(economia);
+        org.mockito.Mockito.verify(servicioPartidaMock, org.mockito.Mockito.never()).actualizarJugador(
+                org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repositorioPropiedadMock, org.mockito.Mockito.never()).guardarPropiedad(
+                org.mockito.ArgumentMatchers.any());
+    }
+
+
+    @Test
+    public void rechazaAlquilerConMontoEnPartidaFinalizadaSinCambiarSaldos() {
+        Jugador pagador = new Jugador();
+        pagador.setId(1L);
+        pagador.setDinero(1000);
+        Jugador propietario = new Jugador();
+        propietario.setId(2L);
+        propietario.setDinero(500);
+        Propiedad propiedad = new Propiedad(1L, "Plaza", 500, 100, propietario, SAN_JUSTO);
+        propiedad.setNivelMejora(1);
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        partida.getJugadores().addAll(List.of(pagador, propietario));
+        when(servicioPartidaMock.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, pagador, 100));
+
+        assertEquals(1000, pagador.getDinero());
+        assertEquals(500, propietario.getDinero());
+        assertSame(propietario, propiedad.getPropietario());
+        assertEquals(1, propiedad.getNivelMejora());
+        org.mockito.Mockito.verifyNoInteractions(economia);
+        org.mockito.Mockito.verify(servicioPartidaMock, org.mockito.Mockito.never()).actualizarJugador(
+                org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repositorioPropiedadMock, org.mockito.Mockito.never()).guardarPropiedad(
+                org.mockito.ArgumentMatchers.any());
+    }
+
+
+    @Test
+    public void rechazaAlquilerCalculadoEnPartidaEnEsperaSinCambiarSaldos() {
+        Jugador pagador = new Jugador();
+        pagador.setId(1L);
+        pagador.setDinero(1000);
+        Jugador propietario = new Jugador();
+        propietario.setId(2L);
+        propietario.setDinero(500);
+        Propiedad propiedad = new Propiedad(1L, "Plaza", 500, 100, propietario, SAN_JUSTO);
+        propiedad.setNivelMejora(1);
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.getJugadores().addAll(List.of(pagador, propietario));
+        when(servicioPartidaMock.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, pagador));
+
+        assertEquals(1000, pagador.getDinero());
+        assertEquals(500, propietario.getDinero());
+        assertSame(propietario, propiedad.getPropietario());
+        assertEquals(1, propiedad.getNivelMejora());
+        org.mockito.Mockito.verifyNoInteractions(economia);
+        org.mockito.Mockito.verify(servicioPartidaMock, org.mockito.Mockito.never()).actualizarJugador(
+                org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repositorioPropiedadMock, org.mockito.Mockito.never()).guardarPropiedad(
+                org.mockito.ArgumentMatchers.any());
+    }
+
+
+    @Test
+    public void rechazaAlquilerConMontoEnPartidaEnEsperaSinCambiarSaldos() {
+        Jugador pagador = new Jugador();
+        pagador.setId(1L);
+        pagador.setDinero(1000);
+        Jugador propietario = new Jugador();
+        propietario.setId(2L);
+        propietario.setDinero(500);
+        Propiedad propiedad = new Propiedad(1L, "Plaza", 500, 100, propietario, SAN_JUSTO);
+        propiedad.setNivelMejora(1);
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+        partida.getJugadores().addAll(List.of(pagador, propietario));
+        when(servicioPartidaMock.buscarPartidaPorJugador(1L)).thenReturn(partida);
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.pagarAlquiler(propiedad, pagador, 100));
+
+        assertEquals(1000, pagador.getDinero());
+        assertEquals(500, propietario.getDinero());
+        assertSame(propietario, propiedad.getPropietario());
+        assertEquals(1, propiedad.getNivelMejora());
+        org.mockito.Mockito.verifyNoInteractions(economia);
+        org.mockito.Mockito.verify(servicioPartidaMock, org.mockito.Mockito.never()).actualizarJugador(
+                org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verify(repositorioPropiedadMock, org.mockito.Mockito.never()).guardarPropiedad(
+                org.mockito.ArgumentMatchers.any());
     }
 }

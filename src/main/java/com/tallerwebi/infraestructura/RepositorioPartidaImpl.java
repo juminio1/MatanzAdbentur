@@ -49,6 +49,15 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     }
 
     @Override
+    public Partida buscarPartidaPorJugador(Long idJugador) {
+        Query<Partida> consulta = this.sessionFactory.getCurrentSession()
+                .createQuery("SELECT partida FROM Partida partida JOIN partida.jugadores jugador "
+                        + "WHERE jugador.id = :idJugador", Partida.class)
+                .setParameter("idJugador", idJugador);
+        return obtenerResultadoUnicoONull(consulta);
+    }
+
+    @Override
     public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
         List<Partida> partidas = crearConsultaPartidasActivas(
             CONSULTA_PARTIDAS_ACTIVAS + " AND codigoUnico = :codigo"
@@ -57,6 +66,14 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
             .getResultList();
 
         return partidas.isEmpty() ? null : partidas.get(0);
+    }
+
+    @Override
+    public Partida buscarPartidaPorCodigoUnico(String codigoUnico) {
+        Query<Partida> consulta = this.sessionFactory.getCurrentSession()
+                .createQuery("FROM Partida WHERE codigoUnico = :codigo", Partida.class)
+                .setParameter("codigo", codigoUnico);
+        return obtenerResultadoUnicoONull(consulta);
     }
 
     private Query<Partida> crearConsultaPartidasActivas(String hql) {

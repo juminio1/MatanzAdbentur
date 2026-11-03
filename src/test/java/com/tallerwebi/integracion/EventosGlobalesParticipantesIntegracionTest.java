@@ -48,7 +48,7 @@ import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.integracion.config.HibernateTestConfig;
 import com.tallerwebi.presentacion.ControladorEventoGlobal;
 import com.tallerwebi.presentacion.ControladorPartida;
-import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
+import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorEventoGlobalWebSocket;
@@ -89,15 +89,18 @@ import static org.mockito.Mockito.*;
 @ContextConfiguration(classes = EventosGlobalesParticipantesIntegracionTest.Config.class)
 public class EventosGlobalesParticipantesIntegracionTest {
     @Configuration
-    @Import({ServicioEventoImpl.class, ServicioPartidaImpl.class, ServicioTurnoImpl.class,
+    @Import({com.tallerwebi.dominio.servicios.ServicioFinalizacionPartidaImpl.class,
+            com.tallerwebi.infraestructura.RepositorioFinalizarPartidaImpl.class, ServicioEventoImpl.class, ServicioPartidaImpl.class, ServicioTurnoImpl.class,
             ServicioParticipacionImpl.class, ServicioGestionQuiebraImpl.class, ServicioEconomiaImpl.class,
             ServicioPropiedadImpl.class, ServicioCasilleroImpl.class, ServicioOfertaPropiedadImpl.class,
             ServicioJugadaImpl.class, ServicioMovimientoImpl.class,
             RepositorioPartidaImpl.class, RepositorioPropiedadImpl.class, RepositorioCasilleroImpl.class,
             RepositorioDeudaPendienteImpl.class, ObservadorReanudarPartida.class,
             ObservadorTurnoAbandono.class, ObservadorVictoria.class,
+            com.tallerwebi.dominio.observadores.ObservadorTurnoQuiebra.class,
+            com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra.class,
             ObservadorEventoGlobalWebSocket.class, NotificadorPartida.class,
-            ControladorPartida.class, ControladorEventoGlobal.class, ControladorOfertaPropiedad.class})
+            ControladorPartida.class, ControladorEventoGlobal.class, ControladorPropiedadesPartida.class})
     static class Config extends HibernateTestConfig {
         @Bean @Override public DataSource dataSource() {
             return new DriverManagerDataSource("jdbc:hsqldb:mem:eventos_participantes", "sa", "");
@@ -112,14 +115,19 @@ public class EventosGlobalesParticipantesIntegracionTest {
                 List<Observador<EventoJugadorAbandonado>> observadores) {
             return new PublicadorEventos<>(observadores);
         }
-        @Bean public PublicadorEventos<EventoJugadorQuebrado> quiebras() {
-            return new PublicadorEventos<>(List.of());
+        @Bean public PublicadorEventos<EventoJugadorQuebrado> quiebras(
+                List<Observador<EventoJugadorQuebrado>> observadores) {
+            return new PublicadorEventos<>(observadores);
+        }
+        @Bean public java.util.function.Consumer<EventoJugadorQuebrado> notificacionQuiebra(NotificadorPartida notificador) {
+            return evento -> notificador.notificarQuiebraPorWebSocket(evento.partida(), evento.jugador().getId());
         }
         @Bean public PublicadorEventos<EventoTurnoCambiado> turnos(NotificadorPartida notificador) {
             return new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificador)));
         }
     }
 
+    @Autowired private com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida finales;
     @Autowired private ServicioEvento eventos;
     @Autowired private ServicioPartida partidas;
     @Autowired private RepositorioPartida repositorio;
@@ -130,7 +138,7 @@ public class EventosGlobalesParticipantesIntegracionTest {
     @Autowired private SessionFactory sesiones;
     @Autowired private PlatformTransactionManager gestorTransacciones;
     @Autowired private ControladorPartida controlador;
-    @Autowired private ControladorOfertaPropiedad controladorOfertas;
+    @Autowired private ControladorPropiedadesPartida controladorOfertas;
     @Autowired private ServicioOfertaPropiedad ofertas;
     @Autowired private ServicioGestionQuiebra quiebras;
     @Autowired private PublicadorEventos<EventoJugadorAbandonado> abandonos;
@@ -241,7 +249,11 @@ public class EventosGlobalesParticipantesIntegracionTest {
     }
 
     private RespuestaMovimientoDTO cuandoTiraNormal(int orden) throws Exception {
-        when(dados.tirarDados()).thenReturn(new ResultadoTirada(4, 4));
+        return cuandoTiraNormal(orden, new ResultadoTirada(4, 4));
+    }
+
+    private RespuestaMovimientoDTO cuandoTiraNormal(int orden, ResultadoTirada tirada) throws Exception {
+        when(dados.tirarDados()).thenReturn(tirada);
         MockHttpServletRequest solicitud = new MockHttpServletRequest();
         solicitud.getSession().setAttribute("NOMBRE", jugador(orden).getApodo());
         return controlador.tirarDados(codigo(), id(orden), solicitud);
@@ -255,6 +267,7 @@ public class EventosGlobalesParticipantesIntegracionTest {
             actual.setRondaActual(9);
             actual.setTurnosFinalizadosEnRonda(1);
             actual.setIndiceTurnoActual(1);
+                    dadasLasOportunidadesAnteriores(actual);
         });
         dadoQueSeraSeleccionado(0);
         when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.ACCIDENTE_SARMIENTO));
@@ -348,7 +361,8 @@ public class EventosGlobalesParticipantesIntegracionTest {
                     actual.setRondaActual(9);
                     actual.setTurnosFinalizadosEnRonda(cantidad - 1);
                     actual.setIndiceTurnoActual(cantidad - 1);
-                });
+                            dadasLasOportunidadesAnteriores(actual);
+        });
                 dadoQueSeraSeleccionado(afectado);
                 when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.ACCIDENTE_SARMIENTO));
                 partidas.iniciarTemporizadorTurnoSiNoExiste(codigo());
@@ -716,5 +730,181 @@ public class EventosGlobalesParticipantesIntegracionTest {
             assertNull(estado());
             assertNotNull(partidas.obtenerJugadorActual(codigo()));
         }
+    }
+
+    private void dadasLasOportunidadesAnteriores(Partida preparada) {
+        if (preparada == null || preparada.getJugadores() == null) return;
+        int pendientes = java.util.Objects.requireNonNullElse(preparada.getTurnosFinalizadosEnRonda(), 0);
+        int ronda = java.util.Objects.requireNonNullElse(preparada.getRondaActual(), 1);
+        int actual = java.util.Objects.requireNonNullElse(preparada.getIndiceTurnoActual(), 0);
+        for (Jugador jugador : preparada.getJugadores()) {
+            if (pendientes > 0 && jugador.getOrden() != null && jugador.getOrden() != actual
+                    && !jugador.getAbandono() && !jugador.getEnBancarrota()) {
+                jugador.setUltimaRondaConOportunidad(ronda);
+                pendientes--;
+            }
+        }
+    }
+
+    @Test
+    public void dadoQueSarmientoPenalizaAPrueba3YTest123AbandonaCuandoPruebaLocalCaeEnCarcelEntoncesPierdeUnaOportunidadYElRelojAnteriorNoAvanza() throws Exception {
+        dadaUnaPartida(3);
+        transaccion.executeWithoutResult(estado -> {
+            Jugador local = repositorio.buscarJugadorPorId(id(0));
+            local.setPosicionActual(0);
+            repositorio.buscarJugadorPorId(id(1)).setApodo("Prueba3");
+        });
+        partidas.iniciarTemporizadorTurnoSiNoExiste(codigo());
+        Runnable relojAnterior = vencimientos.get(codigo());
+        assertNotNull(relojAnterior);
+        dadoQueSeraSeleccionado(1);
+        cuandoSeActiva(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
+        assertEquals(id(1), estado().idJugadorElegido());
+        assertTrue(jugador(1).getPierdeTurno());
+
+        partidas.abandonarPartida(codigo(), id(2));
+        cuandoConfirmanLosActivos();
+        assertEquals(id(0), partidas.obtenerJugadorActual(codigo()).getId());
+        assertTrue(jugador(1).getPierdeTurno());
+        assertThrows(ResponseStatusException.class, () -> cuandoTiraNormal(1));
+        RespuestaMovimientoDTO carcel = cuandoTiraNormal(0);
+
+        assertEquals(id(0), carcel.getTurnoSiguiente().getIdJugadorActual());
+        assertTrue(jugador(0).getEstadoCarcel().getEncarcelado());
+        assertEquals(8, jugador(0).getPosicionActual());
+        assertFalse(jugador(1).getPierdeTurno());
+        assertEquals(10, jugador(1).getUltimaRondaConOportunidad());
+        assertEquals(11, partidas.obtenerPartida(codigo()).getRondaActual());
+        assertThrows(ResponseStatusException.class, () -> cuandoTiraNormal(1));
+        transaccion.executeWithoutResult(estado -> relojAnterior.run());
+        assertEquals(id(0), partidas.obtenerJugadorActual(codigo()).getId());
+        assertEquals(0, jugador(0).getEstadoCarcel().getIntentosSalirCarcel());
+        verify(dados, times(1)).tirarDados();
+
+        RespuestaMovimientoDTO liberacion = cuandoTiraNormal(0, new ResultadoTirada(6, 6));
+        assertFalse(jugador(0).getEstadoCarcel().getEncarcelado());
+        assertEquals(id(1), liberacion.getTurnoSiguiente().getIdJugadorActual());
+        cuandoTiraNormal(1);
+        assertEquals(20, jugador(1).getPosicionActual());
+        assertEquals(11, jugador(1).getUltimaRondaConOportunidad());
+        verify(dados, times(3)).tirarDados();
+    }
+
+    @Test
+    public void dadoQuePiqueteTieneUnMovimientoReservadoCuandoAbandonanHastaQuedarUnActivoEntoncesConservaElRankingYCancelaLaConsecuencia() throws Exception {
+        for (int cantidad : List.of(2, 3, 4)) {
+            dadaUnaPartida(cantidad);
+            cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+            cuandoTiran(cantidad == 2 ? new int[]{2, 12} : cantidad == 3 ? new int[]{2, 10, 12} : new int[]{2, 8, 10, 12});
+            List<Runnable> anteriores = new ArrayList<>(vencimientos.values());
+            for (int orden = cantidad - 1; orden > 0; orden--) partidas.abandonarPartida(codigo(), id(orden));
+
+            Partida finalizada = partidas.obtenerPartidaParaVisualizacion(codigo());
+            assertEquals(EstadoPartida.FINALIZADA, finalizada.getEstado());
+            assertEquals(12, jugador(0).getPosicionActual());
+            assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo()));
+            assertNull(estado());
+            for (Runnable anterior : anteriores) transaccion.executeWithoutResult(estado -> anterior.run());
+            assertEquals(12, jugador(0).getPosicionActual());
+            var ranking = finales.consultar(codigo(), jugador(0).getApodo());
+            assertEquals(cantidad, ranking.resultados().size());
+            assertEquals(id(0), ranking.resultados().get(0).idJugador());
+            assertTrue(ranking.resultados().get(0).ganador());
+            assertEquals(1500, ranking.resultados().get(0).patrimonioTotal());
+            assertEquals(cantidad - 1, ranking.resultados().stream().filter(resultado ->
+                    resultado.estadoParticipante() == com.tallerwebi.dominio.enums.EstadoParticipante.ABANDONADO).count());
+        }
+    }
+
+    @Test
+    public void dadoQuePiqueteEsperaConfirmacionesCuandoOtroJugadorQuiebraYQuedaUnActivoEntoncesFinalizaSinAplicarElMovimiento() throws Exception {
+        dadaUnaPartida(2);
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        cuandoTiran(2, 12);
+
+        quiebras.procesarMulta(codigo(), jugador(1), 3200, "FIANZA_CARCEL");
+
+        assertTrue(jugador(1).getEnBancarrota());
+        assertEquals(EstadoPartida.FINALIZADA, partidas.obtenerPartidaParaVisualizacion(codigo()).getEstado());
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo()));
+        assertNull(estado());
+        assertEquals(12, jugador(0).getPosicionActual());
+    }
+
+    @Test
+    public void dadoQueLosActivosYaTuvieronSuOportunidadCuandoElSeleccionadoAbandonaDuranteLaPausaEntoncesReanudaEnLaRondaSiguiente() throws Exception {
+        dadaUnaPartida(3);
+        transaccion.executeWithoutResult(estado -> {
+            Partida actual = repositorio.buscarPartidaActivaPorCodigoUnico(codigo());
+            actual.setIndiceTurnoActual(2);
+            actual.setTurnosFinalizadosEnRonda(2);
+            for (Jugador jugador : actual.getJugadores()) jugador.setUltimaRondaConOportunidad(jugador.getOrden() == 2 ? 9 : 10);
+        });
+        cuandoSeActiva(TipoEventoGlobal.FIAT_600);
+        partidas.abandonarPartida(codigo(), id(2));
+
+        cuandoConfirmanLosActivos();
+
+        assertEquals(11, partidas.obtenerPartida(codigo()).getRondaActual());
+        assertEquals(0, partidas.obtenerPartida(codigo()).getTurnosFinalizadosEnRonda());
+        assertEquals(id(0), partidas.obtenerJugadorActual(codigo()).getId());
+        assertEquals(10, jugador(0).getUltimaRondaConOportunidad());
+        assertEquals(10, jugador(1).getUltimaRondaConOportunidad());
+        cuandoTiraNormal(0);
+        assertEquals(11, partidas.obtenerPartida(codigo()).getRondaActual());
+        assertEquals(1, partidas.obtenerPartida(codigo()).getTurnosFinalizadosEnRonda());
+        assertEquals(id(1), partidas.obtenerJugadorActual(codigo()).getId());
+    }
+
+    @Test
+    public void dadoQueRoboProvocaLaUltimaQuiebraCuandoSeAplicaEntoncesFinalizaYConservaLaDeudaEnElRankingSinDejarUnEventoActivo() throws Exception {
+        dadaUnaPartida(2);
+        transaccion.executeWithoutResult(estado -> repositorio.buscarJugadorPorId(id(1)).setDinero(300));
+        dadoQueSeraSeleccionado(1);
+
+        cuandoSeActiva(TipoEventoGlobal.ROBO);
+
+        assertEquals(EstadoPartida.FINALIZADA, partidas.obtenerPartidaParaVisualizacion(codigo()).getEstado());
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo()));
+        assertNull(estado());
+        assertTrue(jugador(1).getEnBancarrota());
+        var resultados = finales.consultar(codigo(), jugador(0).getApodo()).resultados();
+        assertEquals(2, resultados.size());
+        assertTrue(resultados.get(0).ganador());
+        assertEquals(id(0), resultados.get(0).idJugador());
+        assertEquals(300, resultados.get(1).dineroFinal());
+        assertEquals(1000, resultados.get(1).deudaPendiente());
+        assertEquals(-700, resultados.get(1).patrimonioTotal());
+    }
+
+    @Test
+    public void dadoQueElUltimoTurnoActivaRoboYProvocaLaUltimaQuiebraCuandoFinalizaEntoncesConfirmaLosResultadosSinBuscarOtroTurno() throws Exception {
+        dadaUnaPartida(2);
+        transaccion.executeWithoutResult(estado -> {
+            Partida actual = repositorio.buscarPartidaActivaPorCodigoUnico(codigo());
+            actual.setRondaActual(4);
+            actual.setIndiceTurnoActual(1);
+            actual.setTurnosFinalizadosEnRonda(1);
+            repositorio.buscarJugadorPorId(id(0)).setUltimaRondaConOportunidad(4);
+            repositorio.buscarJugadorPorId(id(1)).setUltimaRondaConOportunidad(3);
+            repositorio.buscarJugadorPorId(id(0)).setDinero(300);
+        });
+        dadoQueSeraSeleccionado(0);
+        when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.ROBO));
+
+        RespuestaMovimientoDTO respuesta = cuandoTiraNormal(1);
+
+        assertNull(respuesta.getTurnoSiguiente());
+        assertEquals(EstadoPartida.FINALIZADA, partidas.obtenerPartidaParaVisualizacion(codigo()).getEstado());
+        assertTrue(jugador(0).getEnBancarrota());
+        assertNull(estado());
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo()));
+        var ranking = finales.consultar(codigo(), jugador(1).getApodo()).resultados();
+        assertEquals(2, ranking.size());
+        assertEquals(id(1), ranking.get(0).idJugador());
+        assertTrue(ranking.get(0).ganador());
+        assertEquals(1000, ranking.get(1).deudaPendiente());
+        assertEquals(-700, ranking.get(1).patrimonioTotal());
+        verify(dados, times(1)).tirarDados();
     }
 }

@@ -84,6 +84,9 @@ public class EventosGlobalesIntegracionTest {
     @EnableTransactionManagement
     @Import({ServicioEventoImpl.class, ServicioPartidaImpl.class, ServicioTurnoImpl.class, ServicioParticipacionImpl.class, ControladorEventoGlobal.class, ObservadorEventoGlobalWebSocket.class, ObservadorReanudarPartida.class})
     static class Config {
+        @Bean public com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida finalizacion() {
+            return mock(com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida.class);
+        }
 
         @Bean
         public DataSource dataSource() {
@@ -190,6 +193,7 @@ public class EventosGlobalesIntegracionTest {
         jugadorDos.setPosicionActual(7);
 
         partida = new Partida();
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
         partida.setCodigoUnico(codigoPartida);
         partida.setJugadores(List.of(jugadorUno, jugadorDos));
         partida.setIndiceTurnoActual(0);
@@ -216,6 +220,7 @@ public class EventosGlobalesIntegracionTest {
     public void dadoQueSeCompletaLaQuintaRondaCuandoAvanzaElTurnoEntoncesSeActivaElEventoSinIniciarElTurnoNormal() throws Exception {
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
 
         servicioPartida.avanzarTurno(codigoPartida);
 
@@ -430,6 +435,7 @@ public class EventosGlobalesIntegracionTest {
         eventoGlobal.setTipoEfecto(TipoEfecto.PERDER_TURNO);
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
 
         for (Integer ronda : List.of(5, 10)) {
             while (partida.getRondaActual() < ronda) {
@@ -469,6 +475,7 @@ public class EventosGlobalesIntegracionTest {
     public void dadoQueAfipTuvoDesempateEnCincoCuandoSeActivaEnDiezEntoncesReiniciaLasTiradasYConservaElMovimientoDiferido() throws Exception {
         partida.setRondaActual(4);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
         when(servicioDadoMock.tirarDados()).thenReturn(new ResultadoTirada(3, 3), new ResultadoTirada(2, 4),
                 new ResultadoTirada(5, 5), new ResultadoTirada(1, 2), new ResultadoTirada(1, 1), new ResultadoTirada(4, 4));
         servicioPartida.avanzarTurno(codigoPartida);
@@ -521,6 +528,7 @@ public class EventosGlobalesIntegracionTest {
         jugadorUno.getEstadoCarcel().encarcelar();
         partida.setRondaActual(9);
         partida.setTurnosFinalizadosEnRonda(1);
+        dadasLasOportunidadesAnteriores(partida);
 
         jugadas.pagarFianzaVoluntaria(codigoPartida, jugadorUno.getId());
 
@@ -542,5 +550,19 @@ public class EventosGlobalesIntegracionTest {
     private void confirmarContinuacionRest(String nombre) throws Exception {
         mockMvc.perform(post("/partida/{codigoPartida}/evento-global/continuar", codigoPartida).sessionAttr("NOMBRE", nombre))
                 .andExpect(status().isOk());
+    }
+
+    private void dadasLasOportunidadesAnteriores(Partida preparada) {
+        if (preparada == null || preparada.getJugadores() == null) return;
+        int pendientes = java.util.Objects.requireNonNullElse(preparada.getTurnosFinalizadosEnRonda(), 0);
+        int ronda = java.util.Objects.requireNonNullElse(preparada.getRondaActual(), 1);
+        int actual = java.util.Objects.requireNonNullElse(preparada.getIndiceTurnoActual(), 0);
+        for (Jugador jugador : preparada.getJugadores()) {
+            if (pendientes > 0 && jugador.getOrden() != null && jugador.getOrden() != actual
+                    && !jugador.getAbandono() && !jugador.getEnBancarrota()) {
+                jugador.setUltimaRondaConOportunidad(ronda);
+                pendientes--;
+            }
+        }
     }
 }

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
@@ -13,6 +14,9 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
+import com.tallerwebi.dominio.observadores.ObservadorReanudarPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.excepcion.ActivacionEventoInvalidoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
@@ -24,16 +28,39 @@ import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorSalaWebSocket;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorEventoGlobalWebSocket;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ObservadoresConfigTest {
+
+    @Test
+    void dadoQueSpringRecibeElFinDelEventoGlobalCuandoNotificaEntoncesReanudaYPublicaUnaSolaVez() {
+        ServicioPartida partida = mock(ServicioPartida.class);
+        SimpMessagingTemplate mensajeria = mock(SimpMessagingTemplate.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(ServicioPartida.class, () -> partida);
+            contexto.registerBean(SimpMessagingTemplate.class, () -> mensajeria);
+            contexto.registerBean(NotificadorPartida.class, () -> mock(NotificadorPartida.class));
+            contexto.register(ObservadoresConfig.class, ObservadorReanudarPartida.class,
+                    ObservadorEventoGlobalWebSocket.class);
+            contexto.refresh();
+            EventoGlobalFinalizado evento = new EventoGlobalFinalizado("ABC123");
+
+            contexto.publishEvent(evento);
+
+            verify(partida).iniciarTemporizadorTurnoSiNoExiste("ABC123");
+            verify(mensajeria).convertAndSend("/topic/partida/ABC123/evento-global/reanudado", evento);
+            verifyNoMoreInteractions(partida, mensajeria);
+        }
+    }
 
     @Test
     void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() throws BeansException, ActivacionEventoInvalidoException, PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException {

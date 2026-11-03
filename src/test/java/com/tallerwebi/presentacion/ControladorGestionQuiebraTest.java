@@ -46,7 +46,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 class ControladorGestionQuiebraTest {
     private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
-    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultasMovimiento = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia,
+            consultasMovimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()));
 
     private ServicioPartida servicioPartidaMock;
     private ServicioGestionQuiebra servicioGestionQuiebraMock;
@@ -58,7 +60,9 @@ class ControladorGestionQuiebraTest {
     private MockHttpSession session;
 
     @BeforeEach
-    void preparar() {
+    void preparar() {        var partidaMovimiento = new com.tallerwebi.dominio.entidades.Partida();
+        partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         servicioPartidaMock = mock(ServicioPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
         servicioPropiedadMock = mock(ServicioPropiedad.class);

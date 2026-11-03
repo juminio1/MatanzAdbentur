@@ -29,7 +29,6 @@ import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.presentacion.ControladorPartida;
 import com.tallerwebi.presentacion.ControladorGestionQuiebra;
 import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
-import com.tallerwebi.presentacion.ControladorOfertaPropiedad;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import java.util.List;
@@ -71,7 +70,9 @@ import static org.mockito.ArgumentMatchers.any;
 @ContextConfiguration(classes = EfectosPartidaIntegracionTest.Config.class)
 class EfectosPartidaIntegracionTest {
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
-    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultasMovimiento = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia,
+            consultasMovimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()));
 
     @Configuration
     @Import({
@@ -82,6 +83,8 @@ class EfectosPartidaIntegracionTest {
             ServicioCasilleroImpl.class,
             ServicioPropiedadImpl.class,
             ServicioGestionQuiebraImpl.class,
+            ServicioFinalizacionPartidaImpl.class,
+            RepositorioFinalizarPartidaImpl.class,
             RepositorioPartidaImpl.class,
             RepositorioCasilleroImpl.class,
             RepositorioPropiedadImpl.class,
@@ -126,8 +129,8 @@ class EfectosPartidaIntegracionTest {
         }
         @Bean
         ObservadorVictoria observadorVictoria(
-                RepositorioPartida repositorioPartida) {
-            return new ObservadorVictoria(repositorioPartida, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
+                ServicioFinalizacionPartida finalizacion) {
+            return new ObservadorVictoria(finalizacion);
         }
 
         @Bean
@@ -158,14 +161,16 @@ class EfectosPartidaIntegracionTest {
     private TransactionTemplate transaccion;
     private ControladorPartida controlador;
     private ControladorPropiedadesPartida propiedades;
-    private ControladorOfertaPropiedad ofertas;
+    private ControladorPropiedadesPartida ofertas;
     private String codigo;
     private Long idJugador;
     private Long idPropietario;
     @Autowired private SimpMessagingTemplate notificador;
 
     @BeforeEach
-    void preparar() {
+    void preparar() {        var partidaMovimiento = new com.tallerwebi.dominio.entidades.Partida();
+        partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
         controlador = new ControladorPartida(servicioPartida,
@@ -177,7 +182,7 @@ class EfectosPartidaIntegracionTest {
         var participacion = new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl();
         propiedades = new ControladorPropiedadesPartida(servicioPartida, notificador, servicioCasillero,
                 servicioPropiedad, servicioGestionQuiebra, participacion);
-        ofertas = new ControladorOfertaPropiedad(servicioPartida, notificador, servicioCasillero,
+        ofertas = new ControladorPropiedadesPartida(servicioPartida, notificador, servicioCasillero,
                 servicioPropiedad, servicioGestionQuiebra, participacion,
                 new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
         codigo = UUID.randomUUID().toString();

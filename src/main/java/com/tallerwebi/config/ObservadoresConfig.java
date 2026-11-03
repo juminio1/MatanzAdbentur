@@ -1,6 +1,5 @@
 package com.tallerwebi.config;
 
-import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
@@ -42,11 +41,6 @@ public class ObservadoresConfig {
     //indica a Spring cómo crear el publicador que nuestro servicio necesita.
     @Bean
     public PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(List<Observador<EventoJugadorQuebrado>> observadores) {
-        return new PublicadorEventos<>(observadores);
-    }
-
-    @Bean
-    public PublicadorEventos<EventoGlobalFinalizado> publicadorFinalizacionEventoGlobal(List<Observador<EventoGlobalFinalizado>> observadores) {
         return new PublicadorEventos<>(observadores);
     }
 

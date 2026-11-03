@@ -2,7 +2,8 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
-
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -48,5 +49,34 @@ class ServicioParticipacionTest {
         assertFalse(servicio.pertenece(partida, 2L));
         assertFalse(servicio.pertenece(partida, null));
         assertFalse(servicio.pertenece(null, 1L));
+    }
+
+    @Test
+    void permiteUnaPartidaEnCurso() {
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
+
+        assertDoesNotThrow(() -> servicio.validarPartidaEnCurso(partida));
+    }
+
+    @Test
+    void rechazaUnaPartidaFinalizada() {
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.FINALIZADA);
+
+        assertThrows(IllegalStateException.class, () -> servicio.validarPartidaEnCurso(partida));
+    }
+
+    @Test
+    void rechazaUnaPartidaEnEspera() {
+        Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_ESPERA);
+
+        assertThrows(IllegalStateException.class, () -> servicio.validarPartidaEnCurso(partida));
+    }
+
+    @Test
+    void rechazaUnaPartidaNula() {
+        assertThrows(IllegalStateException.class, () -> servicio.validarPartidaEnCurso(null));
     }
 }

@@ -92,9 +92,11 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
             throws PartidaNoEncontradaException, JugadorNoEncontradoException, ActivacionEventoInvalidoException, EventoGlobalInvalidoException, EventoGlobalActivoException, EventoInexistenteException {
 
+        //busca la partida y sino la encuentra lanza excepcion
         Partida partida = partidas.obtenerPartida(codigo);
 
         if (partida == null) throw new PartidaNoEncontradaException();
+        participacion.validarPartidaEnCurso(partida);
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
 
@@ -145,6 +147,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         Destino destino = resolverDestino(partida, jugador);
 
+        //verifica si puede pasar al siguiente jugador o si tiene que esperar
         avanzarTurnoSiCorresponde(codigo, jugador, destino.requiereDecision());
 
         //verifican que la partida este actualizada.
@@ -205,6 +208,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
+        participacion.validarPartidaEnCurso(partida);
 
         Jugador jugador = obtenerJugador(partida, idJugador);
 
