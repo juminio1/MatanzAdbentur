@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
+
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
@@ -56,7 +58,6 @@ public class ServicioEventoImpl implements ServicioEvento {
     private ServicioGestionQuiebra servicioGestionQuiebra;
 
     private static final Integer RONDAS_ENTRE_EVENTOS = 5;
-    private static final Integer CANTIDAD_CASILLEROS = 30;
     private static final Integer CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS = 1;
     private static final Integer MINIMO_JUGADORES_ACTIVOS = 2;
     private static final Integer DURACION_EVENTO_GLOBAL_SEGUNDOS = 30;
@@ -383,7 +384,8 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private void moverCasilleros(Jugador jugador, EventoGlobal evento) {
-        Integer nuevaPosicion = Math.floorMod(jugador.getPosicionActual() + evento.getValor(),CANTIDAD_CASILLEROS);
+        Integer nuevaPosicion = ServicioMovimientoImpl.calcularPosicionCircular(
+                jugador.getPosicionActual(), evento.getValor(), CatalogoTablero.TOTAL_CASILLEROS);
         jugador.setPosicionActual(nuevaPosicion);
     }
 

@@ -128,6 +128,19 @@ public class ServicioEventoTest {
         return crearEventoGlobal(1, TipoEventoGlobal.INUNDACION, TipoEfecto.MOVER_CASILLEROS, -3);
     }
 
+    @Test
+    public void dadoQueInundacionRetrocedeTresCuandoSeAplicaEnLosBordesDelTableroEntoncesRespetaElRecorridoDeTreintaCasilleros() throws Exception {
+        Map<Integer, Integer> destinos = Map.of(0, 27, 1, 28, 2, 29, 3, 0, 27, 24);
+        for (Map.Entry<Integer, Integer> caso : destinos.entrySet()) {
+            Jugador jugador = crearJugador(1L, 1000, caso.getKey());
+
+            servicioEvento.aplicarEvento(jugador, crearInundacion());
+
+            assertEquals(caso.getValue(), jugador.getPosicionActual());
+            assertEquals(1000, jugador.getDinero());
+        }
+    }
+
     private EventoGlobal crearPiquete() {
         return crearEventoGlobal(2, TipoEventoGlobal.PIQUETE, TipoEfecto.VOLVER_INICIO, 0);
     }

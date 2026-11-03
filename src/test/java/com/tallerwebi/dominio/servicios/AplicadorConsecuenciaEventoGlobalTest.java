@@ -45,6 +45,19 @@ public class AplicadorConsecuenciaEventoGlobalTest {
     }
 
     @Test
+    public void dadoQueInundacionSeleccionaRamosMejiaCuandoSePrevisualizaEntoncesAnunciaTresCasillerosAtrasSinMoverLaFicha() {
+        Jugador afectado = crearJugador(2L, 1000, 27);
+        Partida partida = crearPartida(crearJugador(1L, 1000, 20), afectado);
+
+        String detalle = AplicadorConsecuenciaEventoGlobal.previsualizarMovimiento(partida, afectado,
+                crearEvento(TipoEventoGlobal.INUNDACION, TipoEfecto.MOVER_CASILLEROS, -3));
+
+        assertEquals("retrocederá 3 casilleros, del casillero 27 al 24 cuando se reanude la partida.", detalle);
+        assertEquals(27, afectado.getPosicionActual());
+        assertEquals(1000, afectado.getDinero());
+    }
+
+    @Test
     public void dadoQueDosJugadoresEstanActivosCuandoSeEligeUnoAlAzarYDaConsecuenciaParaElSeleccionado() throws Exception {
         Jugador uno = crearJugador(1L, 1000, 5);
         Jugador dos = crearJugador(2L, 1000, 9);

@@ -605,6 +605,75 @@ public class ConsecuenciasGlobalesIntegracionTest {
     }
 
     @Test
+    public void dadoQuePruebaLocalSacaOchoYTest123CuatroCuandoInundacionSeActivaEnCincoEntoncesRetrocedeDeRamosMejiaAColectivo620UnaVez() throws Exception {
+        dadaUnaPartida(1000, false, 2);
+        Long idTest123 = partida.getJugadores().get(0).getId();
+        Long idPruebaLocal = partida.getJugadores().get(1).getId();
+        String codigo = partida.getCodigoUnico();
+        transaccion.executeWithoutResult(estado -> {
+            Partida actual = partidas.buscarPartidaActivaPorCodigoUnico(codigo);
+            actual.setRondaActual(4);
+            actual.setIndiceTurnoActual(1);
+            actual.setTurnosFinalizadosEnRonda(1);
+            Jugador test123 = partidas.buscarJugadorPorId(idTest123);
+            test123.setApodo("test123");
+            test123.setUltimaRondaConOportunidad(4);
+            Jugador pruebaLocal = partidas.buscarJugadorPorId(idPruebaLocal);
+            pruebaLocal.setApodo("prueba_local");
+            pruebaLocal.setUltimaRondaConOportunidad(3);
+            pruebaLocal.setPosicionActual(27);
+        });
+        when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.INUNDACION));
+        when(dados.tirarDados()).thenReturn(new ResultadoTirada(1, 3), new ResultadoTirada(4, 4));
+
+        servicioPartida.avanzarTurno(codigo);
+        assertEquals(5, eventos.consultarEstadoEventoGlobal(codigo).rondaActivacion());
+        eventos.tirarDadosEventoGlobal(codigo, idTest123);
+        eventos.tirarDadosEventoGlobal(codigo, idPruebaLocal);
+        EstadoEventoGlobal resultado = eventos.consultarEstadoEventoGlobal(codigo);
+        assertEquals(idPruebaLocal, resultado.idJugadorElegido());
+        assertEquals(Map.of(idTest123, 4, idPruebaLocal, 8), resultado.tiradas());
+        assertEquals(27, resultado.posiciones().get(idPruebaLocal));
+        assertTrue(resultado.detalle().contains("del casillero 27 al 24"));
+        assertEquals(27, jugadorPersistido(idPruebaLocal).getPosicionActual());
+        eventos.confirmarContinuacion(codigo, idTest123);
+        eventos.confirmarContinuacion(codigo, idTest123);
+        assertEquals(27, jugadorPersistido(idPruebaLocal).getPosicionActual());
+        Runnable vencimientoAnterior = vencimientos.get("evento-global-resultado:" + codigo);
+        eventos.confirmarContinuacion(codigo, idPruebaLocal);
+        vencimientoAnterior.run();
+
+        assertEquals(24, jugadorPersistido(idPruebaLocal).getPosicionActual());
+        assertEquals(20, jugadorPersistido(idTest123).getPosicionActual());
+        assertEquals(1000, jugadorPersistido(idPruebaLocal).getDinero());
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        assertThrows(IllegalStateException.class, () -> eventos.confirmarContinuacion(codigo, idPruebaLocal));
+        assertEquals(24, jugadorPersistido(idPruebaLocal).getPosicionActual());
+        verify(dados, times(2)).tirarDados();
+        verify(mensajeria, times(1)).convertAndSend(eq("/topic/partida/" + codigo + "/evento-global/reanudado"), any(Object.class));
+    }
+
+    @Test
+    public void dadoQueInundacionComienzaEnCeroUnoODosCuandoConfirmanEntoncesPersisteElRetrocesoCircularSinPremio() throws Exception {
+        for (Map.Entry<Integer, Integer> caso : Map.of(0, 27, 1, 28, 2, 29).entrySet()) {
+            dadaUnaPartida(1000, false, 2);
+            Long afectado = partida.getJugadores().get(1).getId();
+            transaccion.executeWithoutResult(estado -> partidas.buscarJugadorPorId(afectado).setPosicionActual(caso.getKey()));
+            cuandoSeActiva(TipoEventoGlobal.INUNDACION);
+            when(dados.tirarDados()).thenReturn(new ResultadoTirada(1, 3), new ResultadoTirada(4, 4));
+            for (Jugador jugador : partida.getJugadores()) eventos.tirarDadosEventoGlobal(partida.getCodigoUnico(), jugador.getId());
+            assertEquals(caso.getKey(), jugadorPersistido(afectado).getPosicionActual());
+
+            cuandoConfirmanTodos();
+
+            assertEquals(caso.getValue(), jugadorPersistido(afectado).getPosicionActual());
+            assertEquals(1000, jugadorPersistido(afectado).getDinero());
+            assertThrows(IllegalStateException.class, () -> eventos.confirmarContinuacion(partida.getCodigoUnico(), afectado));
+            assertEquals(caso.getValue(), jugadorPersistido(afectado).getPosicionActual());
+        }
+    }
+
+    @Test
     public void dadoQueInundacionParteDeInicioEnRondaTreintaYCincoCuandoGanaConOchoEntoncesPersisteRamosMejiaUnaVez() throws Exception {
         dadaUnaPartida(1000, false, 2);
         Long elegido = partida.getJugadores().get(0).getId();

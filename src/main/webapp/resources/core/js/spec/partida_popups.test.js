@@ -66,6 +66,63 @@ describe("Popups de eventos globales y deudas", function () {
         }));
     }
 
+    for (const [origen, destino] of [[27, 24], [0, 27], [1, 28], [2, 29]]) {
+        it(`dadoQueInundacionParteDe${origen}CuandoSeConfirmaEntoncesMuestraElRetrocesoYPreservaLaPosicion${destino}`, async function () {
+            prepararConsultasGlobales();
+            ventana.document.getElementById("1").querySelector(".nombre-jugador").textContent = "test123";
+            ventana.document.getElementById("2").querySelector(".nombre-jugador").textContent = "prueba_local";
+            ventana.resultadoGlobal = {
+                ...prepararEstadoGlobal(5, "FINALIZADO", "INUNDACION"), participantes: [1, 2],
+                tiradas: { 1: 4, 2: 8 }, posiciones: { 1: 20, 2: origen },
+                detalle: `retrocederá 3 casilleros, del casillero ${origen} al ${destino} cuando se reanude la partida.`,
+            };
+            ventana.fetch.and.callFake(async (url) => ({
+                ok: true, status: url.endsWith("/evento-global") ? 204 : 200,
+                json: async () => url.endsWith("/posiciones") ? [{ idJugador: 1, posicion: 20 }, { idJugador: 2, posicion: destino }]
+                    : { tieneDeudaPendiente: false, montoPendiente: null, motivo: null, acreedor: null },
+            }));
+
+            runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+
+            const ficha = ventana.document.querySelector('.ficha[data-jugador-id="2"]');
+            const mensaje = ventana.document.getElementById("evento-global-resultado").textContent;
+            expect(mensaje).toContain("prueba_local retrocederá 3 casilleros");
+            expect(mensaje).toContain("cuando se reanude la partida");
+            if (origen === 27) {
+                expect(mensaje).toContain("de «Estación Ramos Mejía» a «Colectivo 620»");
+            }
+            expect(ficha.closest(".casillero").dataset.casillero).toBe(String(origen));
+            expect(ventana.document.getElementById("btn-tirar").hidden).toBeTrue();
+
+            await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+            expect(ficha.closest(".casillero").dataset.casillero).toBe(String(destino));
+            expect(runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto)).toBeFalse();
+            expect(ficha.closest(".casillero").dataset.casillero).toBe(String(destino));
+        });
+    }
+
+    it("dadoQueLaAnimacionDeRamosMejiaSiguePendienteCuandoSeConfirmaInundacionEntoncesNoSobrescribeColectivo620", async function () {
+        prepararConsultasGlobales();
+        ventana.animacionDemorada = new Promise((resolver) => { ventana.terminarAnimacion = resolver; });
+        runInContext("animarMovimientoFicha = async () => animacionDemorada; atenderCaidaEnCasillero = async () => {};", contexto);
+        const movimiento = runInContext("procesarMovimiento({idJugador: 2, posicionAnterior: 19, posicionCaidaEvento: 27, nuevaPosicion: 27, dado1: 4, dado2: 4, saldos: []})", contexto);
+        ventana.resultadoGlobal = { ...prepararEstadoGlobal(5, "FINALIZADO", "INUNDACION"), posiciones: { 2: 27 } };
+        ventana.fetch.and.callFake(async (url) => ({
+            ok: true, status: url.endsWith("/evento-global") ? 204 : 200,
+            json: async () => url.endsWith("/posiciones") ? [{ idJugador: 2, posicion: 24 }]
+                : { tieneDeudaPendiente: false, montoPendiente: null, motivo: null, acreedor: null },
+        }));
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        ventana.terminarAnimacion();
+        await movimiento;
+
+        expect(ventana.document.querySelector('.ficha[data-jugador-id="2"]').closest(".casillero").dataset.casillero).toBe("24");
+        expect(runInContext("posicionesGlobalesPendientesDeAnimacion.size", contexto)).toBe(0);
+    });
+
     for (const cantidad of [2, 3, 4]) {
         it(`dados${cantidad}JugadoresCuandoSarmientoSalteaAlLocalEntoncesSoloHabilitaSusDadosAlVolverSuTurno`, async function () {
             prepararConsultasGlobales();

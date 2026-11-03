@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
+
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
@@ -144,11 +146,16 @@ public final class AplicadorConsecuenciaEventoGlobal {
                     .map(Jugador::getPosicionActual).filter(Objects::nonNull)
                     .mapToInt(Integer::intValue).max().orElse(origen);
             case PIQUETE -> 0;
-            case INUNDACION -> Math.floorMod(origen + evento.getValor(), 30);
+            case INUNDACION -> ServicioMovimientoImpl.calcularPosicionCircular(
+                    origen, evento.getValor(), CatalogoTablero.TOTAL_CASILLEROS);
             default -> origen;
         };
         if (evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP && Objects.equals(origen, destino)) {
             return "no avanza porque ya es el jugador más adelantado del tablero.";
+        }
+        if (evento.getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION) {
+            return "retrocederá " + Math.abs(evento.getValor()) + " casilleros, del casillero "
+                    + origen + " al " + destino + " cuando se reanude la partida.";
         }
         return Objects.equals(origen, destino)
                 ? "ya estaba en el casillero " + destino + ", por eso no se moverá."

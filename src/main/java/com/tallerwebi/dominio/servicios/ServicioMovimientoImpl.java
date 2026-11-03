@@ -27,8 +27,14 @@ public class ServicioMovimientoImpl implements ServicioMovimiento {
             throw new IllegalArgumentException("Movimiento inválido");
         }
         participacion.validarPartidaEnCurso(repositorioPartida.buscarPartidaPorJugador(jugador.getId()));
-        jugador.setPosicionActual(Math.floorMod(Math.addExact(jugador.getPosicionActual(), avance), totalCasilleros));
+        jugador.setPosicionActual(calcularPosicionCircular(jugador.getPosicionActual(), avance, totalCasilleros));
     }
+
+    // Calcula el destino sin mover la ficha ni aplicar premios o consecuencias. 
+    public static Integer calcularPosicionCircular(Integer posicion, Integer avance, Integer totalCasilleros) {
+        return Math.floorMod(Math.addExact(posicion, avance), totalCasilleros);
+    }
+
     @Override
     public int avanzar(Jugador jugador, int avance) {
         int premio = calcularPremioPorAvance(jugador.getPosicionActual(), avance);
