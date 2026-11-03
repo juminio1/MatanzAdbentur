@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Las ofertas viven en memoria y vencen a los cinco minutos.
  */
 @Service("servicioOfertaPropiedad")
+@org.springframework.transaction.annotation.Transactional
 public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     private static final Duration VIGENCIA = Duration.ofMinutes(5);
@@ -59,8 +60,10 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     }
 
     @Override
-    public Oferta crearOferta(Partida partida, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
-        participacion.validarPartidaEnCurso(partida);
+    public Oferta crearOferta(Partida referencia, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
+        Partida partida = servicioPartida.obtenerPartida(referencia.getCodigoUnico());
+        servicioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
         if (!participantesValidos(partida, idVendedor, idComprador) || precio == null || precio < 0) {
             throw new OfertaInvalidaException("La oferta no es válida.");
         }
@@ -90,14 +93,17 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     @Override
     public void rechazar(String codigoPartida, String idOferta, Long idComprador) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        participacion.validarPartidaEnCurso(partida);
+        servicioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
         Oferta oferta = obtenerVigente(codigoPartida, idOferta, idComprador);
         ofertas.remove(oferta.id(), oferta);
     }
 
     @Override
-    public OfertaAceptada aceptar(Partida partida, String idOferta, Long idComprador) {
-        participacion.validarPartidaEnCurso(partida);
+    public OfertaAceptada aceptar(Partida referencia, String idOferta, Long idComprador) {
+        Partida partida = servicioPartida.obtenerPartida(referencia.getCodigoUnico());
+        servicioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
         Oferta oferta = obtenerVigente(partida.getCodigoUnico(), idOferta, idComprador);
         // Evita que dos respuestas a la misma oferta transfieran la propiedad dos veces.
         synchronized (oferta) {

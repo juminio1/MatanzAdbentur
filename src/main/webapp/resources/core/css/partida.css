@@ -814,6 +814,10 @@
     transform: translate(-50%, 0);
 }
 
+.aviso-global { max-height: 85dvh; overflow-y: auto; }
+.aviso-global [hidden] { display: none; }
+.aviso-global ol { text-align: left; padding-left: 1.5rem; }
+
 .aviso-evento {
     position: fixed;
     z-index: 1200;

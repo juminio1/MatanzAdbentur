@@ -17,6 +17,7 @@ public interface ServicioPartida {
     void iniciarPartida(String codigo, Long idUsuario)
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException;
     void actualizarJugador(Jugador jugador);
+    void bloquearPartida(Partida partida);
     void incrementarRondas(Partida partida);
     void inicializarTurnos(String codigoUnico);
     void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException;
@@ -26,5 +27,6 @@ public interface ServicioPartida {
     void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico);
+    void reanudarDespuesDeEvento(String codigoUnico);
     List<PosicionFicha> obtenerPosicionesFichas(String codigo);
 }

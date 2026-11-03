@@ -37,6 +37,9 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private final ServicioPropiedad servicioPropiedad;
     private final RepositorioPropiedad repositorioPropiedad;
     private final PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
+    @Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
 
     @Autowired
     public ServicioGestionQuiebraImpl(
@@ -93,7 +96,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     public Boolean intentarResolverDeuda(
             String codigoPartida,
             Long idJugador) {
-        validarPartidaEconomica(codigoPartida, idJugador);
+        Partida partida = validarPartidaEconomica(codigoPartida, idJugador);
 
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
@@ -122,6 +125,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         repositorioPartida.actualizarJugador(deudor);
         repositorioDeudaPendiente.eliminar(deuda);
+
+        if (eventosGlobales != null && partida.getEventoGlobal().estaActivo()) {
+            eventosGlobales.participantesCambiaron(partida);
+        }
 
         return true;
     }
@@ -205,6 +212,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     // Comprueba que la partida esté en curso y que el jugador participe en ella.
     private Partida validarPartidaParaQuiebra(String codigoPartida, Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        repositorioPartida.bloquearPartida(partida);
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
@@ -310,6 +318,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
     private Partida validarPartidaEconomica(String codigoPartida, Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
+        repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
         if (!java.util.Objects.equals(codigoPartida, partida.getCodigoUnico())) {
             throw new IllegalStateException("El jugador no pertenece a esta partida.");

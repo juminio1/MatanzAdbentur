@@ -24,6 +24,23 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     }
 
     @Override
+    public void bloquearPartida(Partida partida) {
+        if (partida == null) return;
+        if (!sessionFactory.getCurrentSession().contains(partida)
+                || sessionFactory.getCurrentSession().getCurrentLockMode(partida) != org.hibernate.LockMode.PESSIMISTIC_WRITE) {
+            // Primero bloqueo sólo la fila padre. La segunda consulta recarga el grafo DESPUÉS
+            // de esperar el bloqueo, para no conservar colecciones leídas antes de otra petición.
+            sessionFactory.getCurrentSession().createNativeQuery(
+                    "SELECT id FROM Partida WHERE id = :id FOR UPDATE", Long.class)
+                    .setParameter("id", partida.getId()).getSingleResult();
+            sessionFactory.getCurrentSession().refresh(partida, org.hibernate.LockMode.PESSIMISTIC_WRITE);
+            // refresh no conserva necesariamente el modo en EntityEntry. Lo registro para
+            // que los servicios anidados reutilicen el bloqueo sin descartar cambios pendientes.
+            sessionFactory.getCurrentSession().lock(partida, org.hibernate.LockMode.PESSIMISTIC_WRITE);
+        }
+    }
+
+    @Override
     public void guardarPartida(Partida partida) {
         this.sessionFactory.getCurrentSession().persist(partida);
     }

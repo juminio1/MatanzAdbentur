@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=finalizacion-2)}"
-            href="../../../resources/core/css/partida.css?v=finalizacion-2"
+            th:href="@{/css/partida.css(v=eventos-globales-1)}"
+            href="../../../resources/core/css/partida.css?v=eventos-globales-1"
         />
     </head>
     <body class="pagina-partida">
@@ -685,6 +685,7 @@
                 </p>
                 <dl class="modal-info-propiedad__datos">
                     <div><dt>Deuda pendiente</dt><dd id="deuda-importe"></dd></div>
+                    <div><dt>Dinero disponible</dt><dd id="deuda-disponible"></dd></div>
                     <div><dt>Motivo</dt><dd id="deuda-motivo"></dd></div>
                     <div id="deuda-acreedor-contenedor"><dt>Acreedor</dt><dd id="deuda-acreedor"></dd></div>
                 </dl>
@@ -930,6 +931,19 @@
     <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
 </section>
 
+<section id="aviso-global" class="aviso-evento aviso-global" role="dialog" aria-modal="true" aria-labelledby="global-nombre" aria-hidden="true">
+    <h2 id="global-nombre"></h2>
+    <p id="global-descripcion"></p>
+    <p id="global-etapa" aria-live="polite"></p>
+    <p>Tiempo restante: <strong id="global-tiempo"></strong></p>
+    <ol id="global-tiradas" aria-label="Tiradas de los participantes"></ol>
+    <p id="global-consecuencia" aria-live="polite"></p>
+    <p id="global-mensaje" role="status"></p>
+    <button id="global-tirar" type="button" class="btn-casillero btn-casillero--principal">Tirar dados del evento</button>
+    <button id="global-continuar" type="button" class="btn-casillero btn-casillero--principal">Continuar partida</button>
+    <button id="global-deuda" type="button" class="btn-casillero btn-casillero--secundario" hidden>Resolver mi deuda</button>
+</section>
+
         <dialog
             id="modal-abandonar"
             class="modal-propiedad modal-abandono"
@@ -1013,7 +1027,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=finalizacion-2)}" src="../../../resources/core/js/partida.js?v=finalizacion-2" charset="UTF-8" defer></script>
+<script type="module" th:src="@{/js/partida.js(v=eventos-globales-1)}" src="../../../resources/core/js/partida.js?v=eventos-globales-1" charset="UTF-8"></script>
 
 </body>
 

@@ -1,3 +1,8 @@
+import { aceptarEstadoEvento, puedeTirarEnEvento } from "./eventos-globales.js";
+
+let estadoEventoGlobalCliente = null;
+let eventoGlobalSincronizado = false;
+let peticionEventoGlobal = false;
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
@@ -322,6 +327,9 @@ function conectarWebSocketTurnos(base, codigo) {
             consultarResultadosFinales();
             consultarDeudaPendiente(true);
 
+            stompClient.subscribe(`/topic/partida/${codigo}/evento-global`, () => sincronizarEventoGlobal());
+            sincronizarEventoGlobal();
+
             stompClient.subscribe(`/topic/partida/${codigo}/turno`, (mensaje) => {
                 const turnoDTO = JSON.parse(mensaje.body);
                 aplicarTurnoDTO(turnoDTO);
@@ -435,6 +443,7 @@ function actualizarBotonTirada() {
     if (botonTirar) {
         botonTirar.disabled =
             partidaFinalizada ||
+            !eventoGlobalSincronizado || estadoEventoGlobalCliente?.activo ||
             !posicionesInicialesSincronizadas ||
             movimientosDeJugadoresEnCurso.size > 0 ||
             estaTirando ||
@@ -544,6 +553,7 @@ function actualizarControlesCarcel() {
 
     const esMiTurno = String(window.turnoActualId) === String(window.usuarioSesionId);
     const mostrar =
+        !estadoEventoGlobalCliente?.activo &&
         estaPresoEnPantalla(window.usuarioSesionId) &&
         esMiTurno &&
         !yaTiroEnEsteTurno &&
@@ -705,6 +715,10 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
 
 async function procesarMovimiento(movimiento) {
     if (partidaFinalizada) return;
+    if (estadoEventoGlobalCliente?.activo) {
+        sincronizarEventoGlobal();
+        return;
+    }
     if (movimiento.turnoSiguiente) aplicarTurnoDTO(movimiento.turnoSiguiente);
     const clave = movimiento.idMovimiento
         ? String(movimiento.idMovimiento)
@@ -728,6 +742,10 @@ async function procesarMovimiento(movimiento) {
         actualizarBotonTirada();
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         if (partidaFinalizada) return;
+        if (estadoEventoGlobalCliente?.activo) {
+            sincronizarEventoGlobal();
+            return;
+        }
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
         if (Number.isInteger(posicionCaida)) {
             moverFichaEnTablero(movimiento.idJugador, posicionCaida);
@@ -846,6 +864,7 @@ function actualizarTurnoEnPantalla(turnoDTO) {
 
 function aplicarTurnoDTO(turnoDTO) {
     if (partidaFinalizada || !turnoDTO || turnoDTO.idJugadorActual == null) return;
+    if (estadoEventoGlobalCliente?.activo) return;
     const ronda = Number(turnoDTO.rondaActual ?? 0);
     const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
     const ultimo = window.ultimoTurnoRecibido;
@@ -932,7 +951,8 @@ function actualizarAvisoDeuda() {
     botonDeuda.textContent = `Deuda pendiente: ${importe}`;
     document.getElementById("deuda-importe").textContent = importe;
     document.getElementById("deuda-motivo").textContent =
-        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA" }[deuda.motivo] || deuda.motivo;
+        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA", ROBO_EVENTO_GLOBAL: "Robo del evento global" }[deuda.motivo] || deuda.motivo;
+    document.getElementById("deuda-disponible").textContent = `$${Number(window.dineroUsuarioSesion ?? 0).toLocaleString("es-AR")}`;
     document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
     document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
     document.getElementById("deuda-opciones").hidden = confirmacionQuiebraVisible;
@@ -1662,7 +1682,7 @@ let ultimoTurnoSolicitadoPorPagoDeuda = null;
 
 // Solicita una sola vez el cierre del mismo turno propio cuando la venta terminó de pagar la deuda.
 async function finalizarTurnoTrasPagarDeuda(claveTurnoVenta) {
-    if (!claveTurnoVenta || claveTurnoVenta !== window.claveTurnoActual
+    if (estadoEventoGlobalCliente?.activo || !claveTurnoVenta || claveTurnoVenta !== window.claveTurnoActual
             || ultimoTurnoSolicitadoPorPagoDeuda === claveTurnoVenta
             || window.usuarioSesionId == null
             || String(window.turnoActualId) !== String(window.usuarioSesionId)
@@ -1820,7 +1840,7 @@ function finalizarTurno() {
 }
 
 async function enviarFinalizacionTurno() {
-    if (window.usuarioEnBancarrota || partidaFinalizada) return;
+    if (window.usuarioEnBancarrota || partidaFinalizada || estadoEventoGlobalCliente?.activo) return;
     console.log("Intentando avanzar el turno...");
 
     const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/avanzar-turno`, {
@@ -1846,6 +1866,7 @@ let intervaloReloj = null;
 let tiempoRestante = 30;
 
 function iniciarRelojLocal(segundos) {
+    if (estadoEventoGlobalCliente?.activo) return;
     const elementoReloj = document.getElementById("cronometro-nro");
     if (!elementoReloj) return;
     const duracion = Number(segundos);
@@ -1876,6 +1897,153 @@ function iniciarRelojLocal(segundos) {
         }
     }, 1000);
 }
+
+// El servidor conserva las tiradas, los plazos y las consecuencias. La UI sólo los representa.
+async function sincronizarEventoGlobal() {
+    if (!codigoPartida || partidaFinalizada || peticionEventoGlobal) return;
+    peticionEventoGlobal = true;
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigoPartida)}/evento-global`, {
+            cache: "no-store", credentials: "same-origin",
+        });
+        if (!respuesta.ok) throw new Error(`No se pudo consultar el evento (${respuesta.status}).`);
+        aplicarEventoGlobal(await respuesta.json());
+    } catch (error) {
+        console.warn("No se pudo sincronizar el evento global.", error);
+    } finally {
+        peticionEventoGlobal = false;
+    }
+}
+
+function aplicarEventoGlobal(estado) {
+    if (partidaFinalizada || !aceptarEstadoEvento(estadoEventoGlobalCliente, estado)) return;
+    const estabaActivo = estadoEventoGlobalCliente?.activo;
+    if (estado.activo && !estabaActivo) {
+        document.getElementById("btn-continuar-evento")?.click();
+        document.querySelectorAll("dialog[open]").forEach(modal => {
+            const perteneceADeuda = estadoDeudaLocal.deuda && ["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad"].includes(modal.id);
+            if (!perteneceADeuda && modal.id !== "modal-abandonar") modal.close();
+        });
+    }
+    estadoEventoGlobalCliente = estado;
+    eventoGlobalSincronizado = true;
+    const panel = document.getElementById("aviso-global");
+    panel.classList.toggle("aviso-evento--visible", estado.activo);
+    panel.setAttribute("aria-hidden", String(!estado.activo));
+    if (estado.activo) {
+        clearInterval(intervaloReloj);
+        document.getElementById("cronometro-nro").textContent = "Pausa";
+        if (modalCompra?.open) cerrarModalCompra();
+        document.getElementById("global-nombre").textContent = estado.nombre.replaceAll("_", " ");
+        const seleccionado = estado.jugadores.find(jugador => jugador.id === estado.seleccionado);
+        document.getElementById("global-descripcion").textContent = estado.descripcion.replace(
+            "[nombre del jugador]", seleccionado?.apodo || "un jugador");
+        document.getElementById("global-etapa").textContent = estado.resuelto ? "Resultado del evento"
+            : estado.etapa > 1 ? `Desempate ${estado.etapa - 1}: sólo vuelven a tirar los empatados.`
+                : "Todos los jugadores activos tiran dos dados.";
+        document.getElementById("global-consecuencia").textContent = estado.consecuencia || "";
+        document.getElementById("global-mensaje").textContent = estado.deudaPendiente
+            ? "La partida espera que se resuelva la deuda del robo."
+            : estado.resuelto ? "Esperando las confirmaciones de los jugadores o el vencimiento del plazo." : "";
+        pintarTiradasGlobales(estado);
+        estado.jugadores.forEach(jugador => {
+            actualizarDineroJugador(jugador.id, jugador.dinero);
+            if (jugador.activo) moverFichaEnTablero(jugador.id, jugador.posicion);
+        });
+        posicionesInicialesSincronizadas = true;
+        actualizarControlesEventoGlobal();
+        actualizarTiempoEventoGlobal();
+        consultarDeudaPendiente();
+    } else if (estabaActivo) {
+        window.ultimoTurnoRecibido = { ronda: estado.rondaActual, finalizados: estado.turnosFinalizados };
+        window.turnoActualId = estado.idJugadorActual;
+        window.turnoInicialSincronizado = false;
+        consultarDeudaPendiente(true);
+        actualizarTurnoDesdeServidor(basePath, codigoPartida);
+        solicitarPosicionesPartida();
+    }
+    actualizarBotonTirada();
+}
+
+function pintarTiradasGlobales(estado) {
+    const lista = document.getElementById("global-tiradas");
+    lista.hidden = !estado.requiereDados;
+    lista.replaceChildren();
+    for (let etapa = 1; etapa <= estado.etapa; etapa++) {
+        estado.jugadores.filter(jugador => jugador.activo).forEach(jugador => {
+            const tirada = estado.tiradas[`${etapa}:${jugador.id}`];
+            if (tirada == null && (etapa !== estado.etapa || !estado.habilitados.includes(jugador.id))) return;
+            const fila = document.createElement("li");
+            const dadoUno = Math.floor(tirada / 10);
+            const dadoDos = tirada % 10;
+            const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+            fila.textContent = `Etapa ${etapa} · ${jugador.apodo}: ${tirada == null ? (estado.resuelto ? "no necesitó tirar" : "esperando tirada")
+                : `${caras[dadoUno]} ${caras[dadoDos]} (${dadoUno} + ${dadoDos} = ${dadoUno + dadoDos})`}`;
+            lista.append(fila);
+        });
+    }
+}
+
+function actualizarControlesEventoGlobal() {
+    const estado = estadoEventoGlobalCliente;
+    if (!estado?.activo) return;
+    const jugador = window.usuarioSesionId;
+    const activo = estado.jugadores.some(participante => participante.id === jugador && participante.activo);
+    const tirar = document.getElementById("global-tirar");
+    tirar.hidden = estado.resuelto;
+    tirar.disabled = !puedeTirarEnEvento(estado, jugador) || peticionEventoGlobal;
+    const continuar = document.getElementById("global-continuar");
+    continuar.hidden = !estado.resuelto;
+    continuar.disabled = !activo || peticionEventoGlobal || estado.confirmados.includes(jugador);
+    document.getElementById("global-deuda").hidden = !estadoDeudaLocal.deuda;
+}
+
+function actualizarTiempoEventoGlobal() {
+    if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
+    document.getElementById("global-tiempo").textContent = Math.max(0,
+        Math.ceil((estadoEventoGlobalCliente.vence - Date.now()) / 1000));
+    actualizarControlesEventoGlobal();
+}
+
+async function enviarAccionEventoGlobal(accion) {
+    if (peticionEventoGlobal || !estadoEventoGlobalCliente?.activo) return;
+    const estado = estadoEventoGlobalCliente;
+    peticionEventoGlobal = true;
+    actualizarControlesEventoGlobal();
+    try {
+        const parametros = new URLSearchParams({ ronda: estado.ronda, etapa: estado.etapa });
+        const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigoPartida)}/evento-global/${accion}?${parametros}`, {
+            method: "POST", credentials: "same-origin",
+        });
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar la acción del evento.");
+        aplicarEventoGlobal(datos);
+    } catch (error) {
+        document.getElementById("global-mensaje").textContent = error.message;
+    } finally {
+        peticionEventoGlobal = false;
+        actualizarControlesEventoGlobal();
+        sincronizarEventoGlobal();
+    }
+}
+
+document.getElementById("global-tirar").addEventListener("click", () => enviarAccionEventoGlobal("tirar"));
+document.getElementById("global-continuar").addEventListener("click", () => enviarAccionEventoGlobal("continuar"));
+document.getElementById("global-deuda").addEventListener("click", async () => {
+    await consultarDeudaPendiente(true);
+    if (estadoDeudaLocal.deuda) abrirModalPartida(modalDeuda);
+});
+document.addEventListener("click", evento => {
+    if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
+    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #modal-bono-propiedades, #modal-vender-propiedad, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    evento.preventDefault();
+    evento.stopImmediatePropagation();
+}, true);
+window.addEventListener("DOMContentLoaded", () => {
+    sincronizarEventoGlobal();
+    window.setInterval(sincronizarEventoGlobal, 3000);
+    window.setInterval(actualizarTiempoEventoGlobal, 250);
+});
 
 function sincronizarTiempoPopupCompra() {
     if (!modalCompra?.open) return;
@@ -2175,6 +2343,8 @@ function detenerPartidaEnPantalla() {
     document.querySelectorAll("dialog[open]:not(#modal-victoria)").forEach(modal => modal.close());
     document.getElementById("aviso-evento")?.classList.remove("aviso-evento--visible");
     document.getElementById("aviso-evento")?.setAttribute("aria-hidden", "true");
+    document.getElementById("aviso-global")?.classList.remove("aviso-evento--visible");
+    document.getElementById("aviso-global")?.setAttribute("aria-hidden", "true");
     bloquearAccionesFinalizadas();
     if (modalOfertaRecibida?.open) modalOfertaRecibida.close();
     if (modalVenderPropiedad?.open) modalVenderPropiedad.close();
@@ -2203,6 +2373,7 @@ let consultaResultadosEnCurso = null;
 let resultadosFinalesMostrados = false;
 
 function abrirModalPartida(modal) {
+    if (estadoEventoGlobalCliente?.activo && !["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar"].includes(modal.id)) return;
     if (!partidaFinalizada && !modal.open) modal.showModal();
 }
 

@@ -105,9 +105,16 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         }
         determinarGanadores(partida);
         partida.setEstado(EstadoPartida.FINALIZADA);
+        boolean teniaEventoGlobal = partida.getEventoGlobal().estaActivo();
+        if (teniaEventoGlobal) partida.getEventoGlobal().cerrar();
         repositorioPartida.guardarPartida(partida);
         String codigoPartida = partida.getCodigoUnico();
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoPartida));
+        if (teniaEventoGlobal) {
+            long revisionEvento = partida.getEventoGlobal().getRevision();
+            DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizadorEvento(
+                    "evento:" + codigoPartida, revisionEvento));
+        }
         return true;
     }
 

@@ -19,6 +19,7 @@ public class DatabaseInitializationConfig {
     @DependsOn("sessionFactory")
     public DataSourceInitializer dataSourceInitializer() {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+        populator.setSqlScriptEncoding("UTF-8");
         populator.addScript(new ClassPathResource("migraciones/normalizar-colores-fichas.sql"));
         populator.addScript(new ClassPathResource("migraciones/actualizar-nombres-casilleros.sql"));
         populator.addScript(new ClassPathResource("data.sql"));

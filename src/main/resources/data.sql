@@ -110,3 +110,126 @@ INSERT INTO CasilleroEvento (id)
 SELECT id
 FROM casilleros_nuevos
 ON CONFLICT (id) DO NOTHING;
+
+
+-- Inicialización de los seis eventos globales.
+-- Se respeta la herencia JOINED entre Evento y EventoGlobal.
+
+WITH datos(tipo_evento, nombre, descripcion, tipo_efecto, valor) AS (
+    VALUES
+        ('TRAMITES_AFIP', 'TRAMITES_AFIP',
+         'Caíste a hacer un trámite y hay terrible fila. Todos tiran los dados y el que saque la mayor suma se saltea toda la fila y avanza hasta el casillero del jugador más adelantado. Si hay empate, los empatados vuelven a tirar hasta definir un ganador.',
+         'MOVER_CASILLEROS', 0),
+
+        ('INUNDACION', 'INUNDACION',
+         'Se largó el diluvio y el barrio parece una pileta. Todos tiran los dados y el que saque la mayor suma se lo lleva el agua puesto y retrocede 3 casilleros. Si hay empate, los empatados vuelven a tirar.',
+         'MOVER_CASILLEROS', -3),
+
+        ('PIQUETE', 'PIQUETE',
+         'Quedaste atrapado en un piquete de volqueteros. Todos tiran los dados y el que saque la menor suma vuelve al Inicio. Si hay empate, los empatados vuelven a tirar.',
+         'VOLVER_INICIO', 0),
+
+        ('ROBO', 'ROBO',
+         '¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $1000.',
+         'PERDER_PLATA', 1000),
+
+        ('FIAT_600', 'FIAT_600',
+         'Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.',
+         'GANAR_PLATA', 400),
+
+        ('ACCIDENTE_SARMIENTO', 'ACCIDENTE_SARMIENTO',
+         'Hubo un accidente en el tren Sarmiento y el servicio quedó parado. Justo [nombre del jugador] venía viajando y perdió el turno esperando que vuelva a funcionar.',
+         'PERDER_TURNO', 1)
+),
+
+eventos_actualizados AS (
+    UPDATE Evento AS evento_base
+    SET
+        nombre = datos.nombre,
+        descripcion = datos.descripcion
+    FROM EventoGlobal AS evento_global
+    JOIN datos
+        ON evento_global.tipoEventoGlobal = datos.tipo_evento
+    WHERE evento_base.id = evento_global.id
+    RETURNING
+        evento_base.id,
+        evento_global.tipoEventoGlobal AS tipo_evento
+),
+
+eventos_reutilizados AS (
+    UPDATE Evento AS evento_base
+    SET descripcion = datos.descripcion
+    FROM datos
+    WHERE evento_base.nombre = datos.nombre
+      AND NOT EXISTS (
+          SELECT 1
+          FROM EventoGlobal AS evento_global
+          WHERE evento_global.tipoEventoGlobal = datos.tipo_evento
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM EventoGlobal AS evento_global
+          WHERE evento_global.id = evento_base.id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM EventoCasillero AS evento_casillero
+          WHERE evento_casillero.id = evento_base.id
+      )
+    RETURNING evento_base.id, evento_base.nombre
+),
+
+eventos_insertados AS (
+    INSERT INTO Evento (nombre, descripcion)
+    SELECT datos.nombre, datos.descripcion
+    FROM datos
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM EventoGlobal AS evento_global
+        WHERE evento_global.tipoEventoGlobal = datos.tipo_evento
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM Evento AS evento_base
+        WHERE evento_base.nombre = datos.nombre
+    )
+    RETURNING id, nombre
+),
+
+identificadores AS (
+    SELECT id, tipo_evento
+    FROM eventos_actualizados
+
+    UNION ALL
+
+    SELECT evento_base.id, datos.tipo_evento
+    FROM eventos_reutilizados AS evento_base
+    JOIN datos ON datos.nombre = evento_base.nombre
+
+    UNION ALL
+
+    SELECT evento_base.id, datos.tipo_evento
+    FROM eventos_insertados AS evento_base
+    JOIN datos ON datos.nombre = evento_base.nombre
+)
+
+INSERT INTO EventoGlobal (
+    id,
+    tipoEfecto,
+    valor,
+    tipoEventoGlobal
+)
+SELECT
+    identificadores.id,
+    datos.tipo_efecto,
+    datos.valor,
+    datos.tipo_evento
+FROM identificadores
+JOIN datos
+    ON identificadores.tipo_evento = datos.tipo_evento
+WHERE TRUE
+ON CONFLICT (id) DO UPDATE SET
+    tipoEfecto = EXCLUDED.tipoEfecto,
+    valor = EXCLUDED.valor,
+    tipoEventoGlobal = EXCLUDED.tipoEventoGlobal;
+

@@ -57,7 +57,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
         //busca la partida y sino la encuentra lanza excepcion
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
-        participacion.validarPartidaEnCurso(partida);
+        partidas.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
         Jugador jugador = obtenerJugador(partida, idJugador);
@@ -138,7 +139,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
         
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
-        participacion.validarPartidaEnCurso(partida);
+        partidas.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
 
         Jugador jugador = obtenerJugador(partida, idJugador);
 

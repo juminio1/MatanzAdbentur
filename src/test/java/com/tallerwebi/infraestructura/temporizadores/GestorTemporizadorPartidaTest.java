@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
@@ -23,6 +24,19 @@ public class GestorTemporizadorPartidaTest {
             mock(TransactionStatus.class)
         );
         gestorTemporizador = new GestorTemporizadorPartida(transactionManagerMock);
+    }
+
+    @AfterEach
+    void cerrarTemporizadores() { gestorTemporizador.destroy(); }
+
+    @Test
+    void dadoQueYaHayUnaEtapaNuevaCuandoLlegaUnaProgramacionAnteriorDaComoResultadoElPlazoVigente() {
+        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 3L, 0, () -> {});
+        org.junit.jupiter.api.Assertions.assertTrue(gestorTemporizador.obtenerSegundosRestantes("evento:ABC") > 20);
+        gestorTemporizador.cancelarTemporizadorEvento("evento:ABC", 5L);
+        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+        org.junit.jupiter.api.Assertions.assertNull(gestorTemporizador.obtenerSegundosRestantes("evento:ABC"));
     }
 
     @Test

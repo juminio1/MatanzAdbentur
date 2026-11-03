@@ -56,6 +56,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final TransactionTemplate lecturaTurno;
     @Autowired
     private com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion participacion;
+    @Autowired(required = false)
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
 
     public ServicioPartidaImpl(
             RepositorioPartida repositorioPartida,
@@ -116,6 +118,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    public void bloquearPartida(Partida partida) {
+        repositorioPartida.bloquearPartida(partida);
+    }
+
+    @Override
     public void incrementarRondas(Partida partida) {
         servicioTurno.incrementarRondas(partida);
     }
@@ -157,6 +164,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void iniciarTemporizadorTurnoSiNoExiste(String codigoUnico) {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
+        repositorioPartida.bloquearPartida(partida);
+        if (partida.getEventoGlobal().estaActivo()) return;
         participacion.validarPartidaEnCurso(partida);
         MarcaTurno marca = MarcaTurno.de(partida);
         Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
@@ -176,6 +185,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion) {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
+        if (partida.getEventoGlobal().estaActivo()) return;
         notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
     }
 
@@ -185,7 +195,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (esPartidaConJugadoresInvalida(partida)) {
             return;
         }
+        repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
+        if (partida.getEventoGlobal().estaActivo()) return;
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
         Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
         incrementarRondas(partida);
@@ -203,6 +215,23 @@ public class ServicioPartidaImpl implements ServicioPartida {
             return;
         }
 
+        candidato.setTiroEnTurno(false);
+        partida.setIndiceTurnoActual(candidato.getOrden());
+        repositorioPartida.guardarPartida(partida);
+        if (eventosGlobales != null && eventosGlobales.activarSiCorresponde(partida)) return;
+        notificarTurnoActual(partida, true);
+    }
+
+    @Override
+    public void reanudarDespuesDeEvento(String codigoUnico) {
+        Partida partida = obtenerPartida(codigoUnico);
+        if (partida == null) return;
+        repositorioPartida.bloquearPartida(partida);
+        if (partida.getEventoGlobal().estaActivo() || finalizacion.finalizarSiCorresponde(partida)) return;
+        int anteriorAlPendiente = Math.floorMod(servicioTurno.obtenerIndiceTurnoActual(partida) - 1,
+                partida.getJugadores().size());
+        Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, anteriorAlPendiente);
+        if (candidato == null) return;
         candidato.setTiroEnTurno(false);
         partida.setIndiceTurnoActual(candidato.getOrden());
         repositorioPartida.guardarPartida(partida);
@@ -236,6 +265,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             throw new PartidaNoEncontradaException();
         }
         participacion.validarPartidaEnCurso(partida);
+        repositorioPartida.bloquearPartida(partida);
         Jugador jugador = obtenerJugadorPorId(idJugador);
         if (jugador == null) {
             throw new IllegalArgumentException("El jugador especificado no existe.");
@@ -303,6 +333,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     private boolean turnoSigueVigente(Partida partida, MarcaTurno marca) {
         return partida != null && partida.getEstado() == EstadoPartida.EN_CURSO
+                && !partida.getEventoGlobal().estaActivo()
                 && marca.equals(MarcaTurno.de(partida));
     }
 
@@ -312,6 +343,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
      */
     private void avanzarTurnoSiSigueVigente(String codigoUnico, MarcaTurno marcaProgramada) {
         Partida partida = obtenerPartida(codigoUnico);
+        repositorioPartida.bloquearPartida(partida);
         if (!turnoSigueVigente(partida, marcaProgramada)) {
             return;
         }
