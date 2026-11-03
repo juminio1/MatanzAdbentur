@@ -11,7 +11,6 @@ let estaTirando = false;
 let posicionesInicialesSincronizadas = false;
 const avisosPartidaPendientes = [];
 const quiebrasNotificadas = new Set();
-const advertenciasRondaMostradas = new Set();
 
 let yaTiroEnEsteTurno = false;
 
@@ -888,22 +887,6 @@ function actualizarRondaActual(rondaActual) {
     if (contadorRonda && rondaActual != null) {
         contadorRonda.textContent = rondaActual;
     }
-    advertirFinalProximo(Number(rondaActual));
-}
-
-function advertirFinalProximo(ronda) {
-    if (partidaFinalizada || !Number.isInteger(ronda) || ronda < 27 || ronda > 30
-            || !codigoPartida || window.usuarioSesionId == null) return;
-    const clave = `matancero:advertencia-final:${JSON.stringify([codigoPartida, window.usuarioSesionId])}`;
-    if (advertenciasRondaMostradas.has(clave)) return;
-    try {
-        if (window.localStorage.getItem(clave) === "mostrada") return;
-        window.localStorage.setItem(clave, "mostrada");
-    } catch {
-        advertenciasRondaMostradas.add(clave);
-    }
-    advertenciasRondaMostradas.add(clave);
-    mostrarAvisoPartida(`¡Ojo! Ronda ${ronda} de 30. La partida está por terminar.`);
 }
 
 const modalCompra = document.getElementById("modal-compra-propiedad");

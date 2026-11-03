@@ -27,7 +27,6 @@ import com.tallerwebi.dominio.resultados.ResultadosFinalesPartida;
 
 @Service
 public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPartida {
-    private static final int MAXIMO_RONDAS = 30;
     private static final long UNICO_JUGADOR_ACTIVO = 1L;
 
     @Override
@@ -41,8 +40,7 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         if (activos == 0) {
             return false;
         }
-        return activos == UNICO_JUGADOR_ACTIVO
-                || partida.getRondaActual() != null && partida.getRondaActual() > MAXIMO_RONDAS;
+        return activos == UNICO_JUGADOR_ACTIVO;
     }
 
     private final RepositorioPropiedad repositorioPropiedad;
