@@ -1285,71 +1285,18 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
     }
 
     @Test
-    public void rondaTreintaIncompletaContinuaSiElCierreDevuelveFalse() {
-        Partida partida = prepararRondaConTresJugadores("CIERRE-INCOMPLETA");
-        partida.setRondaActual(30);
-
-        servicioPartida.avanzarTurno("CIERRE-INCOMPLETA");
-
-        assertEquals(30, partida.getRondaActual());
-        assertEquals(1, partida.getIndiceTurnoActual());
-        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
-        verify(finalizacion, times(2)).finalizarSiCorresponde(partida);
-        verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CIERRE-INCOMPLETA"), any(TurnoDTO.class));
-    }
-
-    @Test
-    public void ultimaOportunidadDeLaRondaTreintaCierraAntesDeAsignarONotificarOtroTurno() {
-        Partida partida = prepararRondaConTresJugadores("CIERRE-ULTIMA");
-        partida.setRondaActual(30);
-        partida.setIndiceTurnoActual(2);
-        partida.getJugadores().get(0).setUltimaRondaConOportunidad(30);
-        partida.getJugadores().get(1).setUltimaRondaConOportunidad(30);
-        partida.getJugadores().get(0).setTiroEnTurno(true);
-        when(finalizacion.finalizarSiCorresponde(partida)).thenAnswer(invocacion -> {
-            assertEquals(31, partida.getRondaActual());
-            partida.setEstado(EstadoPartida.FINALIZADA);
-            return true;
-        });
-
-        servicioPartida.avanzarTurno("CIERRE-ULTIMA");
-
-        assertEquals(EstadoPartida.FINALIZADA, partida.getEstado());
-        assertEquals(2, partida.getIndiceTurnoActual());
-        assertTrue(partida.getJugadores().get(0).getTiroEnTurno());
-        verify(finalizacion, times(1)).finalizarSiCorresponde(partida);
-        verify(repositorioPartidaMock, never()).guardarPartida(any());
-        verifyNoInteractions(notificadorPartidaMock);
-        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), any(), any());
-    }
-
-    @Test
-    public void ultimaOportunidadPenalizadaCierraTrasResolverSinAsignarElCandidato() {
-        Partida partida = prepararRondaConTresJugadores("CIERRE-PENALIZACION");
+    public void ultimaOportunidadPenalizadaPermiteComenzarLaRondaTreintaYUno() {
+        Partida partida = prepararRondaConTresJugadores("CONTINUA-PENALIZADA");
         partida.setRondaActual(30);
         partida.setIndiceTurnoActual(1);
         partida.getJugadores().get(0).setUltimaRondaConOportunidad(30);
-        partida.getJugadores().get(0).setTiroEnTurno(true);
         partida.getJugadores().get(2).setPierdeTurno(true);
-        when(finalizacion.finalizarSiCorresponde(partida)).thenAnswer(invocacion -> {
-            if (partida.getRondaActual() > 30) {
-                partida.setEstado(EstadoPartida.FINALIZADA);
-                return true;
-            }
-            return false;
-        });
-
-        servicioPartida.avanzarTurno("CIERRE-PENALIZACION");
-
+        servicioPartida.avanzarTurno("CONTINUA-PENALIZADA");
         assertEquals(31, partida.getRondaActual());
-        assertEquals(EstadoPartida.FINALIZADA, partida.getEstado());
-        assertEquals(1, partida.getIndiceTurnoActual());
-        assertEquals(30, partida.getJugadores().get(2).getUltimaRondaConOportunidad());
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(EstadoPartida.EN_CURSO, partida.getEstado());
         assertFalse(partida.getJugadores().get(2).getPierdeTurno());
-        assertTrue(partida.getJugadores().get(0).getTiroEnTurno());
-        verify(finalizacion, times(2)).finalizarSiCorresponde(partida);
-        verifyNoInteractions(notificadorPartidaMock);
-        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), any(), any());
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CONTINUA-PENALIZADA"), any(TurnoDTO.class));
     }
 
     @Test
