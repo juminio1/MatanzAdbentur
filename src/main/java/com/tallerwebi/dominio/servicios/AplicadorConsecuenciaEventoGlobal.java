@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -89,6 +90,40 @@ public final class AplicadorConsecuenciaEventoGlobal {
                 ? activos.stream().filter(ValidadorEventoGlobal::tieneSaldoRegistrable)
                         .collect(Collectors.toMap(Jugador::getId, Jugador::getDinero))
                 : resultado.saldos();
+    }
+
+    public static Boolean obtenerDeudaRoboPendiente(TipoEventoGlobal tipo, String codigoPartida, Long elegido,
+            ServicioGestionQuiebra gestionQuiebra) {
+        return tipo == TipoEventoGlobal.ROBO && elegido != null && gestionQuiebra != null
+                ? gestionQuiebra.obtenerDeudaPendiente(codigoPartida, elegido) != null : null;
+    }
+
+    public static String obtenerDetalleResultado(EstadoEventoGlobal resultado, Partida partida, Boolean deudaPendiente) {
+        if (!Boolean.TRUE.equals(resultado.deudaRoboPendiente())) {
+            return resultado.detalle();
+        }
+        if (partida != null && partida.getJugadores().stream().anyMatch(jugador ->
+                Objects.equals(jugador.getId(), resultado.idJugadorElegido()) && Boolean.TRUE.equals(jugador.getEnBancarrota()))) {
+            return "no pudo saldar la deuda por robo y quedó en quiebra.";
+        }
+        return Boolean.FALSE.equals(deudaPendiente)
+                ? "saldó su deuda por robo. Puede continuar la partida." : resultado.detalle();
+    }
+
+    public static String obtenerDetalleResultado(EstadoEventoGlobal resultado, Partida partida,
+            Boolean deudaPendiente, Boolean conservarElegido) {
+        if (!conservarElegido && resultado.idJugadorElegido() != null) {
+            Boolean movimientoDiferido = Set.of(TipoEventoGlobal.TRAMITES_AFIP, TipoEventoGlobal.INUNDACION,
+                    TipoEventoGlobal.PIQUETE).contains(resultado.tipo());
+            return movimientoDiferido || partida == null
+                    ? "El jugador seleccionado abandonó la partida; no recibirá la consecuencia."
+                    : resultado.detalle() + " El jugador seleccionado abandonó después de registrarse la consecuencia.";
+        }
+        return obtenerDetalleResultado(resultado, partida, deudaPendiente);
+    }
+
+    public static Long obtenerIdElegidoVigente(EstadoEventoGlobal resultado, Boolean conservarElegido) {
+        return conservarElegido ? resultado.idJugadorElegido() : null;
     }
 
     public static String previsualizarMovimiento(Partida partida, Jugador jugador, EventoGlobal evento) {

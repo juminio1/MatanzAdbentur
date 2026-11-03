@@ -53,7 +53,9 @@ import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -90,6 +92,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
     private final ServicioInicioPartida servicioInicioPartida;
 
     private final ServicioTurno servicioTurno;
+
+    private final Map<String, Thread> cambiosDeTurnoEnCurso = new ConcurrentHashMap<>();
 
     private final ServicioEvento servicioEvento;
 
@@ -272,9 +276,10 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         Jugador actual = servicioTurno.obtenerJugadorActual(partida);
 
-        if (actual != null && Boolean.TRUE.equals(actual.getPierdeTurno())) {
+        // Si abandonó durante la pausa, su turno tampoco puede recibir el reloj de reanudación.
+        if (actual == null || Boolean.TRUE.equals(actual.getPierdeTurno())) {
 
-            actual.setPierdeTurno(false);
+            if (actual != null) actual.setPierdeTurno(false);
 
             Jugador siguiente = servicioTurno.resolverSiguienteJugador(partida, servicioTurno.obtenerIndiceTurnoActual(partida));
 
@@ -316,6 +321,29 @@ public class ServicioPartidaImpl implements ServicioPartida {
     @Override
 
     public void avanzarTurno(String codigoUnico) {
+
+        ejecutarCambioDeTurno(codigoUnico, () -> avanzarTurnoActual(codigoUnico));
+
+    }
+
+    // La reserva dura hasta finalizar la transacción, para no admitir otro cierre con una vista anterior.
+    private void ejecutarCambioDeTurno(String codigoUnico, Runnable accion) {
+        if (codigoUnico == null) {
+            accion.run();
+            return;
+        }
+        Thread actual = Thread.currentThread();
+        Thread enCurso = cambiosDeTurnoEnCurso.putIfAbsent(codigoUnico, actual);
+        if (enCurso != null) {
+            // Conserva el avance interno de los observadores que participan de la misma operación.
+            if (enCurso.equals(actual)) accion.run();
+            return;
+        }
+        DespuesDeConfirmar.ejecutarConConfirmacion(accion, () -> { },
+                () -> cambiosDeTurnoEnCurso.remove(codigoUnico, actual));
+    }
+
+    private void avanzarTurnoActual(String codigoUnico) {
 
         Partida partida = obtenerPartida(codigoUnico);
 
@@ -493,14 +521,16 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     /*
-
      * Lo usa el temporizador al vencer. Si el turno que se programó ya terminó
-
      * (por ejemplo, el jugador lo cerró justo antes), no avanza de nuevo.
-
      */
-
     private void avanzarTurnoSiSigueVigente(String codigoUnico, MarcaTurno marcaProgramada) {
+
+        ejecutarCambioDeTurno(codigoUnico, () -> avanzarTurnoProgramado(codigoUnico, marcaProgramada));
+
+    }
+
+    private void avanzarTurnoProgramado(String codigoUnico, MarcaTurno marcaProgramada) {
 
         Partida partida = obtenerPartida(codigoUnico);
 

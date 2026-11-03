@@ -20,7 +20,7 @@ public class EstadoEventoGlobalTest {
         ObjectMapper mapper = new ObjectMapper();
         Set<String> camposEsperados = Set.of("codigoPartida", "fase", "tipo", "descripcion", "etapa",
                 "segundosRestantes", "participantes", "tiradas", "idJugadorElegido", "detalle",
-                "posiciones", "saldos", "confirmados", "rondaActivacion");
+                "posiciones", "saldos", "confirmados", "rondaActivacion", "deudaRoboPendiente");
 
         for (FaseEventoGlobal fase : FaseEventoGlobal.values()) {
             EstadoEventoGlobal estado = new EstadoEventoGlobal("ABC", fase, TipoEventoGlobal.INUNDACION,
@@ -34,6 +34,7 @@ public class EstadoEventoGlobalTest {
 
             assertEquals(fase.name(), contenido.path("fase").asText());
             assertEquals(5, contenido.path("rondaActivacion").asInt());
+            assertEquals(true, contenido.path("deudaRoboPendiente").isNull());
             assertEquals(camposEsperados, campos);
             assertEquals(estado, mapper.readValue(json, EstadoEventoGlobal.class));
         }
@@ -51,6 +52,7 @@ public class EstadoEventoGlobalTest {
         assertEquals(Map.of(), estado.saldos());
         assertEquals(List.of(), estado.confirmados());
         assertNull(estado.rondaActivacion());
+        assertNull(estado.deudaRoboPendiente());
     }
 
     @Test
@@ -64,5 +66,20 @@ public class EstadoEventoGlobalTest {
         assertEquals(Map.of(1L, 10), estado.posiciones());
         assertEquals(Map.of(1L, 500), estado.saldos());
         assertEquals(List.of(), estado.confirmados());
+    }
+
+    @Test
+    public void dadoQueRoboInformaSuDeudaCuandoSeSerializaEntoncesDistinguePendienteDeSaldada() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        for (Boolean pendiente : List.of(true, false)) {
+            EstadoEventoGlobal estado = new EstadoEventoGlobal("ABC", FaseEventoGlobal.FINALIZADO,
+                    TipoEventoGlobal.ROBO, "Robo", 0, 60, List.of(1L), Map.of(), 1L,
+                    "Detalle del robo", Map.of(1L, 10), Map.of(1L, 0), List.of(), 5, pendiente);
+
+            String json = mapper.writeValueAsString(estado);
+
+            assertEquals(pendiente.booleanValue(), mapper.readTree(json).get("deudaRoboPendiente").booleanValue());
+            assertEquals(estado, mapper.readValue(json, EstadoEventoGlobal.class));
+        }
     }
 }

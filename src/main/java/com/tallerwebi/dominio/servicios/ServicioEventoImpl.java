@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Lazy;
 import java.util.stream.Collectors;
 import com.tallerwebi.dominio.eventos.EventoGlobalFinalizado;
 import com.tallerwebi.dominio.eventos.EventoGlobalActualizado;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.excepcion.DatosEnventoInvalidoExceptions;
 import com.tallerwebi.dominio.excepcion.EventoGlobalActivoException;
 import com.tallerwebi.dominio.excepcion.EventoGlobalInvalidoException;
@@ -30,6 +31,7 @@ import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,15 +55,10 @@ public class ServicioEventoImpl implements ServicioEvento {
     private final RepositorioPartida repositorioPartida;
     private ServicioGestionQuiebra servicioGestionQuiebra;
 
-    // La dependencia es perezosa para evitar un ciclo con los observadores de quiebra y partida.
-    @Autowired
-    public void configurarServicioGestionQuiebra(@Lazy ServicioGestionQuiebra servicioGestionQuiebra) {
-        this.servicioGestionQuiebra = servicioGestionQuiebra;
-    }
-
     private static final Integer RONDAS_ENTRE_EVENTOS = 5;
     private static final Integer CANTIDAD_CASILLEROS = 30;
     private static final Integer CANTIDAD_MAXIMA_JUGADORES_ELEGIDOS = 1;
+    private static final Integer MINIMO_JUGADORES_ACTIVOS = 2;
     private static final Integer DURACION_EVENTO_GLOBAL_SEGUNDOS = 30;
     private static final Set<TipoEventoGlobal> EVENTOS_CON_TIRADA = Set.of(TipoEventoGlobal.INUNDACION, TipoEventoGlobal.PIQUETE, TipoEventoGlobal.TRAMITES_AFIP);
     private static final String PREFIJO_TEMPORIZADOR_EVENTO = "evento-global:";
@@ -69,7 +66,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     private static final String PREFIJO_TEMPORIZADOR_EMPATE = "evento-global-empate:";
     private static final Integer DURACION_CONFIRMACION_SEGUNDOS = 60;
     private static final String PREFIJO_TEMPORIZADOR_RESULTADO = "evento-global-resultado:";
-
+    
     private final Map<String, Integer> etapaTiradasPorPartida = new ConcurrentHashMap<>();
     private final Map<String, Map<Long, Integer>> tiradasPorPartida = new ConcurrentHashMap<>();
     private final Map<String, EventoGlobal> eventosActivosPorPartida = new ConcurrentHashMap<>();
@@ -84,6 +81,12 @@ public class ServicioEventoImpl implements ServicioEvento {
     private final Map<String, Long> jugadoresMovimientoPendiente = new ConcurrentHashMap<>();
     private final Map<String, EventoGlobal> eventosMovimientoPendiente = new ConcurrentHashMap<>();
     private final Set<String> partidasEnReanudacion = ConcurrentHashMap.newKeySet();
+    
+    // La dependencia es perezosa para evitar un ciclo con los observadores de quiebra y partida.
+    @Autowired
+    public void configurarServicioGestionQuiebra(@Lazy ServicioGestionQuiebra servicioGestionQuiebra) {
+        this.servicioGestionQuiebra = servicioGestionQuiebra;
+    }
 
     @Autowired
     public ServicioEventoImpl(RepositorioEvento repositorioEvento, ServicioDado servicioDado, ApplicationEventPublisher publicadorEventos, GestorTemporizadorPartida gestorTemporizador, RepositorioPartida repositorioPartida) {
@@ -201,12 +204,30 @@ public class ServicioEventoImpl implements ServicioEvento {
         return resultado != null ? construirEstadoResultadoActual(resultado) : consultarEstadoEventoActivo(codigoPartida);
     }
 
+    @Override
+    public synchronized void actualizar(EventoJugadorAbandonado evento) {
+        String codigoPartida = evento.partida().getCodigoUnico();
+        if (obtenerJugadoresActivos(evento.partida()).size() < MINIMO_JUGADORES_ACTIVOS) {
+            limpiarEventoDePartidaFinalizada(codigoPartida);
+        } else {
+            Optional.ofNullable(consultarEstadoEventoGlobal(codigoPartida))
+                    .filter(estado -> !partidasEnReanudacion.contains(codigoPartida)).ifPresent(estado ->
+                    DespuesDeConfirmar.ejecutar(() -> publicadorEventos.publishEvent(new EventoGlobalActualizado(estado))));
+        }
+    }
+
     private void resolverSiAbandonaronParticipantes(String codigoPartida) {
         EventoGlobal evento = eventosActivosPorPartida.get(codigoPartida);
-        if (evento != null && !partidasEnPausaPorEmpate.contains(codigoPartida)) {
+        if (evento != null) {
             Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
             Map<Long, Integer> tiradas = tiradasPorPartida.get(codigoPartida);
-            if (ValidadorEventoGlobal.puedeResolverTrasAbandonos(partida, tiradas, participantesDesempatePorPartida)) {
+            if (ValidadorEventoGlobal.noQuedanParticipantesHabilitados(partida, participantesDesempatePorPartida)) {
+                // Sin participantes del desempate no se elige un reemplazo entre quienes ya habían perdido.
+                publicarEstado(partida, evento, FaseEventoGlobal.FINALIZADO, null,
+                        "Los participantes del desempate abandonaron; el evento termina sin aplicar consecuencias.");
+                finalizarEventoGlobal(partida);
+            } else if (!partidasEnPausaPorEmpate.contains(codigoPartida)
+                    && ValidadorEventoGlobal.puedeResolverTrasAbandonos(partida, tiradas, participantesDesempatePorPartida)) {
                 try {
                     resolverEventoGlobal(partida);
                 } catch (DatosEnventoInvalidoExceptions | JugadorNoEncontradoException | EventoInexistenteException exception) {
@@ -260,18 +281,19 @@ public class ServicioEventoImpl implements ServicioEvento {
         List<Long> activos = obtenerJugadoresActivos(partida).stream().map(Jugador::getId).toList();
         
         Boolean conservarElegido = ValidadorEventoGlobal.debeConservarElegido(resultado, partida, activos);
+        Boolean deudaPendiente = AplicadorConsecuenciaEventoGlobal.obtenerDeudaRoboPendiente(
+                resultado.tipo(), codigoPartida, resultado.idJugadorElegido(), servicioGestionQuiebra);
 
-        String detalle = conservarElegido || resultado.idJugadorElegido() == null
-                ? resultado.detalle() : "El jugador seleccionado abandonó la partida; no recibirá la consecuencia.";
+        String detalle = AplicadorConsecuenciaEventoGlobal.obtenerDetalleResultado(resultado, partida, deudaPendiente, conservarElegido);
 
         return new EstadoEventoGlobal(codigoPartida, resultado.fase(), resultado.tipo(), resultado.descripcion(),
-                resultado.etapa(), segundosRestantes == null ? DURACION_CONFIRMACION_SEGUNDOS : segundosRestantes,
+                resultado.etapa(), Objects.requireNonNullElse(segundosRestantes, DURACION_CONFIRMACION_SEGUNDOS),
                 activos, filtrarDatosDeParticipantes(resultado.tiradas(), activos),
-                conservarElegido ? resultado.idJugadorElegido() : null, detalle,
+                AplicadorConsecuenciaEventoGlobal.obtenerIdElegidoVigente(resultado, conservarElegido), detalle,
                 filtrarDatosDeParticipantes(resultado.posiciones(), activos),
                 filtrarDatosDeParticipantes(AplicadorConsecuenciaEventoGlobal.obtenerSaldosResultado(
                         resultado, obtenerJugadoresActivos(partida)), activos), obtenerConfirmaciones(codigoPartida),
-                resultado.rondaActivacion());
+                resultado.rondaActivacion(), deudaPendiente);
     }
 
     @Override
@@ -489,7 +511,8 @@ public class ServicioEventoImpl implements ServicioEvento {
 
         return new EstadoEventoGlobal(codigoPartida, fase, eventoGlobal.getTipoEventoGlobal(), eventoGlobal.getDescripcion(),
                 etapa, segundos, List.copyOf(habilitados), Map.copyOf(tiradas), elegido, detalle, posiciones, saldos,
-                List.of(), partida.getRondaActual());
+                List.of(), partida.getRondaActual(), AplicadorConsecuenciaEventoGlobal.obtenerDeudaRoboPendiente(
+                        eventoGlobal.getTipoEventoGlobal(), codigoPartida, elegido, servicioGestionQuiebra));
     }
 
     private Integer obtenerTiempoRestante(String codigoPartida, FaseEventoGlobal fase) {
@@ -655,6 +678,28 @@ public class ServicioEventoImpl implements ServicioEvento {
         limpiarEstadoEventoGlobal(codigoPartida);
 
         // La reanudación se notifica cuando vence la presentación del resultado.
+    }
+
+    private void limpiarEventoDePartidaFinalizada(String codigoPartida) {
+        // Si el abandono revierte, se conservan el evento y sus relojes para los jugadores originales.
+        DespuesDeConfirmar.ejecutar(() -> {
+            relojEventoGlobal.limpiar(codigoPartida);
+            relojPausaEmpate.limpiar(codigoPartida);
+            eventosActivosPorPartida.remove(codigoPartida);
+            tiradasPorPartida.remove(codigoPartida);
+            participantesDesempatePorPartida.remove(codigoPartida);
+            partidasEnPausaPorEmpate.remove(codigoPartida);
+            etapaTiradasPorPartida.remove(codigoPartida);
+            jugadoresMovimientoPendiente.remove(codigoPartida);
+            eventosMovimientoPendiente.remove(codigoPartida);
+            resultadosEnPresentacionPorPartida.remove(codigoPartida);
+            confirmacionesPorPartida.remove(codigoPartida);
+            ultimaRondaConEventoPorPartida.remove(codigoPartida);
+            relojResultadoGlobal.limpiar(codigoPartida);
+            gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEvento(codigoPartida));
+            gestorTemporizador.cancelarTemporizador(obtenerClaveTemporizadorEmpate(codigoPartida));
+            gestorTemporizador.cancelarTemporizador(PREFIJO_TEMPORIZADOR_RESULTADO + codigoPartida);
+        });
     }
 
 

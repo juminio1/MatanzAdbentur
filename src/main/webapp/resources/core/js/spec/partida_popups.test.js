@@ -66,6 +66,81 @@ describe("Popups de eventos globales y deudas", function () {
         }));
     }
 
+    for (const cantidad of [2, 3, 4]) {
+        it(`dados${cantidad}JugadoresCuandoSarmientoSalteaAlLocalEntoncesSoloHabilitaSusDadosAlVolverSuTurno`, async function () {
+            prepararConsultasGlobales();
+            ventana.usuarioSesionId = 2;
+            ventana.resultadoGlobal = { ...prepararEstadoGlobal(10),
+                participantes: Array.from({ length: cantidad }, (_, indice) => indice + 1) };
+            ventana.turnoValido = { idJugadorActual: 1, rondaActual: 10,
+                turnosFinalizadosEnRonda: 0, duracionSegundos: 30 };
+            runInContext("posicionesInicialesSincronizadas = true; aplicarTurnoDTO(turnoValido); procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+            expect(ventana.document.getElementById("btn-tirar").hidden).toBeTrue();
+
+            await runInContext("consultarEstadoEventoGlobal()", contexto);
+            await runInContext("consultarDeudaPendiente(true)", contexto);
+
+            expect(ventana.turnoActualId).toBe(1);
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeTrue();
+            ventana.turnoAnterior = { ...ventana.turnoValido, idJugadorActual: 2, rondaActual: 9 };
+            runInContext("aplicarTurnoDTO(turnoAnterior)", contexto);
+            expect(ventana.turnoActualId).toBe(1);
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeTrue();
+            ventana.turnoSiguiente = { ...ventana.turnoValido, idJugadorActual: 2, turnosFinalizadosEnRonda: 1 };
+            runInContext("aplicarTurnoDTO(turnoSiguiente)", contexto);
+            await runInContext("consultarDeudaPendiente(true)", contexto);
+            expect(ventana.document.getElementById("btn-tirar").disabled).toBeFalse();
+            expect(runInContext("tiempoRestante", contexto)).toBe(30);
+        });
+    }
+
+    it("dadoQueUnAbandonoFinalizaLaPartidaDuranteElEventoCuandoLlegaUnEstadoViejoEntoncesNoReabreElPopupNiLosDados", function () {
+        prepararConsultasGlobales();
+        ventana.resultadoGlobal = prepararEstadoGlobal(10);
+        runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+
+        runInContext("mostrarVictoria({idJugador: 2, idGanador: 1, apodo: 'test123'})", contexto);
+        const aceptado = runInContext("procesarEstadoEventoGlobal(resultadoGlobal)", contexto);
+        runInContext("aplicarTurnoDTO({idJugadorActual: 1, rondaActual: 10, turnosFinalizadosEnRonda: 1, duracionSegundos: 30})", contexto);
+
+        expect(aceptado).toBeFalse();
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeFalse();
+        expect(ventana.document.getElementById("btn-tirar").disabled).toBeTrue();
+        expect(ventana.turnoActualId).toBeNull();
+    });
+
+    it("dadoQueRoboSigueAbiertoCuandoRestRecuperaElPagoEntoncesActualizaElSaldoSinRecargar", async function () {
+        prepararConsultasGlobales();
+        ventana.pendiente = { ...prepararEstadoGlobal(5, "FINALIZADO", "ROBO"),
+            deudaRoboPendiente: true, saldos: { 1: 1500, 2: 300 },
+            detalle: "debe $1000 por el robo. Necesita vender propiedades o declararse en quiebra." };
+        runInContext("procesarEstadoEventoGlobal(pendiente)", contexto);
+        ventana.eventoConsultado = { ...ventana.pendiente, deudaRoboPendiente: false,
+            saldos: { 1: 800, 2: 0 }, detalle: "saldó su deuda por robo. Puede continuar la partida." };
+
+        await runInContext("consultarEstadoEventoGlobal()", contexto);
+
+        expect(ventana.document.querySelector("[id='2'] .dinero").textContent).toBe("$0");
+        expect(ventana.document.getElementById("evento-global-resultado").textContent).toContain("saldó su deuda por robo");
+        expect(ventana.document.getElementById("modal-evento-global").open).toBeTrue();
+    });
+
+    it("dadoQueLaDeudaDeRoboYaSeSaldoCuandoLlegaUnEstadoAnteriorEntoncesNoRestauraLaAdvertenciaNiElSaldoViejo", function () {
+        prepararConsultasGlobales();
+        ventana.pendiente = { ...prepararEstadoGlobal(5, "FINALIZADO", "ROBO"),
+            deudaRoboPendiente: true, saldos: { 2: 300 }, detalle: "debe $1000 por el robo. Necesita vender propiedades." };
+        ventana.pagado = { ...ventana.pendiente, deudaRoboPendiente: false,
+            saldos: { 2: 0 }, detalle: "saldó su deuda por robo. Puede continuar la partida." };
+        runInContext("procesarEstadoEventoGlobal(pendiente); procesarEstadoEventoGlobal(pagado)", contexto);
+
+        const aceptado = runInContext("procesarEstadoEventoGlobal(pendiente)", contexto);
+
+        expect(aceptado).toBeFalse();
+        expect(ventana.document.querySelector("[id='2'] .dinero").textContent).toBe("$0");
+        expect(ventana.document.getElementById("evento-global-resultado").textContent).not.toContain("Necesita vender");
+    });
+
     it("dadoQueSalePiqueteCuandoSeMuestraElEventoEntoncesSeTitulaNoSePasa", function () {
         expect(runInContext("obtenerNombreEventoGlobal('PIQUETE')", contexto)).toBe("No se pasa");
     });

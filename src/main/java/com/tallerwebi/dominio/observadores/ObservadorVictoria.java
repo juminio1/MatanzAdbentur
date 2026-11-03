@@ -23,7 +23,6 @@ public class ObservadorVictoria implements Observador<EventoJugadorAbandonado> {
         this.repositorioPartida = repositorioPartida;
     }
 
-    //Se ejecuta cuando el jugador abandona. Y llama a verificarVictoria
     @Override
     public void actualizar(EventoJugadorAbandonado evento) {
         verificarVictoria(evento.partida());

@@ -386,6 +386,7 @@ function conectarWebSocketTurnos(base, codigo) {
                 ) {
                     consultarDeudaPendiente(true);
                 }
+                if (estadoEventoGlobal?.tipo === "ROBO") consultarEstadoEventoGlobal(true);
             });
             stompClient.subscribe(`/topic/partida/${codigo}/dinero`, (mensaje) => {
                 const saldo = JSON.parse(mensaje.body);
@@ -2578,6 +2579,8 @@ function programarCierreAutomaticoEventoGlobal(estado) {
 }
 
 function procesarEstadoEventoGlobal(estado) {
+    // Un mensaje pendiente no puede volver a presentar un evento después de la victoria por abandono.
+    if (partidaFinalizada) return false;
     if (!estado || String(estado.codigoPartida) !== String(codigoPartida) || !Object.values(FASES_EVENTO_GLOBAL).includes(estado.fase)) {
         console.warn("Se recibió un estado de evento global no válido.", estado);
         return false;
@@ -2593,6 +2596,12 @@ function procesarEstadoEventoGlobal(estado) {
         return false;
     }
     const mismaActivacion = estadoEventoGlobal !== null && obtenerClaveEventoGlobal(estadoEventoGlobal) === claveEvento;
+
+    // Una deuda del mismo robo ya saldada no vuelve a estar pendiente por un mensaje atrasado.
+    if (mismaActivacion && estado.tipo === "ROBO" && estadoEventoGlobal.deudaRoboPendiente === false
+            && estado.deudaRoboPendiente === true) {
+        return false;
+    }
 
     // Un mensaje de tirada retrasado no debe reabrir un evento que ya finalizó.
     if (mismaActivacion && estadoEventoGlobal.fase === FASES_EVENTO_GLOBAL.FINALIZADO && estado.fase !== FASES_EVENTO_GLOBAL.FINALIZADO) {
@@ -2626,6 +2635,8 @@ function procesarEstadoEventoGlobal(estado) {
         if (!mismaActivacion || anterior?.fase !== FASES_EVENTO_GLOBAL.FINALIZADO) {
             detenerRelojEventoGlobal();
             mostrarUltimasTiradasDuranteCincoSegundos(estado);
+            sincronizarConsecuenciaEventoGlobal(estado);
+        } else if (estado.tipo === "ROBO") {
             sincronizarConsecuenciaEventoGlobal(estado);
         }
         pausarRelojNormalPorEventoGlobal();

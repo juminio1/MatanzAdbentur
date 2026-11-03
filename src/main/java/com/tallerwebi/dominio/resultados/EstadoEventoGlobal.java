@@ -20,9 +20,19 @@ public record EstadoEventoGlobal(
         Map<Long, Integer> posiciones,
         Map<Long, Integer> saldos,
         List<Long> confirmados,
-        Integer rondaActivacion) {
+        Integer rondaActivacion,
+        Boolean deudaRoboPendiente) {
 
-    // Conserva las llamadas existentes; la ronda distingue activaciones consecutivas del mismo evento.
+    // Mantiene el contrato anterior solo el robo informa el estado actual de su deuda.
+    public EstadoEventoGlobal(String codigoPartida, FaseEventoGlobal fase, TipoEventoGlobal tipo, String descripcion,
+            Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas,
+            Long idJugadorElegido, String detalle, Map<Long, Integer> posiciones, Map<Long, Integer> saldos,
+            List<Long> confirmados, Integer rondaActivacion) {
+        this(codigoPartida, fase, tipo, descripcion, etapa, segundosRestantes, participantes, tiradas,
+                idJugadorElegido, detalle, posiciones, saldos, confirmados, rondaActivacion, null);
+    }
+
+    // Conserva las llamadas existentes, la ronda distingue activaciones consecutivas del mismo evento.
     public EstadoEventoGlobal(String codigoPartida, FaseEventoGlobal fase, TipoEventoGlobal tipo, String descripcion,
             Integer etapa, Integer segundosRestantes, List<Long> participantes, Map<Long, Integer> tiradas,
             Long idJugadorElegido, String detalle, Map<Long, Integer> posiciones, Map<Long, Integer> saldos,

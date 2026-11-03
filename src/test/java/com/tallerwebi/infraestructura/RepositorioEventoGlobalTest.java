@@ -84,6 +84,26 @@ class RepositorioEventoGlobalTest {
         assertTrue(resultado.stream().anyMatch(evento -> segundo.getId().equals(evento.getId())));
     }
 
+    @Test
+    void dadoQueElCatalogoContienePiqueteCuandoSeSeleccionaPorJpaEntoncesRecuperaElGlobalConSuConfiguracion() {
+        EventoGlobal piquete = crearEventoGlobal("No se pasa");
+        piquete.setTipoEventoGlobal(TipoEventoGlobal.PIQUETE);
+        piquete.setTipoEfecto(TipoEfecto.VOLVER_INICIO);
+        piquete.setValor(0);
+        sessionFactory.getCurrentSession().persist(crearEventoCasillero());
+        sessionFactory.getCurrentSession().persist(piquete);
+        sessionFactory.getCurrentSession().flush();
+        sessionFactory.getCurrentSession().clear();
+
+        EventoGlobal seleccionado = new RepositorioEventoImpl(sessionFactory).obtenerEventoGlobalAleatorio();
+
+        assertEquals(piquete.getId(), seleccionado.getId());
+        assertEquals(TipoEventoGlobal.PIQUETE, seleccionado.getTipoEventoGlobal());
+        assertEquals(TipoEfecto.VOLVER_INICIO, seleccionado.getTipoEfecto());
+        assertEquals(0, seleccionado.getValor());
+        assertEquals("No se pasa", seleccionado.getNombre());
+    }
+
     private EventoGlobal crearEventoGlobal(String nombre) {
         EventoGlobal evento = new EventoGlobal();
         evento.setNombre(nombre);

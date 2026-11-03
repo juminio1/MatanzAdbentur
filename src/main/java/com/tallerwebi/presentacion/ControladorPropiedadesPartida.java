@@ -256,8 +256,6 @@ public class ControladorPropiedadesPartida {
         return ResponseEntity.ok(actualizado);
     }
 
-    // ---------- Auxiliares ----------
-
     private void publicarPropiedad(String codigoPartida, Map<String, Object> dto) {
         notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/propiedades", dto);
     }

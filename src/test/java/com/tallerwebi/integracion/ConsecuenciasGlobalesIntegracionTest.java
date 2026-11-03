@@ -10,6 +10,8 @@ import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEfecto;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import com.tallerwebi.dominio.enums.FaseEventoGlobal;
+import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
@@ -56,6 +58,8 @@ import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorEventoGlobalWebSocket;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -150,16 +154,26 @@ public class ConsecuenciasGlobalesIntegracionTest {
     @Autowired private PlatformTransactionManager transacciones;
     private TransactionTemplate transaccion;
     private Partida partida;
+    private final Map<String, Runnable> vencimientos = new HashMap<>();
 
     @BeforeEach
     public void preparar() {
         transaccion = new TransactionTemplate(transacciones);
         reset(catalogo, dados, temporizador, mensajeria);
+        vencimientos.clear();
+        doAnswer(invocacion -> {
+            vencimientos.put(invocacion.getArgument(0), invocacion.getArgument(2));
+            return null;
+        }).when(temporizador).programarTemporizador(anyString(), anyInt(), any(Runnable.class));
         when(temporizador.obtenerSegundosRestantes(anyString())).thenReturn(30);
         when(temporizador.programarTemporizadorSiNoExiste(anyString(), anyInt(), any(Runnable.class))).thenReturn(true);
     }
 
     private void dadaUnaPartida(Integer saldo, boolean conPropiedades) {
+        dadaUnaPartida(saldo, conPropiedades, 4);
+    }
+
+    private void dadaUnaPartida(Integer saldo, boolean conPropiedades, int cantidad) {
         transaccion.executeWithoutResult(estado -> {
             String codigo = UUID.randomUUID().toString();
             Usuario creador = new Usuario();
@@ -172,7 +186,7 @@ public class ConsecuenciasGlobalesIntegracionTest {
             partida.setEstado(EstadoPartida.EN_CURSO);
             partida.setRondaActual(5);
             List<Jugador> jugadores = new ArrayList<>();
-            for (int numero = 0; numero < 4; numero++) {
+            for (int numero = 0; numero < cantidad; numero++) {
                 Jugador jugador = new Jugador();
                 jugador.setApodo("Jugador" + numero);
                 jugador.setOrden(numero);
@@ -330,8 +344,210 @@ public class ConsecuenciasGlobalesIntegracionTest {
         return solicitud;
     }
 
+    @Test
+    public void dadoQueRoboGeneraDeudaCuandoOtroJugadorCompraPorSetecientosEntoncesPersisteCeroYActualizaLaAdvertencia() throws Exception {
+        dadaUnaPartida(300, true, 2);
+        EstadoEventoGlobal inicial = cuandoSeActiva(TipoEventoGlobal.ROBO);
+        Jugador vendedor = jugadorPersistido(inicial.idJugadorElegido());
+        Jugador comprador = partida.getJugadores().stream().filter(j -> !j.getId().equals(vendedor.getId())).findFirst().orElseThrow();
+        String codigo = partida.getCodigoUnico();
+        transaccion.executeWithoutResult(estado -> partidas.buscarJugadorPorId(comprador.getId()).setDinero(1500));
+        assertTrue(inicial.detalle().contains("Necesita vender propiedades"));
+        assertTrue(inicial.deudaRoboPendiente());
+        assertEquals(1000, quiebras.obtenerDeudaPendiente(codigo, vendedor.getId()).getMontoPendiente());
+        String idOferta = transaccion.execute(estado -> ofertas.crearOferta(servicioPartida.obtenerPartida(codigo),
+                posicionPropiedad(vendedor), vendedor.getId(), comprador.getId(), 700).id());
+
+        transaccion.executeWithoutResult(estado -> assertEquals(200, controladorOfertas.responderOferta(codigo,
+                idOferta, Map.of("aceptar", true), solicitud(comprador)).getStatusCode().value()));
+
+        assertEquals(0, jugadorPersistido(vendedor.getId()).getDinero());
+        assertEquals(800, jugadorPersistido(comprador.getId()).getDinero());
+        assertNull(quiebras.obtenerDeudaPendiente(codigo, vendedor.getId()));
+        assertFalse(quiebras.intentarResolverDeuda(codigo, vendedor.getId()));
+        Long propietario = transaccion.execute(estado -> sesiones.getCurrentSession().createQuery(
+                "FROM CasilleroPropiedad c WHERE c.partidaId = :partida AND c.posicion = :posicion", CasilleroPropiedad.class)
+                .setParameter("partida", partida.getId()).setParameter("posicion", posicionPropiedad(vendedor))
+                .getSingleResult().getPropiedad().getPropietario().getId());
+        assertEquals(comprador.getId(), propietario);
+        EstadoEventoGlobal actualizado = eventos.consultarEstadoEventoGlobal(codigo);
+        assertFalse(actualizado.deudaRoboPendiente());
+        assertEquals(0, actualizado.saldos().get(vendedor.getId()));
+        assertTrue(actualizado.detalle().contains("saldó su deuda por robo"));
+        assertFalse(actualizado.detalle().contains("Necesita vender propiedades"));
+        assertTrue(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        cuandoConfirmanTodos();
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        assertEquals(0, jugadorPersistido(vendedor.getId()).getDinero());
+        assertEquals(800, jugadorPersistido(comprador.getId()).getDinero());
+    }
+
     private Integer posicionPropiedad(Jugador jugador) {
         return List.of(1, 2, 4, 5).get(jugador.getOrden());
+    }
+
+    @Test
+    public void dadoQueDosJugadoresSacanCincoYNueveCuandoResuelvenPiqueteEntoncesElPrimeroVuelveAInicio() throws Exception {
+        verificarPiqueteConTiradas(List.of(5, 9), 0);
+    }
+
+    @Test
+    public void dadoQueTresJugadoresSacanDiezCuatroYSieteCuandoResuelvenPiqueteEntoncesElSegundoVuelveAInicio() throws Exception {
+        verificarPiqueteConTiradas(List.of(10, 4, 7), 1);
+    }
+
+    @Test
+    public void dadoQueCuatroJugadoresSacanOchoTresOnceYSeisCuandoResuelvenPiqueteEntoncesElSegundoVuelveAInicio() throws Exception {
+        verificarPiqueteConTiradas(List.of(8, 3, 11, 6), 1);
+    }
+
+    private void prepararTiradas(List<Integer> sumas) {
+        ResultadoTirada[] resultados = sumas.stream().map(suma -> new ResultadoTirada(suma / 2, suma - suma / 2))
+                .toArray(ResultadoTirada[]::new);
+        when(dados.tirarDados()).thenReturn(resultados[0], Arrays.copyOfRange(resultados, 1, resultados.length));
+    }
+
+    private void verificarPiqueteConTiradas(List<Integer> sumas, int indiceElegido) throws Exception {
+        dadaUnaPartida(1000, false, sumas.size());
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        prepararTiradas(sumas);
+        String codigo = partida.getCodigoUnico();
+        for (Jugador jugador : partida.getJugadores()) eventos.tirarDadosEventoGlobal(codigo, jugador.getId());
+        Long elegido = partida.getJugadores().get(indiceElegido).getId();
+        EstadoEventoGlobal resultado = eventos.consultarEstadoEventoGlobal(codigo);
+        assertEquals(FaseEventoGlobal.FINALIZADO, resultado.fase());
+        assertEquals(elegido, resultado.idJugadorElegido());
+        assertEquals(sumas.size(), resultado.tiradas().size());
+        for (int indice = 0; indice < sumas.size() - 1; indice++) {
+            Long id = partida.getJugadores().get(indice).getId();
+            eventos.confirmarContinuacion(codigo, id);
+            eventos.confirmarContinuacion(codigo, id);
+            assertEquals(20 + indiceElegido, jugadorPersistido(elegido).getPosicionActual());
+            assertTrue(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        }
+
+        eventos.confirmarContinuacion(codigo, partida.getJugadores().get(sumas.size() - 1).getId());
+
+        assertEquals(0, jugadorPersistido(elegido).getPosicionActual());
+        for (Jugador jugador : partida.getJugadores()) {
+            assertEquals(1000, jugadorPersistido(jugador.getId()).getDinero());
+            if (!jugador.getId().equals(elegido)) assertEquals(jugador.getPosicionActual(), jugadorPersistido(jugador.getId()).getPosicionActual());
+        }
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        assertThrows(IllegalStateException.class, () -> eventos.confirmarContinuacion(codigo, elegido));
+        assertEquals(0, jugadorPersistido(elegido).getPosicionActual());
+        verify(mensajeria, times(1)).convertAndSend(eq("/topic/partida/" + codigo + "/evento-global/reanudado"), any(Object.class));
+    }
+
+    @Test
+    public void dadoQueDosEmpatanConLaMenorCuandoDesempatanPiqueteEntoncesSoloEllosTiranYElMenorVuelveAInicio() throws Exception {
+        dadaUnaPartida(1000, false);
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        prepararTiradas(List.of(3, 3, 11, 6));
+        String codigo = partida.getCodigoUnico();
+        for (Jugador jugador : partida.getJugadores()) eventos.tirarDadosEventoGlobal(codigo, jugador.getId());
+        EstadoEventoGlobal empate = eventos.consultarEstadoEventoGlobal(codigo);
+        assertEquals(FaseEventoGlobal.EMPATE, empate.fase());
+        assertEquals(java.util.Set.of(partida.getJugadores().get(0).getId(), partida.getJugadores().get(1).getId()),
+                java.util.Set.copyOf(empate.participantes()));
+        verify(temporizador).programarTemporizador(eq("evento-global-empate:" + codigo), eq(8), any(Runnable.class));
+
+        transaccion.executeWithoutResult(estado -> vencimientos.get("evento-global-empate:" + codigo).run());
+        assertThrows(TiradaDadoInvalidaException.class,
+                () -> eventos.tirarDadosEventoGlobal(codigo, partida.getJugadores().get(2).getId()));
+        prepararTiradas(List.of(7, 4));
+        eventos.tirarDadosEventoGlobal(codigo, partida.getJugadores().get(0).getId());
+        assertEquals(FaseEventoGlobal.DESEMPATE, eventos.consultarEstadoEventoGlobal(codigo).fase());
+        eventos.tirarDadosEventoGlobal(codigo, partida.getJugadores().get(1).getId());
+
+        Long elegido = partida.getJugadores().get(1).getId();
+        assertEquals(elegido, eventos.consultarEstadoEventoGlobal(codigo).idJugadorElegido());
+        assertEquals(21, jugadorPersistido(elegido).getPosicionActual());
+        cuandoConfirmanTodos();
+        assertEquals(0, jugadorPersistido(elegido).getPosicionActual());
+        assertEquals(1000, jugadorPersistido(elegido).getDinero());
+    }
+
+    @Test
+    public void dadoQuePiqueteEstaEnCursoCuandoSeRecuperaPorRestEntoncesConservaLasTiradasYRechazaDuplicarlas() throws Exception {
+        dadaUnaPartida(1000, false, 2);
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        prepararTiradas(List.of(5, 9));
+        String codigo = partida.getCodigoUnico();
+        Long primero = partida.getJugadores().get(0).getId();
+        eventos.tirarDadosEventoGlobal(codigo, primero);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new ControladorEventoGlobal(servicioPartida, eventos,
+                new ServicioParticipacionImpl())).build();
+        MockHttpSession sesion = new MockHttpSession();
+        sesion.setAttribute("NOMBRE", partida.getJugadores().get(0).getApodo());
+        MvcResult respuesta = mvc.perform(MockMvcRequestBuilders.get("/partida/" + codigo + "/evento-global")
+                .session(sesion)).andReturn();
+        assertEquals(200, respuesta.getResponse().getStatus());
+        assertEquals(5, new ObjectMapper().readTree(respuesta.getResponse().getContentAsString())
+                .get("tiradas").get(primero.toString()).intValue());
+        assertThrows(TiradaDadoInvalidaException.class, () -> eventos.tirarDadosEventoGlobal(codigo, primero));
+        eventos.tirarDadosEventoGlobal(codigo, partida.getJugadores().get(1).getId());
+        assertEquals(primero, eventos.consultarEstadoEventoGlobal(codigo).idJugadorElegido());
+        cuandoConfirmanTodos();
+        assertEquals(0, jugadorPersistido(primero).getPosicionActual());
+        verify(dados, times(2)).tirarDados();
+    }
+
+    @Test
+    public void dadoQueFaltaUnaConfirmacionDePiqueteCuandoVencenSesentaSegundosEntoncesPersisteInicioSinRepetirElMovimiento() throws Exception {
+        dadaUnaPartida(1000, false, 2);
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        prepararTiradas(List.of(5, 9));
+        String codigo = partida.getCodigoUnico();
+        Long elegido = partida.getJugadores().get(0).getId();
+        eventos.tirarDadosEventoGlobal(codigo, elegido);
+        eventos.tirarDadosEventoGlobal(codigo, partida.getJugadores().get(1).getId());
+        eventos.confirmarContinuacion(codigo, elegido);
+        Runnable vencimiento = vencimientos.get("evento-global-resultado:" + codigo);
+        verify(temporizador).programarTemporizador(eq("evento-global-resultado:" + codigo), eq(60), any(Runnable.class));
+        assertEquals(20, jugadorPersistido(elegido).getPosicionActual());
+        assertTrue(eventos.verificarSiHayEventoGlobalActivo(codigo));
+
+        Thread.sleep(60_050L);
+        transaccion.executeWithoutResult(estado -> vencimiento.run());
+        transaccion.executeWithoutResult(estado -> vencimiento.run());
+
+        assertEquals(0, jugadorPersistido(elegido).getPosicionActual());
+        assertEquals(1000, jugadorPersistido(elegido).getDinero());
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        assertNull(eventos.consultarEstadoEventoGlobal(codigo));
+        verify(mensajeria, times(1)).convertAndSend(eq("/topic/partida/" + codigo + "/evento-global/reanudado"), any(Object.class));
+    }
+
+    @Test
+    public void dadoQueHayAbandonoYQuiebraCuandoSeResuelvePiqueteEntoncesSoloParticipanYConfirmanLosActivos() throws Exception {
+        dadaUnaPartida(1000, false);
+        Long primero = partida.getJugadores().get(0).getId();
+        Long segundo = partida.getJugadores().get(1).getId();
+        Long abandonado = partida.getJugadores().get(2).getId();
+        Long quebrado = partida.getJugadores().get(3).getId();
+        transaccion.executeWithoutResult(estado -> {
+            partidas.buscarJugadorPorId(abandonado).setAbandono(true);
+            partidas.buscarJugadorPorId(quebrado).setEnBancarrota(true);
+            partida = partidas.buscarPartidaActivaPorCodigoUnico(partida.getCodigoUnico());
+        });
+        cuandoSeActiva(TipoEventoGlobal.PIQUETE);
+        prepararTiradas(List.of(5, 9));
+        String codigo = partida.getCodigoUnico();
+        assertEquals(2, eventos.consultarEstadoEventoGlobal(codigo).participantes().size());
+        assertThrows(TiradaDadoInvalidaException.class,
+                () -> eventos.tirarDadosEventoGlobal(codigo, abandonado));
+        eventos.tirarDadosEventoGlobal(codigo, primero);
+        eventos.tirarDadosEventoGlobal(codigo, segundo);
+        assertEquals(primero, eventos.consultarEstadoEventoGlobal(codigo).idJugadorElegido());
+
+        cuandoConfirmanTodos();
+
+        assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+        assertEquals(0, jugadorPersistido(primero).getPosicionActual());
+        assertEquals(22, jugadorPersistido(abandonado).getPosicionActual());
+        assertEquals(23, jugadorPersistido(quebrado).getPosicionActual());
+        verify(dados, times(2)).tirarDados();
     }
 
     @Test
@@ -387,6 +603,80 @@ public class ConsecuenciasGlobalesIntegracionTest {
         assertEquals(1000, jugadorPersistido(elegido).getDinero());
         assertThrows(IllegalStateException.class, () -> eventos.confirmarContinuacion(partida.getCodigoUnico(), elegido));
         assertEquals(28, jugadorPersistido(elegido).getPosicionActual());
+    }
+
+    @Test
+    public void dadoQueInundacionParteDeInicioEnRondaTreintaYCincoCuandoGanaConOchoEntoncesPersisteRamosMejiaUnaVez() throws Exception {
+        dadaUnaPartida(1000, false, 2);
+        Long elegido = partida.getJugadores().get(0).getId();
+        transaccion.executeWithoutResult(estado -> {
+            Partida actual = partidas.buscarPartidaActivaPorCodigoUnico(partida.getCodigoUnico());
+            actual.setRondaActual(34);
+            actual.setTurnosFinalizadosEnRonda(1);
+            partidas.buscarJugadorPorId(elegido).setPosicionActual(0);
+        });
+        when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.INUNDACION));
+        when(dados.tirarDados()).thenReturn(new ResultadoTirada(4, 4), new ResultadoTirada(1, 2));
+        String codigo = partida.getCodigoUnico();
+
+        servicioPartida.avanzarTurno(codigo);
+        for (Jugador jugador : partida.getJugadores()) eventos.tirarDadosEventoGlobal(codigo, jugador.getId());
+
+        EstadoEventoGlobal resultado = eventos.consultarEstadoEventoGlobal(codigo);
+        assertEquals(35, resultado.rondaActivacion());
+        assertEquals(elegido, resultado.idJugadorElegido());
+        assertEquals(8, resultado.tiradas().get(elegido));
+        assertEquals(3, resultado.tiradas().get(partida.getJugadores().get(1).getId()));
+        assertEquals(0, jugadorPersistido(elegido).getPosicionActual());
+        cuandoConfirmanTodos();
+        assertEquals(27, jugadorPersistido(elegido).getPosicionActual());
+        assertEquals(1000, jugadorPersistido(elegido).getDinero());
+        assertThrows(IllegalStateException.class, () -> eventos.confirmarContinuacion(codigo, elegido));
+        assertEquals(27, jugadorPersistido(elegido).getPosicionActual());
+    }
+
+    @Test
+    public void dadosDosTresYCuatroJugadoresCuandoSarmientoSeRepiteEnVeinticincoYTreintaEntoncesPersisteUnSoloTurnoPerdido() throws Exception {
+        for (int cantidad : List.of(2, 3, 4)) {
+            dadaUnaPartida(1000, false, cantidad);
+            String codigo = partida.getCodigoUnico();
+            for (int ronda : List.of(25, 30)) {
+                transaccion.executeWithoutResult(estado -> {
+                    Partida actual = partidas.buscarPartidaActivaPorCodigoUnico(codigo);
+                    actual.setRondaActual(ronda - 1);
+                    actual.setTurnosFinalizadosEnRonda(cantidad - 1);
+                    actual.setIndiceTurnoActual(cantidad - 1);
+                });
+                when(catalogo.obtenerEventoGlobalAleatorio()).thenReturn(evento(TipoEventoGlobal.ACCIDENTE_SARMIENTO));
+
+                servicioPartida.avanzarTurno(codigo);
+
+                EstadoEventoGlobal resultado = eventos.consultarEstadoEventoGlobal(codigo);
+                Long elegido = resultado.idJugadorElegido();
+                int ordenElegido = jugadorPersistido(elegido).getOrden();
+                int ordenReanudado = ordenElegido == 0 ? 1 : 0;
+                assertEquals(ronda, resultado.rondaActivacion());
+                assertEquals(ordenReanudado, servicioPartida.obtenerJugadorActual(codigo).getOrden());
+                assertEquals(ordenElegido != 0, jugadorPersistido(elegido).getPierdeTurno());
+                int posicion = jugadorPersistido(elegido).getPosicionActual();
+                cuandoConfirmanTodos();
+                assertFalse(eventos.verificarSiHayEventoGlobalActivo(codigo));
+                assertNull(eventos.consultarEstadoEventoGlobal(codigo));
+                assertEquals(ordenReanudado, servicioPartida.obtenerJugadorActual(codigo).getOrden());
+                int oportunidades = cantidad - 1 + ordenElegido;
+                for (int numero = 0; numero < oportunidades; numero++) {
+                    if (numero < oportunidades - 1) {
+                        assertFalse(elegido.equals(servicioPartida.obtenerJugadorActual(codigo).getId()));
+                    }
+                    servicioPartida.avanzarTurno(codigo);
+                }
+                assertEquals(elegido, servicioPartida.obtenerJugadorActual(codigo).getId());
+                assertFalse(jugadorPersistido(elegido).getPierdeTurno());
+                assertFalse(jugadorPersistido(elegido).getTiroEnTurno());
+                assertEquals(posicion, jugadorPersistido(elegido).getPosicionActual());
+            }
+        }
+        verify(dados, org.mockito.Mockito.never()).tirarDados();
     }
 
     @Test

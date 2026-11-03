@@ -85,12 +85,12 @@ public final class ValidadorEventoGlobal {
         return enPausaPorEmpate && plazoVencido.getAsBoolean();
     }
 
-    public static Boolean puedeEjecutarVencimiento(boolean hayEventoActivo, boolean esMismaEtapa,
-            Boolean enPausaPorEmpate, boolean esMismoVencimiento) {
+    public static Boolean puedeEjecutarVencimiento(Boolean hayEventoActivo, Boolean esMismaEtapa,
+            Boolean enPausaPorEmpate, Boolean esMismoVencimiento) {
         return hayEventoActivo && esMismaEtapa && !enPausaPorEmpate && esMismoVencimiento;
     }
 
-    public static Boolean puedeIniciarDesempate(boolean enPausaPorEmpate, Integer etapa, Integer etapaActual,
+    public static Boolean puedeIniciarDesempate(Boolean enPausaPorEmpate, Integer etapa, Integer etapaActual,
             Boolean esMismoVencimiento) {
         return enPausaPorEmpate && etapa != null && etapa.equals(etapaActual) && esMismoVencimiento;
     }
@@ -123,14 +123,18 @@ public final class ValidadorEventoGlobal {
         }
     }
 
-    public static boolean puedeResolverTrasAbandonos(Partida partida, Map<Long, Integer> tiradas,
+    public static Boolean puedeResolverTrasAbandonos(Partida partida, Map<Long, Integer> tiradas,
             Map<String, Set<Long>> participantesDesempatePorPartida) {
-        boolean hayDatos = partida != null && tiradas != null;
+        Boolean hayDatos = partida != null && tiradas != null;
         if (!hayDatos) {
             return false;
         }
         List<Jugador> habilitados = obtenerParticipantesHabilitados(partida, participantesDesempatePorPartida);
         return !habilitados.isEmpty() && habilitados.stream().allMatch(jugador -> tiradas.containsKey(jugador.getId()));
+    }
+
+    public static Boolean noQuedanParticipantesHabilitados(Partida partida, Map<String, Set<Long>> participantesDesempate) {
+        return partida != null && obtenerParticipantesHabilitados(partida, participantesDesempate).isEmpty();
     }
 
     public static Boolean tienePosicionRegistrable(Jugador jugador) {
@@ -261,7 +265,7 @@ public final class ValidadorEventoGlobal {
                 .toList();
     }
 
-    public static boolean existeEventoGlobalActivo(String codigoPartida, Map<String, EventoGlobal> eventosActivos,
+    public static Boolean existeEventoGlobalActivo(String codigoPartida, Map<String, EventoGlobal> eventosActivos,
                                                    Map<String, EstadoEventoGlobal> resultadosEnPresentacion) {
         return codigoPartida != null && (eventosActivos.containsKey(codigoPartida)
                 || resultadosEnPresentacion.containsKey(codigoPartida));

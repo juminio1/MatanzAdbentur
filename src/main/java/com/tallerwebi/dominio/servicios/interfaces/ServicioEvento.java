@@ -13,8 +13,10 @@ import com.tallerwebi.dominio.excepcion.TiradaDadoInvalidaException;
 import com.tallerwebi.dominio.excepcion.TiradasFaltantesException;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
 import com.tallerwebi.dominio.resultados.EstadoEventoGlobal;
+import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.observadores.Observador;
 
-public interface ServicioEvento {
+public interface ServicioEvento extends Observador<EventoJugadorAbandonado> {
     void aplicarEvento(Jugador jugador, EventoGlobal evento) throws EventoInexistenteException;
     void iniciarEventoGlobal(Partida partida, EventoGlobal eventoGlobal) throws EventoGlobalInvalidoException, PartidaNoEncontradaException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException;
     void verificarActivacionEventoGlobal(Partida partida)throws PartidaNoEncontradaException, EventoGlobalInvalidoException, JugadorNoEncontradoException, EventoGlobalActivoException, EventoInexistenteException;

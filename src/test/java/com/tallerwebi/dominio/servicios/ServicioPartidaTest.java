@@ -53,6 +53,13 @@ import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSock
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 public class ServicioPartidaTest {
 
@@ -1707,6 +1714,215 @@ public void dadoQueUsuariosTienenFichasCuandoSeIniciaPartidaYDaFichasConvertidas
         partida.setIndiceTurnoActual(0);
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo)).thenReturn(partida);
         return partida;
+    }
+
+    @Test
+    public void dadoQueSarmientoSalteaAlProximoCuandoDosCierresCoincidenEntoncesElPenalizadoNoRecibeElTurno() throws Exception {
+        Partida cierreManual = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        Partida cierrePorTiempo = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        for (Partida partida : List.of(cierreManual, cierrePorTiempo)) {
+            partida.setRondaActual(24);
+            partida.setTurnosFinalizadosEnRonda(1);
+            partida.getJugadores().get(0).setId(1L);
+            partida.getJugadores().get(1).setId(2L);
+        }
+        AtomicReference<Partida> persistida = new AtomicReference<>(cierreManual);
+        AtomicBoolean eventoActivo = new AtomicBoolean();
+        AtomicBoolean consultaManual = new AtomicBoolean();
+        AtomicBoolean consultaTiempo = new AtomicBoolean();
+        CountDownLatch consultasIniciales = new CountDownLatch(2);
+        CountDownLatch cierreManualIniciado = new CountDownLatch(1);
+        CountDownLatch cierreManualTerminado = new CountDownLatch(1);
+        when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(CODIGO)).thenAnswer(invocacion -> {
+            if (Thread.currentThread().getName().equals("cierre-manual")) {
+                cierreManualIniciado.countDown();
+                return cierreManual;
+            }
+            if (Thread.currentThread().getName().equals("cierre-por-tiempo")) return cierrePorTiempo;
+            return persistida.get();
+        });
+        doAnswer(invocacion -> {
+            persistida.set(invocacion.getArgument(0));
+            return null;
+        }).when(repositorioPartidaMock).guardarPartida(any(Partida.class));
+        when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenAnswer(invocacion -> {
+            String hilo = Thread.currentThread().getName();
+            boolean primeraConsulta = hilo.equals("cierre-manual") && consultaManual.compareAndSet(false, true)
+                    || hilo.equals("cierre-por-tiempo") && consultaTiempo.compareAndSet(false, true);
+            boolean activo = eventoActivo.get();
+            if (primeraConsulta) {
+                consultasIniciales.countDown();
+                consultasIniciales.await(1, TimeUnit.SECONDS);
+                if (hilo.equals("cierre-por-tiempo")) cierreManualTerminado.await(5, TimeUnit.SECONDS);
+            }
+            return activo;
+        });
+        doAnswer(invocacion -> {
+            if (eventoActivo.compareAndSet(false, true)) {
+                Partida partida = invocacion.getArgument(0);
+                partida.getJugadores().get(1).setPierdeTurno(true);
+            }
+            return null;
+        }).when(servicioEventoMock).verificarActivacionEventoGlobal(any(Partida.class));
+        AtomicInteger numeroHilo = new AtomicInteger();
+        try (var ejecutor = Executors.newFixedThreadPool(2, tarea -> new Thread(tarea,
+                numeroHilo.getAndIncrement() == 0 ? "cierre-manual" : "cierre-por-tiempo"))) {
+            var manual = ejecutor.submit(() -> {
+                try { servicioPartida.avanzarTurno(CODIGO); }
+                catch (Exception exception) { throw new IllegalStateException(exception); }
+                finally { cierreManualTerminado.countDown(); }
+            });
+            var tiempo = ejecutor.submit(() -> {
+                try {
+                    assertTrue(cierreManualIniciado.await(5, TimeUnit.SECONDS));
+                    servicioPartida.avanzarTurno(CODIGO);
+                }
+                catch (Exception exception) { throw new IllegalStateException(exception); }
+            });
+            manual.get(8, TimeUnit.SECONDS);
+            tiempo.get(8, TimeUnit.SECONDS);
+        }
+        eventoActivo.set(false);
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any(Runnable.class))).thenReturn(true);
+
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(CODIGO);
+
+        assertEquals(0, servicioPartida.obtenerJugadorActual(CODIGO).getOrden());
+        assertFalse(persistida.get().getJugadores().get(1).getPierdeTurno());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(any(Partida.class));
+        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any(Runnable.class));
+    }
+
+    @Test
+    public void dadoQueSarmientoAfectaAlProximoCuandoSeReanudaEntoncesLoSalteaSinDadosNiRelojYDespuesPuedeJugar() throws Exception {
+        Partida partida = dadaUnaActivacionDeSarmiento(0);
+
+        servicioPartida.avanzarTurno(CODIGO);
+
+        assertEquals(25, partida.getRondaActual());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertFalse(partida.getJugadores().get(0).getPierdeTurno());
+        verify(gestorTemporizadorMock, never()).programarTemporizador(any(), anyInt(), any());
+        verifyNoInteractions(notificadorPartidaMock);
+        when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(CODIGO);
+
+        entoncesNoPuedeTirarElPenalizado(partida.getJugadores().get(0));
+        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any());
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq(CODIGO), argThat(turno -> turno.getIdJugadorActual().equals(2L)));
+        servicioPartida.avanzarTurno(CODIGO);
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertFalse(partida.getJugadores().get(0).getPierdeTurno());
+    }
+
+    @Test
+    public void dadoQueSarmientoAfectaAUnJugadorPosteriorCuandoLlegaSuOportunidadEntoncesPierdeUnaSolaVez() throws Exception {
+        Partida partida = dadaUnaActivacionDeSarmiento(1);
+        servicioPartida.avanzarTurno(CODIGO);
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertTrue(partida.getJugadores().get(1).getPierdeTurno());
+        when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
+
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(CODIGO);
+        servicioPartida.avanzarTurno(CODIGO);
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertFalse(partida.getJugadores().get(1).getPierdeTurno());
+        entoncesNoPuedeTirarElPenalizado(partida.getJugadores().get(1));
+        verify(notificadorPartidaMock, times(2)).notificarCambioDeTurno(eq(CODIGO), argThat(turno -> turno.getIdJugadorActual().equals(1L)));
+        servicioPartida.avanzarTurno(CODIGO);
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertFalse(partida.getJugadores().get(1).getPierdeTurno());
+    }
+
+    @Test
+    public void dadoQueQuedoUnRelojAnteriorASarmientoCuandoVenceEntoncesNoAvanzaElTurnoReanudado() throws Exception {
+        Partida partida = dadaUnaActivacionDeSarmiento(0);
+        Runnable relojAnterior = iniciarTemporizadorYCapturarVencimiento(CODIGO);
+        servicioPartida.avanzarTurno(CODIGO);
+
+        relojAnterior.run();
+
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertEquals(25, partida.getRondaActual());
+        when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(false);
+        AtomicReference<Runnable> reanudado = new AtomicReference<>();
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any())).thenAnswer(invocacion -> {
+            reanudado.set(invocacion.getArgument(2));
+            return true;
+        });
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(CODIGO);
+        relojAnterior.run();
+        assertEquals(1, partida.getIndiceTurnoActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        reanudado.get().run();
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertFalse(partida.getJugadores().get(0).getTiroEnTurno());
+    }
+
+    @Test
+    public void dadoQueElCierreEsperaCommitCuandoLlegaOtroCierreEntoncesLaReservaDuraHastaConfirmar() throws Exception {
+        dadoQueElCierreEsperaTransaccionEntoncesNoSeRepite(TransactionSynchronization.STATUS_COMMITTED);
+    }
+
+    @Test
+    public void dadoQueElCierreRevierteCuandoFinalizaLaTransaccionEntoncesLiberaLaReserva() throws Exception {
+        dadoQueElCierreEsperaTransaccionEntoncesNoSeRepite(TransactionSynchronization.STATUS_ROLLED_BACK);
+    }
+
+    private void dadoQueElCierreEsperaTransaccionEntoncesNoSeRepite(int resultado) throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            servicioPartida.avanzarTurno(CODIGO);
+            try (var ejecutor = Executors.newSingleThreadExecutor()) {
+                ejecutor.submit(() -> {
+                    try { servicioPartida.avanzarTurno(CODIGO); }
+                    catch (Exception exception) { throw new IllegalStateException(exception); }
+                }).get(5, TimeUnit.SECONDS);
+            }
+            assertEquals(1, partida.getIndiceTurnoActual());
+            verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+            for (var sincronizacion : TransactionSynchronizationManager.getSynchronizations()) {
+                if (resultado == TransactionSynchronization.STATUS_COMMITTED) sincronizacion.afterCommit();
+                sincronizacion.afterCompletion(resultado);
+            }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+        servicioPartida.avanzarTurno(CODIGO);
+        assertEquals(0, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(2)).guardarPartida(partida);
+    }
+
+    private Partida dadaUnaActivacionDeSarmiento(int ordenAfectado) throws Exception {
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(CODIGO);
+        partida.setIndiceTurnoActual(1);
+        partida.setRondaActual(24);
+        partida.setTurnosFinalizadosEnRonda(1);
+        partida.getJugadores().get(0).setId(1L);
+        partida.getJugadores().get(1).setId(2L);
+        doAnswer(invocacion -> {
+            if (partida.getRondaActual() == 25) {
+                partida.getJugadores().get(ordenAfectado).setPierdeTurno(true);
+                when(servicioEventoMock.verificarSiHayEventoGlobalActivo(CODIGO)).thenReturn(true);
+            }
+            return null;
+        }).when(servicioEventoMock).verificarActivacionEventoGlobal(partida);
+        when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(eq(CODIGO), eq(30), any())).thenReturn(true);
+        return partida;
+    }
+
+    private void entoncesNoPuedeTirarElPenalizado(Jugador penalizado) {
+        var dados = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
+        var jugada = new ServicioJugadaImpl(servicioPartida, null, null, null, quiebrasMock, null,
+                new ServicioParticipacionImpl(), dados);
+        assertThrows(com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException.class,
+                () -> jugada.tirarYMover(CODIGO, penalizado.getId()));
+        verifyNoInteractions(dados);
     }
 
     private Runnable iniciarTemporizadorYCapturarVencimiento(String codigo) {
