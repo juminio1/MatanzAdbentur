@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.obvservadores;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
