@@ -82,7 +82,7 @@ public class EstadoEventoGlobal {
     public void resolver(Long jugador, String consecuencia) {
         seleccionadoEvento = jugador;
         consecuenciaEvento = consecuencia;
-        renovarPlazo();
+        renovarPlazo(60);
     }
 
     public void excluirInactivos(Set<Long> activos) {
@@ -102,7 +102,12 @@ public class EstadoEventoGlobal {
     }
 
     private void renovarPlazo() {
-        vencimientoEvento = Instant.now().plusSeconds(30).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        renovarPlazo(30);
+    }
+
+    private void renovarPlazo(int segundos) {
+        vencimientoEvento = Instant.now().plusSeconds(segundos)
+                .truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
         revisionEvento = getRevision() + 1;
     }
 }

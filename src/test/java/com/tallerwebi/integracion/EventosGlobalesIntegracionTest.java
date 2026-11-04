@@ -201,6 +201,34 @@ class EventosGlobalesIntegracionTest {
     }
 
     @Test
+    void dadoQueSarmientoAfectaAlJugadorPendienteCuandoConfirmanDaComoResultadoUnaOportunidadConsumida() {
+        iniciar(TipoEventoGlobal.ACCIDENTE_SARMIENTO);
+        assertTrue(partidas.obtenerJugadorPorId(jugadores.get(0)).getPierdeTurno());
+        confirmarTodos();
+        assertEquals(jugadores.get(1), partidas.obtenerJugadorActual(codigo).getId());
+        assertEquals(5, partidas.obtenerJugadorPorId(jugadores.get(0)).getUltimaRondaConOportunidad());
+        assertFalse(partidas.obtenerJugadorPorId(jugadores.get(0)).getPierdeTurno());
+        partidas.avanzarTurno(codigo);
+        assertEquals(jugadores.get(2), partidas.obtenerJugadorActual(codigo).getId());
+        partidas.avanzarTurno(codigo);
+        assertEquals(jugadores.get(0), partidas.obtenerJugadorActual(codigo).getId());
+    }
+
+    @Test
+    void dadoQueQuedaUnaPenalizacionPendienteCuandoSeIntentaTirarDaComoResultadoAccionRechazada() {
+        transaccion.executeWithoutResult(estado -> {
+            Partida partida = sesiones.getCurrentSession().createQuery(
+                    "FROM Partida WHERE codigoUnico = :codigo", Partida.class)
+                    .setParameter("codigo", codigo).getSingleResult();
+            partida.setIndiceTurnoActual(0);
+            partida.getJugadores().get(0).setPierdeTurno(true);
+        });
+        assertThrows(com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException.class,
+                () -> jugadas.tirarYMover(codigo, jugadores.get(0)));
+        verify(dados, never()).tirarDados();
+    }
+
+    @Test
     void dadoQueLaQuiebraDelRobadoDejaUnSoloActivoCuandoFinalizaLaPartidaDaComoResultadoLaLimpiezaDelEvento() throws Exception {
         cambiarDinero(jugadores.get(0), 100);
         iniciar(TipoEventoGlobal.ROBO);

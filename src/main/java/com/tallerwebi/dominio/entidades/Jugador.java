@@ -79,9 +79,6 @@ public class Jugador {
         this.orden = orden;
     }
 
-    // Hibernate deja el estado en null si todas sus columnas están vacías en la base
-    // (por ejemplo, jugadores guardados antes de que existieran estas columnas).
-    // En ese caso se crea un estado nuevo con los valores por defecto.
     public EstadoCarcel getEstadoCarcel() {
         if (this.estadoCarcel == null) {
             this.estadoCarcel = new EstadoCarcel();
@@ -95,8 +92,6 @@ public class Jugador {
         }
         return this.estadoJugador;
     }
-
-    // --- MÉTODOS DELEGADOS AL ESTADO JUGADOR ---
 
     public Boolean getTiroEnTurno() {
         return getEstadoJugador().getTiroEnTurno();
@@ -120,6 +115,10 @@ public class Jugador {
 
     public void setPierdeTurno(Boolean pierdeTurno) {
         getEstadoJugador().setPierdeTurno(pierdeTurno);
+    }
+
+    public void limpiarTurnosPenalizados() {
+        getEstadoJugador().limpiarTurnosPenalizados();
     }
 
     public Boolean getEnBancarrota() {

@@ -1329,3 +1329,138 @@
     object-fit: contain;
     pointer-events: none;
 }
+
+
+/* Diseño del popup global; conserva los IDs y la lógica de la rama actual. */
+.aviso-global {
+    width: min(580px, calc(100vw - 28px));
+    max-width: 580px;
+    max-height: min(88dvh, 740px);
+    overflow-y: auto;
+    padding: 22px;
+    border: 3px solid var(--p-dorado);
+    border-radius: 16px;
+    background: var(--p-superficie);
+    box-shadow: 0 14px 40px rgb(0 0 0 / 55%);
+    text-align: left;
+}
+.aviso-global [hidden] { display: none !important; }
+.aviso-global__cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.aviso-global__etiqueta {
+    padding: 8px 12px;
+    border-radius: 10px;
+    color: #111;
+    background: var(--p-dorado);
+    font-weight: 900;
+    font-size: 12px;
+}
+.aviso-global__fase { font-size: 12px; font-weight: 800; color: var(--p-celeste); }
+.aviso-global #global-nombre {
+    margin: 0 0 14px;
+    font-size: clamp(24px, 5vw, 30px);
+    line-height: 1.15;
+    font-weight: 900;
+}
+.aviso-global #global-descripcion {
+    padding: 14px;
+    margin: 0 0 16px;
+    border-radius: 10px;
+    background: var(--p-superficie-2);
+    color: var(--p-texto-suave);
+    font-size: 14px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.aviso-global__reloj {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+    color: var(--p-texto);
+    font-weight: 800;
+}
+.aviso-global__reloj strong {
+    color: var(--p-dorado);
+    font-size: 25px;
+    font-variant-numeric: tabular-nums;
+}
+.aviso-global #global-etapa {
+    margin: 0 0 12px;
+    text-align: center;
+    color: var(--p-celeste);
+    font-weight: 700;
+    font-size: 13px;
+}
+.aviso-global__dados { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
+.aviso-global__dado {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--p-dorado);
+    border-radius: 10px;
+    background: var(--p-claro);
+    font-size: 30px;
+    color: var(--p-texto);
+    font-weight: 900;
+}
+.aviso-global #global-tiradas {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+    max-height: 190px;
+    overflow-y: auto;
+}
+.aviso-global__tiradas li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    background: var(--p-claro);
+    color: var(--p-texto);
+    font-size: 13px;
+}
+.aviso-global__tiradas li strong { color: var(--p-dorado); }
+.aviso-global__tiradas li.aviso-global__tirada--seleccionada {
+    border: 1px solid var(--p-dorado);
+}
+.aviso-global #global-confirmaciones,
+.aviso-global #global-mensaje {
+    margin: 0 0 12px;
+    text-align: center;
+    color: var(--p-texto-suave);
+    font-size: 13px;
+    line-height: 1.4;
+}
+.aviso-global #global-mensaje:empty { display: none; }
+.aviso-global #global-consecuencia {
+    margin: 0 0 14px;
+    padding: 14px;
+    border: 2px solid var(--p-dorado);
+    border-radius: 10px;
+    background: var(--p-claro);
+    color: var(--p-dorado);
+    font-weight: 900;
+    line-height: 1.5;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.aviso-global #global-consecuencia:empty { display: none; }
+.aviso-global__acciones { display: grid; gap: 10px; }
+.aviso-global__acciones .btn-casillero { min-height: 46px; color: #111; font-weight: 900; }
+.aviso-global__acciones #global-deuda { color: #fff; }

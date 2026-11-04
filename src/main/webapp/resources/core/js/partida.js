@@ -655,6 +655,9 @@ async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento) {
     });
     popup.classList.remove("aviso-evento--visible");
     popup.setAttribute("aria-hidden", "true");
+    if (estadoEventoGlobalCliente?.activo && !debeEsperarPresentacionGlobal()) {
+        mostrarEstadoGlobal(estadoEventoGlobalCliente);
+    }
     actualizarAvisoDeuda();
 }
 
@@ -793,6 +796,7 @@ async function procesarMovimiento(movimiento) {
             consultarDeudaPendiente(true);
         }
         movimientosDeJugadoresEnCurso.delete(String(movimiento.idJugador));
+        if (estadoEventoGlobalCliente?.activo) mostrarEstadoGlobal(estadoEventoGlobalCliente);
         actualizarBotonTirada();
         actualizarAvisoDeuda();
     }
@@ -980,6 +984,9 @@ function abrirAvisoDeuda(solicitudManual = false) {
             || document.querySelector("dialog[open]:not(#modal-deuda-pendiente)")
             || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")) return;
     if (!solicitudManual && estadoDeudaLocal.estado !== "actualizado") return;
+    // El afectado debe ver primero quién sufrió el robo y su consecuencia.
+    if (!solicitudManual && estadoDeudaLocal.deuda?.motivo === "ROBO_EVENTO_GLOBAL"
+            && (!eventoGlobalSincronizado || estadoEventoGlobalCliente?.activo)) return;
     if (modalDeuda.open) return;
     confirmacionQuiebraVisible = false;
     document.getElementById("deuda-opciones").hidden = false;
@@ -1915,41 +1922,63 @@ async function sincronizarEventoGlobal() {
     }
 }
 
+function debeEsperarPresentacionGlobal() {
+    return movimientosDeJugadoresEnCurso.size > 0
+        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible");
+}
+
 function aplicarEventoGlobal(estado) {
     if (partidaFinalizada || !aceptarEstadoEvento(estadoEventoGlobalCliente, estado)) return;
     const estabaActivo = estadoEventoGlobalCliente?.activo;
-    if (estado.activo && !estabaActivo) {
-        document.getElementById("btn-continuar-evento")?.click();
-        document.querySelectorAll("dialog[open]").forEach(modal => {
-            const perteneceADeuda = estadoDeudaLocal.deuda && ["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad"].includes(modal.id);
-            if (!perteneceADeuda && modal.id !== "modal-abandonar") modal.close();
-        });
-    }
     estadoEventoGlobalCliente = estado;
     eventoGlobalSincronizado = true;
+    // El backend ya pausó la partida. El popup espera a que termine el evento del casillero.
+    mostrarEstadoGlobal(estado, estabaActivo);
+}
+
+function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
     const panel = document.getElementById("aviso-global");
-    panel.classList.toggle("aviso-evento--visible", estado.activo);
-    panel.setAttribute("aria-hidden", String(!estado.activo));
+    if (!panel) {
+        console.error("Falta #aviso-global en partida.html; comprobá que el HTML actualizado esté cargado.");
+        return;
+    }
+    const mostrar = estado.activo && !debeEsperarPresentacionGlobal();
+    const seEstaMostrando = panel.classList.contains("aviso-evento--visible");
+    if (mostrar && !seEstaMostrando) {
+        document.querySelectorAll("dialog[open]").forEach(modal => {
+            if (modal.id === "modal-deuda-pendiente") {
+                modal.close();
+                aperturaDeudaPendiente = true;
+                avisoDeudaPresentado = false;
+            } else if (!["modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar"].includes(modal.id)) {
+                modal.close();
+            }
+        });
+    }
+    panel.classList.toggle("aviso-evento--visible", mostrar);
+    panel.setAttribute("aria-hidden", String(!mostrar));
     if (estado.activo) {
         clearInterval(intervaloReloj);
-        document.getElementById("cronometro-nro").textContent = "Pausa";
+        if (document.getElementById("cronometro-nro")) document.getElementById("cronometro-nro").textContent = "Pausa";
         if (modalCompra?.open) cerrarModalCompra();
-        document.getElementById("global-nombre").textContent = estado.nombre.replaceAll("_", " ");
-        const seleccionado = estado.jugadores.find(jugador => jugador.id === estado.seleccionado);
-        document.getElementById("global-descripcion").textContent = estado.descripcion.replace(
-            "[nombre del jugador]", seleccionado?.apodo || "un jugador");
-        document.getElementById("global-etapa").textContent = estado.resuelto ? "Resultado del evento"
+        escribirTextoGlobal("global-nombre", (estado.nombre ?? "Evento global").replaceAll("_", " "));
+        const seleccionado = (estado.jugadores ?? []).find(jugador => String(jugador.id) === String(estado.seleccionado));
+        escribirTextoGlobal("global-descripcion", (estado.descripcion ?? "").replace(
+            "[nombre del jugador]", seleccionado?.apodo || "un jugador"));
+        escribirTextoGlobal("global-etapa", estado.resuelto ? "Resultado del evento"
             : estado.etapa > 1 ? `Desempate ${estado.etapa - 1}: sólo vuelven a tirar los empatados.`
-                : "Todos los jugadores activos tiran dos dados.";
-        document.getElementById("global-consecuencia").textContent = estado.consecuencia || "";
-        document.getElementById("global-mensaje").textContent = estado.deudaPendiente
+                : "Todos los jugadores activos tiran dos dados.");
+        escribirTextoGlobal("global-consecuencia", estado.consecuencia || "");
+        escribirTextoGlobal("global-mensaje", estado.deudaPendiente
             ? "La partida espera que se resuelva la deuda del robo."
-            : estado.resuelto ? "Esperando las confirmaciones de los jugadores o el vencimiento del plazo." : "";
+            : estado.resuelto ? "Esperando las confirmaciones de los jugadores o el vencimiento del plazo." : "");
         pintarTiradasGlobales(estado);
-        estado.jugadores.forEach(jugador => {
-            actualizarDineroJugador(jugador.id, jugador.dinero);
-            if (jugador.activo) moverFichaEnTablero(jugador.id, jugador.posicion);
-        });
+        if (mostrar) {
+            estado.jugadores.forEach(jugador => {
+                actualizarDineroJugador(jugador.id, jugador.dinero);
+                if (jugador.activo) moverFichaEnTablero(jugador.id, jugador.posicion);
+            });
+        }
         posicionesInicialesSincronizadas = true;
         actualizarControlesEventoGlobal();
         actualizarTiempoEventoGlobal();
@@ -1965,43 +1994,98 @@ function aplicarEventoGlobal(estado) {
     actualizarBotonTirada();
 }
 
+// Agregar este helper cerca de las funciones de eventos globales.
+function escribirTextoGlobal(id, texto) {
+    const elemento = document.getElementById(id);
+    if (elemento) elemento.textContent = texto ?? "";
+}
+
+// Reemplazar pintarTiradasGlobales por estas dos funciones.
 function pintarTiradasGlobales(estado) {
     const lista = document.getElementById("global-tiradas");
+    if (!lista) return;
     lista.hidden = !estado.requiereDados;
     lista.replaceChildren();
+    const jugadores = (estado.jugadores ?? []).filter(jugador => jugador.activo);
+    const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
     for (let etapa = 1; etapa <= estado.etapa; etapa++) {
-        estado.jugadores.filter(jugador => jugador.activo).forEach(jugador => {
-            const tirada = estado.tiradas[`${etapa}:${jugador.id}`];
-            if (tirada == null && (etapa !== estado.etapa || !estado.habilitados.includes(jugador.id))) return;
+        jugadores.forEach(jugador => {
+            const tirada = estado.tiradas?.[`${etapa}:${jugador.id}`];
+            const participaAhora = etapa === estado.etapa && (estado.habilitados ?? [])
+                .some(id => String(id) === String(jugador.id));
+            if (tirada == null && !participaAhora) return;
+
             const fila = document.createElement("li");
-            const dadoUno = Math.floor(tirada / 10);
-            const dadoDos = tirada % 10;
-            const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
-            fila.textContent = `Etapa ${etapa} · ${jugador.apodo}: ${tirada == null ? (estado.resuelto ? "no necesitó tirar" : "esperando tirada")
-                : `${caras[dadoUno]} ${caras[dadoDos]} (${dadoUno} + ${dadoDos} = ${dadoUno + dadoDos})`}`;
-            lista.append(fila);
+            const nombre = document.createElement("span");
+            nombre.textContent = `Etapa ${etapa} · ${jugador.apodo}`;
+            const puntaje = document.createElement("strong");
+            if (tirada != null) {
+                const uno = Math.floor(tirada / 10);
+                const dos = tirada % 10;
+                puntaje.textContent = `${caras[uno]} ${caras[dos]}  (${uno} + ${dos} = ${uno + dos})`;
+            } else {
+                puntaje.textContent = "Esperando tirada";
+            }
+            if (estado.resuelto && String(estado.seleccionado) === String(jugador.id)
+                    && etapa === estado.etapa) {
+                fila.classList.add("aviso-global__tirada--seleccionada");
+            }
+            fila.append(nombre, puntaje);
+            lista.appendChild(fila);
         });
     }
+    pintarDetalleGlobal(estado);
 }
+
+function pintarDetalleGlobal(estado) {
+    escribirTextoGlobal("global-fase", estado.resuelto ? "Evento finalizado" :
+        estado.etapa > 1 ? "Desempate" : "Tiradas en curso");
+    escribirTextoGlobal("global-tiempo-titulo", estado.resuelto ?
+        "Plazo máximo para confirmar" : "Tiempo para tirar");
+
+    const confirmaciones = document.getElementById("global-confirmaciones");
+    if (confirmaciones) {
+        confirmaciones.hidden = !estado.resuelto;
+        const activos = (estado.jugadores ?? []).filter(jugador => jugador.activo);
+        const confirmados = activos.filter(jugador => (estado.confirmados ?? [])
+            .some(id => String(id) === String(jugador.id)));
+        confirmaciones.textContent =
+            `Confirmaciones registradas: ${confirmados.length} de ${activos.length}. ` +
+            "Todos los jugadores activos deben confirmar o esperar al vencimiento del plazo.";
+    }
+
+    const dados = document.getElementById("global-dados");
+    if (dados) dados.hidden = !estado.requiereDados || estado.resuelto;
+    const tiradaPropia = estado.tiradas?.[`${estado.etapa}:${window.usuarioSesionId}`];
+    const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+    escribirTextoGlobal("global-dado-1", tiradaPropia == null ? "–" :
+        caras[Math.floor(tiradaPropia / 10)] ?? "–");
+    escribirTextoGlobal("global-dado-2", tiradaPropia == null ? "–" :
+        caras[tiradaPropia % 10] ?? "–");
+}
+
 
 function actualizarControlesEventoGlobal() {
     const estado = estadoEventoGlobalCliente;
     if (!estado?.activo) return;
     const jugador = window.usuarioSesionId;
-    const activo = estado.jugadores.some(participante => participante.id === jugador && participante.activo);
+    const activo = estado.jugadores.some(participante => String(participante.id) === String(jugador) && participante.activo);
     const tirar = document.getElementById("global-tirar");
     tirar.hidden = estado.resuelto;
     tirar.disabled = !puedeTirarEnEvento(estado, jugador) || peticionEventoGlobal;
     const continuar = document.getElementById("global-continuar");
     continuar.hidden = !estado.resuelto;
-    continuar.disabled = !activo || peticionEventoGlobal || estado.confirmados.includes(jugador);
+    continuar.disabled = !activo || peticionEventoGlobal || estado.confirmados.some(id => String(id) === String(jugador));
     document.getElementById("global-deuda").hidden = !estadoDeudaLocal.deuda;
 }
 
 function actualizarTiempoEventoGlobal() {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
-    document.getElementById("global-tiempo").textContent = Math.max(0,
-        Math.ceil((estadoEventoGlobalCliente.vence - Date.now()) / 1000));
+    const segundos = Math.max(0,
+        Math.ceil((Number(estadoEventoGlobalCliente.vence) - Date.now()) / 1000));
+    const tiempo = Number.isFinite(segundos) ? segundos : 0;
+    escribirTextoGlobal("global-tiempo", `00:${String(tiempo).padStart(2, "0")}`);
     actualizarControlesEventoGlobal();
 }
 
@@ -2019,7 +2103,7 @@ async function enviarAccionEventoGlobal(accion) {
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar la acción del evento.");
         aplicarEventoGlobal(datos);
     } catch (error) {
-        document.getElementById("global-mensaje").textContent = error.message;
+        escribirTextoGlobal("global-mensaje", error.message);
     } finally {
         peticionEventoGlobal = false;
         actualizarControlesEventoGlobal();
@@ -2031,10 +2115,12 @@ document.getElementById("global-tirar").addEventListener("click", () => enviarAc
 document.getElementById("global-continuar").addEventListener("click", () => enviarAccionEventoGlobal("continuar"));
 document.getElementById("global-deuda").addEventListener("click", async () => {
     await consultarDeudaPendiente(true);
-    if (estadoDeudaLocal.deuda) abrirModalPartida(modalDeuda);
+    if (estadoDeudaLocal.deuda) abrirAvisoDeuda(true);
 });
 document.addEventListener("click", evento => {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
+    if (debeEsperarPresentacionGlobal()
+            && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
     if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #modal-bono-propiedades, #modal-vender-propiedad, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();

@@ -167,6 +167,11 @@ public class ServicioPartidaImpl implements ServicioPartida {
         repositorioPartida.bloquearPartida(partida);
         if (partida.getEventoGlobal().estaActivo()) return;
         participacion.validarPartidaEnCurso(partida);
+        Jugador pendiente = servicioTurno.obtenerJugadorActual(partida);
+        if (pendiente == null || Boolean.TRUE.equals(pendiente.getPierdeTurno())) {
+            reanudarDespuesDeEvento(codigoUnico);
+            return;
+        }
         MarcaTurno marca = MarcaTurno.de(partida);
         Boolean iniciado = gestorTemporizador.programarTemporizadorSiNoExiste(
                 codigoUnico,
@@ -228,12 +233,18 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (partida == null) return;
         repositorioPartida.bloquearPartida(partida);
         if (partida.getEventoGlobal().estaActivo() || finalizacion.finalizarSiCorresponde(partida)) return;
-        int anteriorAlPendiente = Math.floorMod(servicioTurno.obtenerIndiceTurnoActual(partida) - 1,
-                partida.getJugadores().size());
-        Jugador candidato = servicioTurno.resolverSiguienteJugador(partida, anteriorAlPendiente);
-        if (candidato == null) return;
-        candidato.setTiroEnTurno(false);
-        partida.setIndiceTurnoActual(candidato.getOrden());
+        Jugador jugadorPendiente = servicioTurno.obtenerJugadorActual(partida);
+        if (jugadorPendiente == null || Boolean.TRUE.equals(jugadorPendiente.getPierdeTurno())) {
+            // El turno elegido antes de pausar no se puede volver a habilitar si recibió
+            // la penalización del Sarmiento. Consumimos exactamente esa oportunidad.
+            Integer indicePendiente = servicioTurno.obtenerIndiceTurnoActual(partida);
+            incrementarRondas(partida);
+            if (jugadorPendiente != null) jugadorPendiente.setPierdeTurno(false);
+            Jugador siguiente = servicioTurno.resolverSiguienteJugador(partida, indicePendiente);
+            if (siguiente == null || finalizacion.finalizarSiCorresponde(partida)) return;
+            siguiente.setTiroEnTurno(false);
+            partida.setIndiceTurnoActual(siguiente.getOrden());
+        }
         repositorioPartida.guardarPartida(partida);
         notificarTurnoActual(partida, true);
     }
