@@ -984,8 +984,9 @@ function abrirAvisoDeuda(solicitudManual = false) {
             || document.querySelector("dialog[open]:not(#modal-deuda-pendiente)")
             || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")) return;
     if (!solicitudManual && estadoDeudaLocal.estado !== "actualizado") return;
-    // El afectado debe ver primero quién sufrió el robo y su consecuencia.
-    if (!solicitudManual && estadoDeudaLocal.deuda?.motivo === "ROBO_EVENTO_GLOBAL"
+    // El afectado ve primero la consecuencia global (robo, alquiler o tarjeta).
+    // La deuda se abre desde «Resolver mi deuda» mientras dura esa presentación.
+    if (!solicitudManual && estadoDeudaLocal.deuda
             && (!eventoGlobalSincronizado || estadoEventoGlobalCliente?.activo)) return;
     if (modalDeuda.open) return;
     confirmacionQuiebraVisible = false;
@@ -1970,7 +1971,7 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
                 : "Todos los jugadores activos tiran dos dados.");
         escribirTextoGlobal("global-consecuencia", estado.consecuencia || "");
         escribirTextoGlobal("global-mensaje", estado.deudaPendiente
-            ? "La partida espera que se resuelva la deuda del robo."
+            ? "La partida espera que se resuelva una deuda producida durante el evento."
             : estado.resuelto ? "Esperando las confirmaciones de los jugadores o el vencimiento del plazo." : "");
         pintarTiradasGlobales(estado);
         if (mostrar) {

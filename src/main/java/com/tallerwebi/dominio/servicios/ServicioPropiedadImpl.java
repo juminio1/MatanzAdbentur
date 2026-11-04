@@ -229,7 +229,13 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (montoAlquiler == null || montoAlquiler < 0) {
             throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
         }
-        validarPartidaDelJugador(jugador.getId());
+        // El alquiler automático causado por un evento global sí debe cobrarse
+        // durante la pausa, pero las demás acciones ordinarias siguen bloqueadas.
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(jugador.getId());
+        participacion.validarPartidaEnCurso(partida);
+        if (!partida.getEventoGlobal().estaActivo()) {
+            participacion.validarAccionOrdinaria(partida);
+        }
         Propiedad propiedadPersistida = repositorioPropiedad.buscarPropiedadPorId(propiedad.getId());
         if (propiedadPersistida == null) propiedadPersistida = propiedad;
         Jugador propietario = propiedadPersistida.getPropietario();

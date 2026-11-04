@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio;
+package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.servicios.ServicioEconomiaImpl;
 import com.tallerwebi.dominio.servicios.ServicioTurnoImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;

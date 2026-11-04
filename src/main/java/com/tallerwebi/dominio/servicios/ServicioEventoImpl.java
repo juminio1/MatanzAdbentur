@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ServicioEventoImpl implements ServicioEvento {
 
-    private static final Integer RONDAS_ENTRE_EVENTOS = 2;
+    private static final Integer RONDAS_ENTRE_EVENTOS = 5;
 
     private static final Integer UNICO_PARTICIPANTE = 1;
     private final RepositorioEventoGlobal catalogo;
@@ -75,7 +75,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public boolean activarSiCorresponde(Partida partida) {
+    public Boolean activarSiCorresponde(Partida partida) {
         repositorio.bloquearPartida(partida);
         EstadoEventoGlobal estado = partida.getEventoGlobal();
         int ronda = partida.getRondaActual();
@@ -118,7 +118,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public Map<String, Object> tirar(String codigo, Long jugador, int ronda, int etapa) {
+    public Map<String, Object> tirar(String codigo, Long jugador, Integer ronda, Integer etapa) {
         Partida partida = cargar(codigo);
         validarActivo(partida, jugador);
         participantesCambiaron(partida);
@@ -141,12 +141,14 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     @Override
-    public Map<String, Object> confirmar(String codigo, Long jugador, int ronda) {
+    public Map<String, Object> confirmar(String codigo, Long jugador, Integer ronda) {
         Partida partida = cargar(codigo);
         validarActivo(partida, jugador);
         EstadoEventoGlobal estado = partida.getEventoGlobal();
-        if (!estado.estaActivo() || estado.getUltimaRonda() != ronda) return vista(partida);
-        if (!estado.estaResuelto()) throw new IllegalStateException(
+        if (!estado.estaActivo() || estado.getUltimaRonda() != ronda) 
+            return vista(partida);
+        if (!estado.estaResuelto()) 
+            throw new IllegalStateException(
             "El evento todavía espera tiradas."
         );
         estado.confirmar(jugador);
@@ -189,17 +191,12 @@ public class ServicioEventoImpl implements ServicioEvento {
             resolver(partida, habilitados.iterator().next());
             return;
         }
-        if (habilitados.stream().anyMatch(jugador -> estado.tirada(jugador) == null)) return;
-        boolean menor = estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.PIQUETE;
-        int extremo = habilitados
-            .stream()
-            .mapToInt(jugador -> suma(estado.tirada(jugador)))
-            .reduce(menor ? Math::min : Math::max)
-            .orElseThrow();
-        Set<Long> empatados = habilitados
-            .stream()
-            .filter(jugador -> suma(estado.tirada(jugador)) == extremo)
-            .collect(Collectors.toSet());
+        if (habilitados.stream().anyMatch(jugador -> estado.tirada(jugador) == null))
+             return;
+        Boolean menor = estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.PIQUETE;
+        Integer extremo = habilitados.stream().mapToInt(jugador -> suma(estado.tirada(jugador))).reduce(menor ? Math::min : Math::max).orElseThrow();
+        Set<Long> empatados = habilitados.stream().filter(jugador -> suma(estado.tirada(jugador)) == extremo).collect(Collectors.toSet());
+
         if (empatados.size() == UNICO_PARTICIPANTE) resolver(partida, empatados.iterator().next());
         else estado.desempatar(empatados);
     }
@@ -225,23 +222,32 @@ public class ServicioEventoImpl implements ServicioEvento {
 
     private void intentarCerrar(Partida partida) {
         EstadoEventoGlobal estado = partida.getEventoGlobal();
-        boolean vencido = !Instant.now().isBefore(estado.getVencimiento());
+        Boolean vencido = !Instant.now().isBefore(estado.getVencimiento());
         if (
             (vencido || estado.getConfirmados().containsAll(activos(partida))) &&
             !aplicador.hayDeudas(partida)
         ) cerrar(partida);
     }
 
+    
     private void cerrar(Partida partida) {
         partida.getEventoGlobal().cerrar();
+
         long revision = partida.getEventoGlobal().getRevision();
-        DespuesDeConfirmar.ejecutar(() ->
-            temporizador.cancelarTemporizadorEvento(clave(partida), revision)
-        );
+
+        DespuesDeConfirmar.ejecutar(() -> temporizador.cancelarTemporizadorEvento(clave(partida), revision));
+
         if (partida.getEstado() == EstadoPartida.EN_CURSO) {
-            partidas.reanudarDespuesDeEvento(partida.getCodigoUnico());
+            String codigoPartida = partida.getCodigoUnico();
+
+            // Reanudar después de confirmar la transacción,
+            // para que la penalización ya esté persistida.
+            DespuesDeConfirmar.ejecutar(() ->
+                partidas.reanudarDespuesDeEvento(codigoPartida)
+            );
         }
     }
+
 
     private Partida cargar(String codigo) {
         Partida partida = repositorio.buscarPartidaPorCodigoUnico(codigo);
@@ -265,12 +271,7 @@ public class ServicioEventoImpl implements ServicioEvento {
     }
 
     private Set<Long> activos(Partida partida) {
-        return partida
-            .getJugadores()
-            .stream()
-            .filter(participacion::estaActivo)
-            .map(Jugador::getId)
-            .collect(Collectors.toSet());
+        return partida.getJugadores().stream().filter(participacion::estaActivo).map(Jugador::getId).collect(Collectors.toSet());
     }
 
     private String clave(Partida partida) {
@@ -294,12 +295,12 @@ public class ServicioEventoImpl implements ServicioEvento {
             !Instant.now().isBefore(estado.getVencimiento())
         ) return;
         Instant vencimiento = estado.getVencimiento();
-        int segundos = (int) Math.max(
+        Integer segundos = (int) Math.max(
             0,
             (vencimiento.toEpochMilli() - System.currentTimeMillis() + 999) / 1000
         );
-        int ronda = estado.getUltimaRonda();
-        int etapa = estado.getEtapa();
+        Integer ronda = estado.getUltimaRonda();
+        Integer etapa = estado.getEtapa();
         long revision = estado.getRevision();
         DespuesDeConfirmar.ejecutar(() ->
             temporizador.programarTemporizadorEvento(clave(partida), revision, segundos, () ->
@@ -348,21 +349,10 @@ public class ServicioEventoImpl implements ServicioEvento {
         vista.put("turnosFinalizados", partida.getTurnosFinalizadosEnRonda());
         vista.put(
             "idJugadorActual",
-            partida
-                .getJugadores()
-                .stream()
-                .filter(jugador ->
-                    Objects.equals(jugador.getOrden(), partida.getIndiceTurnoActual())
-                )
-                .filter(participacion::estaActivo)
-                .map(Jugador::getId)
-                .findFirst()
-                .orElse(null)
+            partida.getJugadores().stream().filter(jugador ->
+                    Objects.equals(jugador.getOrden(), partida.getIndiceTurnoActual())).filter(participacion::estaActivo).map(Jugador::getId).findFirst().orElse(null)
         );
-        vista.put(
-            "vence",
-            estado.getVencimiento() == null ? null : estado.getVencimiento().toEpochMilli()
-        );
+        vista.put("vence", estado.getVencimiento() == null ? null : estado.getVencimiento().toEpochMilli());
         vista.put("nombre", estado.estaActivo() ? estado.getEvento().getNombre() : null);
         vista.put("descripcion", estado.estaActivo() ? estado.getEvento().getDescripcion() : null);
         vista.put("seleccionado", estado.getSeleccionado());
@@ -373,25 +363,10 @@ public class ServicioEventoImpl implements ServicioEvento {
         vista.put("deudaPendiente", estado.estaActivo() && aplicador.hayDeudas(partida));
         vista.put(
             "jugadores",
-            partida
-                .getJugadores()
-                .stream()
-                .map(jugador ->
+            partida.getJugadores().stream().map(jugador ->
                     Map.of(
-                        "id",
-                        jugador.getId(),
-                        "apodo",
-                        jugador.getApodo(),
-                        "dinero",
-                        jugador.getDinero(),
-                        "posicion",
-                        jugador.getPosicionActual(),
-                        "activo",
-                        participacion.estaActivo(jugador)
-                    )
-                )
-                .toList()
-        );
+                        "id", jugador.getId(), "apodo", jugador.getApodo(), "dinero", jugador.getDinero(), 
+                        "posicion", jugador.getPosicionActual(), "activo",participacion.estaActivo(jugador))).toList());
         return vista;
     }
 }
