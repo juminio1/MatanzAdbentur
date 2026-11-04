@@ -10,6 +10,8 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import java.util.Objects;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
@@ -62,12 +64,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
-    public void registrarDeuda(
-            String codigoPartida,
-            Jugador deudor,
-            Jugador acreedor,
-            Integer monto,
-            String motivo) {
+    public void registrarDeuda(String codigoPartida, Jugador deudor, Jugador acreedor, Integer monto, String motivo) {
 
         if (deudor == null || monto == null || monto <= 0) {
             throw new IllegalArgumentException("Datos de deuda inválidos");
@@ -77,8 +74,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         if (repositorioDeudaPendiente.buscarPorPartidaYJugador(
                 codigoPartida, deudor.getId()) != null) {
-            throw new IllegalStateException(
-                    "El jugador ya tiene un pago pendiente");
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
         }
 
         DeudaPendiente deuda = new DeudaPendiente();
@@ -206,7 +202,19 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         repositorioDeudaPendiente.eliminar(deuda);
         EventoJugadorQuebrado evento = new EventoJugadorQuebrado(partida, jugador);
         publicadorQuiebra.notificar(evento);
+        if (esQuiebraPorCaidaGlobal(partida, idJugador)) {
+            // Los observadores pueden recargar el estado embebido durante esta caída.
+            // Se conserva la quiebra que este mismo servicio acaba de declarar.
+            jugador.setEnBancarrota(true);
+        }
         return partida;
+    }
+
+    private Boolean esQuiebraPorCaidaGlobal(Partida partida, Long idJugador) {
+        var estado = partida.getEventoGlobal();
+        return estado.estaActivo() && Objects.equals(estado.getSeleccionado(), idJugador)
+            && (estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION
+                || estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP);
     }
 
     // Comprueba que la partida esté en curso y que el jugador participe en ella.
@@ -259,23 +267,13 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return ResultadoDeuda.RESUELTA;
         }
 
-        registrarDeuda(
-                codigoPartida,
-                pagador,
-                propiedad.getPropietario(),
-                montoAlquiler,
-                "ALQUILER"
-        );
+        registrarDeuda(codigoPartida, pagador, propiedad.getPropietario(), montoAlquiler, "ALQUILER");
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
 
     @Override
-    public ResultadoDeuda procesarMulta(
-            String codigoPartida,
-            Jugador jugador,
-            Integer montoMulta,
-            String motivo) {
+    public ResultadoDeuda procesarMulta( String codigoPartida, Jugador jugador, Integer montoMulta, String motivo) {
         validarPartidaEconomica(codigoPartida, jugador.getId());
 
         Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
@@ -298,13 +296,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return ResultadoDeuda.RESUELTA;
         }
 
-        registrarDeuda(
-                codigoPartida,
-                pagador,
-                null,
-                montoMulta,
-                motivo
-        );
+        registrarDeuda(codigoPartida, pagador, null, montoMulta, motivo);
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }

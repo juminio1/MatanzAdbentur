@@ -40,7 +40,7 @@ class ServicioEventoImplTest {
                         case TRAMITES_AFIP -> assertEquals(caso.jugador(cantidad - 1).getPosicionActual(), elegido.getPosicionActual());
                         case INUNDACION -> assertEquals(5, elegido.getPosicionActual());
                         case PIQUETE -> assertEquals(0, elegido.getPosicionActual());
-                        case ROBO -> assertEquals(1000, elegido.getDinero());
+                        case ROBO -> assertEquals(1500, elegido.getDinero());
                         case FIAT_600 -> assertEquals(2400, elegido.getDinero());
                         case ACCIDENTE_SARMIENTO -> assertTrue(elegido.getPierdeTurno());
                     }
@@ -118,7 +118,7 @@ class ServicioEventoImplTest {
         doAnswer(invocacion -> {
             when(caso.quiebras.obtenerDeudaPendiente("GLOBAL", 1L)).thenReturn(deuda);
             return null;
-        }).when(caso.quiebras).registrarDeuda(eq("GLOBAL"), eq(caso.jugador(0)), isNull(), eq(1000), eq("ROBO_EVENTO_GLOBAL"));
+        }).when(caso.quiebras).registrarDeuda(eq("GLOBAL"), eq(caso.jugador(0)), isNull(), eq(500), eq("ROBO_EVENTO_GLOBAL"));
         caso.iniciar();
         caso.confirmarTodos();
         assertTrue(caso.partida.getEventoGlobal().estaActivo());
@@ -127,7 +127,7 @@ class ServicioEventoImplTest {
         when(caso.quiebras.obtenerDeudaPendiente("GLOBAL", 1L)).thenReturn(null);
         caso.eventos.consultar("GLOBAL", 1L);
         assertFalse(caso.partida.getEventoGlobal().estaActivo());
-        verify(caso.quiebras, times(1)).registrarDeuda(anyString(), any(), isNull(), eq(1000), anyString());
+        verify(caso.quiebras, times(1)).registrarDeuda(anyString(), any(), isNull(), eq(500), anyString());
     }
 
     @Test
@@ -285,7 +285,7 @@ class ServicioEventoImplTest {
                 evento.setNombre(valor.name());
                 evento.setDescripcion(valor.name());
                 evento.setTipoEventoGlobal(valor);
-                evento.setValor(new int[]{0, -3, 0, 1000, 400, 1}[valor.ordinal()]);
+                evento.setValor(new int[]{0, -3, 0, 500, 400, 1}[valor.ordinal()]);
                 return evento;
             }).toList());
             when(dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));

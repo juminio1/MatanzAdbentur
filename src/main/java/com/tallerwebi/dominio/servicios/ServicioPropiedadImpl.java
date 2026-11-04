@@ -99,6 +99,27 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         ejecutarCompra(idPropiedad, comprador);
     }
 
+    @Override
+    public CompraPreparada responderCompraDeEvento(String codigoPartida, Long idJugador, Integer ronda, Boolean aceptar) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
+        Jugador jugador = obtenerJugadorExistente(idJugador, "No se encontró el comprador.");
+        participacion.validarCompraPorEvento(partida, jugador, ronda, aceptar);
+        if (!aceptar) {
+            partida.getEventoGlobal().ofrecerCompra(null);
+            return null;
+        }
+        Integer posicion = partida.getEventoGlobal().getPosicionCompra();
+        if (!Objects.equals(posicion, jugador.getPosicionActual())) {
+            throw new PropiedadNoDisponibleException("Ya no estás en el casillero de esta oportunidad de compra.");
+        }
+        CasilleroPropiedad casillero = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida, posicion);
+        ejecutarCompra(casillero.getPropiedad().getId(), jugador);
+        partida.getEventoGlobal().ofrecerCompra(null);
+        return new CompraPreparada(codigoPartida, jugador, casillero);
+    }
+
     private void ejecutarCompra(Long idPropiedad, Jugador comprador) {
         validarPartidaDelJugador(comprador.getId());
         Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
@@ -163,16 +184,15 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (precio == null || precio < 0) throw new PropiedadInvalidaException("El precio ofrecido no es válido.");
         Jugador vendedor = obtenerJugadorExistente(idVendedor, "No se encontró el jugador que vende.");
         Jugador comprador = obtenerJugadorExistente(idComprador, "No se encontró el jugador que vende.");
-        Partida partidaVendedor = validarPartidaDelJugador(idVendedor);
-        Partida partidaComprador = validarPartidaDelJugador(idComprador);
-        if (!Objects.equals(partidaVendedor.getId(), partidaComprador.getId())) {
-            throw new IllegalStateException("Los jugadores no pertenecen a la misma partida.");
-        }
+        Partida partidaVendedor = repositorioPartida.buscarPartidaPorJugador(idVendedor);
+        repositorioPartida.bloquearPartida(partidaVendedor);
+        participacion.validarPartidaEnCurso(partidaVendedor);
+        validarVentaEnEvento(partidaVendedor, idVendedor);
+        Partida partidaComprador = repositorioPartida.buscarPartidaPorJugador(idComprador);
+        participacion.validarPartidaEnCurso(partidaComprador);
+        participacion.validarParticipantesDeTransferencia(partidaVendedor, partidaComprador, vendedor, comprador);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idVendedor);
-        if (Objects.equals(idVendedor, idComprador)) {
-            throw new PropiedadInvalidaException("No podés comprarle una propiedad a vos mismo.");
-        }
         if (!economia.tieneDineroSuficiente(comprador, precio)) {
             throw new DineroInsuficienteException("El comprador no tiene dinero suficiente para aceptar la oferta.");
         }
@@ -199,10 +219,9 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private void validarVentaEnEvento(Partida partida, Long jugador) {
-        if (partida.getEventoGlobal().estaActivo() && (deudas == null
-                || deudas.buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador) == null)) {
-            throw new IllegalStateException("Durante el evento sólo podés vender para pagar una deuda.");
-        }
+        Boolean tieneDeuda = !partida.getEventoGlobal().estaActivo() || deudas != null
+            && deudas.buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador) != null;
+        participacion.validarVentaParaDeuda(partida, tieneDeuda);
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {

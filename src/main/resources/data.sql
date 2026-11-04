@@ -130,8 +130,8 @@ WITH datos(tipo_evento, nombre, descripcion, tipo_efecto, valor) AS (
          'VOLVER_INICIO', 0),
 
         ('ROBO', 'ROBO',
-         '¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $1000.',
-         'PERDER_PLATA', 1000),
+         '¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $500.',
+         'PERDER_PLATA', 500),
 
         ('FIAT_600', 'FIAT_600',
          'Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.',

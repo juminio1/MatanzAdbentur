@@ -7,6 +7,7 @@ import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoEvento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEventoCasillero;
@@ -77,12 +78,17 @@ public class AplicadorConsecuenciaEventoGlobal {
         } else {
             detalle = ejecutarConsecuencia(partida, evento, jugador);
             // Solo se resuelve la caída si la ficha efectivamente cambió de casillero.
-            if (esMovimiento && !Objects.equals(posicionAnterior, jugador.getPosicionActual())) {
+            if (resuelveDestino(evento) && !Objects.equals(posicionAnterior, jugador.getPosicionActual())) {
                 detalle += resolverCaidaPorEventoGlobal(partida, jugador);
             }
         }
 
         return jugador.getApodo() + ": " + detalle;
+    }
+
+    private Boolean resuelveDestino(EventoGlobal evento) {
+        return evento.getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION
+            || evento.getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP;
     }
 
     
@@ -94,7 +100,7 @@ public class AplicadorConsecuenciaEventoGlobal {
         
         private String avanzarHastaPrimero(Partida partida, Jugador jugador) {
         Integer destino = partida.getJugadores().stream().filter(participacion::estaActivo).mapToInt(Jugador::getPosicionActual).max().orElse(jugador.getPosicionActual());
-            if (destino == jugador.getPosicionActual()) {
+            if (Objects.equals(destino, jugador.getPosicionActual())) {
                 return "ya está en la posición más adelantada; no necesita avanzar.";
         }
         return mover(jugador, destino - jugador.getPosicionActual());
@@ -127,6 +133,7 @@ public class AplicadorConsecuenciaEventoGlobal {
             Optional<ResultadoEvento> resultado = eventosCasillero.aplicarSiCorresponde(partida.getCodigoUnico(), jugador);
 
             if (resultado.isPresent()) {
+                partida.getEventoGlobal().guardarTarjeta(resultado.get().evento());
                 detalle = " Cayó en EVENTOS y recibió «" + resultado.get().evento().getNombre() + "»: " + resultado.get().evento().getDescripcion();
             }
         }
@@ -152,6 +159,7 @@ public class AplicadorConsecuenciaEventoGlobal {
         String detalle = "";
         CasilleroPropiedad casillero = casilleros.buscarCasilleroPropiedad(
             partida, jugador.getPosicionActual());
+        registrarCompraDisponible(partida, jugador, casillero);
         if (casillero != null && casillero.getPropiedad() != null) {
             Propiedad propiedad = casillero.getPropiedad();
             Jugador propietario = propiedad.getPropietario();
@@ -165,10 +173,19 @@ public class AplicadorConsecuenciaEventoGlobal {
                     + propietario.getApodo() + ". Alquiler: $" + alquiler + ".";
                 if (resultado == ResultadoDeuda.PENDIENTE) {
                     detalle += " Debe resolver su deuda antes de continuar.";
+                } else if (resultado == ResultadoDeuda.QUIEBRA) {
+                    detalle += " Quedó en quiebra.";
                 }
             }
         }
         return detalle;
+    }
+
+    private void registrarCompraDisponible(Partida partida, Jugador jugador, CasilleroPropiedad casillero) {
+        Boolean estaLibre = casillero == null || propiedades.estaDisponible(casillero.getPropiedad());
+        if (estaLibre && casilleros.existePosicionDePropiedad(partida, jugador.getPosicionActual())) {
+            partida.getEventoGlobal().ofrecerCompra(jugador.getPosicionActual());
+        }
     }
 
     private String cobrarRobo(Partida partida, Jugador jugador, Integer monto) {

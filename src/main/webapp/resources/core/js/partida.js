@@ -3,6 +3,9 @@ import { aceptarEstadoEvento, puedeTirarEnEvento } from "./eventos-globales.js";
 let estadoEventoGlobalCliente = null;
 let eventoGlobalSincronizado = false;
 let peticionEventoGlobal = false;
+const tarjetasGlobalesMostradas = new Set();
+const comprasGlobalesMostradas = new Set();
+let compraEventoActual = null;
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
@@ -1733,6 +1736,17 @@ async function venderPropiedadBono(propiedad) {
     }
 }
 
+async function leerRespuestaJson(respuesta) {
+    let datos;
+    try {
+        datos = JSON.parse(await respuesta.text());
+    } catch (error) {
+        throw new Error(`El servidor no pudo completar la solicitud (HTTP ${respuesta.status}).`);
+    }
+    if (!respuesta.ok) throw new Error(datos.error || `El servidor rechazó la solicitud (HTTP ${respuesta.status}).`);
+    return datos;
+}
+
 async function enviarOfertaVenta() {
     if (!propiedadParaVender || window.usuarioEnBancarrota || partidaFinalizada) return;
     const boton = document.getElementById("btn-enviar-oferta");
@@ -1753,8 +1767,7 @@ async function enviarOfertaVenta() {
                 body: JSON.stringify({ idJugadorComprador: Number(idJugadorComprador), precio }),
             },
         );
-        const datos = await respuesta.json();
-        if (!respuesta.ok) throw new Error(datos.error || "No se pudo enviar la oferta.");
+        await leerRespuestaJson(respuesta);
         mensajeOfertaVenta.textContent =
             "Oferta enviada. La propiedad se transfiere cuando el otro jugador la acepte.";
         setTimeout(() => {
@@ -1785,6 +1798,7 @@ async function revisarOfertasPendientes() {
 
 function mostrarOfertaRecibida(oferta) {
     if (window.usuarioEnBancarrota || partidaFinalizada) return;
+    if (estadoEventoGlobalCliente?.activo && !oferta.paraDeuda) return;
     ofertaActiva = oferta;
     document.getElementById("oferta-recibida-detalle").textContent =
         `${oferta.apodoVendedor} te ofrece ${oferta.nombrePropiedad} por $${oferta.precio}.`;
@@ -1811,8 +1825,7 @@ async function responderOfertaVenta(aceptar) {
                 body: JSON.stringify({ aceptar }),
             },
         );
-        const datos = await respuesta.json();
-        if (!respuesta.ok) throw new Error(datos.error || "No se pudo responder la oferta.");
+        const datos = await leerRespuestaJson(respuesta);
         if (aceptar) {
             consultarDeudaPendiente(true);
             actualizarEtiquetaPrecioPropiedad(datos);
@@ -1951,7 +1964,7 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
                 modal.close();
                 aperturaDeudaPendiente = true;
                 avisoDeudaPresentado = false;
-            } else if (!["modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar"].includes(modal.id)) {
+            } else if (!esModalPermitidoDuranteEvento(modal)) {
                 modal.close();
             }
         });
@@ -1993,6 +2006,91 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
         solicitarPosicionesPartida();
     }
     actualizarBotonTirada();
+    if (!estado.activo) mostrarTarjetaGlobal(estado).then(() => mostrarCompraDeEvento(estado));
+}
+
+async function mostrarTarjetaGlobal(estado) {
+    if (!estado.tarjeta || String(estado.seleccionado) !== String(window.usuarioSesionId)
+            || debeEsperarPresentacionGlobal() || partidaFinalizada) return;
+    const clave = `tarjeta-global:${codigoPartida}:${estado.ronda}:${estado.seleccionado}`;
+    if (tarjetasGlobalesMostradas.has(clave)) return;
+    try {
+        if (sessionStorage.getItem(clave)) return;
+    } catch (error) {
+        console.debug("La tarjeta se recordará durante esta sesión de la página.", error);
+    }
+    tarjetasGlobalesMostradas.add(clave);
+    const panel = document.getElementById("aviso-global");
+    panel.classList.remove("aviso-evento--visible");
+    panel.setAttribute("aria-hidden", "true");
+    await mostrarPopupEvento(estado.seleccionado, estado.tarjeta.nombre, estado.tarjeta.descripcion);
+    try {
+        sessionStorage.setItem(clave, "vista");
+    } catch (error) {
+        console.debug("No se pudo guardar la presentación de la tarjeta.", error);
+    }
+}
+
+async function continuarEventoGlobal() {
+    const estado = estadoEventoGlobalCliente;
+    if (peticionEventoGlobal || !estado?.activo || !estado.resuelto || debeEsperarPresentacionGlobal()) return;
+    await mostrarTarjetaGlobal(estado);
+    if (estadoEventoGlobalCliente?.activo && estadoEventoGlobalCliente.ronda === estado.ronda) {
+        enviarAccionEventoGlobal("continuar");
+    }
+}
+
+async function mostrarCompraDeEvento(estado) {
+    if (estado.activo || estado.compraPendiente == null || partidaFinalizada || window.usuarioEnBancarrota
+            || String(estado.seleccionado) !== String(window.usuarioSesionId)
+            || debeEsperarPresentacionGlobal() || document.querySelector("dialog[open]")) return;
+    const clave = `${codigoPartida}:${estado.ronda}:${estado.seleccionado}`;
+    if (comprasGlobalesMostradas.has(clave)) return;
+    comprasGlobalesMostradas.add(clave);
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/propiedades/${estado.compraPendiente}`, {
+            cache: "no-store", credentials: "same-origin",
+        });
+        const propiedad = await leerRespuestaJson(respuesta);
+        if (estadoEventoGlobalCliente?.activo || debeEsperarPresentacionGlobal()
+                || document.querySelector("dialog[open]")) {
+            comprasGlobalesMostradas.delete(clave);
+        } else if (propiedad.disponible && !partidaFinalizada) {
+            compraEventoActual = { ronda: estado.ronda, posicion: estado.compraPendiente };
+            document.getElementById("compra-evento-detalle").textContent =
+                `${propiedad.nombre} está disponible por $${propiedad.precioCompra}. ¿Querés comprarla?`;
+            document.getElementById("compra-evento-mensaje").textContent = "";
+            abrirModalPartida(document.getElementById("modal-compra-evento"));
+        }
+    } catch (error) {
+        comprasGlobalesMostradas.delete(clave);
+        console.warn("No se pudo consultar la oportunidad de compra.", error);
+    }
+}
+
+async function responderCompraDeEvento(aceptar) {
+    if (!compraEventoActual || estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
+    const botones = [document.getElementById("btn-compra-evento-aceptar"), document.getElementById("btn-compra-evento-rechazar")];
+    if (botones.some(boton => boton.disabled)) return;
+    botones.forEach(boton => { boton.disabled = true; });
+    try {
+        const respuesta = await fetch(`${basePath}/partida/${codigoPartida}/compra-evento`, {
+            method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ronda: compraEventoActual.ronda, aceptar }),
+        });
+        const datos = await leerRespuestaJson(respuesta);
+        if (aceptar) {
+            actualizarEtiquetaPrecioPropiedad(datos);
+            actualizarDineroJugador(datos.idJugador, datos.dineroJugador);
+        }
+        document.getElementById("modal-compra-evento").close();
+        compraEventoActual = null;
+        sincronizarEventoGlobal();
+    } catch (error) {
+        document.getElementById("compra-evento-mensaje").textContent = error.message;
+    } finally {
+        botones.forEach(boton => { boton.disabled = false; });
+    }
 }
 
 // Agregar este helper cerca de las funciones de eventos globales.
@@ -2113,7 +2211,13 @@ async function enviarAccionEventoGlobal(accion) {
 }
 
 document.getElementById("global-tirar").addEventListener("click", () => enviarAccionEventoGlobal("tirar"));
-document.getElementById("global-continuar").addEventListener("click", () => enviarAccionEventoGlobal("continuar"));
+document.getElementById("global-continuar").addEventListener("click", continuarEventoGlobal);
+document.getElementById("btn-compra-evento-aceptar").addEventListener("click", () => responderCompraDeEvento(true));
+document.getElementById("btn-compra-evento-rechazar").addEventListener("click", () => responderCompraDeEvento(false));
+document.getElementById("modal-compra-evento").addEventListener("cancel", evento => {
+    evento.preventDefault();
+    responderCompraDeEvento(false);
+});
 document.getElementById("global-deuda").addEventListener("click", async () => {
     await consultarDeudaPendiente(true);
     if (estadoDeudaLocal.deuda) abrirAvisoDeuda(true);
@@ -2123,6 +2227,7 @@ document.addEventListener("click", evento => {
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
     if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #modal-bono-propiedades, #modal-vender-propiedad, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    if (ofertaActiva?.paraDeuda && evento.target.closest("#modal-oferta-recibida")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
@@ -2459,8 +2564,13 @@ function detenerPartidaEnPantalla() {
 let consultaResultadosEnCurso = null;
 let resultadosFinalesMostrados = false;
 
+function esModalPermitidoDuranteEvento(modal) {
+    return ["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar"].includes(modal.id)
+        || (modal.id === "modal-oferta-recibida" && ofertaActiva?.paraDeuda);
+}
+
 function abrirModalPartida(modal) {
-    if (estadoEventoGlobalCliente?.activo && !["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar"].includes(modal.id)) return;
+    if (estadoEventoGlobalCliente?.activo && !esModalPermitidoDuranteEvento(modal)) return;
     if (!partidaFinalizada && !modal.open) modal.showModal();
 }
 

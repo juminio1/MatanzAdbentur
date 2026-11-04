@@ -221,6 +221,38 @@ public class ControladorPropiedadesPartida {
 
     // ---------- Venta al banco ----------
 
+    @PostMapping("/partida/{codigoPartida}/compra-evento")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> responderCompraDeEvento(
+            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
+            @RequestBody Map<String, Object> datos, HttpServletRequest request) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null) return error(HttpStatus.NOT_FOUND, "La partida no existe.");
+        if (!(datos.get("aceptar") instanceof Boolean aceptar)) {
+            return error(HttpStatus.BAD_REQUEST, "Indicá si querés comprar o rechazar la propiedad.");
+        }
+        try {
+            Long idJugador = ResolutorJugadorSesion.resolverParticipante(partida, request, participacion);
+            ServicioPropiedad.CompraPreparada compra = servicioPropiedad.responderCompraDeEvento(
+                codigoPartida, idJugador, numeroInteger(datos.get("ronda")), aceptar);
+            return compra == null ? ResponseEntity.ok(Map.of("estado", "rechazada")) : notificarCompraDeEvento(compra);
+        } catch (org.springframework.web.server.ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of(CLAVE_ERROR, ex.getReason()));
+        } catch (RuntimeException ex) {
+            return error(HttpStatus.CONFLICT, obtenerMensajeError(ex, "No se pudo resolver la compra."));
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> notificarCompraDeEvento(ServicioPropiedad.CompraPreparada compra) {
+        Map<String, Object> dto = mapeadorPropiedad.desdePropiedad(compra.casillero(),
+            servicioPropiedad.obtenerPropiedadExistente(compra.casillero().getPropiedad().getId()));
+        dto.put(CLAVE_ID_JUGADOR, compra.jugador().getId());
+        dto.put(CLAVE_DINERO_JUGADOR, servicioPartida.obtenerJugadorPorId(compra.jugador().getId()).getDinero());
+        publicarPropiedad(compra.codigoPartida(), dto);
+        NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, compra.codigoPartida());
+        return ResponseEntity.ok(dto);
+    }
+
     @PostMapping("/partida/{codigoPartida}/propiedades/{posicion}/vender")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> venderPropiedad(
@@ -274,7 +306,9 @@ public class ControladorPropiedadesPartida {
             HttpServletRequest request
     ) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
+        if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) {
+            return error(HttpStatus.NOT_FOUND, "La propiedad o la partida no existe.");
+        }
         Long idVendedor = ResolutorJugadorSesion.resolver(partida, request);
         try {
             Oferta oferta = servicioOferta.crearOferta(partida, posicion, idVendedor,
@@ -285,6 +319,8 @@ public class ControladorPropiedadesPartida {
             return error(HttpStatus.BAD_REQUEST, ex.getMessage());
         } catch (PropiedadNoDisponibleException ex) {
             return error(HttpStatus.CONFLICT, ex.getMessage());
+        } catch (RuntimeException ex) {
+            return error(HttpStatus.CONFLICT, obtenerMensajeError(ex, "No se pudo enviar la oferta."));
         }
     }
 
@@ -313,7 +349,7 @@ public class ControladorPropiedadesPartida {
             HttpServletRequest request
     ) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        if (partida == null) return ResponseEntity.notFound().build();
+        if (partida == null) return error(HttpStatus.NOT_FOUND, "La partida no existe.");
         Long idComprador = ResolutorJugadorSesion.resolver(partida, request);
         if (!participacion.pertenece(partida, idComprador)) return error(HttpStatus.FORBIDDEN, ERROR_JUGADOR_AJENO);
         try {
@@ -371,6 +407,8 @@ public class ControladorPropiedadesPartida {
         dto.put("nombrePropiedad", oferta.nombrePropiedad() == null ? "Propiedad" : oferta.nombrePropiedad());
         dto.put("apodoVendedor", oferta.apodoVendedor());
         dto.put("idComprador", oferta.idComprador());
+        dto.put("paraDeuda", servicioGestionQuiebra.obtenerDeudaPendiente(
+            oferta.codigoPartida(), oferta.idVendedor()) != null);
         return dto;
     }
 

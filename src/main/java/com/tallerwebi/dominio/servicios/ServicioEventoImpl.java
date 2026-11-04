@@ -1,11 +1,13 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.EstadoEventoGlobal;
+import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
+import com.tallerwebi.dominio.resultados.ResultadoJugada.EventoAplicado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioDado;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioEvento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
@@ -214,10 +216,16 @@ public class ServicioEventoImpl implements ServicioEvento {
             .filter(candidato -> seleccionado.equals(candidato.getId()))
             .findFirst()
             .orElseThrow();
+        Boolean resuelveDestino = estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION
+            || estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP;
+        // La caída puede notificar una quiebra y volver a consultar este mismo evento.
+        // Se reserva su resolución dentro de la transacción antes de esos callbacks.
+        if (resuelveDestino) estado.resolver(seleccionado, "");
         String consecuencia = aplicador.aplicar(partida, estado.getEvento(), jugador);
         // Una consulta de los servicios económicos puede materializar de nuevo el componente
         // embebido. Se modifica el estado que conserva la entidad administrada por Hibernate.
-        partida.getEventoGlobal().resolver(seleccionado, consecuencia);
+        if (resuelveDestino) partida.getEventoGlobal().actualizarConsecuencia(consecuencia);
+        else partida.getEventoGlobal().resolver(seleccionado, consecuencia);
     }
 
     private void intentarCerrar(Partida partida) {
@@ -357,6 +365,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         vista.put("descripcion", estado.estaActivo() ? estado.getEvento().getDescripcion() : null);
         vista.put("seleccionado", estado.getSeleccionado());
         vista.put("consecuencia", estado.getConsecuencia());
+        vista.put("tarjeta", tarjetaAplicada(estado));
+        vista.put("compraPendiente", estado.getPosicionCompra());
         vista.put("habilitados", estado.getHabilitados());
         vista.put("confirmados", estado.getConfirmados());
         vista.put("tiradas", estado.getTiradas());
@@ -368,5 +378,11 @@ public class ServicioEventoImpl implements ServicioEvento {
                         "id", jugador.getId(), "apodo", jugador.getApodo(), "dinero", jugador.getDinero(), 
                         "posicion", jugador.getPosicionActual(), "activo",participacion.estaActivo(jugador))).toList());
         return vista;
+    }
+
+    private EventoAplicado tarjetaAplicada(EstadoEventoGlobal estado) {
+        EventoCasillero tarjeta = estado.getTarjeta();
+        return tarjeta == null ? null : new EventoAplicado(
+            tarjeta.getNombre(), tarjeta.getDescripcion(), tarjeta.getTipoEfecto().name());
     }
 }

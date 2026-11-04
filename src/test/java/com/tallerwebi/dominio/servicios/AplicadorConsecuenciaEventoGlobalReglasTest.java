@@ -1,6 +1,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -97,6 +98,7 @@ class AplicadorConsecuenciaGlobalDestinoTest {
         String detalle = aplicador.aplicar(partida, evento(TipoEventoGlobal.TRAMITES_AFIP, 0), elegido);
 
         assertTrue(detalle.contains("Changa de finde"));
+        assertSame(tarjeta, partida.getEventoGlobal().getTarjeta());
         verify(tarjetas).aplicarSiCorresponde("GLOBAL", elegido);
     }
 

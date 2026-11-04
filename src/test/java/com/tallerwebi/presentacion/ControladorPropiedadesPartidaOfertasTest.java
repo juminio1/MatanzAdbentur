@@ -226,6 +226,42 @@ class ControladorPropiedadesPartidaOfertasTest {
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
     }
 
+    @Test
+    void dadoQueLaPartidaEstaPausadaCuandoSeCreaUnaOfertaNoAutorizadaDaComoResultadoConflictoJson() throws Exception {
+        activarEventoGlobal();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
+        var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/partida/" + CODIGO + "/propiedades/1/ofertas")
+                .sessionAttr("id", ID_VENDEDOR).contentType("application/json")
+                .content("{\"idJugadorComprador\":2,\"precio\":450}"))
+                .andReturn().getResponse();
+        assertEquals(409, resultado.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString());
+        org.junit.jupiter.api.Assertions.assertTrue(json.get("error").asText().contains("deuda"));
+    }
+
+    @Test
+    void dadoQueUnaOfertaOrdinariaQuedaPendienteCuandoSeAceptaDuranteUnEventoDaComoResultadoErrorJsonSinTransferir() throws Exception {
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
+        activarEventoGlobal();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
+        var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/partida/" + CODIGO + "/ofertas/" + idOferta + "/responder")
+                .sessionAttr("id", ID_COMPRADOR).contentType("application/json").content("{\"aceptar\":true}"))
+                .andReturn().getResponse();
+        assertEquals(409, resultado.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
+        assertNotNull(new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString()).get("error"));
+        verify(servicioPropiedad, never()).transferirPropiedadParaJugadores(any(), any(), any(), any());
+    }
+
+    private void activarEventoGlobal() {
+        var evento = new com.tallerwebi.dominio.entidades.EventoGlobal();
+        evento.setTipoEventoGlobal(com.tallerwebi.dominio.enums.TipoEventoGlobal.ROBO);
+        partida.getEventoGlobal().iniciar(evento, 5, java.util.Set.of(ID_VENDEDOR, ID_COMPRADOR));
+    }
+
     private ResponseEntity<Map<String, Object>> crearOfertaDeVendedor(Integer precio) {
         return controlador.crearOferta(CODIGO, POSICION,
                 Map.of("idJugadorComprador", ID_COMPRADOR, "precio", precio), sesion(ID_VENDEDOR));

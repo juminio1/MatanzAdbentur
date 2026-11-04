@@ -4,6 +4,7 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -25,8 +26,8 @@ public class EstadoEventoGlobal {
     private Integer etapaEvento = 0;
     private Instant vencimientoEvento;
     private Long seleccionadoEvento = 0L;
-    @Column(length = 2000)
-    private String consecuenciaEvento;
+    @Embedded
+    private ConsecuenciaEventoGlobal consecuencia = new ConsecuenciaEventoGlobal();
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "Partida_tiradasGlobales", joinColumns = @JoinColumn(name = "partida_id"))
     @MapKeyColumn(name = "etapa_jugador")
@@ -49,7 +50,19 @@ public class EstadoEventoGlobal {
     public int getEtapa() { return etapaEvento == null ? 0 : etapaEvento; }
     public Instant getVencimiento() { return vencimientoEvento; }
     public Long getSeleccionado() { return seleccionadoEvento == null || seleccionadoEvento == 0 ? null : seleccionadoEvento; }
-    public String getConsecuencia() { return consecuenciaEvento; }
+    public String getConsecuencia() { return consecuencia == null ? null : consecuencia.getDetalle(); }
+    public EventoCasillero getTarjeta() { return consecuencia == null ? null : consecuencia.getTarjeta(); }
+    public void guardarTarjeta(EventoCasillero tarjeta) {
+        if (consecuencia == null) consecuencia = new ConsecuenciaEventoGlobal();
+        consecuencia.setTarjeta(tarjeta);
+    }
+    public Integer getPosicionCompra() {
+        return consecuencia == null ? null : consecuencia.getPosicionCompraEvento();
+    }
+    public void ofrecerCompra(Integer posicion) {
+        if (consecuencia == null) consecuencia = new ConsecuenciaEventoGlobal();
+        consecuencia.setPosicionCompraEvento(posicion);
+    }
     public Set<Long> getHabilitados() { return Set.copyOf(habilitados); }
     public Set<Long> getConfirmados() { return Set.copyOf(confirmados); }
     public Map<String, Integer> getTiradas() { return Map.copyOf(tiradas); }
@@ -60,7 +73,8 @@ public class EstadoEventoGlobal {
         ultimaRondaEvento = ronda;
         etapaEvento = 1;
         seleccionadoEvento = 0L;
-        consecuenciaEvento = "";
+        consecuencia = new ConsecuenciaEventoGlobal();
+        consecuencia.setDetalle("");
         tiradas.clear();
         confirmados.clear();
         habilitados.clear();
@@ -81,8 +95,13 @@ public class EstadoEventoGlobal {
 
     public void resolver(Long jugador, String consecuencia) {
         seleccionadoEvento = jugador;
-        consecuenciaEvento = consecuencia;
+        actualizarConsecuencia(consecuencia);
         renovarPlazo(60);
+    }
+
+    public void actualizarConsecuencia(String consecuencia) {
+        if (this.consecuencia == null) this.consecuencia = new ConsecuenciaEventoGlobal();
+        this.consecuencia.setDetalle(consecuencia);
     }
 
     public void excluirInactivos(Set<Long> activos) {
