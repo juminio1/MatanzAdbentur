@@ -30,6 +30,7 @@ public final class CoordinadorTurnoPartida {
         TurnoDTO turno = new TurnoDTO(codigoPartida, jugadorActual.getId(), jugadorActual.getApodo(),
                 jugadorActual.getOrden(), "Es el turno de " + jugadorActual.getApodo(),
                 servicioPartida.obtenerSegundosRestantesTurno(codigoPartida));
+        turno.setPausadoPorDeuda(servicioPartida.turnoPausadoPorDeuda(codigoPartida));
         turno.setRondaActual(partida.getRondaActual());
         turno.setTurnosFinalizadosEnRonda(partida.getTurnosFinalizadosEnRonda());
         return turno;

@@ -8,6 +8,7 @@ import com.tallerwebi.dominio.enums.ResultadoDeuda;
 
 public interface ServicioGestionQuiebra {
 
+
     void registrarDeuda(
             String codigoPartida,
             Jugador deudor,

@@ -66,7 +66,7 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     public Oferta crearOferta(Partida referencia, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
         Partida partida = servicioPartida.obtenerPartida(referencia.getCodigoUnico());
         servicioPartida.bloquearPartida(partida);
-        validarVenta(partida, idVendedor);
+        validarVenta(partida);
         if (!participantesValidos(partida, idVendedor, idComprador) || precio == null || precio < 0) {
             throw new OfertaInvalidaException("La oferta no es válida.");
         }
@@ -85,13 +85,10 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     @Override
     public List<Oferta> ofertasPendientes(String codigoPartida, Long idComprador) {
         Instant ahora = reloj.instant();
-        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         ofertas.values().removeIf(oferta -> !oferta.expira().isAfter(ahora));
         return ofertas.values().stream()
                 .filter(oferta -> oferta.codigoPartida().equals(codigoPartida)
                         && oferta.idComprador().equals(idComprador))
-                .filter(oferta -> partida == null || !partida.getEventoGlobal().estaActivo()
-                    || tieneDeuda(partida, oferta.idVendedor()))
                 .sorted(Comparator.comparing(Oferta::expira))
                 .toList();
     }
@@ -101,7 +98,7 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
         servicioPartida.bloquearPartida(partida);
         Oferta oferta = obtenerVigente(codigoPartida, idOferta, idComprador);
-        validarVenta(partida, oferta.idVendedor());
+        validarVenta(partida);
         ofertas.remove(oferta.id(), oferta);
     }
 
@@ -111,7 +108,7 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
         servicioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
         Oferta oferta = obtenerVigente(partida.getCodigoUnico(), idOferta, idComprador);
-        validarVenta(partida, oferta.idVendedor());
+        validarVenta(partida);
         // Evita que dos respuestas a la misma oferta transfieran la propiedad dos veces.
         synchronized (oferta) {
             if (!ofertas.containsKey(oferta.id())) throw new OfertaNoDisponibleException(OFERTA_NO_DISPONIBLE);
@@ -141,14 +138,8 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
         return oferta;
     }
 
-    private void validarVenta(Partida partida, Long vendedor) {
+    private void validarVenta(Partida partida) {
         participacion.validarPartidaEnCurso(partida);
-        participacion.validarVentaParaDeuda(partida,
-            !partida.getEventoGlobal().estaActivo() || tieneDeuda(partida, vendedor));
-    }
-
-    private Boolean tieneDeuda(Partida partida, Long vendedor) {
-        return quiebras != null && quiebras.obtenerDeudaPendiente(partida.getCodigoUnico(), vendedor) != null;
     }
 
     private boolean participantesValidos(Partida partida, Long idVendedor, Long idComprador) {

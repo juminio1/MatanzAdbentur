@@ -28,6 +28,23 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
 class ServicioEventoImplTest {
+    @Test
+    void conservaLosDatosDelEventoCerradoParaCompletarElHistorial() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        caso.iniciar();
+        String nombre = caso.partida.getEventoGlobal().getEvento().getNombre();
+        String descripcion = caso.partida.getEventoGlobal().getEvento().getDescripcion();
+        caso.confirmarTodos();
+
+        Map<String, Object> vista = caso.eventos.consultar("GLOBAL", 1L);
+
+        assertEquals(false, vista.get("activo"));
+        assertEquals(nombre, vista.get("nombre"));
+        assertEquals(descripcion, vista.get("descripcion"));
+        assertEquals(caso.partida.getEventoGlobal().getConsecuencia(), vista.get("consecuencia"));
+        assertNotNull(vista.get("seleccionado"));
+    }
+
     @TestFactory
     Stream<DynamicTest> dadoQueHayDosTresOCuatroJugadoresCuandoOcurreCadaEventoDaComoResultadoSuConsecuencia() {
         return IntStream.rangeClosed(2, 4).boxed().flatMap(cantidad -> Arrays.stream(TipoEventoGlobal.values())

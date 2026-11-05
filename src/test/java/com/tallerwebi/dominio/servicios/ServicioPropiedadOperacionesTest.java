@@ -157,7 +157,7 @@ class ServicioPropiedadOperacionesTest {
             List<CasilleroPropiedad> tablero = new ArrayList<>(paradas);
             tablero.add(otraPartida);
             tablero.add(casillero(ajena, 12, 100L));
-            when(casilleros.obtenerTodosLosCasilleros()).thenReturn(new ArrayList<>(tablero));
+            when(casilleros.obtenerCasillerosPropiedadDePartida(any())).thenReturn(tablero);
 
             assertEquals(alquileres[indice], servicio.calcularAlquiler(paradas.get(0),
                     paradas.get(0).getPropiedad()));
@@ -335,6 +335,22 @@ class ServicioPropiedadOperacionesTest {
         verifyNoInteractions(casilleros, economia);
     }
 
+    @Test
+    void permiteVentaAlBancoDespuesDeTirarFueraDelTurnoPropio() {
+        vendedor.setTiroEnTurno(true);
+        partida.setIndiceTurnoActual(1);
+        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        assertNull(propiedad.getPropietario());
+    }
+
+    @Test
+    void permiteTransferenciaDespuesDeTirarFueraDelTurnoPropio() {
+        vendedor.setTiroEnTurno(true);
+        partida.setIndiceTurnoActual(1);
+        servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 450);
+        assertSame(comprador, propiedad.getPropietario());
+    }
+
     private void verificarRechazoSinCambios(Runnable operacion) {
         Jugador propietario = propiedad.getPropietario();
         Integer nivel = propiedad.getNivelMejora();
@@ -357,6 +373,7 @@ class ServicioPropiedadOperacionesTest {
         Jugador jugador = new Jugador();
         jugador.setId(id);
         jugador.setDinero(dinero);
+        jugador.setOrden(0);
         return jugador;
     }
 

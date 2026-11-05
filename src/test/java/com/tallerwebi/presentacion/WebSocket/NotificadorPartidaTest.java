@@ -28,6 +28,18 @@ public class NotificadorPartidaTest {
     }
 
     @Test
+    void laTiradaAutomaticaSePublicaComoTurnoVencido() {
+        var resultado = new com.tallerwebi.dominio.resultados.ResultadoJugada(
+            59L, 0, 5, 5, new com.tallerwebi.dominio.resultados.ResultadoTirada(3, 2),
+            null, 0, List.of(), null);
+        notificadorPartida.notificarTiradaAutomatica(
+            new com.tallerwebi.dominio.eventos.EventoTiradaAutomatica("ABC123", resultado));
+        verify(templateMock).convertAndSend(eq("/topic/partida/ABC123"),
+            org.mockito.ArgumentMatchers.<RespuestaMovimientoDTO>argThat(dto ->
+                dto.isTurnoVencido() && dto.getIdJugador().equals(59L) && dto.getNuevaPosicion() == 5));
+    }
+
+    @Test
     public void dadoUnCambioDeTurnoQuieroNotificarloPorWebSocket() {
         // Preparación
         TurnoDTO turno = new TurnoDTO();

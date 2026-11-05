@@ -88,6 +88,7 @@ public class ControladorPropiedadesPartida {
 
     // ---------- Consulta ----------
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping("/partida/{codigoPartida}/propiedades/{posicion}")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> obtenerInfoPropiedad(
@@ -103,6 +104,7 @@ public class ControladorPropiedadesPartida {
         return ResponseEntity.ok(mapeadorPropiedad.desdePropiedad(casillero, casillero.getPropiedad()));
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     @GetMapping("/partida/{codigoPartida}/propiedades")
     @ResponseBody
     public ResponseEntity<?> obtenerPropiedadesTablero(
@@ -128,6 +130,9 @@ public class ControladorPropiedadesPartida {
             HttpServletRequest request
     ) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (servicioPartida.turnoPausadoPorDeuda(codigoPartida)) {
+            return error(HttpStatus.CONFLICT, "La partida está pausada hasta resolver la deuda pendiente.");
+        }
         if (partida == null) return ResponseEntity.notFound().build();
         Long idJugador = ResolutorJugadorSesion.resolver(partida, request);
         if (!puedeParticiparEnPartida(partida, idJugador)) {
@@ -136,6 +141,9 @@ public class ControladorPropiedadesPartida {
         Jugador jugadorActual = servicioPartida.obtenerJugadorActual(codigoPartida);
         if (!esTurnoDeJugador(jugadorActual, idJugador)) {
             return error(HttpStatus.FORBIDDEN, "Solo podés subir alquileres durante tu turno.");
+        }
+        if (Boolean.TRUE.equals(jugadorActual.getTiroEnTurno())) {
+            return error(HttpStatus.CONFLICT, "Las mejoras se realizan antes de tirar los dados.");
         }
         CasilleroPropiedad casillero = servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
         if (!esPropietarioDelCasillero(casillero, idJugador)) {
@@ -175,6 +183,9 @@ public class ControladorPropiedadesPartida {
             HttpServletRequest request
     ) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (servicioPartida.turnoPausadoPorDeuda(codigoPartida)) {
+            return error(HttpStatus.CONFLICT, "La partida está pausada hasta resolver la deuda pendiente.");
+        }
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return ResponseEntity.notFound().build();
         Long idSesion = ResolutorJugadorSesion.resolverParticipante(partida, request, participacion);
         Jugador actual = servicioPartida.obtenerJugadorActual(codigoPartida);
@@ -194,7 +205,15 @@ public class ControladorPropiedadesPartida {
         }
     }
 
+    private boolean turnoVencido(String codigoPartida) {
+        Integer restantes = servicioPartida.obtenerSegundosRestantesTurno(codigoPartida);
+        return restantes != null && restantes <= 0;
+    }
+
     private ResponseEntity<Map<String, Object>> procesarCompraPropiedad(ServicioPropiedad.CompraPreparada compra) {
+        if (turnoVencido(compra.codigoPartida())) {
+            return error(HttpStatus.CONFLICT, "El tiempo del turno terminó; la compra se pasó automáticamente.");
+        }
         String codigoPartida = compra.codigoPartida();
         Jugador jugador = compra.jugador();
         CasilleroPropiedad casillero = compra.casillero();
@@ -266,7 +285,7 @@ public class ControladorPropiedadesPartida {
         CasilleroPropiedad casillero;
         try {
             casillero = servicioPropiedad.prepararVenta(partida, jugadorSesionId, posicion);
-        } catch (EstadoPartidaInvalidoException ex) {
+        } catch (EstadoPartidaInvalidoException | IllegalStateException ex) {
             return error(HttpStatus.FORBIDDEN, ex.getMessage());
         }
         if (casillero == null) return error(HttpStatus.CONFLICT, "La propiedad no está disponible para vender.");

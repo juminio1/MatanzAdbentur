@@ -61,6 +61,23 @@ public class ServicioPartidaTest {
     private static final int TOTAL_CASILLEROS = 30;
 
     @Test
+    void losAvataresDeLaPartidaProvienenDelPerfilActualDeCadaUsuario() {
+        var usuarios = mock(com.tallerwebi.infraestructura.RepositorioUsuario.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "usuariosPerfil", usuarios);
+        Partida partida = new Partida();
+        Jugador jugador = new Jugador();
+        jugador.setId(22L);
+        jugador.setApodo("Ana");
+        partida.setJugadores(List.of(jugador));
+        Usuario usuario = new Usuario();
+        usuario.setAvatar("https://example.com/avatar-elegido.png");
+        when(repositorioPartidaMock.buscarPartidaPorCodigoUnico("AVATARES")).thenReturn(partida);
+        when(usuarios.buscarUsuarioPorUsername("Ana")).thenReturn(usuario);
+
+        assertEquals(java.util.Map.of(22L, usuario.getAvatar()), servicioPartida.obtenerAvataresJugadores("AVATARES"));
+    }
+
+    @Test
     public void visualizacionConsultaTodosLosEstadosSinEfectos() {
         for (EstadoPartida estado : EstadoPartida.values()) {
             Partida partida = new Partida();
@@ -309,7 +326,7 @@ public class ServicioPartidaTest {
         when(repositorioPartidaMock.buscarPartidaActivaPorCodigoUnico(codigo))
             .thenReturn(partida);
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
-            eq(codigo), eq(30), any(Runnable.class))).thenReturn(true);
+            eq(codigo), eq(60), any(Runnable.class))).thenReturn(true);
 
         servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
 
@@ -339,7 +356,7 @@ public class ServicioPartidaTest {
 
         assertEquals(0, partida.getIndiceTurnoActual());
         verify(gestorTemporizadorMock).programarTemporizador(
-            eq(codigo), eq(30), any(Runnable.class));
+            eq(codigo), eq(60), any(Runnable.class));
         verify(repositorioPartidaMock).guardarPartida(partida);
     }
 
@@ -367,7 +384,7 @@ public class ServicioPartidaTest {
         assertFalse(segundo.getPierdeTurno());
         verify(repositorioPartidaMock).guardarPartida(partida);
         verify(gestorTemporizadorMock).programarTemporizador(
-            eq(codigo), eq(30), any(Runnable.class));
+            eq(codigo), eq(60), any(Runnable.class));
         verify(notificadorPartidaMock).notificarCambioDeTurno(eq(codigo), any(TurnoDTO.class));
     }
 
@@ -1097,6 +1114,26 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
     }
 
+    @Test
+    void alVencerSinTirarSeResuelveUnaTiradaAutomaticaYSeAvanzaUnaVez() throws Exception {
+        String codigo = "TIRADA-AUTOMATICA";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        partida.getJugadores().get(0).setId(10L);
+        var jugadas = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioJugada.class);
+        var eventos = mock(org.springframework.context.ApplicationEventPublisher.class);
+        var resultado = mock(com.tallerwebi.dominio.resultados.ResultadoJugada.class);
+        when(jugadas.tirarYMover(codigo, 10L)).thenReturn(resultado);
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "jugadasAutomaticas", jugadas);
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "eventosAutomaticos", eventos);
+
+        iniciarTemporizadorYCapturarVencimiento(codigo).run();
+
+        verify(jugadas).tirarYMover(codigo, 10L);
+        verify(eventos).publishEvent(new com.tallerwebi.dominio.eventos.EventoTiradaAutomatica(codigo, resultado));
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
     private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {
         Partida partida = new Partida();
         partida.setEstado(EstadoPartida.EN_CURSO);
@@ -1113,10 +1150,10 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
 
     private Runnable iniciarTemporizadorYCapturarVencimiento(String codigo) {
         when(gestorTemporizadorMock.programarTemporizadorSiNoExiste(
-            eq(codigo), eq(30), any(Runnable.class))).thenReturn(true);
+            eq(codigo), eq(60), any(Runnable.class))).thenReturn(true);
         servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
         ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigo), eq(30), captor.capture());
+        verify(gestorTemporizadorMock).programarTemporizadorSiNoExiste(eq(codigo), eq(60), captor.capture());
         return captor.getValue();
     }
 
@@ -1238,7 +1275,7 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         assertEquals(1, partida.getIndiceTurnoActual());
         ArgumentCaptor<Runnable> siguienteVencimiento = ArgumentCaptor.forClass(Runnable.class);
         verify(gestorTemporizadorMock).programarTemporizador(
-                eq("RONDA-TIEMPO"), eq(30), siguienteVencimiento.capture());
+                eq("RONDA-TIEMPO"), eq(60), siguienteVencimiento.capture());
 
         siguienteVencimiento.getValue().run();
 
@@ -1395,7 +1432,7 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
         callbacks.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
 
         verify(gestorTemporizadorMock).programarTemporizador(
-                eq("CALLBACK-VALIDO"), eq(30), any(Runnable.class));
+                eq("CALLBACK-VALIDO"), eq(60), any(Runnable.class));
         verify(notificadorPartidaMock).notificarCambioDeTurno(eq("CALLBACK-VALIDO"), any(TurnoDTO.class));
     }
 

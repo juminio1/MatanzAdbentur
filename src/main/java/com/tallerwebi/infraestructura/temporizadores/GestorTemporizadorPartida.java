@@ -20,6 +20,21 @@ public class GestorTemporizadorPartida implements org.springframework.beans.fact
     private final Map<String, ScheduledFuture<?>> temporizadores = new ConcurrentHashMap<>();
     private final Map<String, Long> revisionesEventos = new ConcurrentHashMap<>();
 
+    private final Map<String, Integer> pausados = new ConcurrentHashMap<>();
+
+    public synchronized void pausar(String codigo) {
+        if (pausados.containsKey(codigo)) return;
+        Integer restantes = obtenerSegundosRestantes(codigo);
+        cancelarTemporizador(codigo);
+        pausados.put(codigo, restantes == null ? 60 : restantes);
+    }
+
+    public synchronized Integer consumirPausa(String codigo) {
+        return pausados.remove(codigo);
+    }
+
+    public boolean estaPausado(String codigo) { return pausados.containsKey(codigo); }
+
     private final TransactionTemplate transactionTemplate;
 
     @Autowired
@@ -49,6 +64,7 @@ public class GestorTemporizadorPartida implements org.springframework.beans.fact
         Runnable accionExpiracion
     ) {
         ScheduledFuture<?> tareaExistente = temporizadores.get(codigoUnico);
+        if (pausados.containsKey(codigoUnico)) return false;
         if (tareaExistente != null && !tareaExistente.isDone()) {
             return false;
         }
@@ -93,6 +109,7 @@ public class GestorTemporizadorPartida implements org.springframework.beans.fact
     }
 
     public Integer obtenerSegundosRestantes(String codigoUnico) {
+        if (pausados.containsKey(codigoUnico)) return pausados.get(codigoUnico);
         ScheduledFuture<?> tarea = temporizadores.get(codigoUnico);
         if (tarea == null) {
             return null;
@@ -107,6 +124,7 @@ public class GestorTemporizadorPartida implements org.springframework.beans.fact
     public void destroy() {
         scheduler.shutdownNow();
         temporizadores.clear();
+        pausados.clear();
         revisionesEventos.clear();
     }
 }

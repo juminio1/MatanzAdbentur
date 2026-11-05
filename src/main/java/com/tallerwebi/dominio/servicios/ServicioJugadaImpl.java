@@ -62,6 +62,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         if (partida == null) throw new PartidaNoEncontradaException();
         partidas.bloquearPartida(partida);
         participacion.validarAccionOrdinaria(partida);
+        validarPausaPorDeuda(codigo);
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
         Jugador jugador = obtenerJugador(partida, idJugador);
@@ -107,7 +108,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         //Revisa donde termino el jugador despues de tirar y comprueba si la jugada puede terminar y pasar al siguiente jugador.
         Destino destino = resolverDestino(partida, jugador);
-        avanzarTurnoSiCorresponde(codigo, jugador, destino.requiereDecision());
+        // El turno se cierra al completar la presentación y la decisión de compra, o al vencer.
 
         //verifican que la partida este actualizada.
         Partida actualizada = partidas.obtenerPartida(codigo);
@@ -158,6 +159,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         if (partida == null) throw new PartidaNoEncontradaException();
         partidas.bloquearPartida(partida);
         participacion.validarAccionOrdinaria(partida);
+        validarPausaPorDeuda(codigo);
 
         Jugador jugador = obtenerJugador(partida, idJugador);
 
@@ -195,6 +197,12 @@ public class ServicioJugadaImpl implements ServicioJugada {
             .orElseThrow(() ->
                 new JugadorNoEncontradoException("No se encontró el jugador en esta partida")
             );
+    }
+
+    private void validarPausaPorDeuda(String codigo) {
+        if (partidas.turnoPausadoPorDeuda(codigo)) {
+            throw new IllegalStateException("La partida está pausada hasta resolver la deuda pendiente.");
+        }
     }
 
     private void validarTirada(String codigo, Jugador jugador) {

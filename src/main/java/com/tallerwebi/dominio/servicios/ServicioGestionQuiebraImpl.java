@@ -44,6 +44,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
 
     @Autowired
+    @org.springframework.context.annotation.Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioPartida turnos;
+
+    @Autowired
     public ServicioGestionQuiebraImpl(
             RepositorioDeudaPendiente repositorioDeudaPendiente,
             RepositorioPartida repositorioPartida,
@@ -85,6 +89,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         deuda.setMotivo(motivo);
 
         repositorioDeudaPendiente.guardar(deuda);
+        if (turnos != null) turnos.actualizarPausaPorDeuda(codigoPartida);
     }
 
     //Busca la deuda, verifica el saldo, descuenta el importe, actualiza al acreedor, elimina la deuda.
@@ -103,10 +108,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         Jugador deudor = deuda.getJugadorDeudor();
         Integer monto = deuda.getMontoPendiente();
 
-        if (deudor.getDinero() == null
-                || monto == null
-                || monto <= 0
-                || !economia.tieneDineroSuficiente(deudor, monto)) {
+        if (!puedeResolverDeuda(deuda)) {
             return false;
         }
 
@@ -126,7 +128,26 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             eventosGlobales.participantesCambiaron(partida);
         }
 
+        cerrarTurnoTrasPagar(partida, codigoPartida, idJugador);
         return true;
+    }
+
+    private boolean puedeResolverDeuda(DeudaPendiente deuda) {
+        Jugador deudor = deuda.getJugadorDeudor();
+        Integer monto = deuda.getMontoPendiente();
+        return deudor.getDinero() != null && monto != null && monto > 0 && economia.tieneDineroSuficiente(deudor, monto);
+    }
+
+    private void cerrarTurnoTrasPagar(Partida partida, String codigoPartida, Long idJugador) {
+        if (turnos != null) {
+            Jugador actual = turnos.obtenerJugadorActual(codigoPartida);
+            if (!partida.getEventoGlobal().estaActivo() && actual != null
+                    && Objects.equals(actual.getId(), idJugador)
+                    && Boolean.TRUE.equals(actual.getTiroEnTurno())) {
+                turnos.avanzarTurno(codigoPartida);
+            }
+            turnos.actualizarPausaPorDeuda(codigoPartida);
+        }
     }
 
     @Override
@@ -207,6 +228,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             // Se conserva la quiebra que este mismo servicio acaba de declarar.
             jugador.setEnBancarrota(true);
         }
+        if (turnos != null) turnos.actualizarPausaPorDeuda(codigoPartida);
         return partida;
     }
 

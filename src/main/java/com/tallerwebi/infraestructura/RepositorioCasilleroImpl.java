@@ -18,6 +18,14 @@ public class RepositorioCasilleroImpl implements RepositorioCasillero {
     }
 
     @Override
+    public List<com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad> obtenerPropiedadesDePartida(Long idPartida) {
+        return sessionFactory.getCurrentSession().createQuery(
+            "FROM CasilleroPropiedad c JOIN FETCH c.propiedad p LEFT JOIN FETCH p.propietario WHERE c.partidaId = :partida",
+            com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad.class)
+            .setParameter("partida", idPartida).getResultList();
+    }
+
+    @Override
     public List<Casillero> obtenerTodos() {
         return sessionFactory.getCurrentSession()//trae todos los casilleros
                 .createQuery("FROM Casillero", Casillero.class)

@@ -227,7 +227,7 @@ class ControladorPropiedadesPartidaOfertasTest {
     }
 
     @Test
-    void dadoQueLaPartidaEstaPausadaCuandoSeCreaUnaOfertaNoAutorizadaDaComoResultadoConflictoJson() throws Exception {
+    void permiteProponerUnaVentaMientrasEstaActivoElEventoGlobal() throws Exception {
         activarEventoGlobal();
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
         var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -235,25 +235,30 @@ class ControladorPropiedadesPartidaOfertasTest {
                 .sessionAttr("id", ID_VENDEDOR).contentType("application/json")
                 .content("{\"idJugadorComprador\":2,\"precio\":450}"))
                 .andReturn().getResponse();
-        assertEquals(409, resultado.getStatus());
+        assertEquals(200, resultado.getStatus());
         org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
         var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString());
-        org.junit.jupiter.api.Assertions.assertTrue(json.get("error").asText().contains("deuda"));
+        assertEquals("pendiente", json.get("estado").asText());
+        verify(servicioPropiedad, never()).transferirPropiedadParaJugadores(any(), any(), any(), any());
     }
 
     @Test
-    void dadoQueUnaOfertaOrdinariaQuedaPendienteCuandoSeAceptaDuranteUnEventoDaComoResultadoErrorJsonSinTransferir() throws Exception {
+    void permiteAceptarLaVentaDuranteUnEventoYTransfiereAlComprador() throws Exception {
         String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
         activarEventoGlobal();
+        doAnswer(invocacion -> { propiedad.setPropietario(comprador); return null; })
+                .when(servicioPropiedad).transferirPropiedadParaJugadores(50L, ID_VENDEDOR, ID_COMPRADOR, 450);
+        when(servicioPropiedad.obtenerPropiedadExistente(50L)).thenReturn(propiedad);
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
         var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .post("/partida/" + CODIGO + "/ofertas/" + idOferta + "/responder")
                 .sessionAttr("id", ID_COMPRADOR).contentType("application/json").content("{\"aceptar\":true}"))
                 .andReturn().getResponse();
-        assertEquals(409, resultado.getStatus());
+        assertEquals(200, resultado.getStatus());
         org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
-        assertNotNull(new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString()).get("error"));
-        verify(servicioPropiedad, never()).transferirPropiedadParaJugadores(any(), any(), any(), any());
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString());
+        assertEquals(ID_COMPRADOR.longValue(), json.get("propietarioId").asLong());
+        verify(servicioPropiedad).transferirPropiedadParaJugadores(50L, ID_VENDEDOR, ID_COMPRADOR, 450);
     }
 
     private void activarEventoGlobal() {

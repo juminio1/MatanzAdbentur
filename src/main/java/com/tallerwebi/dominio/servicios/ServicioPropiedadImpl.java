@@ -142,7 +142,6 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throws EstadoPartidaInvalidoException {
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        validarVentaEnEvento(partida, idJugador);
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
@@ -150,6 +149,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (!participacion.permiteAdministrarPropiedades(partida, jugador, idJugador)) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
+        participacion.validarPartidaEnCurso(partida);
         return servicioCasillero.buscarCasilleroPropiedad(partida, posicion);
     }
 
@@ -167,7 +167,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        validarVentaEnEvento(partida, idJugador);
+        participacion.validarPartidaEnCurso(partida);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
         Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
@@ -187,7 +187,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Partida partidaVendedor = repositorioPartida.buscarPartidaPorJugador(idVendedor);
         repositorioPartida.bloquearPartida(partidaVendedor);
         participacion.validarPartidaEnCurso(partidaVendedor);
-        validarVentaEnEvento(partidaVendedor, idVendedor);
+        participacion.validarPartidaEnCurso(partidaVendedor);
         Partida partidaComprador = repositorioPartida.buscarPartidaPorJugador(idComprador);
         participacion.validarPartidaEnCurso(partidaComprador);
         participacion.validarParticipantesDeTransferencia(partidaVendedor, partidaComprador, vendedor, comprador);
@@ -216,12 +216,6 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         repositorioPartida.bloquearPartida(partida);
         participacion.validarAccionOrdinaria(partida);
         return partida;
-    }
-
-    private void validarVentaEnEvento(Partida partida, Long jugador) {
-        Boolean tieneDeuda = !partida.getEventoGlobal().estaActivo() || deudas != null
-            && deudas.buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador) != null;
-        participacion.validarVentaParaDeuda(partida, tieneDeuda);
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
@@ -296,9 +290,9 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
         Jugador propietario = propiedad.getPropietario();
         if (propietario == null || idPartida == null) return 20;
-        Long cantidadParadas = servicioCasillero.obtenerTodosLosCasilleros().stream()
-                .filter(CasilleroPropiedad.class::isInstance)
-                .map(CasilleroPropiedad.class::cast)
+        Partida referencia = new Partida();
+        referencia.setId(idPartida);
+        Long cantidadParadas = servicioCasillero.obtenerCasillerosPropiedadDePartida(referencia).stream()
                 .filter(c -> POSICIONES_PARADA.contains(c.getPosicion()) && c.getPropiedad() != null)
                 .filter(c -> idPartida.equals(c.getPartidaId()))
                 .filter(c -> c.getPropiedad().getPropietario() != null
@@ -311,7 +305,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public void mejorarPropiedad(Long idPropiedad, Jugador jugador) {
         validarJugador(jugador);
-        validarPartidaDelJugador(jugador.getId());
+        Partida partida = validarPartidaDelJugador(jugador.getId());
+        participacion.validarGestionAntesDeTirar(partida, jugador.getId(), false);
 
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
 

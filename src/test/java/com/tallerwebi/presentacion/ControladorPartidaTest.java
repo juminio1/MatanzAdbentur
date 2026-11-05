@@ -127,6 +127,8 @@ public class ControladorPartidaTest {
         assertNull(vista.getModel().get("turnoActualId"));
         assertNotNull(vista.getModel().get("propiedadesTablero"));
         verify(servicioPartidaMock).obtenerPartidaParaVisualizacion("FIN");
+        verify(servicioPartidaMock).obtenerAvataresJugadores("FIN");
+        assertNotNull(vista.getModel().get("avataresJugadores"));
         org.mockito.Mockito.verifyNoMoreInteractions(servicioPartidaMock);
         verifyNoInteractions(notificadorPartidaMock, notificadorWebSocketMock);
     }

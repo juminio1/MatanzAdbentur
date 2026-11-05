@@ -166,6 +166,8 @@ public class ServicioPropiedadTest {
     }
 
     private void prepararPartidaEnCurso(Jugador jugador) {
+        jugador.setOrden(0);
+        jugador.setTiroEnTurno(false);
         Partida partida = new Partida();
         partida.setId(1L);
         partida.setEstado(EstadoPartida.EN_CURSO);

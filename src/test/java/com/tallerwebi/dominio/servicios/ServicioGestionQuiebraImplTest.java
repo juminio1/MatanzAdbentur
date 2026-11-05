@@ -49,6 +49,45 @@ class ServicioGestionQuiebraImplTest {
                 new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl(), finalizacion);
     }
 
+    @org.junit.jupiter.api.TestFactory
+    java.util.stream.Stream<org.junit.jupiter.api.DynamicTest> pagarYQuedarEnCeroOEnPositivoNoGeneraDeuda() {
+        return java.util.stream.Stream.of(0, 1, 499).map(saldo -> org.junit.jupiter.api.DynamicTest.dynamicTest(
+                "Saldo final permitido: " + saldo, () -> {
+            preparar();
+            Jugador jugador = new Jugador(); jugador.setId(1L); jugador.setDinero(100 + saldo);
+            Partida partida = new Partida(); partida.setCodigoUnico("NORMAL");
+            partida.setEstado(EstadoPartida.EN_CURSO); partida.setJugadores(java.util.List.of(jugador));
+            when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(partida);
+            when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+
+            assertEquals(com.tallerwebi.dominio.enums.ResultadoDeuda.RESUELTA,
+                servicio.procesarMulta("NORMAL", jugador, 100, "EVENTO_RESTA"));
+            assertEquals(saldo, jugador.getDinero());
+            verify(repositorioDeuda, never()).guardar(any());
+            verifyNoInteractions(publicadorQuiebra);
+        }));
+    }
+
+    @Test
+    void unPagoQueDejariaMenosUnoAbreResolucionDeDeuda() {
+        Jugador jugador = new Jugador(); jugador.setId(1L); jugador.setDinero(100);
+        Partida partida = new Partida(); partida.setCodigoUnico("NORMAL");
+        partida.setEstado(EstadoPartida.EN_CURSO); partida.setJugadores(java.util.List.of(jugador));
+        when(repositorioPartida.buscarPartidaPorJugador(1L)).thenReturn(partida);
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        var pendiente = new java.util.concurrent.atomic.AtomicReference<DeudaPendiente>();
+        when(repositorioDeuda.buscarPorPartidaYJugador("NORMAL", 1L)).thenAnswer(i -> pendiente.get());
+        doAnswer(i -> { pendiente.set(i.getArgument(0)); return null; }).when(repositorioDeuda).guardar(any());
+        when(repositorioPropiedad.buscarPropiedadesPorPropietario(jugador))
+            .thenReturn(java.util.List.of(new com.tallerwebi.dominio.entidades.Propiedad()));
+
+        assertEquals(com.tallerwebi.dominio.enums.ResultadoDeuda.PENDIENTE,
+            servicio.procesarMulta("NORMAL", jugador, 101, "EVENTO_RESTA"));
+        assertEquals(101, pendiente.get().getMontoPendiente());
+        assertEquals(100, jugador.getDinero());
+        verifyNoInteractions(publicadorQuiebra);
+    }
+
     @Test
     void queAlVenderUnaPropiedadYReunirDineroSuficienteSePagueLaDeuda() {
         String codigo = "PARTIDA123";

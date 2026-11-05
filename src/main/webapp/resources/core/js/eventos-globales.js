@@ -9,3 +9,15 @@ export function puedeTirarEnEvento(estado, jugador) {
         && estado.habilitados.some(id => String(id) === String(jugador))
         && estado.tiradas[`${estado.etapa}:${jugador}`] == null;
 }
+
+// Durante un evento se conserva el turno más reciente aunque llegue una consulta vieja después.
+export function seleccionarTurnoMasReciente(actual, siguiente) {
+    if (!siguiente || siguiente.idJugadorActual == null) return actual;
+    if (!actual) return siguiente;
+    const rondaActual = Number(actual.rondaActual ?? 0);
+    const rondaNueva = Number(siguiente.rondaActual ?? 0);
+    if (rondaNueva < rondaActual) return actual;
+    if (rondaNueva === rondaActual && Number(siguiente.turnosFinalizadosEnRonda ?? 0)
+            < Number(actual.turnosFinalizadosEnRonda ?? 0)) return actual;
+    return siguiente;
+}

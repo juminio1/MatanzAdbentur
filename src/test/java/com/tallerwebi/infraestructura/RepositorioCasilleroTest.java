@@ -33,6 +33,25 @@ class RepositorioCasilleroTest {
     private SessionFactory sessionFactory;
 
     @Test
+    void consultaSoloLasPropiedadesDeLaPartidaSolicitada() {
+        RepositorioCasillero repositorio = new RepositorioCasilleroImpl(sessionFactory);
+        for (long partida : new long[] {10L, 20L}) {
+            Propiedad propiedad = new Propiedad(null, "Propiedad " + partida, 300, 50, null, GrupoPropiedades.SAN_JUSTO);
+            CasilleroPropiedad casillero = new CasilleroPropiedad(null, 4, "Plaza", "", propiedad);
+            casillero.setPartidaId(partida);
+            repositorio.guardar(casillero);
+        }
+        sessionFactory.getCurrentSession().flush();
+        sessionFactory.getCurrentSession().clear();
+
+        List<CasilleroPropiedad> resultado = repositorio.obtenerPropiedadesDePartida(10L);
+
+        assertEquals(1, resultado.size());
+        assertEquals(10L, resultado.get(0).getPartidaId());
+        assertEquals("Propiedad 10", resultado.get(0).getPropiedad().getNombre());
+    }
+
+    @Test
     void guardaYRecuperaCasillerosConSusSubtiposYDatos() {
         RepositorioCasillero repositorio = new RepositorioCasilleroImpl(sessionFactory);
         Casillero inicio = new Casillero(null, 0, "Inicio", "Comienzo del recorrido");

@@ -56,6 +56,16 @@ public interface ServicioParticipacion {
             throw new PropiedadInvalidaException("No podés comprarle una propiedad a vos mismo.");
         }
     }
+    default void validarGestionAntesDeTirar(Partida partida, Long idJugador, boolean paraDeuda) {
+        if (paraDeuda) return;
+        Jugador jugador = partida.getJugadores().stream()
+            .filter(j -> Objects.equals(j.getId(), idJugador)).findFirst().orElse(null);
+        if (jugador == null || !Objects.equals(jugador.getOrden(), partida.getIndiceTurnoActual())
+                || Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new IllegalStateException("Solo podés gestionar propiedades antes de tirar, durante tu turno.");
+        }
+    }
+
     boolean estaActivo(Jugador jugador);
     boolean pertenece(Partida partida, Long idJugador);
     boolean permiteAdministrarPropiedades(Partida partida, Jugador jugador, Long idJugador);

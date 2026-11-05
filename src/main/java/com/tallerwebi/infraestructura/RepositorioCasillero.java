@@ -5,5 +5,6 @@ import java.util.List;
 
 public interface RepositorioCasillero {
     List<Casillero> obtenerTodos();
+    List<com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad> obtenerPropiedadesDePartida(Long idPartida);
     void guardar(Casillero casillero);
 }

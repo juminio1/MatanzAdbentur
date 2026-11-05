@@ -361,8 +361,8 @@ public class ServicioEventoImpl implements ServicioEvento {
                     Objects.equals(jugador.getOrden(), partida.getIndiceTurnoActual())).filter(participacion::estaActivo).map(Jugador::getId).findFirst().orElse(null)
         );
         vista.put("vence", estado.getVencimiento() == null ? null : estado.getVencimiento().toEpochMilli());
-        vista.put("nombre", estado.estaActivo() ? estado.getEvento().getNombre() : null);
-        vista.put("descripcion", estado.estaActivo() ? estado.getEvento().getDescripcion() : null);
+        vista.put("nombre", estado.getEvento() != null ? estado.getEvento().getNombre() : null);
+        vista.put("descripcion", estado.getEvento() != null ? estado.getEvento().getDescripcion() : null);
         vista.put("seleccionado", estado.getSeleccionado());
         vista.put("consecuencia", estado.getConsecuencia());
         vista.put("tarjeta", tarjetaAplicada(estado));
