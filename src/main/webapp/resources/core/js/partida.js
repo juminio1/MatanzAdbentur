@@ -2514,6 +2514,7 @@ function activarModoEspectador() {
 
 // Atiende la quiebra confirmada sin ejecutar las acciones ni los mensajes de abandono.
 function procesarNotificacionQuiebra(datos) {
+    eliminarFichaJugadorAbandonado(datos.idJugador);
     if (!quiebrasNotificadas.has(String(datos.idJugador))) {
         quiebrasNotificadas.add(String(datos.idJugador));
         agregarAlHistorial(`${datos.apodo} se declaró en quiebra.`, datos.idJugador);
