@@ -12,8 +12,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=finalizacion-2)}"
-            href="../../../resources/core/css/partida.css?v=finalizacion-2"
+            th:href="@{/css/partida.css(v=popup-global-2)}"
+            href="../../../resources/core/css/partida.css?v=popup-global-2"
         />
     </head>
     <body class="pagina-partida">
@@ -685,6 +685,7 @@
                 </p>
                 <dl class="modal-info-propiedad__datos">
                     <div><dt>Deuda pendiente</dt><dd id="deuda-importe"></dd></div>
+                    <div><dt>Dinero disponible</dt><dd id="deuda-disponible"></dd></div>
                     <div><dt>Motivo</dt><dd id="deuda-motivo"></dd></div>
                     <div id="deuda-acreedor-contenedor"><dt>Acreedor</dt><dd id="deuda-acreedor"></dd></div>
                 </dl>
@@ -924,10 +925,63 @@
             aria-live="polite"
             aria-atomic="true"
         ></div>
+<dialog id="modal-compra-evento" class="modal-propiedad">
+    <div class="modal-propiedad__contenido">
+        <h2>Propiedad disponible</h2>
+        <p id="compra-evento-detalle"></p>
+        <p id="compra-evento-mensaje" aria-live="polite"></p>
+        <div class="modal-propiedad__acciones">
+            <button id="btn-compra-evento-aceptar" type="button" class="btn-casillero btn-casillero--principal">Comprar</button>
+            <button id="btn-compra-evento-rechazar" type="button" class="btn-casillero">No comprar</button>
+        </div>
+    </div>
+</dialog>
+
 <section id="aviso-evento" class="aviso-evento" role="dialog" aria-labelledby="aviso-evento-nombre" aria-describedby="aviso-evento-descripcion" aria-hidden="true">
     <h2 id="aviso-evento-nombre"></h2>
     <p id="aviso-evento-descripcion"></p>
     <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
+</section>
+
+<section id="aviso-global" class="aviso-evento aviso-global" role="dialog"
+         aria-modal="true" aria-labelledby="global-nombre" aria-describedby="global-descripcion"
+         aria-hidden="true">
+    <header class="aviso-global__cabecera">
+        <span class="aviso-global__etiqueta">EVENTO GLOBAL</span>
+        <span id="global-fase" class="aviso-global__fase">Esperando tiradas</span>
+    </header>
+
+    <h2 id="global-nombre">Evento global</h2>
+    <p id="global-descripcion" class="aviso-global__descripcion"></p>
+
+    <div class="aviso-global__reloj">
+        <span id="global-tiempo-titulo">Tiempo para tirar</span>
+        <strong id="global-tiempo">00:30</strong>
+    </div>
+
+    <p id="global-etapa" class="aviso-global__etapa" aria-live="polite"></p>
+
+    <div id="global-dados" class="aviso-global__dados" hidden
+         aria-label="Tus dados del evento">
+        <output id="global-dado-1" class="aviso-global__dado">–</output>
+        <output id="global-dado-2" class="aviso-global__dado">–</output>
+    </div>
+
+    <ol id="global-tiradas" class="aviso-global__tiradas"
+        aria-label="Tiradas de los participantes" aria-live="polite"></ol>
+
+    <p id="global-confirmaciones" class="aviso-global__confirmaciones" hidden></p>
+    <p id="global-consecuencia" class="aviso-global__resultado" aria-live="polite"></p>
+    <p id="global-mensaje" class="aviso-global__mensaje" role="status" aria-live="polite"></p>
+
+    <div class="aviso-global__acciones">
+        <button id="global-tirar" type="button"
+                class="btn-casillero btn-casillero--principal">Tirar dados del evento</button>
+        <button id="global-continuar" type="button"
+                class="btn-casillero btn-casillero--principal" hidden>Continuar partida</button>
+        <button id="global-deuda" type="button"
+                class="btn-casillero btn-casillero--secundario" hidden>Resolver mi deuda</button>
+    </div>
 </section>
 
         <dialog
@@ -1013,7 +1067,7 @@
 
         <!-- Script de cliente -->
 
-<script th:src="@{/js/partida.js(v=finalizacion-2)}" src="../../../resources/core/js/partida.js?v=finalizacion-2" charset="UTF-8" defer></script>
+<script type="module" th:src="@{/js/partida.js(v=popup-global-2)}" src="../../../resources/core/js/partida.js?v=popup-global-2" charset="UTF-8"></script>
 
 </body>
 

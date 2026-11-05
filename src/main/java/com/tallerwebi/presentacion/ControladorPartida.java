@@ -224,6 +224,8 @@ public class ControladorPartida {
             return respuesta;
         } catch (TiradaNoPermitidaException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         }
     }
 

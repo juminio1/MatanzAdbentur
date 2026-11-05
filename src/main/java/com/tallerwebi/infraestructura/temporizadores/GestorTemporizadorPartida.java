@@ -13,11 +13,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Programo el vencimiento de los turnos. */
 @Component
-public class GestorTemporizadorPartida {
+public class GestorTemporizadorPartida implements org.springframework.beans.factory.DisposableBean {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     private final Map<String, ScheduledFuture<?>> temporizadores = new ConcurrentHashMap<>();
+    private final Map<String, Long> revisionesEventos = new ConcurrentHashMap<>();
 
     private final TransactionTemplate transactionTemplate;
 
@@ -75,6 +76,22 @@ public class GestorTemporizadorPartida {
         }
     }
 
+    public synchronized void programarTemporizadorEvento(String clave, long revision,
+            int segundos, Runnable accion) {
+        long anterior = revisionesEventos.getOrDefault(clave, -1L);
+        if (revision < anterior) return;
+        ScheduledFuture<?> vigente = temporizadores.get(clave);
+        if (revision == anterior && vigente != null && !vigente.isDone()) return;
+        revisionesEventos.put(clave, revision);
+        programarTemporizador(clave, segundos, accion);
+    }
+
+    public synchronized void cancelarTemporizadorEvento(String clave, long revision) {
+        if (revision < revisionesEventos.getOrDefault(clave, -1L)) return;
+        revisionesEventos.put(clave, revision);
+        cancelarTemporizador(clave);
+    }
+
     public Integer obtenerSegundosRestantes(String codigoUnico) {
         ScheduledFuture<?> tarea = temporizadores.get(codigoUnico);
         if (tarea == null) {
@@ -84,5 +101,12 @@ public class GestorTemporizadorPartida {
         Long milisegundos = tarea.getDelay(TimeUnit.MILLISECONDS);
         Long segundos = Math.max(0, (milisegundos + 999) / 1000);
         return segundos.intValue();
+    }
+
+    @Override
+    public void destroy() {
+        scheduler.shutdownNow();
+        temporizadores.clear();
+        revisionesEventos.clear();
     }
 }

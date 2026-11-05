@@ -17,6 +17,9 @@ public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado>
 
 
     private final ServicioPartida servicioPartida;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
     private static final Long MINIMO_JUGADORES_PARA_CONTINUAR = 2L;
 
     public ObservadorTurnoQuiebra(@Lazy ServicioPartida servicioPartida, ServicioParticipacion participacion) {
@@ -28,6 +31,10 @@ public class ObservadorTurnoQuiebra implements Observador<EventoJugadorQuebrado>
     public void actualizar(EventoJugadorQuebrado evento) {
 
         Partida partida = evento.partida();
+        if (partida.getEventoGlobal().estaActivo() && eventosGlobales != null) {
+            eventosGlobales.participantesCambiaron(partida);
+            return;
+        }
 
         Long jugadoresActivos = partida.getJugadores().stream()
                 .filter(participacion::estaActivo)

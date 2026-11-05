@@ -10,6 +10,8 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import java.util.Objects;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
@@ -37,6 +39,9 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private final ServicioPropiedad servicioPropiedad;
     private final RepositorioPropiedad repositorioPropiedad;
     private final PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
+    @Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
 
     @Autowired
     public ServicioGestionQuiebraImpl(
@@ -59,12 +64,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
-    public void registrarDeuda(
-            String codigoPartida,
-            Jugador deudor,
-            Jugador acreedor,
-            Integer monto,
-            String motivo) {
+    public void registrarDeuda(String codigoPartida, Jugador deudor, Jugador acreedor, Integer monto, String motivo) {
 
         if (deudor == null || monto == null || monto <= 0) {
             throw new IllegalArgumentException("Datos de deuda inválidos");
@@ -74,8 +74,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         if (repositorioDeudaPendiente.buscarPorPartidaYJugador(
                 codigoPartida, deudor.getId()) != null) {
-            throw new IllegalStateException(
-                    "El jugador ya tiene un pago pendiente");
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
         }
 
         DeudaPendiente deuda = new DeudaPendiente();
@@ -93,7 +92,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     public Boolean intentarResolverDeuda(
             String codigoPartida,
             Long idJugador) {
-        validarPartidaEconomica(codigoPartida, idJugador);
+        Partida partida = validarPartidaEconomica(codigoPartida, idJugador);
 
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
@@ -122,6 +121,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         repositorioPartida.actualizarJugador(deudor);
         repositorioDeudaPendiente.eliminar(deuda);
+
+        if (eventosGlobales != null && partida.getEventoGlobal().estaActivo()) {
+            eventosGlobales.participantesCambiaron(partida);
+        }
 
         return true;
     }
@@ -199,12 +202,25 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         repositorioDeudaPendiente.eliminar(deuda);
         EventoJugadorQuebrado evento = new EventoJugadorQuebrado(partida, jugador);
         publicadorQuiebra.notificar(evento);
+        if (esQuiebraPorCaidaGlobal(partida, idJugador)) {
+            // Los observadores pueden recargar el estado embebido durante esta caída.
+            // Se conserva la quiebra que este mismo servicio acaba de declarar.
+            jugador.setEnBancarrota(true);
+        }
         return partida;
+    }
+
+    private Boolean esQuiebraPorCaidaGlobal(Partida partida, Long idJugador) {
+        var estado = partida.getEventoGlobal();
+        return estado.estaActivo() && Objects.equals(estado.getSeleccionado(), idJugador)
+            && (estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION
+                || estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP);
     }
 
     // Comprueba que la partida esté en curso y que el jugador participe en ella.
     private Partida validarPartidaParaQuiebra(String codigoPartida, Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        repositorioPartida.bloquearPartida(partida);
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
@@ -251,23 +267,13 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return ResultadoDeuda.RESUELTA;
         }
 
-        registrarDeuda(
-                codigoPartida,
-                pagador,
-                propiedad.getPropietario(),
-                montoAlquiler,
-                "ALQUILER"
-        );
+        registrarDeuda(codigoPartida, pagador, propiedad.getPropietario(), montoAlquiler, "ALQUILER");
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
 
     @Override
-    public ResultadoDeuda procesarMulta(
-            String codigoPartida,
-            Jugador jugador,
-            Integer montoMulta,
-            String motivo) {
+    public ResultadoDeuda procesarMulta( String codigoPartida, Jugador jugador, Integer montoMulta, String motivo) {
         validarPartidaEconomica(codigoPartida, jugador.getId());
 
         Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
@@ -290,13 +296,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return ResultadoDeuda.RESUELTA;
         }
 
-        registrarDeuda(
-                codigoPartida,
-                pagador,
-                null,
-                montoMulta,
-                motivo
-        );
+        registrarDeuda(codigoPartida, pagador, null, montoMulta, motivo);
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
@@ -310,6 +310,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
     private Partida validarPartidaEconomica(String codigoPartida, Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
+        repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
         if (!java.util.Objects.equals(codigoPartida, partida.getCodigoUnico())) {
             throw new IllegalStateException("El jugador no pertenece a esta partida.");

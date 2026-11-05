@@ -32,6 +32,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final ServicioEconomia economia;
     private final ServicioTurno turnos;
     private final ServicioCasillero servicioCasillero;
+    @Autowired(required = false)
+    private com.tallerwebi.infraestructura.RepositorioDeudaPendiente deudas;
     private static final Integer NIVEL_MAXIMO_MEJORA = 5;
     private static final List<Integer> ALQUILERES_MEJORADOS = List.of(200, 300, 500, 1000, 1500);
     private static final List<Integer> ALQUILERES_POR_PARADAS = List.of(0, 20, 50, 100, 200);
@@ -66,7 +68,8 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throws EstadoPartidaInvalidoException {
         // La consulta y la materialización participan de la transacción del servicio.
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
-        participacion.validarPartidaEnCurso(partida);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarCompraEnPartida(partida);
         if (!servicioCasillero.existePosicionDePropiedad(partida, posicion)) return null;
         Jugador jugador = turnos.obtenerJugadorActual(partida);
         if (jugador == null) {
@@ -96,6 +99,27 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         ejecutarCompra(idPropiedad, comprador);
     }
 
+    @Override
+    public CompraPreparada responderCompraDeEvento(String codigoPartida, Long idJugador, Integer ronda, Boolean aceptar) {
+        Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
+        Jugador jugador = obtenerJugadorExistente(idJugador, "No se encontró el comprador.");
+        participacion.validarCompraPorEvento(partida, jugador, ronda, aceptar);
+        if (!aceptar) {
+            partida.getEventoGlobal().ofrecerCompra(null);
+            return null;
+        }
+        Integer posicion = partida.getEventoGlobal().getPosicionCompra();
+        if (!Objects.equals(posicion, jugador.getPosicionActual())) {
+            throw new PropiedadNoDisponibleException("Ya no estás en el casillero de esta oportunidad de compra.");
+        }
+        CasilleroPropiedad casillero = servicioCasillero.buscarOCrearPropiedadEnPosicion(partida, posicion);
+        ejecutarCompra(casillero.getPropiedad().getId(), jugador);
+        partida.getEventoGlobal().ofrecerCompra(null);
+        return new CompraPreparada(codigoPartida, jugador, casillero);
+    }
+
     private void ejecutarCompra(Long idPropiedad, Jugador comprador) {
         validarPartidaDelJugador(comprador.getId());
         Propiedad propiedadEncontrada = obtenerPropiedadExistente(idPropiedad);
@@ -116,7 +140,9 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public CasilleroPropiedad prepararVenta(Partida partida, Long idJugador, Integer posicion)
             throws EstadoPartidaInvalidoException {
+        repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
+        validarVentaEnEvento(partida, idJugador);
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
@@ -138,7 +164,10 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public Integer venderPropiedadParaJugador(Long idPropiedad, Long idJugador) {
         Jugador vendedor = obtenerJugadorExistente(idJugador, "No se encontró el jugador que vende.");
-        validarPartidaDelJugador(idJugador);
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarPartidaEnCurso(partida);
+        validarVentaEnEvento(partida, idJugador);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
         Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
@@ -155,16 +184,15 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (precio == null || precio < 0) throw new PropiedadInvalidaException("El precio ofrecido no es válido.");
         Jugador vendedor = obtenerJugadorExistente(idVendedor, "No se encontró el jugador que vende.");
         Jugador comprador = obtenerJugadorExistente(idComprador, "No se encontró el jugador que vende.");
-        Partida partidaVendedor = validarPartidaDelJugador(idVendedor);
-        Partida partidaComprador = validarPartidaDelJugador(idComprador);
-        if (!Objects.equals(partidaVendedor.getId(), partidaComprador.getId())) {
-            throw new IllegalStateException("Los jugadores no pertenecen a la misma partida.");
-        }
+        Partida partidaVendedor = repositorioPartida.buscarPartidaPorJugador(idVendedor);
+        repositorioPartida.bloquearPartida(partidaVendedor);
+        participacion.validarPartidaEnCurso(partidaVendedor);
+        validarVentaEnEvento(partidaVendedor, idVendedor);
+        Partida partidaComprador = repositorioPartida.buscarPartidaPorJugador(idComprador);
+        participacion.validarPartidaEnCurso(partidaComprador);
+        participacion.validarParticipantesDeTransferencia(partidaVendedor, partidaComprador, vendedor, comprador);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idVendedor);
-        if (Objects.equals(idVendedor, idComprador)) {
-            throw new PropiedadInvalidaException("No podés comprarle una propiedad a vos mismo.");
-        }
         if (!economia.tieneDineroSuficiente(comprador, precio)) {
             throw new DineroInsuficienteException("El comprador no tiene dinero suficiente para aceptar la oferta.");
         }
@@ -185,8 +213,15 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
 
     private Partida validarPartidaDelJugador(Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
-        participacion.validarPartidaEnCurso(partida);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
         return partida;
+    }
+
+    private void validarVentaEnEvento(Partida partida, Long jugador) {
+        Boolean tieneDeuda = !partida.getEventoGlobal().estaActivo() || deudas != null
+            && deudas.buscarPorPartidaYJugador(partida.getCodigoUnico(), jugador) != null;
+        participacion.validarVentaParaDeuda(partida, tieneDeuda);
     }
 
     private void validarPropietarioDeVenta(Propiedad propiedad, Long idJugador) {
@@ -213,7 +248,13 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (montoAlquiler == null || montoAlquiler < 0) {
             throw new PropiedadInvalidaException("El precio del alquiler no es válido.");
         }
-        validarPartidaDelJugador(jugador.getId());
+        // El alquiler automático causado por un evento global sí debe cobrarse
+        // durante la pausa, pero las demás acciones ordinarias siguen bloqueadas.
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(jugador.getId());
+        participacion.validarPartidaEnCurso(partida);
+        if (!partida.getEventoGlobal().estaActivo()) {
+            participacion.validarAccionOrdinaria(partida);
+        }
         Propiedad propiedadPersistida = repositorioPropiedad.buscarPropiedadPorId(propiedad.getId());
         if (propiedadPersistida == null) propiedadPersistida = propiedad;
         Jugador propietario = propiedadPersistida.getPropietario();
