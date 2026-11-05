@@ -83,15 +83,21 @@ class EventosGlobalesPostgreSQLTest {
 
     @Test
     void dadoQueYaExisteElTipoConOtroNombreCuandoSeInicializaDaComoResultadoDatosActualizadosConElMismoId() {
+        // Preparación
         try (var contexto = iniciar()) {
             var jdbc = new JdbcTemplate(contexto.getBean(DataSource.class));
             Integer identificador = jdbc.queryForObject("SELECT id FROM EventoGlobal WHERE tipoEventoGlobal = 'ROBO'", Integer.class);
             jdbc.update("UPDATE Evento SET nombre = 'Robo anterior', descripcion = 'Descripción antigua' WHERE id = ?", identificador);
             jdbc.update("UPDATE EventoGlobal SET valor = 7, tipoEfecto = 'GANAR_PLATA' WHERE id = ?", identificador);
+            assertEquals("Robo anterior", jdbc.queryForObject("SELECT nombre FROM Evento WHERE id = ?", String.class, identificador));
+
+            // Ejecución
             contexto.getBean(DataSourceInitializer.class).afterPropertiesSet();
+
+            // Verificación
             verificarCatalogo(contexto);
             assertEquals(identificador, jdbc.queryForObject("SELECT id FROM EventoGlobal WHERE tipoEventoGlobal = 'ROBO'", Integer.class));
-            assertEquals("Robo anterior", jdbc.queryForObject("SELECT nombre FROM Evento WHERE id = ?", String.class, identificador));
+            assertEquals("ROBO", jdbc.queryForObject("SELECT nombre FROM Evento WHERE id = ?", String.class, identificador));
         }
     }
 
