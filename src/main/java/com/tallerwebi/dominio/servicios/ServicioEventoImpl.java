@@ -1,9 +1,9 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.EstadoEventoGlobal;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
@@ -87,7 +87,7 @@ public class ServicioEventoImpl implements ServicioEvento {
             ronda % RONDAS_ENTRE_EVENTOS != 0 ||
             estado.getUltimaRonda() >= ronda
         ) return estado.estaActivo();
-        List<com.tallerwebi.dominio.entidades.EventoGlobal> eventos = catalogo.obtenerTodos();
+        List<com.tallerwebi.dominio.entidades.Evento.EventoGlobal> eventos = catalogo.obtenerTodos();
         if (eventos.size() != TipoEventoGlobal.values().length) {
             throw new IllegalStateException("El catálogo debe contener los seis eventos globales.");
         }

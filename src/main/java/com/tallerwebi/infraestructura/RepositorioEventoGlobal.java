@@ -1,7 +1,8 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.EventoGlobal;
 import java.util.List;
+
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 
 /** Consulta el catálogo global sin mezclar eventos de casillero. */
 @FunctionalInterface

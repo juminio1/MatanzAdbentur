@@ -1,4 +1,4 @@
-package com.tallerwebi.dominio.entidades;
+package com.tallerwebi.dominio.entidades.Evento;
 
 import com.tallerwebi.dominio.enums.TipoEfectoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;

@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.resultados.*;

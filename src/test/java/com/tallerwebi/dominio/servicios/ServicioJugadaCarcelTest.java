@@ -470,7 +470,7 @@ class ServicioJugadaCarcelTest {
         when(servicioCasilleroMock.obtenerTodosLosCasilleros()).thenReturn(List.of(
                 new com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento(null, 3, "Evento", "", null, null)));
         when(repositorioEventos.obtenerTodos()).thenReturn(List.of(
-                new com.tallerwebi.dominio.entidades.EventoCasillero(null, "Premio", "",
+                new com.tallerwebi.dominio.entidades.Evento.EventoCasillero(null, "Premio", "",
                         com.tallerwebi.dominio.enums.TipoEfectoEvento.SUMA, 200, null, null)));
         var eventos = new com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl(
                 repositorioEventos, servicioCasilleroMock,
@@ -559,7 +559,7 @@ class ServicioJugadaCarcelTest {
         when(servicioCasilleroMock.obtenerTodosLosCasilleros()).thenReturn(List.of(
                 new com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento(null, 3, "Evento", "", null, null)));
         when(repositorioEventos.obtenerTodos()).thenReturn(List.of(
-                new com.tallerwebi.dominio.entidades.EventoCasillero(null, "Premio", "",
+                new com.tallerwebi.dominio.entidades.Evento.EventoCasillero(null, "Premio", "",
                         com.tallerwebi.dominio.enums.TipoEfectoEvento.SUMA, 200, null, null)));
         var eventos = new com.tallerwebi.dominio.servicios.ServicioEventoCasilleroImpl(
                 repositorioEventos, servicioCasilleroMock,

@@ -2,9 +2,9 @@ package com.tallerwebi.infraestructura;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.tallerwebi.dominio.entidades.Evento;
-import com.tallerwebi.dominio.entidades.EventoCasillero;
-import com.tallerwebi.dominio.entidades.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.Evento;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.dominio.enums.TipoEfectoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;

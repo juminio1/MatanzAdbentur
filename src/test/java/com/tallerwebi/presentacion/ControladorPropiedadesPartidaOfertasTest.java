@@ -257,7 +257,7 @@ class ControladorPropiedadesPartidaOfertasTest {
     }
 
     private void activarEventoGlobal() {
-        var evento = new com.tallerwebi.dominio.entidades.EventoGlobal();
+        var evento = new com.tallerwebi.dominio.entidades.Evento.EventoGlobal();
         evento.setTipoEventoGlobal(com.tallerwebi.dominio.enums.TipoEventoGlobal.ROBO);
         partida.getEventoGlobal().iniciar(evento, 5, java.util.Set.of(ID_VENDEDOR, ID_COMPRADOR));
     }

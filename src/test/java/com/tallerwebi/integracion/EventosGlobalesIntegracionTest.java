@@ -7,6 +7,8 @@ import static org.mockito.Mockito.*;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoJugada.EventoAplicado;
 import com.tallerwebi.dominio.enums.*;
 import com.tallerwebi.dominio.eventos.*;

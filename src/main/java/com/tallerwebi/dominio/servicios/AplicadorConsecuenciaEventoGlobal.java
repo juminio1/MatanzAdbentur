@@ -1,11 +1,11 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.catalogo.CatalogoTablero;
-import com.tallerwebi.dominio.entidades.EventoGlobal;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.dominio.resultados.ResultadoEvento;

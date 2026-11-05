@@ -1,7 +1,8 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.EventoCasillero;
 import java.util.List;
+
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 
 @FunctionalInterface
 public interface RepositorioEventoCasillero {

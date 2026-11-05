@@ -9,6 +9,7 @@ import com.microsoft.playwright.options.RequestOptions;
 import com.tallerwebi.config.DatabaseInitializationConfig;
 import com.tallerwebi.config.HibernateConfig;
 import com.tallerwebi.dominio.entidades.*;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.*;
 import java.nio.file.Path;
 import java.time.Instant;

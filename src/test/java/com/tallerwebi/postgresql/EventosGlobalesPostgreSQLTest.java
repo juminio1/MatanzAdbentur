@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.tallerwebi.config.DatabaseInitializationConfig;
 import com.tallerwebi.config.HibernateConfig;
-import com.tallerwebi.dominio.entidades.EventoGlobal;
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfectoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
 import com.tallerwebi.infraestructura.RepositorioEventoGlobalImpl;

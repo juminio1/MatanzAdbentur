@@ -1,9 +1,10 @@
 package com.tallerwebi.infraestructura;
 
-import com.tallerwebi.dominio.entidades.EventoGlobal;
 import java.util.List;
 import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Repository;
+
+import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 
 /** Recupera ambas tablas de la jerarquía mediante HQL. */
 @Repository

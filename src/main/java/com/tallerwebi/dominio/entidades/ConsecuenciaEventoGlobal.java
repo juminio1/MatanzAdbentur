@@ -1,5 +1,7 @@
 package com.tallerwebi.dominio.entidades;
 
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.JoinColumn;
