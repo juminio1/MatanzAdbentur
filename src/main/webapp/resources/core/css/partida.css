@@ -912,36 +912,30 @@
 
 .fichas-en-casillero {
     position: absolute;
-    top: 4px;
-    left: 4px;
-    right: 4px;
-    bottom: 4px;
-
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 2px;
-
-    place-items: center;
-
+    inset: 0;
+    display: flex;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: min(54px, 100%);
+    height: min(54px, 100%);
+    margin: auto;
     z-index: 5;
+    pointer-events: none;
 }
-
 .ficha {
     position: static;
-
-    width: 100%;
-    height: 100%;
-
-    max-width: 24px;
-    max-height: 24px;
-
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     border: 2px solid #111;
-
     box-sizing: border-box;
     box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
-    transition: transform 0.15s ease;
+    transition: transform .15s ease;
+    pointer-events: auto;
 }
 
 .ficha-rojo {
@@ -1034,16 +1028,20 @@
     border: 2px solid transparent;
 }
 
+.jugador[data-ficha="ROJO"] { --color-ficha: #e74c5b; }
+.jugador[data-ficha="AZUL"] { --color-ficha: #5dc7e5; }
+.jugador[data-ficha="VERDE"] { --color-ficha: #12B981; }
+.jugador[data-ficha="AMARILLO"] { --color-ficha: #ffd24c; }
 .jugador.turno-activo {
     transform: scale(1.08);
-    border: 2px solid var(--p-dorado);
-    box-shadow: 0 0 20px rgba(196, 166, 47, 0.5);
+    border: 2px solid var(--color-ficha, var(--p-dorado));
+    box-shadow: 0 0 20px color-mix(in srgb, var(--color-ficha, var(--p-dorado)) 50%, transparent);
     z-index: 10;
 }
 
 .jugador.turno-activo .avatar-jugador {
-    border: 3px solid var(--p-dorado);
-    box-shadow: 0 0 10px rgba(196, 166, 47, 0.8);
+    border: 3px solid var(--color-ficha, var(--p-dorado));
+    box-shadow: 0 0 10px var(--color-ficha, var(--p-dorado));
 }
 
 .jugadores:has(.turno-activo) .jugador:not(.turno-activo) {
@@ -1060,7 +1058,7 @@
     top: calc(100% + 2px);
     right: 24px;
     padding: 3px 16px 4px;
-    background-color: var(--p-dorado);
+    background-color: var(--color-ficha, var(--p-dorado));
     color: #000000;
     border: 2px solid #111;
     border-top: none;
@@ -1464,3 +1462,128 @@
 .aviso-global__acciones { display: grid; gap: 10px; }
 .aviso-global__acciones .btn-casillero { min-height: 46px; color: #111; font-weight: 900; }
 .aviso-global__acciones #global-deuda { color: #fff; }
+
+
+.aviso-espera-quiebra {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(640px, calc(100vw - 40px));
+    box-sizing: border-box;
+    padding: clamp(28px, 6vw, 56px);
+    text-align: center;
+    background: var(--p-superficie);
+    color: var(--p-texto);
+    border: 3px solid var(--p-dorado);
+    border-radius: 20px;
+    box-shadow: 0 24px 80px #0009;
+}
+.aviso-espera-quiebra::backdrop { background: #080d13b3; backdrop-filter: blur(8px); }
+.aviso-espera-quiebra h2 { margin: 0 0 20px; color: var(--p-dorado); font-size: clamp(32px, 6vw, 46px); }
+.aviso-espera-quiebra p { margin: 0; font-size: clamp(17px, 3vw, 22px); line-height: 1.6; }
+.espera-puntos { display: inline-block; white-space: nowrap; }
+.espera-puntos span { display: inline-block; animation: espera-punto 1.2s ease-in-out infinite; }
+.espera-puntos span:nth-child(2) { animation-delay: .2s; }
+.espera-puntos span:nth-child(3) { animation-delay: .4s; }
+@keyframes espera-punto {
+    0%, 60%, 100% { opacity: .3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .espera-puntos span { animation: none; opacity: 1; }
+}
+
+#espera-ver-propiedades {
+    display: inline-flex;
+    justify-content: center;
+    margin-top: 30px;
+    padding: 9px 18px;
+    min-height: 36px;
+    font-size: 14px;
+    width: auto;
+}
+#popup-acciones-propias[hidden] { display: none; }
+
+#modal-intercambio label { font-weight: 800; }
+#modal-intercambio select { min-width: 0; max-width: 100%; }
+#modal-intercambio-recibido dd { max-width: 70%; overflow-wrap: anywhere; }
+
+.propiedad-propia__acciones--gestion { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 480px) {
+    .propiedad-propia__acciones--gestion { grid-template-columns: 1fr; }
+}
+
+/* Ventana partida: tablero ancho y controles junto al historial, sólo hasta 1250 px. */
+@media (max-width: 1250px) {
+/* El tablero usa todo el ancho; controles e historial comparten la fila inferior. */
+.pagina-partida {
+    --alto-panel-inferior: clamp(160px, 22dvh, 220px);
+    --separacion-bloques: clamp(32px, 5dvh, 48px);
+    row-gap: var(--separacion-bloques);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-content: start;
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+}
+.partida__main { grid-column: 1 / -1; }
+.zona-tablero { display: block; height: auto; padding-top: 0; }
+.tablero-wrap { display: block; flex: none; container-type: inline-size; }
+.tablero {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: max(200px, calc(100dvh - var(--alto-panel-inferior) - 150px - 2 * var(--separacion-bloques)));
+    aspect-ratio: 12 / 5;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+.partida__pie {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(280px, .85fr) minmax(0, 1.15fr);
+    gap: 20px;
+    height: var(--alto-panel-inferior);
+    min-width: 0;
+    align-self: start;
+}
+.partida__pie .acciones {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 0;
+    align-self: start;
+    align-content: start;
+    padding: 12px;
+    box-sizing: border-box;
+    gap: 10px;
+}
+.partida__pie .acciones__secundarias { grid-column: 1 / -1; align-self: start; margin: 0; }
+.partida__pie .dados { grid-column: 1; }
+.partida__pie .btn-tirar { grid-column: 2; justify-self: end; margin: 0; }
+.partida__pie .carcel-turno { grid-column: 1 / -1; }
+.partida__pie .partida__lateral { grid-column: auto; height: 100%; min-height: 0; }
+.partida__pie .historial { height: 100%; max-height: none; margin: 0; padding: 10px; gap: 8px; }
+.partida__pie .historial__cabecera { justify-content: space-between; gap: 10px; }
+.partida__pie .historial__cabecera h2 { font-size: 12px; }
+.partida__pie .historial__lista { min-height: 0; flex: 1; overflow-y: auto; gap: 6px; }
+.partida__pie .historial__lista li { padding: 8px; font-size: 11px; line-height: 1.35; }
+@media (max-width: 640px) {
+    .partida__pie { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .partida__pie .acciones { min-height: 0; }
+    .partida__pie .partida__lateral { height: 190px; }
+    .tablero { max-height: none; }
+}
+
+}
+
+/* Ventana amplia: distribución original con historial al costado del tablero. */
+@media (min-width: 1251px) {
+    .pagina-partida { grid-template-rows: auto minmax(0, 1fr) auto; }
+    .partida__main { grid-column: 1; grid-row: 2; }
+    .zona-tablero { box-sizing: border-box; }
+    .partida__pie { display: contents; }
+    .partida__pie .acciones { grid-column: 1; grid-row: 3; }
+    .partida__pie .partida__lateral { grid-column: 2; grid-row: 2 / span 2; }
+}

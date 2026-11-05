@@ -76,6 +76,31 @@ class RepositorioDeudaPendienteTest {
         return partida;
     }
 
+    @Test
+    void laAlertaDePruebaAntiguaNoBloqueaNiImpideRegistrarUnaDeudaReal() {
+        Usuario creador = new Usuario();
+        creador.setUsername("CreadorPruebaRetirada");
+        creador.setEmail("prueba-retirada@example.test");
+        sessionFactory.getCurrentSession().persist(creador);
+        Partida partida = crearPartida("PRUEBA-RETIRADA", creador);
+        Jugador jugador = crearJugador("Deudor prueba");
+        DeudaPendiente alerta = crearDeuda(partida, jugador, null, 0);
+        alerta.setMotivo("SALDO_MINIMO_PRUEBA");
+        sessionFactory.getCurrentSession().persist(alerta);
+        sessionFactory.getCurrentSession().flush();
+
+        assertNull(repositorio.buscarPorPartidaYJugador("PRUEBA-RETIRADA", jugador.getId()));
+        DeudaPendiente deudaReal = crearDeuda(partida, jugador, null, 100);
+        repositorio.guardar(deudaReal);
+        sessionFactory.getCurrentSession().flush();
+        sessionFactory.getCurrentSession().clear();
+
+        DeudaPendiente recuperada = repositorio.buscarPorPartidaYJugador("PRUEBA-RETIRADA", jugador.getId());
+        assertNotNull(recuperada);
+        assertEquals(100, recuperada.getMontoPendiente());
+        assertEquals(deudaReal.getId(), recuperada.getId());
+    }
+
     private Jugador crearJugador(String apodo) {
         Jugador jugador = new Jugador();
         jugador.setApodo(apodo);

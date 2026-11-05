@@ -71,6 +71,27 @@ class ControladorGestionQuiebraTest {
     }
 
     @Test
+    void laDeudaEsDelNombreAutenticadoAunqueSuCuentaCoincidaConOtroJugador() {
+        Jugador otro = new Jugador(); otro.setId(1L); otro.setApodo("Otro");
+        Jugador deudor = new Jugador(); deudor.setId(2L); deudor.setApodo("Melina");
+        Partida partida = new Partida(); partida.setJugadores(List.of(otro, deudor));
+        session.setAttribute("id", 1L);
+        session.setAttribute("NOMBRE", "Melina");
+        when(servicioPartidaMock.obtenerPartida("PAUSA")).thenReturn(partida);
+        DeudaPendiente deuda = new DeudaPendiente();
+        deuda.setJugadorDeudor(deudor); deuda.setMontoPendiente(100); deuda.setMotivo("ALQUILER");
+        when(servicioGestionQuiebraMock.obtenerDeudaPendiente("PAUSA", 2L)).thenReturn(deuda);
+
+        var respuesta = controladorGestionQuiebra.obtenerDeudaPendiente("PAUSA", request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(true, respuesta.getBody().get("tieneDeudaPendiente"));
+        assertEquals(100, respuesta.getBody().get("montoPendiente"));
+        verify(servicioGestionQuiebraMock, never()).obtenerDeudaPendiente("PAUSA", 1L);
+        assertEquals(2L, com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion.resolver(partida, request));
+    }
+
+    @Test
     void queSpringRegistreLasRutasDeDeudaYQuiebraUnaSolaVez() {
         ControladorPartida controladorPartida = new ControladorPartida(servicioPartidaMock,
                 notificadorWebSocketMock,

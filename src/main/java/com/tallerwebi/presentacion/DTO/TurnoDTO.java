@@ -3,6 +3,9 @@ package com.tallerwebi.presentacion.DTO;
 
 public class TurnoDTO {
 
+    private boolean pausadoPorDeuda;
+    public boolean isPausadoPorDeuda() { return pausadoPorDeuda; }
+    public void setPausadoPorDeuda(boolean valor) { pausadoPorDeuda = valor; }
     private String codigoPartida;
     private Long idJugadorActual;
     private String apodoJugadorActual;

@@ -78,6 +78,14 @@ class ServicioOfertaPropiedadTest {
     }
 
     @Test
+    void permiteCrearOfertaDespuesDeTirarAunqueYaNoSeaElTurnoDelVendedor() {
+        vendedor.setTiroEnTurno(true);
+        partida.setIndiceTurnoActual(1);
+        Oferta oferta = servicio.crearOferta(partida, POSICION, 1L, 2L, 450);
+        assertEquals(oferta.id(), servicio.ofertasPendientes(CODIGO, 2L).get(0).id());
+    }
+
+    @Test
     void laOfertaGuardaLosDatosParaMostrarlaAlComprador() {
         Oferta oferta = servicio.crearOferta(partida, POSICION, 1L, 2L, 450);
 
@@ -226,6 +234,7 @@ class ServicioOfertaPropiedadTest {
         jugador.setId(id);
         jugador.setApodo(apodo);
         jugador.setDinero(1000);
+        jugador.setOrden(0);
         return jugador;
     }
 

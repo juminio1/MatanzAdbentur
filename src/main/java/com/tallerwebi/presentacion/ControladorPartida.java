@@ -156,6 +156,7 @@ public class ControladorPartida {
         model.put("usuarioEnBancarrota", jugadorSesion != null && jugadorSesion.getEnBancarrota());
         model.put("turnoActualId", partidaReal.getEstado() == EstadoPartida.FINALIZADA
                 ? null : resolverTurnoActualId(codigoFinal));
+        model.put("avataresJugadores", servicioPartida.obtenerAvataresJugadores(codigoFinal));
         model.put("propiedadesTablero", mapeadorPropiedad.catalogoTablero(partidaReal));
 
         return new ModelAndView(VISTA_PARTIDA, model);
@@ -217,7 +218,7 @@ public class ControladorPartida {
         try {
             RespuestaMovimientoDTO respuesta = MapeadorMovimiento.desde(
                     servicioJugada.tirarYMover(codigoUnico, idJugador));
-            servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
+            // La tirada usa el tiempo restante del turno; no reinicia ni extiende el plazo.
             respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
             DespuesDeConfirmar.ejecutar(
                     () -> notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta));

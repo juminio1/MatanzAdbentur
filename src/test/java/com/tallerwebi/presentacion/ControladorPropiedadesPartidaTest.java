@@ -72,8 +72,14 @@ class ControladorPropiedadesPartidaTest {
         partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
         org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         servicioPartida = mock(ServicioPartida.class);
+        when(servicioPartida.obtenerSegundosRestantesTurno(CODIGO)).thenReturn(60);
         notificador = mock(SimpMessagingTemplate.class);
         servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
+        doAnswer(i -> servicioCasillero.obtenerTodosLosCasilleros().stream()
+            .filter(com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad.class::isInstance)
+            .map(com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad.class::cast)
+            .filter(c -> c.getPropiedad() != null && java.util.Objects.equals(c.getPartidaId(), ((Partida)i.getArgument(0)).getId()))
+            .toList()).when(servicioCasillero).obtenerCasillerosPropiedadDePartida(any());
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
@@ -649,6 +655,7 @@ class ControladorPropiedadesPartidaTest {
         jugador.setId(id);
         jugador.setApodo(apodo);
         jugador.setDinero(dinero);
+        jugador.setOrden(0);
         jugador.setPosicionActual(posicion);
         return jugador;
     }

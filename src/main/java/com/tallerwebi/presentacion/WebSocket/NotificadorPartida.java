@@ -17,6 +17,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificadorPartida {
 
+    @org.springframework.context.event.EventListener
+    public void notificarTiradaAutomatica(com.tallerwebi.dominio.eventos.EventoTiradaAutomatica evento) {
+        RespuestaMovimientoDTO respuesta = com.tallerwebi.presentacion.mapeadores.MapeadorMovimiento.desde(evento.resultado());
+        respuesta.setTurnoVencido(true);
+        template.convertAndSend("/topic/partida/" + evento.codigoPartida(), respuesta);
+    }
+
     private static final String TOPIC_PARTIDA_PREFIX = "/topic/partida/";
     private static final Integer UNICO_JUGADOR = 1;
     private static final String CLAVE_ID_JUGADOR = "idJugador";

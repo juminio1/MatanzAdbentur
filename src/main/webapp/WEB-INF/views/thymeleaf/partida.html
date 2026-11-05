@@ -12,11 +12,21 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=popup-global-2)}"
-            href="../../../resources/core/css/partida.css?v=popup-global-2"
+            th:href="@{/css/partida.css(v=chat-simple-22)}"
+            href="../../../resources/core/css/partida.css?v=chat-simple-22"
         />
+        <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=6)}" href="../../../resources/core/css/chat-partida.css?v=6">
     </head>
     <body class="pagina-partida">
+        <dialog id="aviso-espera-quiebra" class="aviso-espera-quiebra"
+                aria-labelledby="espera-quiebra-titulo" aria-describedby="espera-quiebra-texto">
+            <div role="status" aria-live="polite">
+                <h2 id="espera-quiebra-titulo">Espera un toque</h2>
+                <p id="espera-quiebra-texto">Un jugador está solucionando su quiebra<span class="espera-puntos" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
+            </div>
+            <button type="button" id="espera-ver-propiedades" class="btn-casillero btn-casillero--principal">Ver mis propiedades</button>
+            <button type="button" class="btn-casillero btn-casillero--secundario" data-abrir-chat aria-controls="chat-telefono">Chat de la partida <span data-chat-contador hidden>0</span></button>
+        </dialog>
         <!-- Barra superior: contador + jugadores -->
         <header class="barra-superior">
             <div class="cronometro">
@@ -54,12 +64,12 @@
                     class="jugador"
                     th:each="jugador : ${partida.jugadores}"
                     th:id="${jugador.id}"
-                    th:attr="data-bancarrota=${jugador.enBancarrota},data-encarcelado=${jugador.estadoCarcel.encarcelado == true},data-intentos-carcel=${jugador.estadoCarcel.intentosSalirCarcel ?: 0}"
+                    th:attr="data-abandono=${jugador.abandono},data-ficha=${jugador.ficha},data-bancarrota=${jugador.enBancarrota},data-encarcelado=${jugador.estadoCarcel.encarcelado == true},data-intentos-carcel=${jugador.estadoCarcel.intentosSalirCarcel ?: 0}"
                     th:classappend="${jugador.enBancarrota} ? ' jugador--bancarrota' : ''"
                 >
                     <img
                         class="avatar-jugador"
-                        th:src="@{/images/personajes/personajeTurro.jpg}"
+                        th:src="${avataresJugadores != null and avataresJugadores[jugador.id] != null} ? ${avataresJugadores[jugador.id]} : @{/images/personajes/personajeTurro.jpg}"
                         src="../../../resources/core/images/personajes/personajeTurro.jpg"
                         alt="Avatar del Jugador"
                     />
@@ -599,6 +609,10 @@
                     </ol>
                 </div>
 
+            </section>
+        </main>
+
+        <footer class="partida__pie" aria-label="Controles e historial">
                 <!-- Barra de acciones -->
 
                 <div class="acciones" role="group" aria-label="Acciones del turno">
@@ -634,6 +648,7 @@
                         Tirar dados
                     </button>
 
+
                     <!-- Solo se muestra cuando el usuario está preso y es su turno -->
                     <div class="carcel-turno" id="carcel-turno" hidden>
                         <p class="carcel-turno__texto" id="carcel-turno-texto">
@@ -648,9 +663,6 @@
                         </button>
                     </div>
                 </div>
-            </section>
-        </main>
-
         <!-- Panel lateral -->
 
         <aside class="partida__lateral">
@@ -668,6 +680,8 @@
                 </ol>
             </section>
         </aside>
+
+        </footer>
 
         <dialog id="modal-deuda-pendiente" class="modal-propiedad modal-deuda"
                 aria-labelledby="deuda-titulo" aria-describedby="deuda-descripcion">
@@ -687,6 +701,7 @@
                     <div id="deuda-acreedor-contenedor"><dt>Acreedor</dt><dd id="deuda-acreedor"></dd></div>
                 </dl>
                 <div id="deuda-opciones" class="deuda-acciones">
+                    <button type="button" class="btn-casillero btn-casillero--secundario" data-abrir-chat aria-controls="chat-telefono">Chat de la partida</button>
                     <button type="button" id="btn-vender-desde-deuda"
                             class="btn-casillero btn-casillero--principal">Vender propiedades</button>
                     <button type="button" id="btn-declarar-quiebra"
@@ -840,6 +855,46 @@
             </div>
         </dialog>
 
+        <dialog id="modal-intercambio" class="modal-propiedad modal-bono-propiedades" aria-labelledby="intercambio-titulo">
+            <div class="modal-propiedad__contenido">
+                <header class="modal-info-propiedad__cabecera">
+                    <div><p>Propiedad por propiedad</p><h2 id="intercambio-titulo">Proponer intercambio</h2></div>
+                    <button type="button" id="cerrar-intercambio" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+                </header>
+                <p class="modal-info-propiedad__descripcion">Elegí qué ofrecés y qué querés recibir. El otro jugador decide si acepta. Las mejoras se conservan.</p>
+                <label for="intercambio-propia">Tu propiedad</label>
+                <select id="intercambio-propia" class="control-propiedad"></select>
+                <label for="intercambio-jugador">Jugador</label>
+                <select id="intercambio-jugador" class="control-propiedad"></select>
+                <label for="intercambio-ajena">Propiedad que querés recibir</label>
+                <select id="intercambio-ajena" class="control-propiedad"></select>
+                <p id="intercambio-resumen" class="modal-info-propiedad__descripcion"></p>
+                <p id="intercambio-mensaje" class="modal-info-propiedad__descripcion" role="status"></p>
+                <button type="button" id="enviar-intercambio" class="btn-casillero btn-casillero--principal">Enviar propuesta</button>
+                <p class="modal-info-propiedad__descripcion">La propuesta vence a los 5 minutos. El turno sigue su curso.</p>
+            </div>
+        </dialog>
+        <dialog id="modal-intercambio-recibido" class="modal-propiedad modal-bono-propiedades" aria-labelledby="intercambio-recibido-titulo">
+            <div class="modal-propiedad__contenido">
+                <header class="modal-info-propiedad__cabecera">
+                    <div><p>Propuesta recibida</p><h2 id="intercambio-recibido-titulo">Te proponen un intercambio</h2></div>
+                    <button type="button" id="cerrar-intercambio-recibido" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
+                </header>
+                <p id="intercambio-proponente" class="modal-info-propiedad__descripcion"></p>
+                <dl class="modal-info-propiedad__datos">
+                    <div><dt>Recibís</dt><dd id="intercambio-recibis"></dd></div>
+                    <div><dt>Entregás</dt><dd id="intercambio-entregas"></dd></div>
+                </dl>
+                <p class="modal-info-propiedad__descripcion">Sin pago de dinero. Cada propiedad conserva sus mejoras.</p>
+                <p class="modal-info-propiedad__descripcion">Tiempo para responder: <strong id="intercambio-tiempo"></strong></p>
+                <div class="propiedad-propia__acciones">
+                    <button type="button" id="rechazar-intercambio" class="btn-casillero btn-casillero--secundario">Rechazar</button>
+                    <button type="button" id="aceptar-intercambio" class="btn-casillero btn-casillero--principal">Aceptar intercambio</button>
+                </div>
+                <p id="intercambio-recibido-mensaje" class="modal-info-propiedad__descripcion" role="status"></p>
+            </div>
+        </dialog>
+
         <dialog
             id="modal-info-propiedad"
             class="modal-propiedad modal-info-propiedad"
@@ -880,6 +935,11 @@
                     class="modal-info-propiedad__descripcion"
                     aria-live="polite"
                 ></p>
+                <div id="popup-acciones-propias" class="propiedad-propia__acciones propiedad-propia__acciones--gestion" hidden>
+                    <button type="button" id="btn-info-mejorar" class="btn-casillero btn-casillero--secundario">Mejorar propiedad</button>
+                    <button type="button" id="btn-info-vender" class="btn-casillero btn-casillero--principal">Vender propiedad</button>
+                    <button type="button" id="btn-info-intercambiar" class="btn-casillero btn-casillero--secundario">Intercambiar</button>
+                </div>
                 <button
                     type="button"
                     id="btn-modal-info-accion"
@@ -891,11 +951,19 @@
             </div>
         </dialog>
 
-        <dialog id="modal-compra-propiedad" class="modal-propiedad">
-            <form method="dialog" class="modal-propiedad__contenido">
-                <h2 id="modal-propiedad-titulo">Propiedad disponible</h2>
-                <p id="modal-propiedad-info"></p>
-                <p>Tiempo restante del turno: <strong id="tiempo-compra">30</strong> segundos</p>
+        <dialog id="modal-compra-propiedad" class="modal-propiedad modal-info-propiedad" aria-labelledby="modal-propiedad-titulo">
+            <div class="modal-info-propiedad__contenido">
+                <header class="modal-info-propiedad__cabecera"><div>
+                    <p>Propiedad disponible</p>
+                    <h2 id="modal-propiedad-titulo">Propiedad disponible</h2>
+                </div></header>
+                <p id="modal-propiedad-info" class="modal-info-propiedad__descripcion" role="status"></p>
+                <dl class="modal-info-propiedad__datos">
+                    <div><dt>Precio de compra</dt><dd id="compra-precio"></dd></div>
+                    <div><dt>Alquiler</dt><dd id="compra-alquiler"></dd></div>
+                    <div><dt>Propietario</dt><dd>Sin propietario</dd></div>
+                </dl>
+                <p>Tiempo restante del turno: <strong id="tiempo-compra">60</strong> segundos</p>
                 <div class="modal-propiedad__acciones">
                     <button
                         type="button"
@@ -912,7 +980,7 @@
                         Pasar
                     </button>
                 </div>
-            </form>
+            </div>
         </dialog>
 
         <div
@@ -922,18 +990,6 @@
             aria-live="polite"
             aria-atomic="true"
         ></div>
-<dialog id="modal-compra-evento" class="modal-propiedad">
-    <div class="modal-propiedad__contenido">
-        <h2>Propiedad disponible</h2>
-        <p id="compra-evento-detalle"></p>
-        <p id="compra-evento-mensaje" aria-live="polite"></p>
-        <div class="modal-propiedad__acciones">
-            <button id="btn-compra-evento-aceptar" type="button" class="btn-casillero btn-casillero--principal">Comprar</button>
-            <button id="btn-compra-evento-rechazar" type="button" class="btn-casillero">No comprar</button>
-        </div>
-    </div>
-</dialog>
-
 <section id="aviso-evento" class="aviso-evento" role="dialog" aria-labelledby="aviso-evento-nombre" aria-describedby="aviso-evento-descripcion" aria-hidden="true">
     <h2 id="aviso-evento-nombre"></h2>
     <p id="aviso-evento-descripcion"></p>
@@ -1030,6 +1086,28 @@
             </div>
         </dialog>
 
+        <div id="chat-partida">
+            <button type="button" class="chat-abrir" data-abrir-chat aria-controls="chat-telefono" aria-expanded="false">
+                <svg class="chat-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg>
+                <span>Chat</span><span class="chat-contador" data-chat-contador hidden>0</span>
+            </button>
+            <dialog id="chat-telefono" class="chat-telefono" aria-labelledby="chat-titulo">
+                <div class="chat-pantalla">
+                    <header class="chat-cabecera">
+                        <button type="button" id="chat-guardar" class="chat-guardar" aria-label="Guardar teléfono y volver al tablero" title="Cerrar chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+                        <p>EL MATANCERO</p><h2 id="chat-titulo">Chat</h2>
+                    </header>
+                    <ol id="chat-mensajes" class="chat-mensajes" aria-label="Mensajes de la partida" role="log" aria-live="polite" aria-relevant="additions"></ol>
+                    <form id="chat-formulario" class="chat-formulario">
+                        <label class="chat-etiqueta" for="chat-texto">Mensaje para los jugadores</label>
+                        <p id="chat-estado" class="chat-estado" role="status"></p>
+                        <textarea id="chat-texto" rows="1" maxlength="500" placeholder="Bardea con respeto" required></textarea>
+                        <button type="submit" id="chat-enviar" aria-label="Enviar mensaje" title="Enviar mensaje"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 19 9-19 9 4-9-4-9Zm4 9h15"/></svg></button>
+                    </form>
+                </div>
+            </dialog>
+        </div>
+
         <!-- Librerías de WebSocket -->
 
         <script
@@ -1064,7 +1142,7 @@
 
         <!-- Script de cliente -->
 
-<script type="module" th:src="@{/js/partida.js(v=popup-global-2)}" src="../../../resources/core/js/partida.js?v=popup-global-2" charset="UTF-8"></script>
+<script type="module" th:src="@{/js/partida.js(v=chat-simple-22)}" src="../../../resources/core/js/partida.js?v=chat-simple-22" charset="UTF-8"></script>
 
 </body>
 

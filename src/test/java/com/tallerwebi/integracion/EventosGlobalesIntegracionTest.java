@@ -57,7 +57,7 @@ class EventosGlobalesIntegracionTest {
             ServicioPropiedadImpl.class, ServicioCasilleroImpl.class, ServicioFinalizacionPartidaImpl.class,
             ServicioOfertaPropiedadImpl.class,
             ServicioJugadaImpl.class, ServicioEventoCasilleroImpl.class,
-            RepositorioPartidaImpl.class, RepositorioEventoGlobalImpl.class, RepositorioDeudaPendienteImpl.class,
+            RepositorioPartidaImpl.class, RepositorioUsuarioImpl.class, RepositorioEventoGlobalImpl.class, RepositorioDeudaPendienteImpl.class,
             RepositorioPropiedadImpl.class, RepositorioCasilleroImpl.class, RepositorioFinalizarPartidaImpl.class,
             RepositorioEventoCasilleroImpl.class,
             ObservadorTurnoQuiebra.class, ObservadorTurnoAbandono.class, ObservadorVictoria.class})
@@ -707,11 +707,13 @@ class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    void dadoQueNoTieneDeudaCuandoIntentaOfertarDuranteUnEventoDaComoResultadoAccionBloqueada() {
+    void duranteElEventoSePuedeOfrecerUnaVentaPeroNoComprarUnaPropiedadLibre() {
         crearPropiedad(1, 0, 0);
         iniciar(TipoEventoGlobal.FIAT_600);
-        assertThrows(IllegalStateException.class, () -> ofertas.crearOferta(
-                partidas.obtenerPartida(codigo), 1, jugadores.get(0), jugadores.get(1), 200));
+        var oferta = ofertas.crearOferta(partidas.obtenerPartida(codigo), 1,
+                jugadores.get(0), jugadores.get(1), 200);
+        assertNotNull(oferta.id());
+        assertTrue(partidas.obtenerPartida(codigo).getEventoGlobal().estaActivo());
         assertThrows(com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException.class,
                 () -> propiedades.prepararCompra(codigo, 1));
     }

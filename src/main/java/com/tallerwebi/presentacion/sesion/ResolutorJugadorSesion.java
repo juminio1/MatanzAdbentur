@@ -54,10 +54,14 @@ public final class ResolutorJugadorSesion {
 
     public static Long resolver(Partida partida, Long usuarioSesionId, String nombreSesion) {
         if (partida == null || partida.getJugadores() == null) return usuarioSesionId;
+        // Buscar primero por nombre en toda la partida: el ID de cuenta puede coincidir
+        // con el ID de otro jugador y no debe adelantarse al participante autenticado.
         for (Jugador jugador : partida.getJugadores()) {
             if (nombreSesion != null && nombreSesion.equalsIgnoreCase(jugador.getApodo())) {
                 return jugador.getId();
             }
+        }
+        for (Jugador jugador : partida.getJugadores()) {
             if (usuarioSesionId != null && usuarioSesionId.equals(jugador.getId())) {
                 return jugador.getId();
             }

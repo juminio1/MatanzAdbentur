@@ -86,7 +86,7 @@ class EfectosPartidaIntegracionTest {
             ServicioGestionQuiebraImpl.class,
             ServicioFinalizacionPartidaImpl.class,
             RepositorioFinalizarPartidaImpl.class,
-            RepositorioPartidaImpl.class,
+            RepositorioPartidaImpl.class, RepositorioUsuarioImpl.class,
             RepositorioCasilleroImpl.class,
             RepositorioPropiedadImpl.class,
             RepositorioEventoCasilleroImpl.class,
@@ -518,7 +518,7 @@ class EfectosPartidaIntegracionTest {
         assertEquals(3, resultado.getPosicionCaidaEvento());
         assertEquals(5, resultado.getNuevaPosicion());
         assertEquals(5, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verify(temporizador).programarTemporizador(eq(codigo), eq(31), any(Runnable.class));
+        verify(temporizador, never()).programarTemporizador(eq(codigo), any(), any(Runnable.class));
     }
 
     @RepeatedTest(3)
@@ -528,7 +528,7 @@ class EfectosPartidaIntegracionTest {
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 22);
         controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(22, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verify(temporizador).programarTemporizador(eq(codigo), eq(36), any(Runnable.class));
+        verify(temporizador, never()).programarTemporizador(eq(codigo), any(), any(Runnable.class));
     }
 
     @RepeatedTest(3)
@@ -538,10 +538,12 @@ class EfectosPartidaIntegracionTest {
         cargarEvento(TipoEfectoEvento.PIERDE_TURNO, null, null, null);
         RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertTrue(servicioPartida.obtenerJugadorPorId(idJugador).getPierdeTurno());
+        // El jugador confirma la presentación antes de finalizar su turno actual.
+        assertEquals(idJugador, resultado.getTurnoSiguiente().getIdJugadorActual());
+        servicioPartida.avanzarTurno(codigo);
         assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
-        assertEquals(idPropietario, resultado.getTurnoSiguiente().getIdJugadorActual());
         verify(temporizador).cancelarTemporizador(codigo);
-        verify(temporizador).programarTemporizador(eq(codigo), eq(30), any(Runnable.class));
+        verify(temporizador).programarTemporizador(eq(codigo), eq(60), any(Runnable.class));
         for (Integer orden = 1; orden < cantidad; orden++) {
             assertEquals(idDelOrden(orden), servicioPartida.obtenerJugadorActual(codigo).getId());
             servicioPartida.avanzarTurno(codigo);
@@ -665,12 +667,17 @@ class EfectosPartidaIntegracionTest {
     void queSePuedaComprarYOfrecerPropiedadesACadaUnoDeLosOtrosJugadores(RepetitionInfo repeticion) {
         Integer cantidad = repeticion.getCurrentRepetition() + 1;
         prepararCantidadJugadores(cantidad);
+        when(temporizador.obtenerSegundosRestantes(codigo)).thenReturn(60);
         List<Integer> posiciones = List.of(2, 4, 5);
         for (Integer orden = 1; orden < cantidad; orden++) {
             Integer posicion = posiciones.get(orden - 1);
             cargarPropiedadDisponible(posicion);
+            // Simula la caída tras tirar, condición necesaria para ofrecer la compra.
+            transaccion.executeWithoutResult(estado -> sesiones.getCurrentSession()
+                    .find(Jugador.class, idJugador).setTiroEnTurno(true));
             assertEquals(true, propiedades.obtenerInfoPropiedad(codigo, posicion).getBody().get("disponible"));
-            assertEquals(HttpStatus.OK, propiedades.comprarPropiedad(codigo, posicion, solicitudJugador(codigo, null)).getStatusCode());
+            var compra = propiedades.comprarPropiedad(codigo, posicion, solicitudJugador(codigo, null));
+            assertEquals(HttpStatus.OK, compra.getStatusCode(), () -> String.valueOf(compra.getBody()));
             Long comprador = idDelOrden(orden);
             var oferta = propiedades.crearOferta(codigo, posicion,
                     Map.of("idJugadorComprador", comprador, "precio", 450), sesion(idJugador));
