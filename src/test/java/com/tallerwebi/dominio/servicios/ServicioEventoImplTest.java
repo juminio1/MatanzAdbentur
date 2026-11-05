@@ -32,7 +32,7 @@ class ServicioEventoImplTest {
     Stream<DynamicTest> dadoQueHayDosTresOCuatroJugadoresCuandoOcurreCadaEventoDaComoResultadoSuConsecuencia() {
         return IntStream.rangeClosed(2, 4).boxed().flatMap(cantidad -> Arrays.stream(TipoEventoGlobal.values())
                 .map(tipo -> DynamicTest.dynamicTest(tipo + " con " + cantidad + " jugadores", () -> {
-                    Escenario caso = new Escenario(cantidad, tipo, 0);
+                    EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(cantidad, tipo, 0);
                     caso.iniciar();
                     caso.tirarTodos();
                     Jugador elegido = caso.jugador(0);
@@ -60,7 +60,7 @@ class ServicioEventoImplTest {
     Stream<DynamicTest> dadoQueSarmientoPenalizaDistintosOrdenesCuandoSeReanudaDaComoResultadoUnaSolaOportunidadOmitida() {
         return IntStream.rangeClosed(2, 4).boxed().flatMap(cantidad -> IntStream.range(0, cantidad).mapToObj(afectado ->
                 DynamicTest.dynamicTest(cantidad + " jugadores, penalizado " + afectado, () -> {
-                    Escenario caso = new Escenario(cantidad, TipoEventoGlobal.ACCIDENTE_SARMIENTO, afectado);
+                    EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(cantidad, TipoEventoGlobal.ACCIDENTE_SARMIENTO, afectado);
                     caso.iniciar();
                     caso.confirmarTodos();
                     List<Integer> esperados = IntStream.range(0, cantidad * 2 + 1)
@@ -77,7 +77,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueHayEmpatesConsecutivosCuandoSeRegistranTodasLasTiradasDaComoResultadoSoloLosEmpatadosHabilitados() {
-        Escenario caso = new Escenario(4, TipoEventoGlobal.INUNDACION, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(4, TipoEventoGlobal.INUNDACION, 0);
         when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(6, 6),
                 new ResultadoTirada(1, 1), new ResultadoTirada(2, 2), new ResultadoTirada(5, 5),
                 new ResultadoTirada(5, 5), new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));
@@ -100,7 +100,7 @@ class ServicioEventoImplTest {
     @TestFactory
     Stream<DynamicTest> dadoQueTodosEmpatanCuandoVuelvenATirarDaComoResultadoUnUnicoSeleccionado() {
         return IntStream.rangeClosed(2, 4).mapToObj(cantidad -> DynamicTest.dynamicTest("Empatan " + cantidad, () -> {
-            Escenario caso = new Escenario(cantidad, TipoEventoGlobal.TRAMITES_AFIP, 0);
+            EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(cantidad, TipoEventoGlobal.TRAMITES_AFIP, 0);
             when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(3, 3));
             caso.iniciar();
             caso.tirarTodos();
@@ -113,7 +113,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueUnJugadorNoTieneDineroCuandoSufreUnRoboDaComoResultadoLaDeudaExistenteSinSaldoNegativo() {
-        Escenario caso = new Escenario(3, TipoEventoGlobal.ROBO, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.ROBO, 0);
         caso.jugador(0).setDinero(100);
         DeudaPendiente deuda = new DeudaPendiente();
         doAnswer(invocacion -> {
@@ -133,7 +133,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueUnJugadorAbandonaDuranteElDesempateCuandoSeActualizanParticipantesDaComoResultadoSuExclusion() {
-        Escenario caso = new Escenario(4, TipoEventoGlobal.INUNDACION, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(4, TipoEventoGlobal.INUNDACION, 0);
         when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6));
         caso.iniciar();
         caso.tirarTodos();
@@ -151,7 +151,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueSeActivaUnEventoCuandoLleganConsultasYUnTemporizadorAnteriorDaComoResultadoUnaUnicaActivacion() {
-        Escenario caso = new Escenario(3, TipoEventoGlobal.FIAT_600, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
         caso.partidas.iniciarTemporizadorTurnoSiNoExiste("GLOBAL");
         ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
         verify(caso.temporizador).programarTemporizadorSiNoExiste(eq("GLOBAL"), anyInt(), vencimiento.capture());
@@ -171,7 +171,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueUnaInundacionCruzaInicioCuandoSeResuelveDaComoResultadoRetrocesoCircularSinPremio() {
-        Escenario caso = new Escenario(2, TipoEventoGlobal.INUNDACION, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.INUNDACION, 0);
         caso.jugador(0).setPosicionActual(1);
         caso.iniciar();
         caso.tirarTodos();
@@ -181,7 +181,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueVenceElTiempoCuandoFaltanTiradasDaComoResultadoDadosAutomaticosSoloParaActivos() {
-        Escenario caso = new Escenario(4, TipoEventoGlobal.INUNDACION, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(4, TipoEventoGlobal.INUNDACION, 0);
         caso.iniciar();
         caso.eventos.tirar("GLOBAL", 1L, 5, 1);
         caso.jugador(3).setAbandono(true);
@@ -202,7 +202,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQuePiqueteAfectaAAlguienEnInicioCuandoSeResuelveDaComoResultadoUnaExplicacionSinDesplazamiento() {
-        Escenario caso = new Escenario(2, TipoEventoGlobal.PIQUETE, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.PIQUETE, 0);
         caso.jugador(0).setPosicionActual(0);
         caso.iniciar();
         caso.tirarTodos();
@@ -212,7 +212,7 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueAfipSeleccionaAlPrimeroCuandoSeResuelveDaComoResultadoUnaExplicacionSinMovimiento() {
-        Escenario caso = new Escenario(2, TipoEventoGlobal.TRAMITES_AFIP, 0);
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.TRAMITES_AFIP, 0);
         caso.jugador(0).setPosicionActual(25);
         caso.iniciar();
         caso.tirarTodos();
@@ -222,8 +222,8 @@ class ServicioEventoImplTest {
 
     @Test
     void dadoQueHayDosPartidasCuandoUnaFinalizaDaComoResultadoEstadosAislados() {
-        Escenario primera = new Escenario(3, TipoEventoGlobal.FIAT_600, 0);
-        Escenario segunda = new Escenario(3, TipoEventoGlobal.PIQUETE, 0);
+        EscenarioPruebaEventoGlobal primera = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+        EscenarioPruebaEventoGlobal segunda = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.PIQUETE, 0);
         primera.iniciar();
         segunda.iniciar();
         primera.partida.setEstado(EstadoPartida.FINALIZADA);
@@ -233,82 +233,386 @@ class ServicioEventoImplTest {
         assertFalse(primera.eventos.activarSiCorresponde(primera.partida));
     }
 
-    private static class Escenario {
-        final Partida partida = new Partida();
-        final ServicioParticipacion participacion = new ServicioParticipacionImpl();
-        final RepositorioPartida repositorio = mock(RepositorioPartida.class);
-        final RepositorioEventoGlobal catalogo = mock(RepositorioEventoGlobal.class);
-        final ServicioDado dados = mock(ServicioDado.class);
-        final ServicioGestionQuiebra quiebras = mock(ServicioGestionQuiebra.class);
-        final GestorTemporizadorPartida temporizador = mock(GestorTemporizadorPartida.class);
-        final ServicioPartidaImpl partidas;
-        final ServicioEventoImpl eventos;
+    @TestFactory
+    Stream<DynamicTest> dadoQueLaRondaNoEsMultiploDeCincoCuandoSeIntentaActivarDaComoResultadoNingunEvento() {
+        return Stream.of(4, 6, 9, 11).map(ronda -> DynamicTest.dynamicTest("Ronda " + ronda, () -> {
+            // Preparación
+            EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+            caso.partida.setRondaActual(ronda);
 
-        Escenario(int cantidad, TipoEventoGlobal tipo, int seleccionado) {
-            partida.setCodigoUnico("GLOBAL");
-            partida.setEstado(EstadoPartida.EN_CURSO);
-            partida.setRondaActual(4);
-            partida.setIndiceTurnoActual(cantidad - 1);
-            for (int indice = 0; indice < cantidad; indice++) {
-                Jugador jugador = new Jugador();
-                jugador.setId((long) indice + 1);
-                jugador.setOrden(indice);
-                jugador.setApodo("Jugador " + indice);
-                jugador.setDinero(2000);
-                jugador.setPosicionActual(8 + indice * 5);
-                jugador.setUltimaRondaConOportunidad(indice == cantidad - 1 ? 3 : 4);
-                partida.getJugadores().add(jugador);
-            }
-            when(repositorio.buscarPartidaActivaPorCodigoUnico("GLOBAL")).thenReturn(partida);
-            when(repositorio.buscarPartidaPorCodigoUnico("GLOBAL")).thenReturn(partida);
-            when(repositorio.buscarPartidaPorJugador(anyLong())).thenReturn(partida);
-            var transacciones = mock(PlatformTransactionManager.class);
-            when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-            PublicadorEventos<EventoTurnoCambiado> turnos = new PublicadorEventos<>(List.of());
-            PublicadorEventos<EventoJugadorAbandonado> abandonos = new PublicadorEventos<>(List.of());
-            partidas = new ServicioPartidaImpl(repositorio, mock(ServicioInicioPartida.class), temporizador,
-                    new ServicioTurnoImpl(participacion), turnos, abandonos, quiebras, null,
-                    mock(ServicioFinalizacionPartida.class), transacciones);
-            ReflectionTestUtils.setField(partidas, "participacion", participacion);
-            var economia = new ServicioEconomiaImpl();
-            var aplicador = new AplicadorConsecuenciaEventoGlobal(economia,
-                    new ServicioMovimientoImpl(economia, repositorio, participacion), quiebras, participacion);
-            eventos = new ServicioEventoImpl(catalogo, repositorio, participacion, dados, aplicador,
-                    partidas, temporizador, mock(NotificadorPartida.class));
-            ReflectionTestUtils.setField(partidas, "eventosGlobales", eventos);
-            RandomGenerator generador = mock(RandomGenerator.class);
-            when(generador.nextInt(6)).thenReturn(tipo.ordinal());
-            when(generador.nextInt(cantidad)).thenReturn(seleccionado);
-            eventos.usarAleatorio(generador);
-            when(catalogo.obtenerTodos()).thenReturn(Arrays.stream(TipoEventoGlobal.values()).map(valor -> {
-                EventoGlobal evento = new EventoGlobal();
-                evento.setId(valor.ordinal() + 1);
-                evento.setNombre(valor.name());
-                evento.setDescripcion(valor.name());
-                evento.setTipoEventoGlobal(valor);
-                evento.setValor(new int[]{0, -3, 0, 500, 400, 1}[valor.ordinal()]);
-                return evento;
-            }).toList());
-            when(dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));
-            if (tipo == TipoEventoGlobal.PIQUETE) {
-                when(dados.tirarDados()).thenReturn(new ResultadoTirada(1, 1), new ResultadoTirada(6, 6));
-            }
-        }
+            // Ejecución
+            Boolean activado = caso.eventos.activarSiCorresponde(caso.partida);
 
-        Jugador jugador(int indice) { return partida.getJugadores().get(indice); }
-        void iniciar() { partidas.avanzarTurno("GLOBAL"); }
-        void tirarTodos() {
-            if (partida.getEventoGlobal().estaResuelto()) return;
-            int etapa = partida.getEventoGlobal().getEtapa();
-            for (Jugador jugador : partida.getJugadores()) {
-                if (partida.getEventoGlobal().getHabilitados().contains(jugador.getId())) {
-                    eventos.tirar("GLOBAL", jugador.getId(), 5, etapa);
-                }
-            }
-        }
-        void confirmarTodos() {
-            partida.getJugadores().stream().filter(participacion::estaActivo)
-                    .forEach(jugador -> eventos.confirmar("GLOBAL", jugador.getId(), 5));
-        }
+            // Verificación
+            assertFalse(activado);
+            assertFalse(caso.partida.getEventoGlobal().estaActivo());
+            verify(caso.catalogo, never()).obtenerTodos();
+        }));
     }
+
+    @TestFactory
+    Stream<DynamicTest> dadoQueSeCumpleOtroMultiploDeCincoCuandoSeIntentaActivarDaComoResultadoUnEventoNuevo() {
+        return Stream.of(10, 15).map(ronda -> DynamicTest.dynamicTest("Ronda " + ronda, () -> {
+            // Preparación
+            EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+            caso.partida.setRondaActual(ronda);
+
+            // Ejecución
+            Boolean activado = caso.eventos.activarSiCorresponde(caso.partida);
+
+            // Verificación
+            assertTrue(activado);
+            assertEquals(ronda, caso.partida.getEventoGlobal().getUltimaRonda());
+            assertEquals(2400, caso.jugador(0).getDinero());
+        }));
+    }
+
+    @Test
+    void dadoQueElCatalogoEstaIncompletoCuandoSeIntentaActivarDaComoResultadoUnErrorSinAplicarConsecuencias() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+        caso.partida.setRondaActual(5);
+        when(caso.catalogo.obtenerTodos()).thenReturn(List.of());
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> caso.eventos.activarSiCorresponde(caso.partida));
+
+        // Verificación
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        assertEquals(2000, caso.jugador(0).getDinero());
+        verifyNoInteractions(caso.temporizador);
+    }
+
+    @Test
+    void dadoQueHayUnaDeudaPendienteCuandoSeIntentaActivarDaComoResultadoLaActivacionBloqueada() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.ROBO, 0);
+        caso.partida.setRondaActual(5);
+        when(caso.quiebras.obtenerDeudaPendiente("GLOBAL", 1L)).thenReturn(new DeudaPendiente());
+
+        // Ejecución
+        Boolean activado = caso.eventos.activarSiCorresponde(caso.partida);
+
+        // Verificación
+        assertFalse(activado);
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        assertEquals(2000, caso.jugador(0).getDinero());
+        verifyNoInteractions(caso.temporizador);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dadoQueFaltanJugadoresActivosCuandoSeIntentaActivarDaComoResultadoNingunEvento() {
+        return Stream.of(0, 1).map(cantidad -> DynamicTest.dynamicTest("Activos " + cantidad, () -> {
+            // Preparación
+            EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.ROBO, 0);
+            caso.partida.setRondaActual(5);
+            caso.jugador(1).setAbandono(true);
+            caso.jugador(0).setEnBancarrota(cantidad == 0);
+
+            // Ejecución
+            Boolean activado = caso.eventos.activarSiCorresponde(caso.partida);
+
+            // Verificación
+            assertFalse(activado);
+            assertFalse(caso.partida.getEventoGlobal().estaActivo());
+            verifyNoInteractions(caso.temporizador);
+        }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dadoQueElEventoEsAutomaticoCuandoUnJugadorIntentaTirarDaComoResultadoElRechazoSinDados() {
+        return Stream.of(TipoEventoGlobal.ROBO, TipoEventoGlobal.FIAT_600, TipoEventoGlobal.ACCIDENTE_SARMIENTO)
+                .map(tipo -> DynamicTest.dynamicTest(tipo.name(), () -> {
+                    // Preparación
+                    EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, tipo, 0);
+                    caso.iniciar();
+                    Integer saldo = caso.jugador(0).getDinero();
+
+                    // Ejecución
+                    assertThrows(IllegalStateException.class, () -> caso.eventos.tirar("GLOBAL", 1L, 5, 1));
+
+                    // Verificación
+                    verifyNoInteractions(caso.dados);
+                    assertEquals(saldo, caso.jugador(0).getDinero());
+                    assertEquals(2000, caso.jugador(1).getDinero());
+                    assertEquals(2000, caso.jugador(2).getDinero());
+                    assertTrue(caso.partida.getEventoGlobal().getTiradas().isEmpty());
+                }));
+    }
+
+    @Test
+    void dadoQueLaSolicitudTieneRondaOEtapaAnteriorCuandoSeIntentaTirarDaComoResultadoElRechazoSinRegistrarDados() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        caso.iniciar();
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> caso.eventos.tirar("GLOBAL", 1L, 4, 1));
+        assertThrows(IllegalStateException.class, () -> caso.eventos.tirar("GLOBAL", 1L, 5, 0));
+
+        // Verificación
+        verifyNoInteractions(caso.dados);
+        assertTrue(caso.partida.getEventoGlobal().getTiradas().isEmpty());
+        assertFalse(caso.partida.getEventoGlobal().estaResuelto());
+    }
+
+    @Test
+    void dadoQueElPlazoEstaVencidoCuandoSeIntentaTirarDaComoResultadoElRechazoSinConsumirDados() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        caso.iniciar();
+        ReflectionTestUtils.setField(caso.partida.getEventoGlobal(), "vencimientoEvento", java.time.Instant.EPOCH);
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> caso.eventos.tirar("GLOBAL", 1L, 5, 1));
+
+        // Verificación
+        verifyNoInteractions(caso.dados);
+        assertTrue(caso.partida.getEventoGlobal().getTiradas().isEmpty());
+    }
+
+    @Test
+    void dadoQueElEventoEsperaTiradasCuandoSeIntentaConfirmarDaComoResultadoElRechazoSinConfirmaciones() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.TRAMITES_AFIP, 0);
+        caso.iniciar();
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> caso.eventos.confirmar("GLOBAL", 1L, 5));
+
+        // Verificación
+        assertTrue(caso.partida.getEventoGlobal().getConfirmados().isEmpty());
+        assertTrue(caso.partida.getEventoGlobal().estaActivo());
+        verify(caso.temporizador, never()).programarTemporizador(eq("GLOBAL"), anyInt(), any());
+    }
+
+    @Test
+    void dadoQueUnJugadorYaConfirmoCuandoRepiteOEnviaUnaRondaAnteriorDaComoResultadoUnaSolaConfirmacion() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+        caso.iniciar();
+        caso.eventos.confirmar("GLOBAL", 1L, 5);
+        Long revision = caso.partida.getEventoGlobal().getRevision();
+
+        // Ejecución
+        caso.eventos.confirmar("GLOBAL", 1L, 5);
+        caso.eventos.confirmar("GLOBAL", 2L, 4);
+
+        // Verificación
+        assertEquals(Set.of(1L), caso.partida.getEventoGlobal().getConfirmados());
+        assertEquals(revision, caso.partida.getEventoGlobal().getRevision());
+        assertEquals(2400, caso.jugador(0).getDinero());
+        assertTrue(caso.partida.getEventoGlobal().estaActivo());
+        verify(caso.temporizador, never()).programarTemporizador(eq("GLOBAL"), anyInt(), any());
+    }
+
+    @Test
+    void dadoQueSoloQuedaUnEmpatadoActivoCuandoSeActualizanParticipantesDaComoResultadoSuSeleccionSinOtraTirada() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));
+        caso.iniciar();
+        caso.tirarTodos();
+        caso.jugador(0).setAbandono(true);
+
+        // Ejecución
+        caso.eventos.participantesCambiaron(caso.partida);
+
+        // Verificación
+        assertEquals(2L, caso.partida.getEventoGlobal().getSeleccionado());
+        assertTrue(caso.partida.getEventoGlobal().estaResuelto());
+        assertEquals(10, caso.jugador(1).getPosicionActual());
+        assertEquals(8, caso.jugador(0).getPosicionActual());
+        verify(caso.dados, times(3)).tirarDados();
+    }
+
+    @Test
+    void dadoQueTodosLosEmpatadosSeRetiranCuandoSeActualizanParticipantesDaComoResultadoElCierreSinConsecuencias() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(4, TipoEventoGlobal.INUNDACION, 0);
+        when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(6, 6),
+                new ResultadoTirada(1, 1), new ResultadoTirada(2, 2));
+        caso.iniciar();
+        caso.tirarTodos();
+        caso.jugador(0).setAbandono(true);
+        caso.jugador(1).setEnBancarrota(true);
+
+        // Ejecución
+        caso.eventos.participantesCambiaron(caso.partida);
+
+        // Verificación
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        assertNull(caso.partida.getEventoGlobal().getSeleccionado());
+        assertEquals(18, caso.jugador(2).getPosicionActual());
+        assertEquals(23, caso.jugador(3).getPosicionActual());
+        verify(caso.dados, times(4)).tirarDados();
+        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), anyInt(), any());
+    }
+
+    @Test
+    void dadoQueHayUnDesempateNuevoCuandoSeEjecutaElTemporizadorAnteriorDaComoResultadoLaEtapaActualSinCambios() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        when(caso.dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));
+        caso.iniciar();
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizadorEvento(eq("evento:GLOBAL"), anyLong(), anyInt(), vencimiento.capture());
+        caso.tirarTodos();
+        Long revision = caso.partida.getEventoGlobal().getRevision();
+
+        // Ejecución
+        vencimiento.getValue().run();
+
+        // Verificación
+        assertEquals(2, caso.partida.getEventoGlobal().getEtapa());
+        assertEquals(revision, caso.partida.getEventoGlobal().getRevision());
+        assertFalse(caso.partida.getEventoGlobal().estaResuelto());
+        verify(caso.dados, times(3)).tirarDados();
+        assertEquals(8, caso.jugador(0).getPosicionActual());
+    }
+
+    @Test
+    void dadoQueElEventoYaCerroCuandoSeEjecutaSuTemporizadorDaComoResultadoUnaSolaReanudacion() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+        caso.iniciar();
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizadorEvento(eq("evento:GLOBAL"), anyLong(), anyInt(), vencimiento.capture());
+        caso.confirmarTodos();
+
+        // Ejecución
+        vencimiento.getValue().run();
+
+        // Verificación
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        assertEquals(2400, caso.jugador(0).getDinero());
+        verify(caso.temporizador, times(1)).programarTemporizador(eq("GLOBAL"), anyInt(), any());
+        verifyNoInteractions(caso.dados);
+    }
+
+    @Test
+    void dadoQueLaPartidaNoExisteCuandoSeConsultaDaComoResultadoUnErrorDePartidaInexistente() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        when(caso.repositorio.buscarPartidaPorCodigoUnico("GLOBAL")).thenReturn(null);
+
+        // Ejecución
+        assertThrows(IllegalArgumentException.class, () -> caso.eventos.consultar("GLOBAL", 1L));
+
+        // Verificación
+        verify(caso.repositorio, never()).bloquearPartida(any());
+        verifyNoInteractions(caso.dados, caso.temporizador);
+    }
+
+    @Test
+    void dadoQueElJugadorEsAjenoALaPartidaCuandoConsultaDaComoResultadoElAccesoDenegado() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        caso.iniciar();
+        Long revision = caso.partida.getEventoGlobal().getRevision();
+
+        // Ejecución
+        assertThrows(SecurityException.class, () -> caso.eventos.consultar("GLOBAL", 99L));
+
+        // Verificación
+        assertEquals(revision, caso.partida.getEventoGlobal().getRevision());
+        assertTrue(caso.partida.getEventoGlobal().getTiradas().isEmpty());
+        verifyNoInteractions(caso.dados);
+    }
+
+    @Test
+    void dadoQueComenzoOtraRondaDeEventoCuandoLlegaUnTemporizadorViejoDaComoResultadoElNuevoEventoConservado() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.FIAT_600, 0);
+        caso.iniciar();
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizadorEvento(eq("evento:GLOBAL"), anyLong(), anyInt(), vencimiento.capture());
+        caso.confirmarTodos();
+        caso.partida.setRondaActual(10);
+        caso.eventos.activarSiCorresponde(caso.partida);
+        Long revision = caso.partida.getEventoGlobal().getRevision();
+
+        // Ejecución
+        vencimiento.getValue().run();
+
+        // Verificación
+        assertTrue(caso.partida.getEventoGlobal().estaActivo());
+        assertEquals(10, caso.partida.getEventoGlobal().getUltimaRonda());
+        assertEquals(revision, caso.partida.getEventoGlobal().getRevision());
+        assertTrue(caso.partida.getEventoGlobal().getConfirmados().isEmpty());
+        assertEquals(2800, caso.jugador(0).getDinero());
+        verifyNoInteractions(caso.dados);
+    }
+
+    @Test
+    void dadoQueElEventoYaTieneResultadoCuandoLlegaElTemporizadorDeTiradasDaComoResultadoElPlazoDeConfirmacionConservado() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        caso.iniciar();
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizadorEvento(eq("evento:GLOBAL"), anyLong(), anyInt(), vencimiento.capture());
+        caso.tirarTodos();
+        Long revision = caso.partida.getEventoGlobal().getRevision();
+        java.time.Instant plazo = caso.partida.getEventoGlobal().getVencimiento();
+
+        // Ejecución
+        vencimiento.getValue().run();
+
+        // Verificación
+        assertTrue(caso.partida.getEventoGlobal().estaActivo());
+        assertTrue(caso.partida.getEventoGlobal().estaResuelto());
+        assertEquals(plazo, caso.partida.getEventoGlobal().getVencimiento());
+        assertEquals(revision, caso.partida.getEventoGlobal().getRevision());
+        assertEquals(5, caso.jugador(0).getPosicionActual());
+        verify(caso.dados, times(3)).tirarDados();
+    }
+
+    @Test
+    void dadoQueLaDeudaSiguePendienteConElPlazoVencidoCuandoSeConsultaDaComoResultadoLaPausaSinReprogramarTemporizadores() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.ROBO, 0);
+        caso.jugador(0).setDinero(100);
+        doAnswer(invocacion -> {
+            when(caso.quiebras.obtenerDeudaPendiente("GLOBAL", 1L)).thenReturn(new DeudaPendiente());
+            return null;
+        }).when(caso.quiebras).registrarDeuda(eq("GLOBAL"), eq(caso.jugador(0)), isNull(), eq(500), eq("ROBO_EVENTO_GLOBAL"));
+        caso.iniciar();
+        caso.confirmarTodos();
+        ReflectionTestUtils.setField(caso.partida.getEventoGlobal(), "vencimientoEvento", java.time.Instant.EPOCH);
+        clearInvocations(caso.temporizador);
+
+        // Ejecución
+        Map<String, Object> estado = caso.eventos.consultar("GLOBAL", 1L);
+
+        // Verificación
+        assertEquals(true, estado.get("activo"));
+        assertEquals(true, estado.get("deudaPendiente"));
+        assertEquals(100, caso.jugador(0).getDinero());
+        verifyNoInteractions(caso.temporizador, caso.dados);
+        verify(caso.quiebras, times(1)).registrarDeuda(anyString(), any(), isNull(), eq(500), anyString());
+    }
+
+    @Test
+    void dadoQueSeRetiranLosDemasJugadoresCuandoVenceElTemporizadorDaComoResultadoElCierreSinTiradasAutomaticas() {
+        // Preparación
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(3, TipoEventoGlobal.INUNDACION, 0);
+        caso.iniciar();
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizadorEvento(eq("evento:GLOBAL"), anyLong(), anyInt(), vencimiento.capture());
+        caso.jugador(1).setAbandono(true);
+        caso.jugador(2).setEnBancarrota(true);
+
+        // Ejecución
+        vencimiento.getValue().run();
+
+        // Verificación
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        assertNull(caso.partida.getEventoGlobal().getSeleccionado());
+        assertTrue(caso.partida.getEventoGlobal().getTiradas().isEmpty());
+        assertEquals(8, caso.jugador(0).getPosicionActual());
+        verifyNoInteractions(caso.dados);
+        verify(caso.temporizador, atLeastOnce()).cancelarTemporizadorEvento(eq("evento:GLOBAL"), anyLong());
+    }
+
+    
 }

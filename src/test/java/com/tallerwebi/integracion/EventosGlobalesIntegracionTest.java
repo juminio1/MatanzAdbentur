@@ -782,6 +782,31 @@ class EventosGlobalesIntegracionTest {
         assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
     }
 
+    @Test
+    void dadoQueDosPartidasCompartenLosServiciosCuandoUnaConfirmaDaComoResultadoLaOtraSinCambios() {
+        // Preparación
+        iniciar(TipoEventoGlobal.FIAT_600);
+        String primerCodigo = codigo;
+        List<Long> primerosJugadores = List.copyOf(jugadores);
+        preparar();
+        iniciar(TipoEventoGlobal.INUNDACION);
+        Map<String, Object> segundoEstado = eventos.consultar(codigo, jugadores.get(0));
+
+        // Ejecución
+        primerosJugadores.forEach(jugador -> eventos.confirmar(primerCodigo, jugador, 5));
+
+        // Verificación
+        assertFalse(partidas.obtenerPartida(primerCodigo).getEventoGlobal().estaActivo());
+        assertEquals(2400, partidas.obtenerJugadorPorId(primerosJugadores.get(0)).getDinero());
+        assertEquals(segundoEstado, eventos.consultar(codigo, jugadores.get(0)));
+        assertEquals(1, partidas.obtenerJugadorPorId(jugadores.get(0)).getPosicionActual());
+        tirarTodos();
+        assertEquals(28, partidas.obtenerJugadorPorId(jugadores.get(0)).getPosicionActual());
+        assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+        assertEquals(2400, partidas.obtenerJugadorPorId(primerosJugadores.get(0)).getDinero());
+        assertEquals(1, partidas.obtenerJugadorPorId(primerosJugadores.get(0)).getPosicionActual());
+    }
+
     private ControladorPropiedadesPartida controladorPropiedades() {
         return new ControladorPropiedadesPartida(partidas, mensajeria, casilleros, propiedades,
                 quiebras, new ServicioParticipacionImpl(), ofertas);

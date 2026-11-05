@@ -272,6 +272,104 @@ class ServicioGestionQuiebraImplTest {
                 () -> servicio.declararQuiebra("PARTIDA123", 1L)));
     }
 
+    @Test
+    void dadoQueExisteUnaDeudaCuandoSeIntentaRegistrarOtroRoboDaComoResultadoElRechazoSinReemplazarLaDeuda() {
+        // Preparación
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+
+        // Ejecución
+        assertThrows(IllegalStateException.class,
+                () -> servicio.registrarDeuda("PARTIDA123", jugador, null, 500, "ROBO_EVENTO_GLOBAL"));
+
+        // Verificación
+        assertEquals(100, jugador.getDinero());
+        assertEquals(400, deuda.getMontoPendiente());
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+    }
+
+    @Test
+    void dadoQueNoHayPagoPendienteCuandoSeIntentaVenderParaPagarDaComoResultadoElRechazoSinVender() {
+        // Preparación
+        prepararDeudaParaQuiebra();
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> servicio.venderPropiedadYResolverDeuda("PARTIDA123", 1L, 10L));
+
+        // Verificación
+        verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+        verify(repositorioPartida, never()).actualizarJugador(any());
+    }
+
+    @Test
+    void dadoQueExisteUnaDeudaCuandoSeIntentaVenderSinElegirPropiedadDaComoResultadoElRechazoSinAlterarElSaldo() {
+        // Preparación
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+
+        // Ejecución
+        assertThrows(IllegalArgumentException.class, () -> servicio.venderPropiedadYResolverDeuda("PARTIDA123", 1L, null));
+
+        // Verificación
+        assertEquals(100, deuda.getJugadorDeudor().getDinero());
+        assertEquals(400, deuda.getMontoPendiente());
+        verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+        verify(repositorioDeuda, never()).eliminar(any());
+    }
+
+    @Test
+    void dadoQueNoHayDeudaCuandoSeEvaluaElJugadorDaComoResultadoSinDeudaSinVenderNiDeclararQuiebra() {
+        // Preparación
+        DeudaPendiente anterior = prepararDeudaParaQuiebra();
+        when(repositorioDeuda.buscarPorPartidaYJugador("PARTIDA123", 1L)).thenReturn(null);
+
+        // Ejecución
+        var resultado = servicio.evaluarDeuda("PARTIDA123", 1L);
+
+        // Verificación
+        assertEquals(com.tallerwebi.dominio.enums.ResultadoDeuda.SIN_DEUDA, resultado);
+        assertEquals(100, anterior.getJugadorDeudor().getDinero());
+        verifyNoInteractions(servicioPropiedad, repositorioPropiedad, publicadorQuiebra, finalizacion);
+        verify(repositorioPartida, never()).actualizarJugador(any());
+    }
+
+    @Test
+    void dadoQueElJugadorYaDebeDineroCuandoSeProcesaOtroAlquilerDaComoResultadoElRechazoSinCobrarDosVeces() {
+        // Preparación
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador jugador = deuda.getJugadorDeudor();
+        when(repositorioPartida.buscarJugadorPorId(1L)).thenReturn(jugador);
+        var propiedad = new com.tallerwebi.dominio.entidades.Propiedad();
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> servicio.procesarAlquiler("PARTIDA123", propiedad, jugador, 200));
+
+        // Verificación
+        assertEquals(100, jugador.getDinero());
+        assertEquals(400, deuda.getMontoPendiente());
+        verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+        verify(repositorioDeuda, never()).guardar(any());
+        verify(repositorioDeuda, never()).eliminar(any());
+    }
+
+    @Test
+    void dadoQueElCodigoEsDeOtraPartidaCuandoSeIntentaPagarLaDeudaDaComoResultadoElRechazoSinDescontarDinero() {
+        // Preparación
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        deuda.getJugadorDeudor().setDinero(1000);
+
+        // Ejecución
+        assertThrows(IllegalStateException.class, () -> servicio.intentarResolverDeuda("OTRA", 1L));
+
+        // Verificación
+        assertEquals(1000, deuda.getJugadorDeudor().getDinero());
+        verify(repositorioDeuda, never()).eliminar(any());
+        verify(repositorioPartida, never()).actualizarJugador(any());
+        verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+    }
+
     // Prepara una partida en curso con un jugador endeudado.
     private DeudaPendiente prepararDeudaParaQuiebra() {
         Jugador jugador = new Jugador();

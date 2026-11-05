@@ -33,7 +33,28 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class AplicadorConsecuenciaGlobalDestinoTest {
+class AplicadorConsecuenciaEventoGlobalTest {
+    @Test
+    void dadoQueElSeleccionadoEstaInactivoCuandoSeAplicaLaConsecuenciaDaComoResultadoElRechazoSinEfectos() {
+        // Preparación
+        ServicioEconomia economia = mock(ServicioEconomia.class);
+        ServicioMovimiento movimiento = mock(ServicioMovimiento.class);
+        ServicioGestionQuiebra quiebras = mock(ServicioGestionQuiebra.class);
+        Jugador jugador = jugador(1L, 8);
+        jugador.setAbandono(true);
+        AplicadorConsecuenciaEventoGlobal aplicador = new AplicadorConsecuenciaEventoGlobal(
+                economia, movimiento, quiebras, new ServicioParticipacionImpl());
+
+        // Ejecución
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> aplicador.aplicar(partida(jugador), evento(TipoEventoGlobal.ROBO, 500), jugador));
+
+        // Verificación
+        assertEquals(2000, jugador.getDinero());
+        assertEquals(8, jugador.getPosicionActual());
+        verifyNoInteractions(economia, movimiento, quiebras);
+    }
+
     @Test
     void dadoQueInundacionTerminaEnPropiedadAjenaCuandoResuelveCaidaDaComoResultadoAlquiler() {
         ServicioMovimiento movimiento = mock(ServicioMovimiento.class);

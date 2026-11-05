@@ -1,82 +1,179 @@
 package com.tallerwebi.infraestructura.temporizadores;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 public class GestorTemporizadorPartidaTest {
-
-    private PlatformTransactionManager transactionManagerMock;
-    private GestorTemporizadorPartida gestorTemporizador;
+    private PlatformTransactionManager transacciones;
+    private TransactionStatus estadoTransaccion;
+    private ScheduledExecutorService planificador;
+    private ScheduledFuture<?> tarea;
+    private GestorTemporizadorPartida gestor;
 
     @BeforeEach
-    public void init() {
-        transactionManagerMock = mock(PlatformTransactionManager.class);
-        when(transactionManagerMock.getTransaction(any())).thenReturn(
-            mock(TransactionStatus.class)
-        );
-        gestorTemporizador = new GestorTemporizadorPartida(transactionManagerMock);
+    void preparar() {
+        transacciones = mock(PlatformTransactionManager.class);
+        estadoTransaccion = mock(TransactionStatus.class);
+        when(transacciones.getTransaction(any())).thenReturn(estadoTransaccion);
+        planificador = mock(ScheduledExecutorService.class);
+        tarea = mock(ScheduledFuture.class);
+        doReturn(tarea).when(planificador).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+        gestor = new GestorTemporizadorPartida(transacciones);
+        ReflectionTestUtils.setField(gestor, "scheduler", planificador);
     }
 
     @AfterEach
-    void cerrarTemporizadores() { gestorTemporizador.destroy(); }
+    void cerrarTemporizadores() {
+        gestor.destroy();
+    }
 
     @Test
     void dadoQueYaHayUnaEtapaNuevaCuandoLlegaUnaProgramacionAnteriorDaComoResultadoElPlazoVigente() {
-        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
-        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 3L, 0, () -> {});
-        org.junit.jupiter.api.Assertions.assertTrue(gestorTemporizador.obtenerSegundosRestantes("evento:ABC") > 20);
-        gestorTemporizador.cancelarTemporizadorEvento("evento:ABC", 5L);
-        gestorTemporizador.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
-        org.junit.jupiter.api.Assertions.assertNull(gestorTemporizador.obtenerSegundosRestantes("evento:ABC"));
+        // Preparación
+        when(tarea.getDelay(TimeUnit.MILLISECONDS)).thenReturn(30000L);
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+
+        // Ejecución
+        gestor.programarTemporizadorEvento("evento:ABC", 3L, 0, () -> {});
+        Integer segundos = gestor.obtenerSegundosRestantes("evento:ABC");
+        gestor.cancelarTemporizadorEvento("evento:ABC", 5L);
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+
+        // Verificación
+        assertEquals(30, segundos);
+        assertNull(gestor.obtenerSegundosRestantes("evento:ABC"));
+        verify(planificador, times(1)).schedule(any(Runnable.class), eq(30L), eq(TimeUnit.SECONDS));
+        verify(tarea).cancel(false);
     }
 
     @Test
-    public void debeProgramarYEjecutarAccionSinErrores() throws InterruptedException {
-        String codigoPartida = "MATANZA123";
-        AtomicBoolean ejecuto = new AtomicBoolean(false);
+    void dadoQueVenceUnaTareaCuandoSeEjecutaDaComoResultadoLaAccionEnUnaTransaccionConfirmada() {
+        // Preparación
+        Runnable accion = mock(Runnable.class);
+        gestor.programarTemporizador("ABC", 30, accion);
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(planificador).schedule(vencimiento.capture(), eq(30L), eq(TimeUnit.SECONDS));
 
-        // Programamos para que ejecute casi inmediatamente (1 segundo)
-        gestorTemporizador.programarTemporizador(codigoPartida, 1, () -> ejecuto.set(true));
+        // Ejecución
+        vencimiento.getValue().run();
 
-        // Esperamos a que venza el tiempo del hilo secundario
-        Thread.sleep(1200);
-
-        verify(transactionManagerMock, atLeastOnce()).getTransaction(any());
+        // Verificación
+        org.mockito.InOrder orden = inOrder(transacciones, accion);
+        orden.verify(transacciones).getTransaction(any());
+        orden.verify(accion).run();
+        orden.verify(transacciones).commit(estadoTransaccion);
+        verify(transacciones, never()).rollback(any());
     }
 
     @Test
-    public void debeCancelarTemporizadorSinErrores() {
-        String codigoPartida = "MATANZA123";
+    void dadoQueHayUnaTareaVigenteCuandoSeCancelaDaComoResultadoSuCancelacionSinEjecutarLaAccion() {
+        // Preparación
+        Runnable accion = mock(Runnable.class);
+        gestor.programarTemporizador("ABC", 30, accion);
 
-        gestorTemporizador.programarTemporizador(codigoPartida, 30, () -> {});
+        // Ejecución
+        gestor.cancelarTemporizador("ABC");
 
-        assertDoesNotThrow(() -> gestorTemporizador.cancelarTemporizador(codigoPartida));
+        // Verificación
+        verify(tarea).cancel(false);
+        assertNull(gestor.obtenerSegundosRestantes("ABC"));
+        verifyNoInteractions(accion, transacciones);
     }
 
     @Test
-    public void debeLanzarExcepcionSiFallaAccionEnTransaccion() {
-        String codigoPartida = "MATANZA123";
+    void dadoQueLaAccionFallaCuandoVenceLaTareaDaComoResultadoRollbackYUnaExcepcionConLaCausaOriginal() {
+        // Preparación
+        IllegalArgumentException causa = new IllegalArgumentException("Error simulado");
+        Runnable accion = mock(Runnable.class);
+        doThrow(causa).when(accion).run();
+        gestor.programarTemporizador("ABC", 30, accion);
+        ArgumentCaptor<Runnable> vencimiento = ArgumentCaptor.forClass(Runnable.class);
+        verify(planificador).schedule(vencimiento.capture(), eq(30L), eq(TimeUnit.SECONDS));
 
-        // Al lanzar una excepcion la lambda debe ser capturada por el catch de la clase
-        gestorTemporizador.programarTemporizador(codigoPartida, 0, () -> {
-            throw new RuntimeException("Error simulado");
-        });
+        // Ejecución
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> vencimiento.getValue().run());
 
-        assertDoesNotThrow(() -> {
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
+        // Verificación
+        assertSame(causa, error.getCause());
+        verify(transacciones).rollback(estadoTransaccion);
+        verify(transacciones, never()).commit(any());
+    }
+
+    @Test
+    void dadoQueLaRevisionSigueVigenteCuandoSeRepiteLaProgramacionDaComoResultadoUnaSolaTarea() {
+        // Preparación
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+
+        // Ejecución
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 1, () -> {});
+        gestor.cancelarTemporizadorEvento("evento:ABC", 3L);
+
+        // Verificación
+        verify(planificador, times(1)).schedule(any(Runnable.class), eq(30L), eq(TimeUnit.SECONDS));
+        verify(tarea, never()).cancel(anyBoolean());
+    }
+
+    @Test
+    void dadoQueLaTareaDelEventoYaTerminoCuandoSeReprogramaLaMismaRevisionDaComoResultadoUnNuevoTemporizador() {
+        // Preparación
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+        when(tarea.isDone()).thenReturn(true);
+
+        // Ejecución
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 10, () -> {});
+
+        // Verificación
+        verify(planificador).schedule(any(Runnable.class), eq(30L), eq(TimeUnit.SECONDS));
+        verify(planificador).schedule(any(Runnable.class), eq(10L), eq(TimeUnit.SECONDS));
+        verify(tarea, never()).cancel(anyBoolean());
+    }
+
+    @Test
+    void dadoQueHayDosPartidasCuandoSeCancelaUnaDaComoResultadoElTemporizadorDeLaOtraConservado() {
+        // Preparación
+        ScheduledFuture<?> otraTarea = mock(ScheduledFuture.class);
+        doReturn(tarea, otraTarea).when(planificador).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.SECONDS));
+        when(otraTarea.getDelay(TimeUnit.MILLISECONDS)).thenReturn(1501L);
+        gestor.programarTemporizadorEvento("evento:ABC", 4L, 30, () -> {});
+        gestor.programarTemporizadorEvento("evento:DEF", 1L, 30, () -> {});
+
+        // Ejecución
+        gestor.cancelarTemporizadorEvento("evento:ABC", 5L);
+
+        // Verificación
+        assertNull(gestor.obtenerSegundosRestantes("evento:ABC"));
+        assertEquals(2, gestor.obtenerSegundosRestantes("evento:DEF"));
+        verify(tarea).cancel(false);
+        verify(otraTarea, never()).cancel(anyBoolean());
+    }
+
+    @Test
+    void dadoQueUnaTareaYaTerminoCuandoSeSolicitaOtraDaComoResultadoUnNuevoTemporizador() {
+        // Preparación
+        assertTrue(gestor.programarTemporizadorSiNoExiste("ABC", 30, () -> {}));
+        assertFalse(gestor.programarTemporizadorSiNoExiste("ABC", 30, () -> {}));
+        when(tarea.isDone()).thenReturn(true);
+
+        // Ejecución
+        Integer segundos = gestor.obtenerSegundosRestantes("ABC");
+        Boolean programado = gestor.programarTemporizadorSiNoExiste("ABC", 30, () -> {});
+
+        // Verificación
+        assertEquals(0, segundos);
+        assertTrue(programado);
+        verify(planificador, times(2)).schedule(any(Runnable.class), eq(30L), eq(TimeUnit.SECONDS));
+        verify(tarea, never()).cancel(anyBoolean());
     }
 }
