@@ -1,11 +1,12 @@
 package com.tallerwebi.dominio.servicios;
 
+import org.springframework.stereotype.Service;
 
-public class ServicioGeneradorPromptTriviaImpl { //Esta clase se va a encargar de darle un toque de contexto a la cheminai para generar las preguntas
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGeneradorPromptTrivia;
 
-    public ServicioGeneradorPromptTriviaImpl(){
+@Service
+public class ServicioGeneradorPromptTriviaImpl implements ServicioGeneradorPromptTrivia { //Esta clase se va a encargar de darle un toque de contexto a la cheminai para generar las preguntas
 
-    }
     public String generarPromptTrivia(Integer cantidad, String dificultad) {
 
     String mensaje = """

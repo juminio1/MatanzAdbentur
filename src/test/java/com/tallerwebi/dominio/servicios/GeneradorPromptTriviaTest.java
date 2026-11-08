@@ -4,17 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+
+
 public class GeneradorPromptTriviaTest {
 
-    
-    public GeneradorPromptTriviaTest(){
-
-    }
 
     @Test
     public void deberiaGenerarUnPromptConLaDificultadSolicitada(){
 
-        ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
+      ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
         
         String prompt = generadorPrompt.generarPromptTrivia(5, "MEDIO");
         
@@ -25,7 +23,7 @@ public class GeneradorPromptTriviaTest {
     @Test 
     public void deberiaGenerarUnPromptConLaCantidadDePreguntasSolicitada(){
 
-        ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
+       ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
         
         String prompt = generadorPrompt.generarPromptTrivia(5, "MEDIO");
         
@@ -40,7 +38,7 @@ public class GeneradorPromptTriviaTest {
         
         String prompt = generadorPrompt.generarPromptTrivia(5, "MEDIO");
         
-        assertTrue(prompt.contains("con cuatro opciones"));
+        assertTrue(prompt.contains("Cada pregunta debe tener cuatro opciones"));
         assertTrue(prompt.contains("una única respuesta correcta"));
 
     }
@@ -62,7 +60,7 @@ public class GeneradorPromptTriviaTest {
     @Test 
     public void deberiaIncluirLasTematicasArgentinasEnElPrompt(){
 
-        ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
+       ServicioGeneradorPromptTriviaImpl generadorPrompt = new ServicioGeneradorPromptTriviaImpl();
 
         String prompt = generadorPrompt.generarPromptTrivia(5, "MEDIO");
         
