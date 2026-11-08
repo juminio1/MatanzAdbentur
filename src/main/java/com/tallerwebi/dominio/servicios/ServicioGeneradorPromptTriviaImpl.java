@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGeneradorPromptTrivia;
 
 @Service
-public class ServicioGeneradorPromptTriviaImpl implements ServicioGeneradorPromptTrivia { //Esta clase se va a encargar de darle un toque de contexto a la cheminai para generar las preguntas
+public class ServicioGeneradorPromptTriviaImpl implements ServicioGeneradorPromptTrivia { //Esta clase construye el prompt con cantidad, dificultad y contexto argentino.
 
   @Override
   public String generarPromptTrivia(Integer cantidad, String dificultad) {

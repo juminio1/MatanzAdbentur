@@ -16,10 +16,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tallerwebi.dominio.excepcion.ClienteIAException;
 import com.tallerwebi.dominio.resultados.PreguntaGenerada;
+import com.tallerwebi.dominio.servicios.interfaces.ClienteIA;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGeneradorPromptTrivia;
 
 
-public class ClienteGeminiImpl { //Esta clase se encarga de realizar la petición HTTP e interpreta el JSON
+public class ClienteGeminiImpl implements ClienteIA{ //Esta clase se encarga de realizar la petición HTTP e interpreta el JSON y valida las preguntas 
 
     private final HttpClient clienteHttp;
     private final ObjectMapper objectMapper;
@@ -51,6 +52,7 @@ public class ClienteGeminiImpl { //Esta clase se encarga de realizar la petició
         this.modelo = modelo;
     }
 
+    @Override 
     public List<PreguntaGenerada> generarPreguntas(String dificultad, Integer cantidad) {
 
         this.validarAntesDeLaSolicitud(dificultad, cantidad);
