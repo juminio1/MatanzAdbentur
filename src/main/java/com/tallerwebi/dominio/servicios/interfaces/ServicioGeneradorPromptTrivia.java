@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.servicios.interfaces;
 
+@FunctionalInterface
 public interface ServicioGeneradorPromptTrivia {
     
 
