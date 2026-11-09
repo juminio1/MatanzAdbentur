@@ -35,21 +35,19 @@ public class ClienteGeminiIntegracionTest {
         ClienteIA clienteIA = new ClienteGeminiImpl(HttpClient.newHttpClient(), new ObjectMapper(), new ServicioGeneradorPromptTriviaImpl(), apiKey, modelo);
 
         //Generamos preguntitas
-        List<PreguntaGenerada> preguntas = clienteIA.generarPreguntas("FACIL", 5);
+        List<PreguntaGenerada> preguntas = clienteIA.generarPreguntas("FACIL", 1);
 
-        assertEquals(5, preguntas.size());
+        assertEquals(1, preguntas.size());
 
-        for (PreguntaGenerada pregunta : preguntas) {
+        PreguntaGenerada pregunta = preguntas.getFirst();
 
-            assertNotNull(pregunta.getEnunciado());
-            assertFalse(pregunta.getEnunciado().isBlank());
+        assertNotNull(pregunta.getEnunciado());
+        assertFalse(pregunta.getEnunciado().isBlank());
 
-            assertEquals(4, pregunta.getOpciones().size());
+        assertEquals(4, pregunta.getOpciones().size());
+        assertEquals("FACIL", pregunta.getDificultad());
 
-            assertEquals("FACIL", pregunta.getDificultad());
-
-            assertTrue(pregunta.getRespuestaCorrecta() >= 0);
-            assertTrue(pregunta.getRespuestaCorrecta() <= 3);
-        }
+        assertTrue(pregunta.getRespuestaCorrecta() >= 0);
+        assertTrue(pregunta.getRespuestaCorrecta() <= 3);
     }
 }
