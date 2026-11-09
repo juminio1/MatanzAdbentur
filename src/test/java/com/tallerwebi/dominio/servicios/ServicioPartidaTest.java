@@ -129,7 +129,7 @@ public class ServicioPartidaTest {
             gestorTemporizadorMock,
             new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()),
             new PublicadorEventos<>(List.of(new ObservadorTurnoWebSocket(notificadorPartidaMock))),
-            publicadorAbandonoMock, null, null, finalizacion, transacciones
+            publicadorAbandonoMock, null, finalizacion, transacciones
         );
         org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "participacion",
                 new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
@@ -348,7 +348,7 @@ public class ServicioPartidaTest {
         ServicioPartida servicioSinNotificador = new ServicioPartidaImpl(
             repositorioPartidaMock,
             new ServicioInicioPartidaImpl(repositorioPartidaMock, repositorioSalaDeEsperaMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl())),
-            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock, null, null, finalizacion, transacciones);
+            gestorTemporizadorMock, new ServicioTurnoImpl(new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()), null, publicadorAbandonoMock, null, finalizacion, transacciones);
 
         org.springframework.test.util.ReflectionTestUtils.setField(servicioSinNotificador, "participacion",
                 new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl());
@@ -1115,23 +1115,96 @@ public void dadoQueLosUsuariosTienenFichasSeleccionadasCuandoSeIniciaLaPartidaDa
     }
 
     @Test
-    void alVencerSinTirarSeResuelveUnaTiradaAutomaticaYSeAvanzaUnaVez() throws Exception {
+    void alVencerSinTirarSeConservaElJugadorYSeAvanzaUnaVez() throws Exception {
         String codigo = "TIRADA-AUTOMATICA";
         Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
         partida.getJugadores().get(0).setId(10L);
-        var jugadas = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioJugada.class);
-        var eventos = mock(org.springframework.context.ApplicationEventPublisher.class);
-        var resultado = mock(com.tallerwebi.dominio.resultados.ResultadoJugada.class);
-        when(jugadas.tirarYMover(codigo, 10L)).thenReturn(resultado);
-        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "jugadasAutomaticas", jugadas);
-        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "eventosAutomaticos", eventos);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.setPosicionActual(28);
+        jugador.setDinero(2000);
+        iniciarTemporizadorYCapturarVencimiento(codigo).run();
+
+
+        assertEquals(28, jugador.getPosicionActual());
+        assertEquals(2000, jugador.getDinero());
+        assertEquals(1, partida.getIndiceTurnoActual());
+        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+    }
+
+    @Test
+    void vencerSinTirarPresoNoRegistraIntentosNiCobraFianza() {
+        String codigo = "PRESO-SIN-TIRAR";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Jugador jugador = partida.getJugadores().get(0);
+        jugador.setPosicionActual(8);
+        jugador.setDinero(2000);
+        jugador.getEstadoCarcel().encarcelar();
+        jugador.getEstadoCarcel().setIntentosSalirCarcel(2);
 
         iniciarTemporizadorYCapturarVencimiento(codigo).run();
 
-        verify(jugadas).tirarYMover(codigo, 10L);
-        verify(eventos).publishEvent(new com.tallerwebi.dominio.eventos.EventoTiradaAutomatica(codigo, resultado));
+        assertEquals(2, jugador.getEstadoCarcel().getIntentosSalirCarcel());
+        assertTrue(jugador.getEstadoCarcel().getEncarcelado());
+        assertEquals(8, jugador.getPosicionActual());
+        assertEquals(2000, jugador.getDinero());
         assertEquals(1, partida.getIndiceTurnoActual());
-        verify(repositorioPartidaMock, times(1)).guardarPartida(partida);
+        verify(repositorioPartidaMock, never()).actualizarJugador(any());
+    }
+
+    @Test
+    void vencimientoSaltaAbandonadosYQuebradosSinPenalizarAlJugador() {
+        String codigo = "VENCE-ACTIVOS";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Jugador abandonado = partida.getJugadores().get(1);
+        abandonado.setAbandono(true);
+        Jugador quebrado = new Jugador();
+        quebrado.setOrden(2);
+        quebrado.setEnBancarrota(true);
+        Jugador siguiente = new Jugador();
+        siguiente.setOrden(3);
+        partida.setJugadores(List.of(partida.getJugadores().get(0), abandonado, quebrado, siguiente));
+
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+        clearInvocations(notificadorPartidaMock);
+        vencimiento.run();
+
+        assertEquals(3, partida.getIndiceTurnoActual());
+        assertEquals(1, partida.getRondaActual());
+        assertEquals(1, partida.getTurnosFinalizadosEnRonda());
+        assertFalse(Boolean.TRUE.equals(partida.getJugadores().get(0).getPierdeTurno()));
+        verify(notificadorPartidaMock).notificarCambioDeTurno(eq(codigo), any(TurnoDTO.class));
+    }
+
+    @Test
+    void callbackDeTurnoNoAvanzaDuranteEventoGlobal() {
+        String codigo = "VENCE-EVENTO";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+        partida.getEventoGlobal().iniciar(new com.tallerwebi.dominio.entidades.Evento.EventoGlobal(),
+                1, java.util.Set.of(1L, 2L));
+
+        vencimiento.run();
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        assertTrue(partida.getEventoGlobal().estaActivo());
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+    }
+
+    @Test
+    void callbackDeTurnoConDeudaPausaSinAvanzarNiCobrar() {
+        String codigo = "VENCE-DEUDA";
+        Partida partida = crearPartidaConDosJugadoresEnTurnoCero(codigo);
+        Runnable vencimiento = iniciarTemporizadorYCapturarVencimiento(codigo);
+        var quiebras = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(servicioPartida, "quiebras", quiebras);
+        when(quiebras.hayDeudaEnPartidaActiva(codigo)).thenReturn(true);
+
+        vencimiento.run();
+
+        assertEquals(0, partida.getIndiceTurnoActual());
+        verify(gestorTemporizadorMock).pausar(codigo);
+        verify(repositorioPartidaMock, never()).guardarPartida(any());
+        verify(quiebras, never()).procesarMulta(any(), any(), any(), any());
     }
 
     private Partida crearPartidaConDosJugadoresEnTurnoCero(String codigo) {

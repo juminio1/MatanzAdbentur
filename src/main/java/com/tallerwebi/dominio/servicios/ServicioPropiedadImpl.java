@@ -199,6 +199,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         economia.restarDinero(comprador, precio);
         economia.sumarDinero(vendedor, precio);
         propiedad.setPropietario(comprador);
+        propiedad.setNivelMejora(0);
         repositorioPartida.actualizarJugador(comprador);
         repositorioPartida.actualizarJugador(vendedor);
         repositorioPropiedad.guardarPropiedad(propiedad);

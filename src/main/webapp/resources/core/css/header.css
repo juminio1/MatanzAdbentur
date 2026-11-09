@@ -4,8 +4,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 24px;
-    background-color: #18222d;
-    border-bottom: 1px solid #344252;
+    background-color: var(--tema-panel);
+    border-bottom: 1px solid var(--tema-borde);
     position: relative;
     z-index: 1050;
     width: 100%;
@@ -39,7 +39,7 @@
 
 .nav-links a {
     text-decoration: none;
-    color: #c5d0dc;
+    color: var(--tema-secundario);
     font-weight: 600;
     font-size: 14px;
     transition: color 0.2s ease;
@@ -50,7 +50,7 @@
 }
 
 .btn-login {
-    background-color: #2563eb;
+    background-color: var(--tema-acento-oscuro);
     color: #ffffff !important;
     padding: 8px 16px;
     border-radius: 6px;
@@ -60,7 +60,7 @@
 }
 
 .btn-login:hover {
-    background-color: #1d4ed8;
+    background-color: var(--tema-acento-oscuro-hover);
 }
 
 /* Contenedor del Avatar y Dropdown */
@@ -92,7 +92,7 @@
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #f59e0b;
+    border: 2px solid var(--tema-acento);
     transition: transform 0.15s ease;
     display: block;
 }
@@ -107,11 +107,11 @@
     top: calc(100% + 10px) !important;
     right: 0 !important;
     width: 260px !important;
-    background-color: #202c38 !important;
+    background-color: var(--tema-elevado) !important;
     border-radius: 12px !important;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
     padding: 16px !important;
-    border: 1px solid #3b4a5a !important;
+    border: 1px solid var(--tema-borde) !important;
     z-index: 99999 !important;
     display: block !important;
 }
@@ -134,7 +134,7 @@
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #2563eb;
+    border: 2px solid var(--tema-acento-oscuro);
     flex-shrink: 0;
 }
 
@@ -142,13 +142,13 @@
     margin: 0;
     font-weight: 700;
     font-size: 15px;
-    color: #f1f5f9;
+    color: var(--tema-texto);
     line-height: 1.2;
 }
 
 .user-info-text .user-role {
     font-size: 11px;
-    color: #aebdcc;
+    color: var(--tema-secundario);
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -162,7 +162,7 @@
 .selector-title {
     font-size: 12px;
     font-weight: 600;
-    color: #c5d0dc;
+    color: var(--tema-secundario);
     margin-bottom: 8px;
 }
 
@@ -187,7 +187,7 @@
 
 .btn-avatar-choice:hover {
     transform: scale(1.15);
-    border-color: #f59e0b;
+    border-color: var(--tema-acento);
 }
 
 .btn-avatar-choice img {
@@ -201,7 +201,7 @@
 .user-dropdown-divider {
     margin: 14px 0 12px 0;
     border: 0;
-    border-top: 1px solid #3b4a5a;
+    border-top: 1px solid var(--tema-borde);
 }
 
 .btn-logout {

@@ -157,6 +157,12 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean hayDeudaEnPartidaActiva(String codigoPartida) {
+        return repositorioDeudaPendiente.existeEnPartidaActiva(codigoPartida);
+    }
+
+    @Override
     public Boolean venderPropiedadYResolverDeuda(String codigoPartida, Long idJugador, Long idPropiedad) {
         validarPartidaEconomica(codigoPartida, idJugador);
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);

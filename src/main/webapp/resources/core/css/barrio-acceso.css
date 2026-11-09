@@ -1,0 +1,140 @@
+body:has(.login-card, .registro-container, .hero) {
+    background: radial-gradient(ellipse at 80% 12%, #4a2a3c, transparent 48%),
+                radial-gradient(ellipse at 12% 45%, #302347, transparent 58%),
+                #14121b;
+}
+
+:is(.login-card, .registro-container, .hero .hero-text) {
+    border: 1px solid var(--tema-acento);
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 #100e16;
+}
+
+:is(.login-info, .registro-presentacion) {
+    padding: clamp(24px, 4vw, 48px);
+    background: linear-gradient(#20172abf, #241833f5),
+                url("../images/barrio-luna-atardecer.png") 74% center / cover;
+}
+
+.login-info::before { content: none; }
+
+:is(.btn-ingresar, .btn-registrarse, .hero .btn-play) {
+    background-color: #ffda6a;
+    color: #211829;
+}
+
+:is(.btn-ingresar, .btn-registrarse, .hero .btn-play):hover:not(:disabled) {
+    background-color: #ffe695;
+    color: #211829;
+}
+
+.hero {
+    position: relative;
+    max-width: none;
+    overflow: hidden;
+}
+
+.hero .hero-image {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 62%;
+    margin: 0;
+    pointer-events: none;
+    mask-image: linear-gradient(to right, transparent, #000 25%);
+}
+
+.hero .hero-image::before { content: none; }
+
+.hero .hero-image img {
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    transform: none;
+    filter: none;
+    mask-image: linear-gradient(to bottom, transparent, #000 24%);
+}
+
+@media (max-width: 900px) {
+    .hero .hero-image {
+        position: relative;
+        width: calc(100% + 32px);
+        align-self: center;
+        mask-image: none;
+    }
+}
+
+.registro-logo {
+    width: min(100%, 180px);
+    margin-bottom: 16px;
+}
+
+@media (min-width: 851px) {
+    .registro-container { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+}
+
+@media (max-width: 850px) {
+    .registro-card { grid-row: 1; }
+    .registro-presentacion { padding: 20px; }
+    .registro-logo { width: min(100%, 128px); }
+}
+
+/* Portada: la escena llega hasta los bordes de la pagina. */
+.hero .hero-text {
+    flex: 0 1 520px;
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.hero .main-title-img {
+    width: min(100%, 370px);
+}
+
+@media (min-width: 901px) {
+    .hero .hero-image {
+        width: 79%;
+        mask-image: linear-gradient(to right, transparent 4%, #000 54%);
+    }
+}
+
+@media (max-width: 900px) {
+    .hero .hero-text { flex: 0 1 auto; }
+}
+
+.registro-frase {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    color: #fff;
+    text-align: inherit;
+    font: inherit;
+}
+
+.hero .btn-play {
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgb(0 0 0 / 25%);
+}
+
+.hero .btn-play:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    :is(.hero .hero-text, .login-card, .registro-container) {
+        animation: entrada-barrio 280ms ease-out;
+    }
+    :is(.btn-ingresar, .btn-registrarse, .hero .btn-play):active {
+        transform: translateY(2px);
+    }
+}
+
+@keyframes entrada-barrio {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}

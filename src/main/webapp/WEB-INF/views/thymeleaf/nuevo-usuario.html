@@ -12,12 +12,15 @@
 
     <title>Registrarse | El Matancero</title>
 
-    <link rel="stylesheet" th:href="@{/css/home.css(v=brick-home-3)}">
+    <link rel="stylesheet" th:href="@{/css/tema-oscuro.css(v=violeta-1)}" href="../../../resources/core/css/tema-oscuro.css">
+    <link rel="stylesheet" th:href="@{/css/home.css(v=violeta-1)}">
 
-    <link rel="stylesheet" th:href="@{/css/registro.css(v=dark-2)}">
+    <link rel="stylesheet" th:href="@{/css/registro.css(v=violeta-1)}">
 
-    <link rel="stylesheet" th:href="@{/css/header.css(v=dark-2)}">
+    <link rel="stylesheet" th:href="@{/css/header.css(v=violeta-1)}">
 
+    <link rel="stylesheet" th:href="@{/css/barrio-acceso.css(v=7)}">
+    <script type="module" th:src="@{/js/efectos-acceso.js(v=1)}"></script>
 </head>
 
  <div th:replace="~{fragments/header :: header}"></div>
@@ -29,7 +32,7 @@
 
         <div class="registro-presentacion">
 
-            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg"
+            <img th:src="@{/images/logo/el-matancero-mate.png}"
                  alt="El Matancero"
                  class="login-logo">
 

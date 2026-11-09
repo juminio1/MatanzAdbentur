@@ -10,8 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
    
-    <link rel="stylesheet" th:href="@{/css/header.css(v=dark-2)}">
-    <link rel="stylesheet" th:href="@{/css/login.css(v=dark-2)}">
+    <link rel="stylesheet" th:href="@{/css/tema-oscuro.css(v=violeta-1)}" href="../../../resources/core/css/tema-oscuro.css">
+    <link rel="stylesheet" th:href="@{/css/header.css(v=violeta-1)}">
+    <link rel="stylesheet" th:href="@{/css/login.css(v=violeta-1)}">
+    <link rel="stylesheet" th:href="@{/css/barrio-acceso.css(v=7)}">
+    <script type="module" th:src="@{/js/efectos-acceso.js(v=1)}"></script>
 </head>
 
 <body>
@@ -30,7 +33,7 @@
                 BIENVENIDO DE NUEVO
             </span>
 
-            <img src="https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/El%20matancero_1.svg"
+            <img th:src="@{/images/logo/el-matancero-mate.png}"
                  alt="El Matancero"
                  class="login-logo">
 

@@ -108,13 +108,16 @@ public class AplicadorConsecuenciaEventoGlobal {
 
     private String volverAInicio(Jugador jugador) {
         if (jugador.getPosicionActual() == 0) return "ya está en Inicio; no necesita desplazarse.";
-        return mover(jugador, -jugador.getPosicionActual());
+        movimiento.moverJugador(jugador, -jugador.getPosicionActual(), CatalogoTablero.TOTAL_CASILLEROS);
+        return "volvió a Inicio.";
     }
 
     private String mover(Jugador jugador, int desplazamiento) {
-        int anterior = jugador.getPosicionActual();
         movimiento.moverJugador(jugador, desplazamiento, CatalogoTablero.TOTAL_CASILLEROS);
-        return "se mueve del casillero " + anterior + " al " + jugador.getPosicionActual() + ".";
+        int cantidad = Math.abs(desplazamiento);
+        String detalle = (desplazamiento < 0 ? "retrocedió " : "avanzó ") + cantidad
+            + (cantidad == 1 ? " casillero." : " casilleros.");
+        return detalle;
     }
     
 
@@ -134,7 +137,7 @@ public class AplicadorConsecuenciaEventoGlobal {
 
             if (resultado.isPresent()) {
                 partida.getEventoGlobal().guardarTarjeta(resultado.get().evento());
-                detalle = " Cayó en EVENTOS y recibió «" + resultado.get().evento().getNombre() + "»: " + resultado.get().evento().getDescripcion();
+                detalle = " Sacó la tarjeta «" + resultado.get().evento().getNombre() + "».";
             }
         }
         return detalle;
@@ -191,26 +194,21 @@ public class AplicadorConsecuenciaEventoGlobal {
     private String cobrarRobo(Partida partida, Jugador jugador, Integer monto) {
         if (economia.tieneDineroSuficiente(jugador, monto)) {
             economia.restarDinero(jugador, monto);
-            return "fue víctima de un robo y perdió $" + monto + ".";
+            return "perdió $" + monto + " en el robo.";
         }
         quiebras.registrarDeuda(partida.getCodigoUnico(),
             jugador, null, monto, "ROBO_EVENTO_GLOBAL");
-        return (
-            "sufrió un robo de $" + monto +
-            ". Tiene $" + jugador.getDinero() +
-            " disponibles y debe pagar $" + monto +
-            " antes de continuar.");
+        return "tiene que pagar $" + monto + " por el robo.";
     }
     
     private String premiar(Jugador jugador, int monto) {
-        int saldoAnterior = jugador.getDinero();
         economia.sumarDinero(jugador, monto);
-        return ("ayudó a empujar el Fiat 600 de Germancho. Tenía $" + saldoAnterior + ", recibió $" + monto + " y ahora tiene $" + jugador.getDinero() + ".");
+        return "recibió $" + monto + ".";
     }
     
     private String perderTurno(Jugador jugador) {
         jugador.setPierdeTurno(true);
-        return "perderá su próxima oportunidad de turno por el accidente del Sarmiento.";
+        return "pierde su próximo turno.";
     }
     
     // Ejecuta la consecuencia correspondiente al tipo de evento global.

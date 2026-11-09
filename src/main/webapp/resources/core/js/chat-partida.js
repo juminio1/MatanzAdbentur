@@ -4,7 +4,7 @@ export function combinarMensajes(actuales, nuevos) {
     return [...mensajes.values()].sort((a, b) => Number(a.id) - Number(b.id)).slice(-100);
 }
 
-export function inicializarChat({ basePath, codigo, usuarioId }) {
+export function inicializarChat({ basePath, codigo, usuarioId, notificar, alCambiarVisibilidad }) {
     const el = id => document.getElementById(id);
     const telefono = el("chat-telefono");
     const lista = el("chat-mensajes");
@@ -54,8 +54,19 @@ export function inicializarChat({ basePath, codigo, usuarioId }) {
         const agregados = combinados.filter(m => !conocidos.has(String(m.id)));
         if (!agregados.length) return;
         mensajes = combinados;
-        if (avisar && (!telefono.open || document.hidden)) {
-            noLeidos += agregados.filter(m => String(m.idJugador) !== String(usuarioId)).length;
+        const entrantes = agregados.filter(m => String(m.idJugador) !== String(usuarioId)).length;
+        if (avisar && entrantes) {
+            if (!telefono.open || document.hidden) noLeidos += entrantes;
+            notificar?.();
+            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                document.querySelectorAll("[data-abrir-chat]").forEach(boton => {
+                    boton.animate([
+                        { transform: "translateX(0)" }, { transform: "translateX(-4px) rotate(-5deg)" },
+                        { transform: "translateX(4px) rotate(5deg)" }, { transform: "translateX(-3px) rotate(-3deg)" },
+                        { transform: "translateX(3px) rotate(3deg)" }, { transform: "translateX(0)" },
+                    ], { duration: 380 });
+                });
+            }
         }
         const alFinal = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 60;
         lista.replaceChildren(...mensajes.map(mensaje => {
@@ -106,6 +117,7 @@ export function inicializarChat({ basePath, codigo, usuarioId }) {
 
     function abrir() {
         if (!telefono.open) telefono.showModal();
+        alCambiarVisibilidad?.();
         noLeidos = 0;
         actualizarContador();
         lista.scrollTop = lista.scrollHeight;
@@ -116,7 +128,10 @@ export function inicializarChat({ basePath, codigo, usuarioId }) {
     function cerrar() { telefono.close(); }
     document.querySelectorAll("[data-abrir-chat]").forEach(boton => boton.addEventListener("click", abrir));
     el("chat-guardar").addEventListener("click", cerrar);
-    telefono.addEventListener("close", actualizarContador);
+    telefono.addEventListener("close", () => {
+        actualizarContador();
+        alCambiarVisibilidad?.();
+    });
     telefono.addEventListener("click", evento => { if (evento.target === telefono) cerrar(); });
     el("chat-formulario").addEventListener("submit", async evento => {
         evento.preventDefault();

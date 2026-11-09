@@ -103,6 +103,7 @@ class EventosGlobalesIntegracionTest {
         transaccion = new TransactionTemplate(transacciones);
         codigo = UUID.randomUUID().toString();
         reset(dados, temporizador, mensajeria, tarjetas);
+        when(temporizador.obtenerSegundosRestantes(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         when(dados.tirarDados()).thenReturn(new ResultadoTirada(6, 6), new ResultadoTirada(1, 1));
         aleatorio = mock(RandomGenerator.class);
         Object servicioReal = AopTestUtils.getTargetObject(eventos);
@@ -142,6 +143,30 @@ class EventosGlobalesIntegracionTest {
             sesion.persist(partida);
             jugadores = partida.getJugadores().stream().map(Jugador::getId).toList();
         });
+    }
+
+    @Test
+    void vencimientoDeLaUltimaOportunidadActivaElEventoDeLaNuevaRondaUnaSolaVez() {
+        when(aleatorio.nextInt(6)).thenReturn(TipoEventoGlobal.FIAT_600.ordinal());
+        when(temporizador.programarTemporizadorSiNoExiste(eq(codigo), eq(60), any(Runnable.class)))
+                .thenReturn(true);
+        partidas.iniciarTemporizadorTurnoSiNoExiste(codigo);
+        var callback = org.mockito.ArgumentCaptor.forClass(Runnable.class);
+        verify(temporizador).programarTemporizadorSiNoExiste(eq(codigo), eq(60), callback.capture());
+        when(temporizador.obtenerSegundosRestantes(codigo)).thenReturn(0);
+
+        transaccion.executeWithoutResult(tx -> callback.getValue().run());
+        transaccion.executeWithoutResult(tx -> callback.getValue().run());
+
+        var partida = partidas.obtenerPartida(codigo);
+        assertEquals(5, partida.getRondaActual());
+        assertEquals(0, partida.getTurnosFinalizadosEnRonda());
+        assertTrue(partida.getEventoGlobal().estaActivo());
+        assertEquals(TipoEventoGlobal.FIAT_600, partida.getEventoGlobal().getEvento().getTipoEventoGlobal());
+        assertEquals(2400, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+        assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(2)).getDinero());
+        assertEquals(13, partidas.obtenerJugadorPorId(jugadores.get(2)).getPosicionActual());
+        verify(dados, never()).tirarDados();
     }
 
     @Test

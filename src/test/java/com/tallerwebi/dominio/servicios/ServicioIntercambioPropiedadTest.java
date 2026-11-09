@@ -55,7 +55,7 @@ class ServicioIntercambioPropiedadTest {
         assertTrue(servicio.pendientes(CODIGO, 1L).isEmpty());
         assertSame(ana, ofrecida.getPropiedad().getPropietario());
         assertSame(luna, solicitada.getPropiedad().getPropietario());
-        assertEquals(AHORA.plusSeconds(300), propuesta.vence());
+        assertEquals(AHORA.plusSeconds(120), propuesta.vence());
         verifyNoInteractions(propiedades);
     }
 
@@ -72,6 +72,26 @@ class ServicioIntercambioPropiedadTest {
         verify(propiedades).guardarPropiedad(ofrecida.getPropiedad());
         verify(propiedades).guardarPropiedad(solicitada.getPropiedad());
         assertTrue(servicio.pendientes(CODIGO, 2L).isEmpty());
+    }
+
+    @Test
+    void laContrapropiedadSoloSeTransfiereConLaConfirmacionDelProponente() {
+        var propuesta = servicio.proponer(CODIGO, 1L, 2L, 4, null);
+        assertThrows(IllegalStateException.class, () -> servicio.aceptar(CODIGO, propuesta.id(), 2L));
+        assertThrows(IllegalStateException.class, () -> servicio.elegirContrapropiedad(CODIGO, propuesta.id(), 2L, 4));
+
+        var respuesta = servicio.elegirContrapropiedad(CODIGO, propuesta.id(), 2L, 9);
+        assertEquals(List.of(respuesta), servicio.pendientes(CODIGO, 1L));
+        assertTrue(servicio.pendientes(CODIGO, 2L).isEmpty());
+        assertThrows(IllegalStateException.class, () -> servicio.aceptar(CODIGO, propuesta.id(), 2L));
+        assertSame(ana, ofrecida.getPropiedad().getPropietario());
+        assertSame(luna, solicitada.getPropiedad().getPropietario());
+        verifyNoInteractions(propiedades);
+
+        servicio.aceptar(CODIGO, propuesta.id(), 1L);
+        assertSame(luna, ofrecida.getPropiedad().getPropietario());
+        assertSame(ana, solicitada.getPropiedad().getPropietario());
+        assertTrue(servicio.pendientes(CODIGO, 1L).isEmpty());
     }
 
     @Test
@@ -121,7 +141,7 @@ class ServicioIntercambioPropiedadTest {
     @Test
     void lasPropuestasVencidasNoSeAceptan() {
         var propuesta = servicio.proponer(CODIGO, 1L, 2L, 4, 9);
-        when(reloj.instant()).thenReturn(AHORA.plusSeconds(300));
+        when(reloj.instant()).thenReturn(AHORA.plusSeconds(120));
         assertThrows(IllegalStateException.class, () -> servicio.aceptar(CODIGO, propuesta.id(), 2L));
         assertTrue(servicio.pendientes(CODIGO, 2L).isEmpty());
         verifyNoInteractions(propiedades);
@@ -173,7 +193,7 @@ class ServicioIntercambioPropiedadTest {
     @Test
     void vencerLiberaLaPropiedadParaUnaNuevaPropuesta() {
         var primera = servicio.proponer(CODIGO, 1L, 2L, 4, 9);
-        when(reloj.instant()).thenReturn(AHORA.plusSeconds(300));
+        when(reloj.instant()).thenReturn(AHORA.plusSeconds(120));
         var segunda = servicio.proponer(CODIGO, 1L, 2L, 4, 9);
         assertNotEquals(primera.id(), segunda.id());
         assertEquals(List.of(segunda), servicio.enviadas(CODIGO, 1L));

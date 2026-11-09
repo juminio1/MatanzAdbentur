@@ -118,13 +118,13 @@ class ServicioPropiedadOperacionesTest {
     }
 
     @Test
-    void transferirCambiaDuenioConservaMejorasYCobraElPrecioAcordado() {
+    void transferirCambiaDuenioReiniciaMejorasYCobraElPrecioAcordado() {
         propiedad.setNivelMejora(2);
 
         servicio.transferirPropiedadParaJugadores(10L, 1L, 2L, 450);
 
         assertSame(comprador, propiedad.getPropietario());
-        assertEquals(2, propiedad.getNivelMejora());
+        assertEquals(0, propiedad.getNivelMejora());
         verify(economia).restarDinero(comprador, 450);
         verify(economia).sumarDinero(vendedor, 450);
         verify(partidas).actualizarJugador(comprador);

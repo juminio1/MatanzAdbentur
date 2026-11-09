@@ -376,7 +376,9 @@ public class ServicioEventoImpl implements ServicioEvento {
             partida.getJugadores().stream().map(jugador ->
                     Map.of(
                         "id", jugador.getId(), "apodo", jugador.getApodo(), "dinero", jugador.getDinero(), 
-                        "posicion", jugador.getPosicionActual(), "activo",participacion.estaActivo(jugador))).toList());
+                        "posicion", jugador.getPosicionActual(), "activo", participacion.estaActivo(jugador),
+                        "encarcelado", Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado()),
+                        "intentosCarcel", Objects.requireNonNullElse(jugador.getEstadoCarcel().getIntentosSalirCarcel(), 0))).toList());
         return vista;
     }
 
