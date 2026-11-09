@@ -255,11 +255,22 @@
 }
 
 .tablero .casillero[data-grupo-localidad] {
-    background: linear-gradient(var(--color-localidad, #8e69c5) 18%, #211829 18%);
+    --alto-franja: clamp(12px, 1.75cqw, 23px);
+    padding: calc(var(--alto-franja) + 3px) 4px 3px;
+    background: linear-gradient(var(--color-localidad, #8e69c5) var(--alto-franja), #211829 var(--alto-franja));
     border: 1px solid #74558a;
     color: #fff;
     border-radius: 7px;
     cursor: pointer;
+}
+
+.casillero[data-grupo-localidad] .casillero__nombre {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    line-height: 1.18;
 }
 
 .tablero .casillero[data-grupo-localidad]:is(:hover, :focus-visible) {
@@ -336,6 +347,7 @@
     font-weight: 900;
     color: #ffffff;
     text-shadow: 3px 3px 0 #111;
+    transition: opacity 160ms ease;
 }
 
 .dados-tablero {
@@ -351,7 +363,8 @@
 }
 
 .dados-tablero[hidden] { display: none; }
-.tablero__centro:has(.dados-tablero:not([hidden])) :is(.tablero__titulo, .carcel-turno) {
+.tablero__centro:has(.dados-tablero:not([hidden])) .tablero__titulo { opacity: .14; }
+.tablero__centro:has(.dados-tablero:not([hidden])) .carcel-turno {
     display: none;
 }
 .dados-tablero__caras { display: flex; gap: 16px; }
@@ -1430,7 +1443,12 @@
         animation: saludo-opcion-venta 400ms ease-out;
     }
 
-    .relojdearena-img,
+    .cronometro:not([data-estado="pausa"]) .relojdearena-img {
+        transform-box: view-box;
+        transform-origin: center;
+        animation: voltear-reloj-turno 6s ease-in-out infinite;
+    }
+
     .aviso-global__reloj svg,
     .intercambio-reloj svg {
         transform-origin: center;
@@ -1445,6 +1463,17 @@
     .intercambio-confirmado[open] .propiedad-propia:last-child {
         --destino-canje: calc(-100% - 40px);
     }
+}
+
+.cronometro:is([data-estado="pausa"], [data-estado="urgente"])
+    :is(.contenedor-cronometro-icono, .cronometro-nro) {
+    color: #ff777f;
+}
+
+@keyframes voltear-reloj-turno {
+    0%, 35% { transform: rotate(0deg); }
+    50%, 85% { transform: rotate(180deg); }
+    100% { transform: rotate(360deg); }
 }
 
 @keyframes girar-reloj-partida {
@@ -1715,7 +1744,7 @@
     display: block;
     min-width: 48%;
     box-sizing: border-box;
-    padding: 2px 4px;
+    padding: 1px 3px;
     border: 1px solid var(--tema-borde);
     border-radius: 2px;
     background: var(--tema-panel);
@@ -1731,9 +1760,9 @@
 }
 
 .casillero--precio-superior .casillero__precio {
-    top: 1px;
+    top: calc(var(--alto-franja, 16px) / 2);
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
 }
 
 .casillero__precio[data-color="rojo"] { background: #762d30; color: #fff; border-color: #e74c5b; }
@@ -1802,6 +1831,25 @@
     min-height: 0;
     overflow-y: auto;
 }
+.historial__lista::-webkit-scrollbar { width: 8px; }
+.historial__lista::-webkit-scrollbar-button { display: none; }
+.historial__lista::-webkit-scrollbar-track {
+    background: var(--p-superficie);
+    border-radius: 999px;
+}
+.historial__lista::-webkit-scrollbar-thumb {
+    background: var(--tema-acento);
+    border: 1px solid var(--p-superficie);
+    border-radius: 999px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .historial__lista {
+        scrollbar-width: thin;
+        scrollbar-color: var(--tema-acento) var(--p-superficie);
+    }
+}
+
 .historial__lista li {
     padding: 8px 10px;
     background: var(--p-superficie-2);
@@ -1861,7 +1909,6 @@
 .jugador[data-ficha="VERDE"] { --color-ficha: #12B981; }
 .jugador[data-ficha="AMARILLO"] { --color-ficha: #ffd24c; }
 .jugador.turno-activo {
-    transform: scale(1.08);
     border: 2px solid var(--color-ficha, var(--p-acento));
     box-shadow: 0 0 20px color-mix(in srgb, var(--color-ficha, var(--p-acento)) 50%, transparent);
     z-index: 10;
@@ -2454,9 +2501,9 @@
 }
 
 
-/* Ventana partida: tablero ancho y controles junto al historial, sólo hasta 1250 px. */
+/* Ventana partida: tablero ancho y controles sobre el historial, sólo hasta 1250 px. */
 @media (max-width: 1250px) {
-/* El tablero usa todo el ancho; controles e historial comparten la fila inferior. */
+/* El tablero usa todo el ancho; controles e historial se apilan debajo. */
 .pagina-partida {
     --alto-panel-inferior: clamp(160px, 22dvh, 220px);
     --separacion-bloques: clamp(16px, 2.5dvh, 28px);
@@ -2482,20 +2529,19 @@
 .partida__pie {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
-    height: var(--alto-panel-inferior);
+    height: auto;
     min-width: 0;
     align-self: start;
 }
-.partida__pie .partida__lateral { grid-column: auto; height: 100%; min-height: 0; }
+.partida__pie .partida__lateral { grid-column: auto; height: var(--alto-panel-inferior); min-height: 0; }
 .partida__pie .historial { height: 100%; max-height: none; margin: 0; padding: 10px; gap: 8px; }
 .partida__pie .historial__cabecera { justify-content: space-between; gap: 10px; }
 .partida__pie .historial__cabecera h2 { font-size: 12px; }
 .partida__pie .historial__lista { min-height: 0; flex: 1; overflow-y: auto; gap: 6px; }
 .partida__pie .historial__lista li { padding: 8px; font-size: 11px; line-height: 1.35; }
 @media (max-width: 640px) {
-    .partida__pie { grid-template-columns: minmax(0, 1fr); height: auto; }
     .partida__pie .acciones { min-height: 0; }
     .partida__pie .btn-tirar { margin-left: 0; }
     .partida__pie .partida__lateral { height: 190px; }

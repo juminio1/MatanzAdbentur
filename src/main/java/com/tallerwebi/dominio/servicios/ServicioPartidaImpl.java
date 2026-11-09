@@ -193,7 +193,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public Integer obtenerSegundosRestantesTurno(String codigoUnico) {
         return gestorTemporizador.obtenerSegundosRestantes(codigoUnico);
     }
@@ -529,10 +529,9 @@ public class ServicioPartidaImpl implements ServicioPartida {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean turnoPausadoPorDeuda(String codigo) {
-        Partida partida = obtenerPartida(codigo);
-        return partida != null && quiebras != null && partida.getJugadores().stream()
-            .anyMatch(j -> quiebras.obtenerDeudaPendiente(codigo, j.getId()) != null);
+        return quiebras != null && quiebras.hayDeudaEnPartidaActiva(codigo);
     }
 
     @Override

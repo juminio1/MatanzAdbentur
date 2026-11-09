@@ -206,6 +206,42 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
+    void consultarRelojNoAbreConexionesYConsultarPausaUsaUnaSolaConsulta() {
+        var estadisticas = sesiones.getStatistics();
+        boolean habilitadas = estadisticas.isStatisticsEnabled();
+        estadisticas.setStatisticsEnabled(true);
+        estadisticas.clear();
+        try {
+            servicioPartida.obtenerSegundosRestantesTurno(codigo);
+            assertEquals(0, estadisticas.getConnectCount(), "El reloj se consulta en memoria");
+            assertFalse(servicioPartida.turnoPausadoPorDeuda(codigo));
+            assertEquals(1, estadisticas.getPrepareStatementCount(), "No consultar por cada jugador");
+        } finally {
+            estadisticas.setStatisticsEnabled(habilitadas);
+        }
+    }
+
+    @Test
+    void medirConsultasDeUnaTiradaConPropiedadDisponible() throws Exception {
+        cargarPropiedadDisponible(2);
+        transaccion.executeWithoutResult(estado ->
+                sesiones.getCurrentSession().find(Jugador.class, idJugador).setPosicionActual(0));
+        var solicitud = solicitudJugador(codigo, idJugador);
+        var estadisticas = sesiones.getStatistics();
+        boolean habilitadas = estadisticas.isStatisticsEnabled();
+        estadisticas.setStatisticsEnabled(true);
+        estadisticas.clear();
+        try {
+            var resultado = controlador.tirarDados(codigo, idJugador, solicitud);
+            assertEquals(2, resultado.getNuevaPosicion());
+            System.out.println("COSTO_TIRADA consultas=" + estadisticas.getPrepareStatementCount()
+                    + " conexiones=" + estadisticas.getConnectCount());
+        } finally {
+            estadisticas.setStatisticsEnabled(habilitadas);
+        }
+    }
+
+    @Test
     void noPuedeRepetirLaTiradaMientrasDecideLaCompraPeroPuedeEnSuSiguienteTurno() throws Exception {
         cargarPropiedadDisponible(2);
         transaccion.executeWithoutResult(estado ->

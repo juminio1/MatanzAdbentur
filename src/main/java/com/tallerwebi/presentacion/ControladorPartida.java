@@ -38,6 +38,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
@@ -209,24 +211,40 @@ public class ControladorPartida {
             @RequestParam(CLAVE_ID_JUGADOR) Long idJugador,
             HttpServletRequest request
     ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        long inicio = System.nanoTime();
         Partida partida = servicioPartida.obtenerPartida(codigoUnico);
         if (partida == null) throw new PartidaNoEncontradaException();
         Long idSesion = ResolutorJugadorSesion.resolverParticipante(partida, request, participacion);
         if (!Objects.equals(idSesion, idJugador)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No podés tirar por otro jugador.");
         }
+        long validacionCompleta = System.nanoTime();
         try {
             RespuestaMovimientoDTO respuesta = MapeadorMovimiento.desde(
                     servicioJugada.tirarYMover(codigoUnico, idJugador));
+            long jugadaCompleta = System.nanoTime();
             // La tirada usa el tiempo restante del turno; no reinicia ni extiende el plazo.
             respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
+            long turnoConsultado = System.nanoTime();
             DespuesDeConfirmar.ejecutar(
                     () -> notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta));
+            registrarTiempoTirada(inicio, validacionCompleta, jugadaCompleta, turnoConsultado);
             return respuesta;
         } catch (TiradaNoPermitidaException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
         } catch (IllegalStateException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
+    private void registrarTiempoTirada(long inicio, long validacionCompleta, long jugadaCompleta, long turnoConsultado) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes atributos
+                && atributos.getResponse() != null) {
+            atributos.getResponse().setHeader("Server-Timing",
+                    "validacion;dur=" + (validacionCompleta - inicio) / 1_000_000
+                    + ", jugada;dur=" + (jugadaCompleta - validacionCompleta) / 1_000_000
+                    + ", turno;dur=" + (turnoConsultado - jugadaCompleta) / 1_000_000
+                    + ", notificacion;dur=" + (System.nanoTime() - turnoConsultado) / 1_000_000);
         }
     }
 

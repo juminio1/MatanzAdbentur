@@ -153,6 +153,8 @@ if (botonTirar) {
 
         estaTirando = true;
         botonTirar.disabled = true;
+        botonTirar.textContent = "Esperando resultado…";
+        botonTirar.setAttribute("aria-busy", "true");
         const claveTurnoDeTirada = window.claveTurnoActual;
 
         try {
@@ -170,6 +172,8 @@ if (botonTirar) {
                 notaModalInfo.textContent = error.message || "No se pudo completar la tirada.";
         } finally {
             estaTirando = false;
+            botonTirar.textContent = "Tirar dados";
+            botonTirar.removeAttribute("aria-busy");
             actualizarBotonTirada();
         }
     });
@@ -193,6 +197,13 @@ function moverFichaEnTablero(idJugador, nuevaPosicion, efecto) {
     if (ficha.parentElement === casilleroDestino) return true;
     casilleroDestino.appendChild(ficha);
     if (efecto) animarPasoFicha(ficha, efecto === "llegada", posicionesPropiedad.has(Number(nuevaPosicion)));
+    if (efecto === "llegada") {
+        const colorFicha = getComputedStyle(ficha).backgroundColor;
+        ficha.animate(
+            [{ boxShadow: `0 0 0 3px ${colorFicha}` }, { boxShadow: "0 0 0 8px transparent" }],
+            { duration: 650, easing: "ease-out" },
+        );
+    }
     return true;
 }
 
@@ -304,7 +315,6 @@ function conectarWebSocketTurnos(base, codigo) {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
             consultarResultadosFinales();
-            consultarDeudaPendiente(true);
 
             stompClient.subscribe(`/topic/partida/${codigo}/evento-global`, mensaje => {
                 aplicarEventoGlobal(JSON.parse(mensaje.body));
@@ -439,6 +449,7 @@ function actualizarBotonTirada() {
             movimientosDeJugadoresEnCurso.size > 0 ||
             estaTirando ||
             yaTiroEnEsteTurno ||
+            window.turnoPausadoPorDeuda ||
             estadoDeudaLocal.estado !== "actualizado" ||
             estadoDeudaLocal.deuda !== null ||
             window.usuarioEnBancarrota ||
@@ -713,43 +724,62 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
 let numeroTiradaTablero = 0;
 let ocultarDadosTablero;
 
-async function mostrarTiradaEnTablero(dadoUno, dadoDos) {
-    const valores = [Number(dadoUno), Number(dadoDos)];
-    if (!valores.every(valor => Number.isInteger(valor) && valor >= 1 && valor <= 6)) return;
-
+function iniciarAnimacionDadosTablero() {
     const numero = ++numeroTiradaTablero;
     const panel = document.getElementById("dados-tablero");
     const total = document.getElementById("dados-tablero-total");
-    const caras = panel.querySelectorAll("[data-cara]");
+    const caras = [...panel.querySelectorAll("[data-cara]")];
     const pintarCaras = numeros => caras.forEach((cara, indice) => { cara.dataset.cara = numeros[indice]; });
+    const pintarAlAzar = () => pintarCaras(caras.map(() => 1 + Math.floor(Math.random() * 6)));
     clearTimeout(ocultarDadosTablero);
     panel.hidden = false;
-    total.textContent = "";
+    total.textContent = "Tirando…";
     reproducirDadosTablero();
 
+    let giro = [];
+    let cambio;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        const pintarAlAzar = () => pintarCaras(valores.map(() => 1 + Math.floor(Math.random() * 6)));
         pintarAlAzar();
-        const giro = [...caras].map((cara, indice) => {
+        giro = [...caras].map((cara, indice) => {
             const lado = indice === 0 ? -1 : 1;
             return cara.animate([
-                { transform: `translate(${lado * 60}px, -64px) rotate(0deg) scale(.76)`, opacity: 0 },
+                { transform: `translate(${lado * 60}px, -64px) rotate(0deg) scale(.76)`, opacity: 0.65 },
                 { transform: `translate(${lado * 28}px, 8px) rotate(${lado * 155}deg)`, opacity: 1, offset: 0.42 },
                 { transform: `translate(${lado * 10}px, -14px) rotate(${lado * 270}deg)`, offset: 0.68 },
                 { transform: `translate(0, 0) rotate(${lado * 360}deg)` },
             ], { duration: 530, easing: "ease-out" });
         });
-        const cambio = setInterval(() => {
+        cambio = setInterval(() => {
             if (numero === numeroTiradaTablero) pintarAlAzar();
         }, 75);
-        await Promise.allSettled(giro.map(animacion => animacion.finished));
-        clearInterval(cambio);
     }
 
-    if (numero !== numeroTiradaTablero) return;
-    pintarCaras(valores);
-    total.textContent = `${valores[0]} + ${valores[1]} = ${valores[0] + valores[1]}`;
-    ocultarDadosTablero = setTimeout(() => { panel.hidden = true; }, 1450);
+    // Las caras sólo cambian durante el rebote, nunca mientras esperamos la red.
+    const giroTerminado = Promise.allSettled(giro.map(animacion => animacion.finished))
+        .finally(() => clearInterval(cambio));
+    return {
+        numero, panel, total, pintarCaras,
+        giroTerminado,
+        detener() {
+            clearInterval(cambio);
+            giro.forEach(animacion => animacion.cancel());
+        },
+    };
+}
+
+async function mostrarTiradaEnTablero(dadoUno, dadoDos, esTiradaPropia) {
+    const valores = [Number(dadoUno), Number(dadoDos)];
+    if (!valores.every(valor => Number.isInteger(valor) && valor >= 1 && valor <= 6)) return;
+
+    if (esTiradaPropia && botonTirar) botonTirar.textContent = "Tirando…";
+    const tirada = iniciarAnimacionDadosTablero();
+    await tirada.giroTerminado;
+    tirada.detener();
+    if (tirada.numero !== numeroTiradaTablero) return;
+
+    tirada.pintarCaras(valores);
+    tirada.total.textContent = `${valores[0]} + ${valores[1]} = ${valores[0] + valores[1]}`;
+    ocultarDadosTablero = setTimeout(() => { tirada.panel.hidden = true; }, 1450);
 }
 
 async function procesarMovimiento(movimiento) {
@@ -776,7 +806,10 @@ async function procesarMovimiento(movimiento) {
             modalDeuda.close();
         }
         actualizarBotonTirada();
-        if (!movimiento.turnoVencido) await mostrarTiradaEnTablero(movimiento.dado1, movimiento.dado2);
+        if (!movimiento.turnoVencido) {
+            const esTiradaPropia = String(movimiento.idJugador) === String(window.usuarioSesionId);
+            await mostrarTiradaEnTablero(movimiento.dado1, movimiento.dado2, esTiradaPropia);
+        }
         if (partidaFinalizada) return;
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         if (partidaFinalizada) return;
@@ -921,6 +954,7 @@ function aplicarTurnoDTO(turnoDTO) {
     const ronda = Number(turnoDTO.rondaActual ?? 0);
     const finalizados = Number(turnoDTO.turnosFinalizadosEnRonda ?? 0);
     const ultimo = window.ultimoTurnoRecibido;
+    const jugadorInicial = window.turnoActualId;
     if (
         ultimo &&
         (ronda < ultimo.ronda || (ronda === ultimo.ronda && finalizados < ultimo.finalizados))
@@ -938,7 +972,9 @@ function aplicarTurnoDTO(turnoDTO) {
 
     if (cambioDeTurno && modalCompra?.open) cerrarModalCompra();
     window.turnoActualId = turnoDTO.idJugadorActual;
-    if (cambioDeTurno) consultarDeudaPendiente(true);
+    if (cambioDeTurno && (ultimo || String(jugadorInicial) !== String(turnoDTO.idJugadorActual))) {
+        consultarDeudaPendiente(true);
+    }
     if (cambioDeTurno && modalBonoPropiedades?.open) cargarPropiedadesPropias();
     window.turnoPausadoPorDeuda = Boolean(turnoDTO.pausadoPorDeuda);
     if (window.turnoPausadoPorDeuda) consultarDeudaPendiente(true);
@@ -946,8 +982,7 @@ function aplicarTurnoDTO(turnoDTO) {
     if (window.turnoPausadoPorDeuda) {
         clearInterval(intervaloReloj);
         tiempoRestante = Number(turnoDTO.duracionSegundos ?? tiempoRestante);
-        const reloj = document.getElementById("cronometro-nro");
-        if (reloj) reloj.textContent = "Pausa";
+        pausarRelojVisual();
     } else if (turnoDTO.duracionSegundos == null) {
         prepararRelojSinIniciar();
         window.turnoInicialSincronizado = true;
@@ -2105,14 +2140,6 @@ function iniciarRelojLocal(segundos) {
         tiempoRestante = segundosTotalesRestantes;
         actualizarTextoReloj(elementoReloj);
 
-        if (tiempoRestante <= 5 && tiempoRestante > 0) {
-            elementoReloj.style.color = "#d9534f";
-            elementoReloj.style.fontWeight = "bold";
-        } else {
-            elementoReloj.style.color = "";
-            elementoReloj.style.fontWeight = "normal";
-        }
-
         if (tiempoRestante === 0) {
             document.dispatchEvent(new Event("fin-plazo-turno"));
             clearInterval(intervaloReloj);
@@ -2181,7 +2208,7 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
     panel.setAttribute("aria-hidden", String(!mostrar));
     if (estado.activo) {
         clearInterval(intervaloReloj);
-        if (document.getElementById("cronometro-nro")) document.getElementById("cronometro-nro").textContent = "Pausa";
+        pausarRelojVisual();
         if (modalCompra?.open) cerrarModalCompra();
         if (!mostrandoTiradaGlobal) pintarEventoGlobal(estado);
         if (mostrar) {
@@ -2501,12 +2528,21 @@ document.addEventListener("click", evento => {
 }, true);
 window.addEventListener("DOMContentLoaded", () => {
     sincronizarEventoGlobal();
+    consultarDeudaPendiente();
     window.setInterval(sincronizarEventoGlobal, 3000);
     window.setInterval(actualizarTiempoEventoGlobal, 250);
 });
 
+function pausarRelojVisual() {
+    const elemento = document.getElementById("cronometro-nro");
+    if (!elemento) return;
+    elemento.textContent = "Pausa";
+    elemento.closest(".cronometro").dataset.estado = "pausa";
+}
+
 function actualizarTextoReloj(elemento) {
     if (!elemento) return;
+    elemento.closest(".cronometro").dataset.estado = tiempoRestante <= 5 ? "urgente" : "normal";
     elemento.innerText = `${Math.floor(tiempoRestante / 60).toString().padStart(2, "0")}:${(tiempoRestante % 60).toString().padStart(2, "0")}`;
 }
 

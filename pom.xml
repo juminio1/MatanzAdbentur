@@ -20,12 +20,19 @@
         <hibernate.version>6.6.54.Final</hibernate.version>
         <playwright.version>1.61.0</playwright.version>
         <hsqldb.version>2.7.4</hsqldb.version>
+        <hikaricp.version>7.1.0</hikaricp.version>
         <checkstyle.version>3.6.0</checkstyle.version>
         <checkstyle.runtime.version>13.8.0</checkstyle.runtime.version>
         <jetty.http.port>8080</jetty.http.port>
     </properties>
 
     <dependencies>
+
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikaricp.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.hibernate.validator</groupId>

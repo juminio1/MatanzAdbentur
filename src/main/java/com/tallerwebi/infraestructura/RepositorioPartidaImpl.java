@@ -15,6 +15,10 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
     private static final String CONSULTA_PARTIDAS_ACTIVAS =
         "FROM Partida WHERE estado != :finalizada";
+    private static final String CONSULTA_PARTIDA_COMPLETA =
+        "SELECT DISTINCT p FROM Partida p LEFT JOIN FETCH p.jugadores "
+            + "LEFT JOIN FETCH p.creador LEFT JOIN FETCH p.jugadorTurnoAleatorio "
+            + "WHERE p.codigoUnico = :codigo";
 
     private final SessionFactory sessionFactory;
 
@@ -76,9 +80,9 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
     @Override
     public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-        List<Partida> partidas = crearConsultaPartidasActivas(
-            CONSULTA_PARTIDAS_ACTIVAS + " AND codigoUnico = :codigo"
-        )
+        List<Partida> partidas = sessionFactory.getCurrentSession()
+            .createQuery(CONSULTA_PARTIDA_COMPLETA + " AND p.estado <> :finalizada", Partida.class)
+            .setParameter("finalizada", EstadoPartida.FINALIZADA)
             .setParameter("codigo", codigoUnico)
             .getResultList();
 
@@ -88,7 +92,7 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     @Override
     public Partida buscarPartidaPorCodigoUnico(String codigoUnico) {
         Query<Partida> consulta = this.sessionFactory.getCurrentSession()
-                .createQuery("FROM Partida WHERE codigoUnico = :codigo", Partida.class)
+                .createQuery(CONSULTA_PARTIDA_COMPLETA, Partida.class)
                 .setParameter("codigo", codigoUnico);
         return obtenerResultadoUnicoONull(consulta);
     }
