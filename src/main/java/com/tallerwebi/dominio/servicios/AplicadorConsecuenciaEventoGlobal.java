@@ -113,15 +113,11 @@ public class AplicadorConsecuenciaEventoGlobal {
     }
 
     private String mover(Jugador jugador, int desplazamiento) {
-        int anterior = jugador.getPosicionActual();
         movimiento.moverJugador(jugador, desplazamiento, CatalogoTablero.TOTAL_CASILLEROS);
-        int premio = desplazamiento > 0 ? movimiento.calcularPremioPorAvance(anterior, desplazamiento)
-            : anterior > 0 && anterior + desplazamiento < 0 ? ServicioMovimientoImpl.PREMIO_INICIO : 0;
-        if (premio > 0) economia.sumarDinero(jugador, premio);
         int cantidad = Math.abs(desplazamiento);
         String detalle = (desplazamiento < 0 ? "retrocedió " : "avanzó ") + cantidad
             + (cantidad == 1 ? " casillero." : " casilleros.");
-        return premio > 0 ? detalle + " Recibió $" + premio + " por pasar por Inicio." : detalle;
+        return detalle;
     }
     
 

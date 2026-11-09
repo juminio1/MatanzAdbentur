@@ -50,6 +50,39 @@ class ServicioEventoCasilleroImplTest {
                 quiebras, partidas, new ServicioParticipacionImpl());
     }
 
+    @TestFactory
+    Stream<DynamicTest> movimientosDeTarjetaQueCruzanInicioNoOtorganPremio() {
+        return Stream.of(
+                new EventoCasillero(1, "Avance", "", TipoEfectoEvento.AVANZA_CASILLEROS, null, 5, null),
+                new EventoCasillero(2, "Destino", "", TipoEfectoEvento.AVANZA_A_POSICION, null, null, 3),
+                new EventoCasillero(3, "Inicio", "", TipoEfectoEvento.AVANZA_A_POSICION, null, null, 0)
+        ).map(tarjeta -> DynamicTest.dynamicTest(tarjeta.getNombre(), () -> {
+            preparar();
+            jugador.setPosicionActual(28);
+            Partida partida = new Partida();
+            partida.setCodigoUnico("GLOBAL");
+            partida.setEstado(EstadoPartida.EN_CURSO);
+            partida.setJugadores(List.of(jugador));
+            RepositorioPartida partidas = mock(RepositorioPartida.class);
+            when(partidas.buscarPartidaPorJugador(1L)).thenReturn(partida);
+            ServicioEconomia economiaReal = new ServicioEconomiaImpl();
+            ServicioMovimiento movimientoReal = new ServicioMovimientoImpl(economiaReal, partidas,
+                    new ServicioParticipacionImpl());
+            servicio = new ServicioEventoCasilleroImpl(tarjetas, casilleros, economiaReal,
+                    movimientoReal, quiebras, partidas, new ServicioParticipacionImpl());
+            when(casilleros.obtenerTodosLosCasilleros()).thenReturn(
+                    List.of(new CasilleroEvento(null, 28, "EVENTOS", "", null, null)));
+            when(tarjetas.obtenerTodos()).thenReturn(List.of(tarjeta));
+
+            var resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador).orElseThrow();
+
+            assertEquals(tarjeta.getPosicionDestino() == null ? 3 : tarjeta.getPosicionDestino(),
+                    jugador.getPosicionActual());
+            assertEquals(2000, jugador.getDinero());
+            assertEquals(0, resultado.dineroPorInicio());
+        }));
+    }
+
     @Test
     void dadoQueElCodigoEsDeOtraPartidaCuandoSeIntentaAplicarUnaTarjetaDaComoResultadoElRechazoSinEfectos() {
         // Preparación
