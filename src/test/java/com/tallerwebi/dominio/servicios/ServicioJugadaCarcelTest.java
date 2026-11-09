@@ -30,6 +30,7 @@ class ServicioJugadaCarcelTest {
     @BeforeEach
     void init() {
         servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         servicioCasilleroMock = mock(ServicioCasillero.class);
         servicioPropiedadMock = mock(ServicioPropiedad.class);
         servicioEventoMock = mock(ServicioEventoCasillero.class);
@@ -386,8 +387,7 @@ class ServicioJugadaCarcelTest {
     }
 
     @Test
-    void verificarQueSiSeAcabaElTiempoEstandoPresoCuentoComoIntentoFallido() {
-        // Validación del temporizador y registro de intento por tiempo agotado
+    void registrarIntentoFallidoActualizaElEstadoDeCarcel() {
         Jugador jugador = new Jugador();
         jugador.getEstadoCarcel().encarcelar();
 

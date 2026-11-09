@@ -13,8 +13,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Hojas de estilo -->
-    <link rel="stylesheet" th:href="@{/css/header.css(v=dark-2)}">
-    <link rel="stylesheet" th:href="@{/css/sala-de-espera.css(v=brick-wall-3)}">
+    <link rel="stylesheet" th:href="@{/css/tema-oscuro.css(v=violeta-1)}" href="../../../resources/core/css/tema-oscuro.css">
+    <link rel="stylesheet" th:href="@{/css/header.css(v=violeta-1)}">
+    <link rel="stylesheet" th:href="@{/css/sala-de-espera.css(v=barrio-1)}">
 </head>
 
 <body>
@@ -226,7 +227,8 @@
                 <div class="salaEspera__lista" id="lista-jugadores">
 
                     <!-- JUGADORES CONECTADOS -->
-                    <div class="salaEspera__jugador" th:each="usuario : ${usuarios}">
+                    <div class="salaEspera__jugador" th:each="usuario : ${usuarios}"
+                         th:attr="data-ficha-inicial=${usuario.ficha},data-jugador-id=${usuario.id}">
 
                         <!-- Avatar con color de ficha o azul -->
                         <div class="avatar"
@@ -298,7 +300,7 @@
 
             <form th:action="@{/iniciar-partida}" method="post">
                 <input type="hidden" name="codigoUnico" th:value="${codigoUnico}">
-                <button type="submit" class="salaEspera__iniciar">
+                <button type="submit" class="salaEspera__iniciar" th:disabled="${!esCreador}">
                     Iniciar partida
                 </button>
             </form>
@@ -315,7 +317,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <!-- SCRIPTS DE LA APLICACIÓN -->
-<script th:src="@{/js/sala-de-espera.js(v=fichas-1)}"></script>
+<script th:src="@{/js/sala-de-espera.js(v=fichas-2)}"></script>
 <script th:src="@{/js/menu-usuario.js(v=100)}"></script>
 </body>
 

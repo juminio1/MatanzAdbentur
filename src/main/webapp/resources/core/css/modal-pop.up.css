@@ -6,8 +6,8 @@
 
 /* LA CAJITA TRANSPARENTE DE VERDAD */
 .modal-content.modal-matancero {
-    background-color: rgba(27, 38, 50, 0.96) !important;
-    background: rgba(27, 38, 50, 0.96) !important;
+    background-color: color-mix(in srgb, var(--tema-panel) 96%, transparent) !important;
+    background: color-mix(in srgb, var(--tema-panel) 96%, transparent) !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
     border-radius: 20px;
@@ -22,7 +22,7 @@
 
 .modal-matancero h3 {
     font-weight: 800;
-    color: #edf3f8;
+    color: var(--tema-texto);
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
@@ -36,21 +36,21 @@
 }
 
 .btn-azul {
-    background: #2E4A8A;
+    background: var(--tema-acento-oscuro);
     color: white;
 }
 .btn-azul:hover {
-    background: #1f345f;
+    background: var(--tema-acento-oscuro-hover);
     color: white;
     transform: scale(1.02);
 }
 
 .btn-amarillo {
-    background: #E8B400;
+    background: var(--tema-acento);
     color: #1a1a1a;
 }
 .btn-amarillo:hover {
-    background: #c99b00;
+    background: var(--tema-acento-hover);
     color: #1a1a1a;
     transform: scale(1.02);
 }
@@ -58,8 +58,72 @@
 .btn-cerrar {
     background: none;
     border: none;
-    color: #d6e0e9;
+    color: var(--tema-secundario);
     font-weight: 600;
     font-size: 14px;
     text-decoration: underline;
+}
+
+#modalJugar .modal-content {
+    border: 1px solid var(--tema-acento);
+    background: var(--tema-panel);
+}
+#modalJugar .text-muted { color: var(--tema-secundario) !important; }
+.jugar-opciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.jugar-opcion {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    min-height: 150px;
+    padding: 12px 8px;
+    border: 1px solid var(--tema-acento);
+    border-radius: 12px;
+    background: var(--tema-elevado);
+    color: var(--tema-texto);
+}
+.jugar-opcion small { color: var(--tema-secundario); }
+.jugar-opcion svg {
+    width: 42px;
+    fill: none;
+    stroke: #ffda6a;
+    stroke-width: 1.75;
+}
+.jugar-opcion:is(:hover, :focus-visible) { background: #432d75; }
+@media (prefers-reduced-motion: no-preference) {
+    .jugar-opcion svg { transition: transform .2s ease; }
+    .jugar-opcion:is(:hover, :focus-visible) svg { transform: translateY(-5px) rotate(-8deg); }
+}
+
+#modalJugar .jugar-cabecera {
+    margin: -1.5rem -1.5rem 16px;
+    padding: 14px;
+    background: #432d75;
+    border-radius: 16px 16px 0 0;
+}
+#modalJugar .jugar-opcion { background: #432d75; }
+#modalJugar .jugar-opcion strong { color: #ffda6a; }
+#modalJugar .jugar-opcion:is(:hover, :focus-visible) { background: #594087; }
+#modalJugar .jugar-codigo {
+    background: var(--tema-campo);
+    border: 1px solid var(--tema-acento);
+    color: var(--tema-texto);
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+#modalJugar #ventanaCodigo .btn-matancero {
+    background: #ffda6a;
+    color: #211829;
+}
+.jugar-volver {
+    justify-self: center;
+    padding: 6px 16px;
+    border: 2px solid var(--tema-acento);
+    border-radius: 9px;
+    background: #303036;
+    color: var(--tema-texto);
 }

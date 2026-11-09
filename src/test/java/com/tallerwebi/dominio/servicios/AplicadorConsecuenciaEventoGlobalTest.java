@@ -164,6 +164,36 @@ class AplicadorConsecuenciaEventoGlobalTest {
         verifyNoInteractions(movimiento);
     }
 
+    @Test
+    void movimientoGlobalQueAvanzaCruzandoInicioNoOtorgaPremio() {
+        // Valor positivo deliberado para cubrir cualquier desplazamiento global.
+        comprobarMovimientoSinPremio(TipoEventoGlobal.INUNDACION, 3, 28, 1);
+    }
+
+    @Test
+    void piqueteQueEnviaDirectamenteAInicioNoOtorgaPremio() {
+        comprobarMovimientoSinPremio(TipoEventoGlobal.PIQUETE, 0, 28, 0);
+    }
+
+    private void comprobarMovimientoSinPremio(TipoEventoGlobal tipo, int valor, int origen, int destino) {
+        Jugador jugador = jugador(1L, origen);
+        Partida partida = partida(jugador);
+        partida.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        var repositorio = mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+        when(repositorio.buscarPartidaPorJugador(1L)).thenReturn(partida);
+        ServicioEconomia economia = new ServicioEconomiaImpl();
+        ServicioMovimiento movimiento = new ServicioMovimientoImpl(economia, repositorio,
+                new ServicioParticipacionImpl());
+        var aplicador = new AplicadorConsecuenciaEventoGlobal(economia, movimiento,
+                mock(ServicioGestionQuiebra.class), new ServicioParticipacionImpl());
+
+        String detalle = aplicador.aplicar(partida, evento(tipo, valor), jugador);
+
+        assertEquals(destino, jugador.getPosicionActual());
+        assertEquals(2000, jugador.getDinero());
+        org.junit.jupiter.api.Assertions.assertFalse(detalle.contains("Recibió $200"));
+    }
+
     private Jugador jugador(Long id, int posicion) {
         Jugador jugador = new Jugador();
         jugador.setId(id);

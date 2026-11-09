@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.tallerwebi.config.DatabaseInitializationConfig;
 import com.tallerwebi.config.HibernateConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import com.tallerwebi.dominio.entidades.Evento.EventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEfectoEventoGlobal;
 import com.tallerwebi.dominio.enums.TipoEventoGlobal;
@@ -21,7 +22,6 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -29,15 +29,16 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_TESTS", matches = "true")
 class EventosGlobalesPostgreSQLTest {
     private static String esquema;
+    private HikariDataSource fuenteAdministrador;
     private JdbcTemplate administrador;
 
     @Configuration
     static class Config extends HibernateConfig {
-        @Bean
+        @Bean(destroyMethod = "close")
         @Override
         public DataSource dataSource() {
-            DriverManagerDataSource fuente = (DriverManagerDataSource) super.dataSource();
-            fuente.setUrl(fuente.getUrl() + "?currentSchema=" + esquema);
+            HikariDataSource fuente = (HikariDataSource) super.dataSource();
+            fuente.setJdbcUrl(fuente.getJdbcUrl() + "?currentSchema=" + esquema);
             return fuente;
         }
     }
@@ -45,13 +46,15 @@ class EventosGlobalesPostgreSQLTest {
     @BeforeEach
     void aislarEsquema() {
         esquema = "eventos_" + UUID.randomUUID().toString().replace("-", "");
-        administrador = new JdbcTemplate(new HibernateConfig().dataSource());
+        fuenteAdministrador = (HikariDataSource) new HibernateConfig().dataSource();
+        administrador = new JdbcTemplate(fuenteAdministrador);
         administrador.execute("CREATE SCHEMA " + esquema);
     }
 
     @AfterEach
     void eliminarSoloElEsquemaDeEstaPrueba() {
         administrador.execute("DROP SCHEMA " + esquema + " CASCADE");
+        fuenteAdministrador.close();
     }
 
     @Test

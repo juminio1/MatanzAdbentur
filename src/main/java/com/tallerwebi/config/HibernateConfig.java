@@ -5,7 +5,7 @@ import java.util.TimeZone;
 import javax.sql.DataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.orm.hibernate5.HibernateTransactionManager;
 import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -16,12 +16,16 @@ public class HibernateConfig {
 
     private static final String ZONA_BUENOS_AIRES_ANTERIOR = "America/Buenos_Aires";
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public DataSource dataSource() {
         if (ZONA_BUENOS_AIRES_ANTERIOR.equals(TimeZone.getDefault().getID())) {
             TimeZone.setDefault(TimeZone.getTimeZone("America/Argentina/Buenos_Aires"));
         }
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setPoolName("matancero-db");
+        dataSource.setMaximumPoolSize(10);
+        dataSource.setMinimumIdle(2);
+        dataSource.addDataSourceProperty("tcpKeepAlive", "true");
 
         String dbHost = System.getenv("DB_HOST");
         String dbPort = System.getenv("DB_PORT");
@@ -42,7 +46,7 @@ public class HibernateConfig {
             dbName
         );
 
-        dataSource.setUrl(url);
+        dataSource.setJdbcUrl(url);
         dataSource.setUsername(dbUser);
         dataSource.setPassword(dbPassword);
         dataSource.setDriverClassName("org.postgresql.Driver");

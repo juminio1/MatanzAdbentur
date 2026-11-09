@@ -17,6 +17,7 @@ public interface ServicioGestionQuiebra {
             String motivo);
 
     DeudaPendiente obtenerDeudaPendiente(String codigoPartida, Long idJugador);
+    boolean hayDeudaEnPartidaActiva(String codigoPartida);
     Boolean intentarResolverDeuda(String codigoPartida, Long idJugador);
     Boolean venderPropiedadYResolverDeuda(String codigoPartida,Long idJugador,Long idPropiedad);
     ResultadoDeuda evaluarDeuda(String codigoPartida,Long idJugador);

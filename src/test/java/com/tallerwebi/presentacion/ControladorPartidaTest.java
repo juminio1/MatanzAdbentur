@@ -77,6 +77,7 @@ public class ControladorPartidaTest {
         partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
         org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         notificadorWebSocketMock = mock(SimpMessagingTemplate.class);
         servicioCasilleroMock = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
         servicioPropiedadMock = mock(ServicioPropiedad.class);
@@ -609,6 +610,7 @@ public class ControladorPartidaTest {
         String codigoPartida = "MATANZA123";
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -641,6 +643,7 @@ public class ControladorPartidaTest {
         String codigoPartida = "MATANZA123";
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -681,6 +684,7 @@ public class ControladorPartidaTest {
         Long idJugador = 1L;
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -724,6 +728,7 @@ public class ControladorPartidaTest {
         Long idJugador = 1L;
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -766,6 +771,7 @@ public class ControladorPartidaTest {
         Long idJugador = 1L;
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -808,6 +814,7 @@ public class ControladorPartidaTest {
         Long idJugador = 1L;
 
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
 
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
@@ -845,6 +852,7 @@ public class ControladorPartidaTest {
         // Preparación
         String codigoPartida = "ABC123";
         ServicioPartida servicioPartidaMock = mock(ServicioPartida.class);
+        when(servicioPartidaMock.obtenerSegundosRestantesTurno(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         NotificadorPartida notificadorPartidaMock = mock(NotificadorPartida.class);
         ControladorPartida controlador = new ControladorPartida(servicioPartidaMock,
                 mock(SimpMessagingTemplate.class),

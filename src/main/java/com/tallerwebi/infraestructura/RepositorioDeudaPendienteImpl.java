@@ -49,6 +49,21 @@ public class RepositorioDeudaPendienteImpl implements RepositorioDeudaPendiente 
     }
 
     @Override
+    public boolean existeEnPartidaActiva(String codigoPartida) {
+        // Una sola consulta, sin cargar las entidades ni abrir una transacción por jugador.
+        return !sessionFactory.getCurrentSession().createQuery(
+                "SELECT d.id FROM DeudaPendiente d JOIN d.partida p JOIN p.jugadores j "
+                        + "WHERE p.codigoUnico = :codigo AND p.estado <> :finalizada "
+                        + "AND j.id = d.jugadorDeudor.id "
+                        + "AND (d.montoPendiente <> 0 OR d.motivo <> :alertaRetirada)", Long.class)
+                .setParameter("codigo", codigoPartida)
+                .setParameter("finalizada", com.tallerwebi.dominio.enums.EstadoPartida.FINALIZADA)
+                .setParameter("alertaRetirada", ALERTA_PRUEBA_RETIRADA)
+                .setMaxResults(1)
+                .getResultList().isEmpty();
+    }
+
+    @Override
     public void eliminar(DeudaPendiente deuda) {
         sessionFactory.getCurrentSession()
                 .remove(sessionFactory.getCurrentSession().contains(deuda)

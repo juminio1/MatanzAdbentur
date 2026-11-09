@@ -87,7 +87,7 @@ body {
     min-width: 190px;
     display: flex;
     flex-direction: column;
-    color: #78b9e8;
+    color: var(--tema-acento);
     font-size: 13px;
     font-weight: 800;
     text-align: center;
@@ -137,7 +137,7 @@ body {
     flex-shrink: 0;
     background: #e7f4ff;
     border-radius: 11px;
-    color: #0873d1;
+    color: var(--tema-acento);
     font-size: 21px;
 }
 
@@ -184,9 +184,9 @@ body {
     min-width: 180px;
     padding: 0 22px;
     background: rgba(255, 255, 255, 0.6);
-    border: 2px solid #1776ca;
+    border: 2px solid var(--tema-acento-oscuro);
     border-radius: 14px;
-    color: #0868be;
+    color: var(--tema-acento);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
@@ -194,7 +194,7 @@ body {
 }
 
 .salaEspera__copiar:hover {
-    background: #1776ca;
+    background: var(--tema-acento-oscuro);
     color: white;
 }
 
@@ -238,8 +238,8 @@ body {
 
 /* ESTADO: Ficha seleccionada por el jugador actual */
 .salaEspera__ficha--seleccionada {
-    border-color: #1386ed !important;
-    box-shadow: 0 8px 18px rgba(19, 134, 237, 0.25) !important;
+    border-color: var(--tema-acento) !important;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--tema-acento) 25%, transparent) !important;
 }
 
 /* ESTADO: Ficha ocupada por otro jugador (Deshabilitada) */
@@ -249,8 +249,9 @@ body {
     cursor: not-allowed !important;
     filter: grayscale(85%) !important;
     pointer-events: none !important;
-    border-color: #d1d5db !important;
-    background: #f3f4f6 !important;
+    border-color: var(--tema-borde) !important;
+    background: var(--tema-elevado) !important;
+    color: var(--tema-secundario) !important;
 }
 
 .salaEspera__check {
@@ -279,7 +280,7 @@ body {
     position: relative;
     width: 78px;
     height: 95px;
-    color: #333;
+    color: var(--tema-secundario);
 }
 
 .peon__cabeza {
@@ -340,13 +341,13 @@ body {
 }
 
 .salaEspera__contador strong {
-    color: #0873d1;
+    color: var(--tema-acento);
     font-size: 21px;
     font-weight: 800;
 }
 
 .salaEspera__contador span {
-    color: #748398;
+    color: var(--tema-secundario);
     font-size: 11px;
 }
 
@@ -448,7 +449,7 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #279453;
+    color: #73d69b;
     font-size: 11px;
     font-weight: 600;
 }
@@ -509,54 +510,59 @@ body {
     font-weight: 800;
     cursor: pointer;
     transition: 0.2s ease;
-    background: linear-gradient(135deg, #ed3340, #d8202d);
+    background: linear-gradient(135deg, var(--tema-acento-oscuro), var(--tema-acento-oscuro-hover));
     color: white;
     font-size: 19px;
-    box-shadow: 0 9px 20px rgba(220,39,51,0.22);
+    box-shadow: 0 9px 20px color-mix(in srgb, var(--tema-acento) 22%, transparent);
 }
 
-.salaEspera__iniciar:hover {
+.salaEspera__iniciar:hover:not(:disabled) {
     transform: translateY(-2px);
+}
+
+.salaEspera__iniciar:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 /* TEMA OSCURO */
 body {
     min-height: 100vh;
-    background-color: #111820;
-    color: #edf3f8;
+    background-color: var(--tema-fondo);
+    color: var(--tema-texto);
 }
 
 .salaEspera {
-    background-color: #111820;
+    background-color: var(--tema-fondo);
     background-image:
-        linear-gradient(rgba(8, 12, 18, 0.2), rgba(8, 12, 18, 0.38)),
+        linear-gradient(color-mix(in srgb, var(--tema-fondo) 45%, transparent), color-mix(in srgb, var(--tema-fondo) 63%, transparent)),
         url('../images/fondo/Wireframe%20-%207.jpg');
     background-repeat: no-repeat, repeat;
     background-size: cover, cover;
     background-attachment: fixed;
     background-position: center;
-    color: #edf3f8;
+    color: var(--tema-texto);
 }
 
 .salaEspera__contenedor,
 .salaEspera__codigo,
 .salaEspera__fichas,
 .salaEspera__jugadores {
-    background-color: #1b2632;
-    border-color: #344252;
-    color: #edf3f8;
+    background-color: var(--tema-panel);
+    border-color: var(--tema-borde);
+    color: var(--tema-texto);
 }
 
 .salaEspera__codigo {
-    background-image: linear-gradient(135deg, #223345, #1b2632);
-    border-color: #3b5269;
+    background-image: linear-gradient(135deg, var(--tema-elevado), var(--tema-panel));
+    border-color: var(--tema-borde);
 }
 
 .salaEspera__titulo h1,
 .salaEspera__subtitulo h2,
 .salaEspera__jugadorInfo strong,
 .salaEspera__codigoNumero span {
-    color: #edf3f8;
+    color: var(--tema-texto);
 }
 
 .salaEspera__titulo p,
@@ -564,37 +570,37 @@ body {
 .salaEspera__jugadorInfo small,
 .salaEspera__nombre span,
 .salaEspera__contador span {
-    color: #b3c1ce;
+    color: var(--tema-secundario);
 }
 
 .salaEspera__icono {
-    background: #26384a;
-    color: #76c8f0;
+    background: var(--tema-elevado);
+    color: var(--tema-acento);
 }
 
 .salaEspera__codigoNumero,
 .salaEspera__copiar {
-    background: #111a23;
-    border-color: #3b5269;
-    color: #d9e8f4;
+    background: var(--tema-campo);
+    border-color: var(--tema-borde);
+    color: var(--tema-texto);
 }
 
 .salaEspera__jugador {
-    background: #202c38;
-    border-color: #344252;
+    background: var(--tema-elevado);
+    border-color: var(--tema-borde);
 }
 
 .salaEspera__ficha > span {
-    color: #18222d;
+    color: var(--tema-sobre-acento);
 }
 
 .salaEspera__ficha--ocupada {
-    background: #394552 !important;
-    border-color: #566575 !important;
+    background: var(--tema-elevado) !important;
+    border-color: var(--tema-borde) !important;
 }
 
 .salaEspera__iniciar {
-    border-color: #3b5269;
+    border-color: var(--tema-borde);
 }
 
 /* RESPONSIVE */
@@ -653,3 +659,20 @@ body {
         flex-direction: column;
     }
 }
+
+.salaEspera {
+    background: radial-gradient(ellipse at 80% 12%, #4a2a3c, transparent 48%),
+                radial-gradient(ellipse at 12% 45%, #302347, transparent 58%),
+                #14121b;
+}
+.salaEspera__contenedor { border-color: var(--tema-acento); }
+.salaEspera__iniciar:not(:disabled) {
+    background: #ffda6a;
+    color: #211829;
+}
+.salaEspera__ficha {
+    background: var(--tema-elevado);
+    border-color: var(--tema-borde);
+}
+.salaEspera__ficha > span { color: var(--tema-texto); }
+.salaEspera__ficha--ocupada .peon { opacity: .45; }
