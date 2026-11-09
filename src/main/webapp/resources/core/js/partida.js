@@ -1,9 +1,17 @@
-import { inicializarChat } from "./chat-partida.js?v=5";
+import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
-import { inicializarIntercambios } from "./intercambios.js?v=4";
+import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero } from "./efectos-compra.js?v=partida-13";
+
+document.addEventListener("click", evento => {
+    if (!evento.isTrusted) return;
+    const omitir = "#btn-modal-pasar, #btn-rechazar-oferta, #rechazar-intercambio";
+    const boton = evento.target.closest(`#btn-continuar-evento, #global-continuar, #btn-aceptar-oferta, ${omitir}`);
+    if (boton && !boton.disabled) reproducirAccionPartida(boton.matches(omitir));
+}, { capture: true });
 import { aceptarEstadoEvento, puedeTirarEnEvento, seleccionarTurnoMasReciente } from "./eventos-globales.js?v=turno-7";
 
 const registrarEventoGlobalEnHistorial = crearHistorialEventosGlobales(agregarAlHistorial);
@@ -13,6 +21,7 @@ let gestionIntercambios = null;
 let chatPartida = null;
 let eventoGlobalSincronizado = false;
 let peticionEventoGlobal = false;
+let mostrandoTiradaGlobal = false;
 let consultaEventoGlobalEnCurso = false;
 const tarjetasGlobalesMostradas = new Set();
 const comprasGlobalesMostradas = new Set();
@@ -21,8 +30,6 @@ const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : ""
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
 
-const dado1 = document.getElementById("dado-1");
-const dado2 = document.getElementById("dado-2");
 const botonTirar = document.getElementById("btn-tirar");
 if (botonTirar) botonTirar.disabled = true;
 
@@ -151,9 +158,6 @@ if (botonTirar) {
         try {
             const resultado = await obtenerResultadoDados();
 
-            if (dado1) dado1.textContent = resultado.dado1;
-            if (dado2) dado2.textContent = resultado.dado2;
-
             console.log("Resultado completo:", resultado);
 
             yaTiroEnEsteTurno = claveTurnoDeTirada === window.claveTurnoActual;
@@ -171,7 +175,7 @@ if (botonTirar) {
     });
 }
 
-function moverFichaEnTablero(idJugador, nuevaPosicion) {
+function moverFichaEnTablero(idJugador, nuevaPosicion, efecto) {
     const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
     const casilleroDestino = document.querySelector(
         `.casillero[data-casillero="${nuevaPosicion}"] .fichas-en-casillero`,
@@ -186,7 +190,9 @@ function moverFichaEnTablero(idJugador, nuevaPosicion) {
         });
         return false;
     }
+    if (ficha.parentElement === casilleroDestino) return true;
     casilleroDestino.appendChild(ficha);
+    if (efecto) animarPasoFicha(ficha, efecto === "llegada", posicionesPropiedad.has(Number(nuevaPosicion)));
     return true;
 }
 
@@ -230,7 +236,8 @@ async function animarMovimientoFicha(idJugador, cantidadPasos, posicionAnterior)
         const siguienteCasillero = casilleros[indiceActual];
         const posicionDestino = siguienteCasillero.dataset.casillero;
 
-        const movimientoRealizado = moverFichaEnTablero(idJugador, posicionDestino);
+        const efecto = paso === cantidadPasos - 1 ? "llegada" : "paso";
+        const movimientoRealizado = moverFichaEnTablero(idJugador, posicionDestino, efecto);
 
         if (!movimientoRealizado) {
             return;
@@ -488,8 +495,10 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
     if (!anterior.encarcelado && actual.encarcelado) {
         agregarAlHistorial(`${nombre} quedó detenido en la comisaría.`, idJugador);
         if (esUsuario) {
+            reproducirComisaria();
             mostrarAvisoPartida(
                 "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
+                false, true,
             );
         }
         return;
@@ -540,8 +549,6 @@ function actualizarControlesCarcel() {
     const mostrar =
         !estadoEventoGlobalCliente?.activo &&
         estaPresoEnPantalla(window.usuarioSesionId) &&
-        esMiTurno &&
-        !yaTiroEnEsteTurno &&
         !window.usuarioEnBancarrota &&
         !partidaFinalizada;
     panel.hidden = !mostrar;
@@ -551,14 +558,13 @@ function actualizarControlesCarcel() {
     const intentos = Number(
         document.getElementById(String(window.usuarioSesionId))?.dataset.intentosCarcel || 0,
     );
+    boton.hidden = !esMiTurno || yaTiroEnEsteTurno;
     boton.disabled =
         !alcanza || pagandoFianza || estaTirando || movimientosDeJugadoresEnCurso.size > 0;
     if (texto) {
-        texto.textContent =
-            `Estás en la comisaría (intento ${intentos + 1} de ${MAX_INTENTOS_CARCEL}). ` +
-            (alcanza
-                ? "Sacá dobles para salir o pagá la fianza."
-                : "Sacá dobles para salir. No te alcanza para pagar la fianza.");
+        const restantes = Math.max(0, MAX_INTENTOS_CARCEL - intentos);
+        const detalle = boton.hidden ? `Fianza $${COSTO_FIANZA}.` : "Sacá dobles para salir.";
+        texto.textContent = `${restantes} ${restantes === 1 ? "intento restante" : "intentos restantes"} · ${detalle}`;
     }
 }
 
@@ -602,23 +608,25 @@ window.addEventListener("DOMContentLoaded", () => {
     actualizarControlesCarcel();
 });
 
-function mostrarAvisoPartida(mensaje) {
-    avisosPartidaPendientes.push(mensaje);
+function mostrarAvisoPartida(mensaje, compra = false, silencioso = false) {
+    if (!mensaje) return;
+    avisosPartidaPendientes.push({ mensaje, compra, silencioso });
     if (!temporizadorAvisoAlquiler) mostrarSiguienteAvisoPartida();
 }
 
+function confirmarCompra(nombrePropiedad) {
+    mostrarAvisoPartida(nombrePropiedad ? `Compraste ${nombrePropiedad}` : "Compraste la propiedad", true);
+}
+
 function mostrarSiguienteAvisoPartida() {
-    const mensaje = avisosPartidaPendientes.shift();
-    if (!mensaje) return;
-    const elemento = document.getElementById("aviso-alquiler");
-    if (!elemento) return;
-    elemento.textContent = mensaje;
-    elemento.classList.add("aviso-alquiler--visible");
+    const aviso = avisosPartidaPendientes.shift();
+    if (!aviso) return;
+    presentarAvisoPartida(aviso.mensaje, aviso.compra, aviso.silencioso);
     temporizadorAvisoAlquiler = setTimeout(() => {
-        elemento.classList.remove("aviso-alquiler--visible");
+        ocultarAvisoPartida();
         temporizadorAvisoAlquiler = null;
         mostrarSiguienteAvisoPartida();
-    }, 5000);
+    }, aviso.compra ? 2200 : 5000);
 }
 
 async function mostrarPopupEvento(idJugador, nombreEvento, descripcionEvento, vencimiento = Date.now() + 30000, exigirTurno = false) {
@@ -702,6 +710,48 @@ function registrarCaidaEnHistorial(idJugador, posicion) {
     agregarAlHistorial(`${nombreJugador} cay\u00f3 en ${nombreCasillero}.`, idJugador);
 }
 
+let numeroTiradaTablero = 0;
+let ocultarDadosTablero;
+
+async function mostrarTiradaEnTablero(dadoUno, dadoDos) {
+    const valores = [Number(dadoUno), Number(dadoDos)];
+    if (!valores.every(valor => Number.isInteger(valor) && valor >= 1 && valor <= 6)) return;
+
+    const numero = ++numeroTiradaTablero;
+    const panel = document.getElementById("dados-tablero");
+    const total = document.getElementById("dados-tablero-total");
+    const caras = panel.querySelectorAll("[data-cara]");
+    const pintarCaras = numeros => caras.forEach((cara, indice) => { cara.dataset.cara = numeros[indice]; });
+    clearTimeout(ocultarDadosTablero);
+    panel.hidden = false;
+    total.textContent = "";
+    reproducirDadosTablero();
+
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const pintarAlAzar = () => pintarCaras(valores.map(() => 1 + Math.floor(Math.random() * 6)));
+        pintarAlAzar();
+        const giro = [...caras].map((cara, indice) => {
+            const lado = indice === 0 ? -1 : 1;
+            return cara.animate([
+                { transform: `translate(${lado * 60}px, -64px) rotate(0deg) scale(.76)`, opacity: 0 },
+                { transform: `translate(${lado * 28}px, 8px) rotate(${lado * 155}deg)`, opacity: 1, offset: 0.42 },
+                { transform: `translate(${lado * 10}px, -14px) rotate(${lado * 270}deg)`, offset: 0.68 },
+                { transform: `translate(0, 0) rotate(${lado * 360}deg)` },
+            ], { duration: 530, easing: "ease-out" });
+        });
+        const cambio = setInterval(() => {
+            if (numero === numeroTiradaTablero) pintarAlAzar();
+        }, 75);
+        await Promise.allSettled(giro.map(animacion => animacion.finished));
+        clearInterval(cambio);
+    }
+
+    if (numero !== numeroTiradaTablero) return;
+    pintarCaras(valores);
+    total.textContent = `${valores[0]} + ${valores[1]} = ${valores[0] + valores[1]}`;
+    ocultarDadosTablero = setTimeout(() => { panel.hidden = true; }, 1450);
+}
+
 async function procesarMovimiento(movimiento) {
     if (partidaFinalizada) return;
     if (movimiento.turnoSiguiente) aplicarTurnoDTO(movimiento.turnoSiguiente);
@@ -713,8 +763,6 @@ async function procesarMovimiento(movimiento) {
         : `${movimiento.idJugador}:${movimiento.posicionAnterior}:${movimiento.nuevaPosicion}:${movimiento.dado1}:${movimiento.dado2}`;
     if (movimientosEnCurso.has(clave)) return;
     movimientosEnCurso.add(clave);
-    if (dado1) dado1.textContent = movimiento.dado1;
-    if (dado2) dado2.textContent = movimiento.dado2;
     try {
         // Si estaba preso y no salió, el servidor lo deja en el mismo casillero: no se anima nada.
         const seQuedoEnElLugar =
@@ -728,11 +776,13 @@ async function procesarMovimiento(movimiento) {
             modalDeuda.close();
         }
         actualizarBotonTirada();
+        if (!movimiento.turnoVencido) await mostrarTiradaEnTablero(movimiento.dado1, movimiento.dado2);
+        if (partidaFinalizada) return;
         await animarMovimientoFicha(movimiento.idJugador, pasos, movimiento.posicionAnterior);
         if (partidaFinalizada) return;
         const posicionCaida = Number(movimiento.posicionCaidaEvento ?? movimiento.nuevaPosicion);
         if (Number.isInteger(posicionCaida)) {
-            moverFichaEnTablero(movimiento.idJugador, posicionCaida);
+            moverFichaEnTablero(movimiento.idJugador, posicionCaida, "llegada");
             if (!seQuedoEnElLugar) registrarCaidaEnHistorial(movimiento.idJugador, posicionCaida);
         }
         if (movimiento.nombreEvento && movimiento.descripcionEvento) {
@@ -764,7 +814,7 @@ async function procesarMovimiento(movimiento) {
                     (posicionFinal - posicionCaida + cantidadCasilleros) % cantidadCasilleros;
                 await animarMovimientoFicha(movimiento.idJugador, pasosEvento, posicionCaida);
                 if (partidaFinalizada) return;
-                moverFichaEnTablero(movimiento.idJugador, posicionFinal);
+                moverFichaEnTablero(movimiento.idJugador, posicionFinal, "llegada");
                 registrarCaidaEnHistorial(movimiento.idJugador, posicionFinal);
             }
             aplicarSaldosMovimiento(movimiento);
@@ -808,7 +858,8 @@ function sincronizarPosicionesFichas(posiciones) {
         if (jugadoresAbandonados.has(idJugador) || movimientosDeJugadoresEnCurso.has(idJugador))
             return;
         if (jugador.posicion == null) return;
-        moverFichaEnTablero(jugador.idJugador, jugador.posicion);
+        moverFichaEnTablero(jugador.idJugador, jugador.posicion,
+            posicionesInicialesSincronizadas ? "llegada" : undefined);
     });
 
     posicionesInicialesSincronizadas = true;
@@ -919,13 +970,14 @@ function actualizarRondaActual(rondaActual) {
 
 const modalCompra = document.getElementById("modal-compra-propiedad");
 const modalInfoPropiedad = document.getElementById("modal-info-propiedad");
-const btnModalInfoAccion = document.getElementById("btn-modal-info-accion");
 const notaModalInfo = document.getElementById("popup-info-nota");
 const modalBonoPropiedades = document.getElementById("modal-bono-propiedades");
 const listaPropiedadesPropias = document.getElementById("lista-propiedades-propias");
 const mensajeBonoPropiedades = document.getElementById("bono-propiedades-mensaje");
 const modalVenderPropiedad = document.getElementById("modal-vender-propiedad");
 const nombrePropiedadEnVenta = document.getElementById("vender-propiedad-nombre");
+const botonVentaBanco = document.getElementById("btn-vender-al-banco");
+const mensajeVentaBanco = document.getElementById("venta-banco-mensaje");
 const mensajeOfertaVenta = document.getElementById("oferta-venta-mensaje");
 const modalOfertaRecibida = document.getElementById("modal-oferta-recibida");
 const mensajeOfertaRecibida = document.getElementById("oferta-recibida-mensaje");
@@ -934,7 +986,8 @@ const botonDeuda = document.getElementById("btn-deuda-pendiente");
 let avisoDeudaPresentado = false;
 let aperturaDeudaPendiente = false;
 let regresoDesdePropiedadesDeuda = false;
-let confirmacionQuiebraVisible = false;
+const modalConfirmacionQuiebra = document.getElementById("deuda-confirmacion");
+let viendoPropiedadesDuranteEspera = false;
 let declarandoQuiebra = false;
 let mensajeAccionDeuda = "";
 
@@ -950,7 +1003,7 @@ function actualizarAvisoDeuda() {
         regresoDesdePropiedadesDeuda = false;
         if (!declarandoQuiebra) {
             mensajeAccionDeuda = "";
-            confirmacionQuiebraVisible = false;
+            if (modalConfirmacionQuiebra.open) modalConfirmacionQuiebra.close();
             if (modalDeuda.open) modalDeuda.close();
         }
         return;
@@ -958,16 +1011,10 @@ function actualizarAvisoDeuda() {
     botonDeuda.hidden = !deuda;
     if (!deuda) return;
     const importe = `$${deuda.montoPendiente.toLocaleString("es-AR")}`;
-    document.getElementById("deuda-descripcion").textContent = "Tu saldo no alcanzó para realizar este pago. Podés resolverlo vendiendo propiedades o declarar quiebra.";
     botonDeuda.textContent = `Deuda pendiente: ${importe}`;
     document.getElementById("deuda-importe").textContent = importe;
-    document.getElementById("deuda-motivo").textContent =
-        { ALQUILER: "Alquiler", EVENTO_RESTA: "Evento RESTA", ROBO_EVENTO_GLOBAL: "Robo del evento global" }[deuda.motivo] || deuda.motivo;
     document.getElementById("deuda-disponible").textContent = `$${Number(window.dineroUsuarioSesion ?? 0).toLocaleString("es-AR")}`;
-    document.getElementById("deuda-acreedor-contenedor").hidden = deuda.acreedor === null;
-    document.getElementById("deuda-acreedor").textContent = deuda.acreedor?.apodo || "";
-    document.getElementById("deuda-opciones").hidden = confirmacionQuiebraVisible;
-    document.getElementById("deuda-confirmacion").hidden = !confirmacionQuiebraVisible;
+    document.getElementById("quiebra-mensaje").textContent = mensajeAccionDeuda;
     document.getElementById("deuda-mensaje").textContent = mensajeAccionDeuda ||
         (estado === "error" ? "No se pudo actualizar la deuda. Conservamos la última información disponible." :
             estado === "desconocido" ? "Actualizando la información de la deuda…" : "");
@@ -996,9 +1043,6 @@ function abrirAvisoDeuda(solicitudManual = false) {
     if (!solicitudManual && estadoDeudaLocal.deuda
             && (!eventoGlobalSincronizado || estadoEventoGlobalCliente?.activo)) return;
     if (modalDeuda.open) return;
-    confirmacionQuiebraVisible = false;
-    document.getElementById("deuda-opciones").hidden = false;
-    document.getElementById("deuda-confirmacion").hidden = true;
     aperturaDeudaPendiente = false;
     avisoDeudaPresentado = true;
     abrirModalPartida(modalDeuda);
@@ -1015,18 +1059,16 @@ function abrirPropiedadesDesdeDeuda() {
     cargarPropiedadesPropias();
 }
 
-// Pide una confirmación dentro del mismo diálogo antes de enviar la decisión definitiva.
 function mostrarConfirmacionQuiebra() {
     if (declarandoQuiebra || estadoDeudaLocal.estado !== "actualizado" || !estadoDeudaLocal.deuda) return;
-    confirmacionQuiebraVisible = true;
     mensajeAccionDeuda = "";
     actualizarAvisoDeuda();
-    document.getElementById("btn-cancelar-quiebra").focus();
+    abrirModalPartida(modalConfirmacionQuiebra);
 }
 
 // Declara la quiebra por sesión; los turnos y las propiedades siguen a cargo del servidor.
 async function confirmarQuiebra() {
-    if (declarandoQuiebra || !confirmacionQuiebraVisible || estadoDeudaLocal.estado !== "actualizado"
+    if (declarandoQuiebra || !modalConfirmacionQuiebra.open || estadoDeudaLocal.estado !== "actualizado"
             || !estadoDeudaLocal.deuda || window.usuarioEnBancarrota || partidaFinalizada) return;
     declarandoQuiebra = true;
     mensajeAccionDeuda = "";
@@ -1047,6 +1089,7 @@ async function confirmarQuiebra() {
             apodo: obtenerNombreJugadorHistorial(window.usuarioSesionId),
         });
         declarandoQuiebra = false;
+        modalConfirmacionQuiebra.close();
         modalDeuda.close();
         actualizarAvisoDeuda();
     } catch (error) {
@@ -1072,15 +1115,18 @@ document.getElementById("btn-declarar-quiebra")?.addEventListener("click", mostr
 document.getElementById("btn-confirmar-quiebra")?.addEventListener("click", confirmarQuiebra);
 document.getElementById("btn-cancelar-quiebra")?.addEventListener("click", () => {
     if (declarandoQuiebra) return;
-    confirmacionQuiebraVisible = false;
+    modalConfirmacionQuiebra.close();
     mensajeAccionDeuda = "";
     actualizarAvisoDeuda();
-    document.getElementById("btn-declarar-quiebra").focus();
+});
+modalConfirmacionQuiebra.addEventListener("cancel", evento => {
+    if (declarandoQuiebra) evento.preventDefault();
 });
 modalDeuda?.addEventListener("cancel", (evento) => {
     if (declarandoQuiebra) evento.preventDefault();
 });
 modalBonoPropiedades?.addEventListener("close", () => {
+    viendoPropiedadesDuranteEspera = false;
     if (regresoDesdePropiedadesDeuda) {
         regresoDesdePropiedadesDeuda = false;
         aperturaDeudaPendiente = true;
@@ -1125,6 +1171,7 @@ const coloresLocalidades = {
     RAMOS_MEJIA: "#f0df4c",
 };
 const posicionesParadas = new Set([6, 12, 17, 24]);
+const colorParadas = "#fff0c2";
 let propiedadSeleccionada = null;
 let resolviendoDecisionPropiedad = false;
 let propiedadesPropiasActuales = [];
@@ -1140,10 +1187,10 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
 
     const colorLocalidad = coloresLocalidades[propiedad.grupo];
     if (colorLocalidad) {
-        casillero.style.backgroundColor = colorLocalidad;
+        casillero.style.setProperty("--color-localidad", colorLocalidad);
         casillero.dataset.grupoLocalidad = propiedad.grupo;
     } else if (posicionesParadas.has(Number(propiedad.posicion))) {
-        casillero.style.backgroundColor = "#fff0c2";
+        casillero.style.setProperty("--color-localidad", colorParadas);
         casillero.dataset.grupoLocalidad = "PARADAS";
     }
 
@@ -1165,6 +1212,7 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
         ? `Alquiler: $${monto} \u00b7 Propietario: ${propiedad.propietario}`
         : `Precio de compra: $${monto}`;
     etiqueta.setAttribute("aria-label", etiqueta.title);
+    casillero.title = `${propiedad.nombre || casillero.querySelector(".casillero__nombre")?.textContent.trim()} · ${etiqueta.title}`;
     const colorPropietario = tieneDueno ? obtenerColorFichaJugador(propiedad.propietarioId) : null;
     if (colorPropietario) {
         etiqueta.dataset.color = colorPropietario;
@@ -1234,14 +1282,14 @@ function pintarLocalidadesTablero() {
         posiciones.forEach((posicion) => {
             const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
             if (!casillero) return;
-            casillero.style.backgroundColor = coloresLocalidades[grupo];
+            casillero.style.setProperty("--color-localidad", coloresLocalidades[grupo]);
             casillero.dataset.grupoLocalidad = grupo;
         });
     });
     posicionesParadas.forEach((posicion) => {
         const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
         if (!casillero) return;
-        casillero.style.backgroundColor = "#fff0c2";
+        casillero.style.setProperty("--color-localidad", colorParadas);
         casillero.dataset.grupoLocalidad = "PARADAS";
     });
 }
@@ -1250,28 +1298,10 @@ function mostrarInfoPropiedad(propiedad) {
     propiedadSeleccionada = propiedad;
     actualizarEtiquetaPrecioPropiedad(propiedad);
     const tienePropietario = propiedad.propietarioId != null;
-    const descripcion = propiedad.descripcion
-        ? `Casillero #${propiedad.posicion} \u00b7 ${propiedad.descripcion}`
-        : `Casillero #${propiedad.posicion}`;
     const esPropia =
         !propiedad.disponible && String(propiedad.propietarioId) === String(window.usuarioSesionId);
-    const posicionJugador = document
-        .querySelector(`.ficha[data-jugador-id="${window.usuarioSesionId}"]`)
-        ?.closest(".casillero")?.dataset.casillero;
-    const puedeComprar =
-        !window.usuarioEnBancarrota && !partidaFinalizada &&
-        propiedad.disponible &&
-        String(posicionJugador) === String(propiedad.posicion) &&
-        String(window.turnoActualId) === String(window.usuarioSesionId) &&
-        tiempoRestante > 0;
-    const textoAccion = puedeComprar
-        ? `Comprar por $${propiedad.precioCompra}`
-        : esPropia
-          ? "Propiedad propia"
-          : "No disponible";
-
     document.getElementById("popup-info-titulo").textContent = propiedad.nombre;
-    document.getElementById("popup-info-descripcion").textContent = descripcion;
+    document.getElementById("popup-info-localidad").textContent = propiedad.descripcion || "";
     document.getElementById("popup-precio-contenedor").hidden = tienePropietario;
     document.getElementById("popup-alquiler-contenedor").hidden = !tienePropietario;
     document.getElementById("popup-info-precio").textContent =
@@ -1280,16 +1310,7 @@ function mostrarInfoPropiedad(propiedad) {
         `$${Number(propiedad.alquiler).toLocaleString("es-AR")}`;
     document.getElementById("popup-info-propietario").textContent =
         propiedad.propietario || "Sin propietario";
-    notaModalInfo.textContent = puedeComprar
-        ? "Pod\u00e9s comprarla ahora o pasar."
-        : esPropia
-          ? "Podés vender, mejorar o intercambiar esta propiedad."
-          : tienePropietario
-            ? "El alquiler se cobra automáticamente cuando un rival cae aquí."
-            : "Solo podés comprarla al caer en ella durante tu turno.";
-    btnModalInfoAccion.disabled = !puedeComprar;
-    btnModalInfoAccion.textContent = textoAccion;
-    btnModalInfoAccion.hidden = esPropia;
+    notaModalInfo.textContent = "";
     const acciones = document.getElementById("popup-acciones-propias");
     acciones.hidden = !esPropia;
     if (esPropia) {
@@ -1304,14 +1325,6 @@ function mostrarInfoPropiedad(propiedad) {
             || estadoEventoGlobalCliente?.activo || tiempoRestante <= 0
             || Number(window.dineroUsuarioSesion) < costo || window.usuarioEnBancarrota || partidaFinalizada;
         document.getElementById("btn-info-vender").disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
-        const intercambiar = document.getElementById("btn-info-intercambiar");
-        intercambiar.dataset.posicionIntercambio = String(propiedad.posicion);
-        const propuestaPendiente = gestionIntercambios?.tienePropuesta(propiedad.posicion);
-        intercambiar.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada || propuestaPendiente);
-        intercambiar.textContent = propuestaPendiente ? "Intercambio pendiente" : "Intercambiar";
-        if (puedeMejorarse && !tieneLocalidadCompleta(propiedad)) {
-            notaModalInfo.textContent = "Podés venderla. Para mejorar, necesitás todas las propiedades de la localidad.";
-        }
     }
 }
 
@@ -1320,7 +1333,9 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
     const saldo = tarjeta?.querySelector(".dinero");
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
+        const saldoAnterior = window.dineroUsuarioSesion;
         window.dineroUsuarioSesion = Number(dinero);
+        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion);
         actualizarControlesCarcel();
     }
     if (!enBancarrota) return;
@@ -1330,6 +1345,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
 
     tarjeta.dataset.bancarrota = "true";
     tarjeta.classList.add("jugador--bancarrota");
+    actualizarCompradoresVenta();
     if (!tarjeta.querySelector(".estado-bancarrota")) {
         const etiqueta = document.createElement("span");
         etiqueta.className = "estado-bancarrota";
@@ -1416,6 +1432,9 @@ async function comprarPropiedadActual() {
         }
         mostrarInfoPropiedad(datos);
         cerrarModalCompra();
+        if (String(datos.idJugadorPropietario) === String(window.usuarioSesionId)) {
+            confirmarCompra(datos.nombre);
+        }
         if (datos.dineroJugador != null) {
             actualizarDineroJugador(
                 datos.idJugadorPropietario ?? window.usuarioSesionId,
@@ -1459,7 +1478,9 @@ function agregarAlHistorial(texto, idJugador) {
 
 function pintarDatosCompra(propiedad) {
     document.getElementById("modal-propiedad-titulo").textContent = propiedad.nombre;
-    document.getElementById("modal-propiedad-info").textContent = propiedad.descripcion || "Podés comprar esta propiedad o pasar.";
+    document.getElementById("compra-categoria").textContent = propiedad.descripcion || "";
+    document.getElementById("compra-ilustracion").hidden = !/^estaci[oó]n (?:de )?laferrere$/i.test(propiedad.nombre?.trim());
+    document.getElementById("modal-propiedad-info").textContent = "";
     document.getElementById("compra-precio").textContent = `$${Number(propiedad.precioCompra).toLocaleString("es-AR")}`;
     document.getElementById("compra-alquiler").textContent = `$${Number(propiedad.alquiler).toLocaleString("es-AR")}`;
 }
@@ -1512,11 +1533,18 @@ async function atenderCaidaEnCasillero(idJugador, posicion) {
     if (tiempoRestante <= 0) return;
     document.getElementById("btn-modal-comprar").disabled = false;
     document.getElementById("btn-modal-pasar").disabled = false;
-    document.getElementById("tiempo-compra").textContent = tiempoRestante;
     abrirModalPartida(modalCompra);
 }
 
 document.querySelectorAll(".casillero[data-casillero]").forEach((casillero) => {
+    if (posicionesPropiedad.has(Number(casillero.dataset.casillero))) {
+        casillero.tabIndex = 0;
+        casillero.addEventListener("keydown", evento => {
+            if (evento.key !== "Enter" && evento.key !== " ") return;
+            evento.preventDefault();
+            casillero.click();
+        });
+    }
     casillero.addEventListener("click", (event) => {
         if (event.target.closest(".ficha")) return;
         cargarInfoPropiedad(casillero.dataset.casillero, true).catch(console.error);
@@ -1528,7 +1556,6 @@ document
 modalInfoPropiedad?.addEventListener("click", (event) => {
     if (event.target === modalInfoPropiedad) modalInfoPropiedad.close();
 });
-btnModalInfoAccion?.addEventListener("click", comprarPropiedadActual);
 document.getElementById("btn-modal-comprar")?.addEventListener("click", comprarPropiedadActual);
 document.getElementById("btn-modal-pasar")?.addEventListener("click", pasarTurnoPropiedad);
 
@@ -1536,15 +1563,16 @@ document.getElementById("btn-bono-propiedades")?.addEventListener("click", () =>
     if (!modalBonoPropiedades.open) abrirModalPartida(modalBonoPropiedades);
     cargarPropiedadesPropias();
 });
+document.getElementById("btn-ayuda-propiedades")?.addEventListener("click", () => {
+    abrirModalPartida(document.getElementById("modal-ayuda-propiedades"));
+});
 document
     .getElementById("btn-cerrar-bono-propiedades")
     ?.addEventListener("click", () => modalBonoPropiedades.close());
 document
     .getElementById("btn-cerrar-vender-propiedad")
     ?.addEventListener("click", () => modalVenderPropiedad.close());
-document
-    .getElementById("btn-vender-al-banco")
-    ?.addEventListener("click", () => venderPropiedadBono(propiedadParaVender));
+botonVentaBanco?.addEventListener("click", () => venderPropiedadBono(propiedadParaVender));
 document.getElementById("btn-enviar-oferta")?.addEventListener("click", enviarOfertaVenta);
 document
     .getElementById("btn-aceptar-oferta")
@@ -1578,13 +1606,34 @@ function pintarListaPropiedades(propiedades) {
     propiedadesPropiasActuales = propiedades.filter(
         propiedad => String(propiedad.propietarioId) === String(window.usuarioSesionId));
     mensajeBonoPropiedades.textContent = propiedadesPropiasActuales.length
-        ? "Para subir alquiler necesitás toda la localidad y estar en tu turno antes de tirar."
+        ? ""
         : "Todavía no tenés propiedades.";
-    listaPropiedadesPropias.replaceChildren(...propiedadesPropiasActuales.map(crearTarjetaPropiedad));
+    pintarTarjetasAgrupadas(modalBonoPropiedades, listaPropiedadesPropias, crearTarjetaPropiedad);
     if (modalInfoPropiedad.open && propiedadSeleccionada) {
         const actual = propiedades.find(p => Number(p.posicion) === Number(propiedadSeleccionada.posicion));
         if (actual) mostrarInfoPropiedad(actual);
     }
+}
+
+function pintarTarjetasAgrupadas(modal, lista, crearTarjeta) {
+    const grupos = new Map();
+    for (const propiedad of propiedadesPropiasActuales) {
+        const esParada = posicionesParadas.has(Number(propiedad.posicion));
+        const localidad = esParada ? "PARADAS" : propiedad.grupo;
+        if (!grupos.has(localidad)) {
+            const grupo = document.createElement("div");
+            grupo.className = "grupo-propiedades-propias";
+            const color = esParada ? colorParadas : coloresLocalidades[localidad];
+            if (color) grupo.style.setProperty("--color-propiedad", color);
+            grupos.set(localidad, grupo);
+        }
+        grupos.get(localidad).append(crearTarjeta(propiedad));
+    }
+    const columnasModal = Math.min(3, Math.max(1, ...Array.from(
+        grupos.values(), grupo => grupo.childElementCount,
+    )));
+    modal.style.setProperty("--columnas-modal", columnasModal);
+    lista.replaceChildren(...grupos.values());
 }
 
 async function cargarPropiedadesPropias() {
@@ -1592,78 +1641,63 @@ async function cargarPropiedadesPropias() {
     return cargarListaPropiedades();
 }
 
-function crearTarjetaPropiedad(propiedad) {
+function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     const tarjeta = document.createElement("article");
     tarjeta.className = "propiedad-propia";
-    tarjeta.dataset.grupo = propiedad.grupo || "";
-    tarjeta.style.setProperty(
-        "--color-localidad",
-        posicionesParadas.has(Number(propiedad.posicion))
-            ? "#fff0c2"
-            : coloresLocalidades[propiedad.grupo] || "#e2e9f2",
-    );
+    const encabezado = document.createElement("div");
+    encabezado.className = "modal-compra__titulo";
     const titulo = document.createElement("h3");
     titulo.textContent = propiedad.nombre;
-    const ubicacion = document.createElement("p");
-    const nombreLocalidad = posicionesParadas.has(Number(propiedad.posicion))
+    const ubicacion = document.createElement("span");
+    ubicacion.className = "modal-compra__categoria";
+    const esParada = posicionesParadas.has(Number(propiedad.posicion));
+    ubicacion.textContent = esParada
         ? "Parada de bondi"
-        : nombresLocalidades[propiedad.grupo] || propiedad.descripcion || "Localidad";
-    ubicacion.textContent = `${nombreLocalidad} \u00b7 Casillero #${propiedad.posicion}`;
+        : nombresLocalidades[propiedad.grupo] || propiedad.descripcion || "";
+    encabezado.append(titulo, ubicacion);
     const datos = document.createElement("dl");
     datos.className = "propiedad-propia__datos";
-    agregarDatoPropiedad(datos, "Compra", propiedad.precioCompra);
-    agregarDatoPropiedad(datos, "Alquiler base", propiedad.alquilerBase);
-    agregarDatoPropiedad(datos, "Alquiler actual", propiedad.alquiler);
-    agregarDatoPropiedad(
-        datos,
-        "Due\u00f1o",
-        propiedad.propietarioId == null
-            ? "Sin due\u00f1o"
-            : String(propiedad.propietarioId) === String(window.usuarioSesionId)
-              ? "Vos"
-              : propiedad.propietario,
-    );
-    const esPropia = String(propiedad.propietarioId) === String(window.usuarioSesionId);
-    if (!esPropia) {
-        tarjeta.append(titulo, ubicacion, datos);
+    if (propiedad.alquiler != null) agregarDatoPropiedad(datos, "Alquiler", propiedad.alquiler);
+    const nivel = Number(propiedad.nivelMejora ?? 0);
+    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${nivelesAlquiler.length}`);
+    tarjeta.append(encabezado);
+    if (datos.childElementCount) tarjeta.append(datos);
+    if (soloResumen) return tarjeta;
+    if (seleccionar) {
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "venta-tarjeta-seleccion";
+        boton.setAttribute("aria-label", `Elegir ${propiedad.nombre}`);
+        boton.addEventListener("click", () => seleccionar(propiedad));
+        tarjeta.append(boton);
         return tarjeta;
     }
-    const nivel = Number(propiedad.nivelMejora ?? 0);
-    if (!posicionesParadas.has(Number(propiedad.posicion))) {
-        agregarDatoPropiedad(datos, "Nivel", `${nivel} / ${nivelesAlquiler.length}`);
-    }
     const acciones = document.createElement("div");
-    acciones.className = "propiedad-propia__acciones propiedad-propia__acciones--gestion";
+    acciones.className = "propiedad-propia__acciones";
     const botonSubir = document.createElement("button");
     botonSubir.type = "button";
-    botonSubir.className = "btn-casillero btn-casillero--secundario";
+    botonSubir.className = "btn-casillero btn-casillero--principal";
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
     const costoMejora = nivelesAlquiler[nivel];
-    const puedeMejorarse =
-        !posicionesParadas.has(Number(propiedad.posicion)) && nivel < nivelesAlquiler.length;
-    if (puedeMejorarse) {
-        agregarDatoPropiedad(datos, "Costo de mejora", costoMejora);
-        agregarDatoPropiedad(datos, "Alquiler después de mejorar", costoMejora);
-    }
+    const puedeMejorarse = !esParada && costoMejora != null;
     botonSubir.disabled =
         partidaFinalizada ||
         !localidadCompleta ||
-        nivel >= nivelesAlquiler.length ||
-        posicionesParadas.has(Number(propiedad.posicion)) ||
+        !puedeMejorarse ||
         !esTurnoPropio || yaTiroEnEsteTurno || estaTirando ||
         window.usuarioEnBancarrota ||
         Number(window.dineroUsuarioSesion) < costoMejora;
     botonSubir.textContent =
         esTurnoPropio && puedeMejorarse
-            ? `Subir alquiler por $${costoMejora.toLocaleString("es-AR")}`
-            : "Subir alquiler";
+            ? `Mejorar $${costoMejora.toLocaleString("es-AR")}`
+            : "Mejorar";
     botonSubir.addEventListener("click", () =>
         subirAlquilerPropiedad(propiedad.posicion, botonSubir),
     );
     const botonVender = document.createElement("button");
     botonVender.type = "button";
-    botonVender.className = "btn-casillero btn-casillero--principal";
+    botonVender.className = "btn-casillero btn-casillero--secundario";
     botonVender.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
     botonVender.textContent = "Vender";
     botonVender.addEventListener("click", () => abrirOpcionesVenta(propiedad));
@@ -1676,8 +1710,9 @@ function crearTarjetaPropiedad(propiedad) {
     botonIntercambiar.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada || propuestaPendiente);
     if (propuestaPendiente) botonIntercambiar.textContent = "Intercambio pendiente";
     botonIntercambiar.addEventListener("click", () => gestionIntercambios?.abrir(propiedad.posicion));
-    acciones.append(botonSubir, botonVender, botonIntercambiar);
-    tarjeta.append(titulo, ubicacion, datos, acciones);
+    if (!esParada) acciones.append(botonSubir);
+    acciones.append(botonVender, botonIntercambiar);
+    tarjeta.append(acciones);
     return tarjeta;
 }
 
@@ -1725,6 +1760,7 @@ async function subirAlquilerPropiedad(posicion, boton, mensaje = mensajeBonoProp
         );
         await cargarPropiedadesPropias();
         if (modalInfoPropiedad.open && Number(propiedadSeleccionada?.posicion) === Number(posicion)) mostrarInfoPropiedad(propiedad);
+        mostrarAvisoPartida("Aumentaste el alquiler de la propiedad.");
     } catch (error) {
         boton.disabled = Boolean(window.usuarioEnBancarrota || partidaFinalizada);
         if (modalInfoPropiedad.open && Number(propiedadSeleccionada?.posicion) === Number(posicion)) {
@@ -1736,20 +1772,103 @@ async function subirAlquilerPropiedad(posicion, boton, mensaje = mensajeBonoProp
 
 function abrirOpcionesVenta(propiedad) {
     if (window.usuarioEnBancarrota || partidaFinalizada) return;
-    propiedadParaVender = propiedad;
-    nombrePropiedadEnVenta.textContent = `${propiedad.nombre} \u00b7 Alquiler actual: $${propiedad.alquiler}`;
-    document.getElementById("btn-vender-al-banco").textContent =
-        `Vender al banco por $${Number(propiedad.precioVenta).toLocaleString("es-AR")}`;
-    document.getElementById("oferta-precio").value = "";
-    document.getElementById("oferta-jugador").value = "";
+    seleccionarPropiedadVenta(propiedad);
+    mensajeVentaBanco.textContent = "";
     mensajeOfertaVenta.textContent = "";
-    const selector = document.getElementById("oferta-jugador");
-    Array.from(selector.options).forEach((opcion) => {
-        if (!opcion.value) return;
-        opcion.hidden = opcion.dataset.bancarrota === "true";
-        opcion.disabled = opcion.hidden;
-    });
-    if (!modalVenderPropiedad.open) abrirModalPartida(modalVenderPropiedad);
+    document.getElementById("oferta-precio").value = "";
+    mostrarDestinoVenta();
+    abrirModalPartida(modalVenderPropiedad);
+}
+
+function seleccionarPropiedadVenta(propiedad) {
+    propiedadParaVender = propiedad;
+    nombrePropiedadEnVenta.textContent = propiedad.nombre;
+    document.getElementById("btn-elegir-propiedad-venta").textContent = `Propiedad: ${propiedad.nombre} · Cambiar`;
+    document.getElementById("vender-propiedad-categoria").textContent = propiedad.descripcion || "";
+    document.getElementById("venta-banco-importe").textContent =
+        `$${Number(propiedad.precioVenta).toLocaleString("es-AR")}`;
+}
+
+function mostrarDestinoVenta(destino) {
+    nombrePropiedadEnVenta.parentElement.hidden = destino === "jugador";
+    document.getElementById("venta-destino").hidden = Boolean(destino);
+    document.getElementById("venta-panel-banco").hidden = destino !== "banco";
+    document.getElementById("venta-panel-jugador").hidden = destino !== "jugador";
+    document.getElementById("btn-volver-venta").hidden = !destino;
+    document.getElementById("vender-propiedad-titulo").textContent = {
+        banco: "Vender al banco", jugador: "Vender a un jugador",
+    }[destino] || "¿A quién querés vender?";
+    if (destino !== "jugador") return;
+
+    pintarJugadoresParaElegir(document.getElementById("oferta-jugadores"), "oferta-jugador");
+}
+
+function jugadorPuedeComprar(jugador) {
+    return jugador && jugador.id !== String(window.usuarioSesionId) &&
+        jugador.dataset.bancarrota !== "true" && jugador.dataset.abandono !== "true" &&
+        !jugador.matches(".jugador--bancarrota") &&
+        !jugador.querySelector(".estado-bancarrota, .estado-abandono") &&
+        !jugadoresAbandonados.has(jugador.id);
+}
+
+function actualizarCompradoresVenta() {
+    if (!modalVenderPropiedad?.open || document.getElementById("venta-panel-jugador").hidden) return;
+    const lista = document.getElementById("oferta-jugadores");
+    pintarJugadoresParaElegir(lista, "oferta-jugador", lista.querySelector("input:checked")?.value);
+}
+
+function pintarJugadoresParaElegir(lista, nombreCampo, seleccionado) {
+    lista.replaceChildren();
+    for (const jugador of document.querySelectorAll(".jugadores > .jugador")) {
+        if (!jugadorPuedeComprar(jugador)) continue;
+        const opcion = document.createElement("label");
+        opcion.className = "venta-comprador";
+        opcion.style.setProperty("--color-comprador", getComputedStyle(jugador).getPropertyValue("--color-ficha"));
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = nombreCampo;
+        radio.value = jugador.id;
+        radio.checked = jugador.id === seleccionado;
+        const avatar = jugador.querySelector(".avatar-jugador").cloneNode();
+        avatar.alt = "";
+        const nombre = document.createElement("span");
+        nombre.textContent = jugador.querySelector(".nombre-jugador").textContent;
+        opcion.append(radio, avatar, nombre);
+        lista.append(opcion);
+    }
+    if (!lista.childElementCount) lista.textContent = "No hay otros jugadores disponibles.";
+}
+
+document.querySelectorAll("[data-destino-venta]").forEach(boton => {
+    boton.addEventListener("click", () => mostrarDestinoVenta(boton.dataset.destinoVenta));
+});
+document.getElementById("btn-volver-venta").addEventListener("click", () => mostrarDestinoVenta());
+document.getElementById("btn-elegir-propiedad-venta").addEventListener("click", () =>
+    abrirSelectorPropiedades(modalVenderPropiedad, seleccionarPropiedadVenta));
+
+async function abrirSelectorPropiedades(origen, seleccionar) {
+    const modal = document.getElementById("modal-elegir-propiedad-venta");
+    const lista = document.getElementById("lista-propiedades-venta");
+    await cargarPropiedadesPropias();
+    if (!origen.open || modal.open) return;
+    pintarTarjetasAgrupadas(modal, lista, propiedad => crearTarjetaPropiedad(propiedad, elegida => {
+        seleccionar(elegida);
+        modal.close();
+    }));
+    if (!lista.childElementCount) lista.textContent = "Todavía no tenés propiedades.";
+    abrirModalPartida(modal);
+    if (!modal.open) return;
+    const cerrarSelector = () => modal.close();
+    origen.addEventListener("close", cerrarSelector, { once: true });
+    modal.addEventListener("close", () => {
+        origen.removeEventListener("close", cerrarSelector);
+        if (!origen.open || !origen.matches("#modal-intercambio, #modal-intercambio-recibido") ||
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        origen.querySelector(".intercambio-contenido").animate([
+            { opacity: 0, translate: "0 8px" },
+            { opacity: 1, translate: "0 0" },
+        ], { duration: 200, easing: "ease-out" });
+    }, { once: true });
 }
 
 let ultimoTurnoSolicitadoPorPagoDeuda = null;
@@ -1768,9 +1887,9 @@ async function finalizarTurnoTrasPagarDeuda(claveTurnoVenta) {
 }
 
 async function venderPropiedadBono(propiedad) {
-    if (!propiedad || window.usuarioEnBancarrota || partidaFinalizada) return;
-    if (!window.confirm(`¿Vender ${propiedad.nombre} al banco por $${propiedad.precioVenta}?`))
-        return;
+    if (!propiedad || botonVentaBanco.disabled || window.usuarioEnBancarrota || partidaFinalizada) return;
+    botonVentaBanco.disabled = true;
+    mensajeVentaBanco.textContent = "";
     // El listado abierto desde deuda conserva ese contexto mientras se actualiza la consulta.
     const ventaConDeudaConocida = estadoDeudaLocal.deuda !== null
         && (estadoDeudaLocal.estado === "actualizado"
@@ -1789,13 +1908,17 @@ async function venderPropiedadBono(propiedad) {
         actualizarEtiquetaPrecioPropiedad(datos);
         actualizarDineroJugador(datos.idJugador ?? window.usuarioSesionId, datos.dineroJugador);
         modalVenderPropiedad.close();
+        mostrarAvisoPartida(`Vendiste ${propiedad.nombre} al banco.`);
         try {
             if (ventaConDeudaConocida) await finalizarTurnoTrasPagarDeuda(claveTurnoVenta);
         } finally {
             await cargarPropiedadesPropias();
         }
     } catch (error) {
-        mensajeBonoPropiedades.textContent = error.message || "No se pudo vender la propiedad.";
+        const mensaje = modalVenderPropiedad.open ? mensajeVentaBanco : mensajeBonoPropiedades;
+        mensaje.textContent = error.message || "No se pudo vender la propiedad.";
+    } finally {
+        botonVentaBanco.disabled = false;
     }
 }
 
@@ -1813,8 +1936,13 @@ async function leerRespuestaJson(respuesta) {
 async function enviarOfertaVenta() {
     if (!propiedadParaVender || window.usuarioEnBancarrota || partidaFinalizada) return;
     const boton = document.getElementById("btn-enviar-oferta");
-    const idJugadorComprador = document.getElementById("oferta-jugador").value;
-    const precio = Number(document.getElementById("oferta-precio").value);
+    const idJugadorComprador = document.querySelector('[name="oferta-jugador"]:checked')?.value;
+    if (idJugadorComprador && !jugadorPuedeComprar(document.getElementById(idJugadorComprador))) {
+        actualizarCompradoresVenta();
+        mensajeOfertaVenta.textContent = "Ese jugador ya no está disponible. Elegí otro.";
+        return;
+    }
+    const precio = document.getElementById("oferta-precio").valueAsNumber;
     if (!idJugadorComprador || !Number.isInteger(precio) || precio < 0) {
         mensajeOfertaVenta.textContent = "Elegí un jugador e ingresá un precio válido.";
         return;
@@ -1831,11 +1959,8 @@ async function enviarOfertaVenta() {
             },
         );
         await leerRespuestaJson(respuesta);
-        mensajeOfertaVenta.textContent =
-            "Oferta enviada. La propiedad se transfiere cuando el otro jugador la acepte.";
-        setTimeout(() => {
-            if (modalVenderPropiedad.open) modalVenderPropiedad.close();
-        }, 1500);
+        modalVenderPropiedad.close();
+        mostrarAvisoPartida("Oferta enviada. La propiedad se transfiere cuando el otro jugador la acepte.");
     } catch (error) {
         mensajeOfertaVenta.textContent = error.message || "No se pudo enviar la oferta.";
     } finally {
@@ -1859,13 +1984,30 @@ async function revisarOfertasPendientes() {
     }
 }
 
+function pintarTarjetaOferta(oferta) {
+    const propiedad = catalogoPropiedadesActual.get(Number(oferta.posicion)) ||
+        { posicion: oferta.posicion, nombre: oferta.nombrePropiedad };
+    const tarjeta = crearTarjetaResumenPropiedad(propiedad);
+    const datos = tarjeta.querySelector("dl") || document.createElement("dl");
+    datos.className = "propiedad-propia__datos";
+    agregarDatoPropiedad(datos, "Precio de la oferta", oferta.precio);
+    tarjeta.append(datos);
+    document.getElementById("oferta-recibida-tarjeta").replaceChildren(tarjeta);
+}
+
 function mostrarOfertaRecibida(oferta) {
     if (window.usuarioEnBancarrota || partidaFinalizada) return;
     ofertaActiva = oferta;
     document.getElementById("oferta-recibida-detalle").textContent =
-        `${oferta.apodoVendedor} te ofrece ${oferta.nombrePropiedad} por $${oferta.precio}.`;
+        `${oferta.apodoVendedor} te ofrece esta propiedad.`;
+    pintarTarjetaOferta(oferta);
     mensajeOfertaRecibida.textContent = "";
     abrirModalPartida(modalOfertaRecibida);
+    if (!catalogoPropiedadesActual.has(Number(oferta.posicion))) {
+        cargarPropiedadesPropias().then(() => {
+            if (ofertaActiva === oferta && modalOfertaRecibida.open) pintarTarjetaOferta(oferta);
+        });
+    }
 }
 
 async function responderOfertaVenta(aceptar) {
@@ -1970,7 +2112,6 @@ function iniciarRelojLocal(segundos) {
             elementoReloj.style.color = "";
             elementoReloj.style.fontWeight = "normal";
         }
-        sincronizarTiempoPopupCompra();
 
         if (tiempoRestante === 0) {
             document.dispatchEvent(new Event("fin-plazo-turno"));
@@ -2042,22 +2183,13 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
         clearInterval(intervaloReloj);
         if (document.getElementById("cronometro-nro")) document.getElementById("cronometro-nro").textContent = "Pausa";
         if (modalCompra?.open) cerrarModalCompra();
-        escribirTextoGlobal("global-nombre", (estado.nombre ?? "Evento global").replaceAll("_", " "));
-        const seleccionado = (estado.jugadores ?? []).find(jugador => String(jugador.id) === String(estado.seleccionado));
-        escribirTextoGlobal("global-descripcion", (estado.descripcion ?? "").replace(
-            "[nombre del jugador]", seleccionado?.apodo || "un jugador"));
-        escribirTextoGlobal("global-etapa", estado.resuelto ? "Resultado del evento"
-            : estado.etapa > 1 ? `Desempate ${estado.etapa - 1}: sólo vuelven a tirar los empatados.`
-                : "Todos los jugadores activos tiran dos dados.");
-        escribirTextoGlobal("global-consecuencia", estado.consecuencia || "");
-        escribirTextoGlobal("global-mensaje", estado.deudaPendiente
-            ? "La partida espera que se resuelva una deuda producida durante el evento."
-            : estado.resuelto ? "Esperando las confirmaciones de los jugadores o el vencimiento del plazo." : "");
-        pintarTiradasGlobales(estado);
+        if (!mostrandoTiradaGlobal) pintarEventoGlobal(estado);
         if (mostrar) {
             estado.jugadores.forEach(jugador => {
                 actualizarDineroJugador(jugador.id, jugador.dinero);
-                if (jugador.activo) moverFichaEnTablero(jugador.id, jugador.posicion);
+                actualizarEstadoCarcel(jugador.id, jugador.encarcelado, jugador.intentosCarcel);
+                if (jugador.activo) moverFichaEnTablero(jugador.id, jugador.posicion,
+                    estado.resuelto && posicionesInicialesSincronizadas ? "llegada" : undefined);
             });
         }
         posicionesInicialesSincronizadas = true;
@@ -2134,7 +2266,6 @@ async function mostrarCompraDeEvento(estado) {
             pintarDatosCompra(propiedad);
             document.getElementById("btn-modal-comprar").disabled = false;
             document.getElementById("btn-modal-pasar").disabled = false;
-            document.getElementById("tiempo-compra").textContent = tiempoRestante;
             abrirModalPartida(modalCompra);
         }
     } catch (error) {
@@ -2154,9 +2285,10 @@ async function responderCompraDeEvento(aceptar) {
             body: JSON.stringify({ ronda: compraEventoActual.ronda, aceptar }),
         });
         const datos = await leerRespuestaJson(respuesta);
-        if (aceptar) {
+        if (aceptar && datos.estado !== "rechazada") {
             actualizarEtiquetaPrecioPropiedad(datos);
             actualizarDineroJugador(datos.idJugador, datos.dineroJugador);
+            confirmarCompra(datos.nombre);
         }
         cerrarModalCompra();
         compraEventoActual = null;
@@ -2174,71 +2306,89 @@ function escribirTextoGlobal(id, texto) {
     if (elemento) elemento.textContent = texto ?? "";
 }
 
-// Reemplazar pintarTiradasGlobales por estas dos funciones.
-function pintarTiradasGlobales(estado) {
+const textosEventoGlobal = {
+    TRAMITES_AFIP: ["Trámites en AFIP", "Hay una fila enorme. Quien saque el número más alto avanza hasta el jugador más adelantado.", "Ganó"],
+    INUNDACION: ["Inundación", "Se inundó el barrio. Quien saque el número más alto retrocede tres casilleros.", "Perdió"],
+    PIQUETE: ["Piquete", "Cortaron el paso. Quien saque el número más bajo vuelve a Inicio.", "Perdió"],
+    ROBO: ["Robo"],
+    FIAT_600: ["Fiat 600"],
+    ACCIDENTE_SARMIENTO: ["Accidente en el Sarmiento"],
+};
+function pintarCarasDadosGlobales(uno, dos) {
+    [uno, dos].forEach((cara, indice) => {
+        const dado = document.getElementById(`global-dado-${indice + 1}`);
+        dado.dataset.cara = cara;
+        dado.textContent = cara;
+    });
+}
+
+function pintarDadosGlobales(tirada, mensaje) {
+    const uno = Math.floor(tirada / 10);
+    const dos = tirada % 10;
+    pintarCarasDadosGlobales(uno || 1, dos || 1);
+    escribirTextoGlobal("global-etapa", tirada == null ? mensaje : `Sacaste ${uno + dos}`);
+}
+
+function pintarEventoGlobal(estado) {
+    const [nombre, descripcion, resultado] = textosEventoGlobal[estado.nombre] || [];
+    const titulo = nombre || (estado.nombre ?? "Evento global").replaceAll("_", " ");
+    const vistaResultados = estado.resuelto && estado.requiereDados;
+    document.getElementById("aviso-global").classList.toggle("aviso-global--resultados", vistaResultados);
+    escribirTextoGlobal("global-nombre", titulo);
+    document.getElementById("global-pantalla-tirada").hidden = estado.resuelto;
+    document.getElementById("global-pantalla-resultado").hidden = !estado.resuelto;
+    escribirTextoGlobal("global-mensaje", estado.deudaPendiente ? "Hay una deuda pendiente." : "");
+    if (estado.resuelto) {
+        const seleccionado = estado.jugadores.find(j => String(j.id) === String(estado.seleccionado));
+        const descripcionResuelta = (estado.descripcion ?? "").replace("[nombre del jugador]", seleccionado?.apodo || "Un jugador");
+        const consecuencia = estado.consecuencia || descripcionResuelta;
+        const resumen = estado.tarjeta?.nombre
+            ? consecuencia.replace(` Sacó la tarjeta «${estado.tarjeta.nombre}».`, "")
+            : consecuencia;
+        escribirTextoGlobal("global-descripcion-resultado", estado.requiereDados || resumen === descripcionResuelta ? "" : descripcionResuelta);
+        const premioAnterior = estado.nombre === "FIAT_600" && resumen.match(/, (recibió \$[\d.,]+) y ahora tiene/);
+        escribirTextoGlobal("global-consecuencia", premioAnterior && seleccionado
+            ? `${seleccionado.apodo} ${premioAnterior[1]}.` : resumen);
+        pintarResultadosGlobales(estado, resultado);
+        return;
+    }
+
+    escribirTextoGlobal("global-descripcion", descripcion || estado.descripcion || "");
+    document.getElementById("global-dados").hidden = !estado.requiereDados;
+    const habilitado = (estado.habilitados ?? []).some(id => String(id) === String(window.usuarioSesionId));
+    const mensaje = estado.etapa > 1 ? (habilitado ? "Desempate · Volvé a tirar" : "Desempate en curso") : "";
+    pintarDadosGlobales(estado.tiradas?.[`${estado.etapa}:${window.usuarioSesionId}`], mensaje);
+}
+
+function pintarResultadosGlobales(estado, resultado) {
     const lista = document.getElementById("global-tiradas");
-    if (!lista) return;
     lista.hidden = !estado.requiereDados;
     lista.replaceChildren();
-    const jugadores = (estado.jugadores ?? []).filter(jugador => jugador.activo);
-    const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+    if (lista.hidden) return;
 
-    for (let etapa = 1; etapa <= estado.etapa; etapa++) {
-        jugadores.forEach(jugador => {
-            const tirada = estado.tiradas?.[`${etapa}:${jugador.id}`];
-            const participaAhora = etapa === estado.etapa && (estado.habilitados ?? [])
-                .some(id => String(id) === String(jugador.id));
-            if (tirada == null && !participaAhora) return;
+    for (const jugador of estado.jugadores) {
+        const tiradas = Array.from({ length: estado.etapa }, (_, indice) =>
+            estado.tiradas?.[`${indice + 1}:${jugador.id}`]).filter(tirada => tirada != null);
+        if (!jugador.activo && !tiradas.length) continue;
 
-            const fila = document.createElement("li");
-            const nombre = document.createElement("span");
-            nombre.textContent = `Etapa ${etapa} · ${jugador.apodo}`;
-            const puntaje = document.createElement("strong");
-            if (tirada != null) {
-                const uno = Math.floor(tirada / 10);
-                const dos = tirada % 10;
-                puntaje.textContent = `${caras[uno]} ${caras[dos]}  (${uno} + ${dos} = ${uno + dos})`;
-            } else {
-                puntaje.textContent = "Esperando tirada";
-            }
-            if (estado.resuelto && String(estado.seleccionado) === String(jugador.id)
-                    && etapa === estado.etapa) {
-                fila.classList.add("aviso-global__tirada--seleccionada");
-            }
+        const fila = document.createElement("li");
+        const nombre = document.createElement("span");
+        nombre.textContent = jugador.apodo;
+        const puntaje = document.createElement("strong");
+        puntaje.textContent = tiradas.length
+            ? tiradas.map(tirada => Math.floor(tirada / 10) + tirada % 10).join(" → ")
+            : "Sin tirada";
+        if (String(estado.seleccionado) === String(jugador.id)) {
+            fila.classList.add("aviso-global__tirada--seleccionada");
+            const etiqueta = document.createElement("small");
+            etiqueta.textContent = resultado || "Seleccionado";
+            fila.append(nombre, etiqueta, puntaje);
+        } else {
             fila.append(nombre, puntaje);
-            lista.appendChild(fila);
-        });
+        }
+        lista.append(fila);
     }
-    pintarDetalleGlobal(estado);
 }
-
-function pintarDetalleGlobal(estado) {
-    escribirTextoGlobal("global-fase", estado.resuelto ? "Evento finalizado" :
-        estado.etapa > 1 ? "Desempate" : "Tiradas en curso");
-    escribirTextoGlobal("global-tiempo-titulo", estado.resuelto ?
-        "Plazo máximo para confirmar" : "Tiempo para tirar");
-
-    const confirmaciones = document.getElementById("global-confirmaciones");
-    if (confirmaciones) {
-        confirmaciones.hidden = !estado.resuelto;
-        const activos = (estado.jugadores ?? []).filter(jugador => jugador.activo);
-        const confirmados = activos.filter(jugador => (estado.confirmados ?? [])
-            .some(id => String(id) === String(jugador.id)));
-        confirmaciones.textContent =
-            `Confirmaciones registradas: ${confirmados.length} de ${activos.length}. ` +
-            "Todos los jugadores activos deben confirmar o esperar al vencimiento del plazo.";
-    }
-
-    const dados = document.getElementById("global-dados");
-    if (dados) dados.hidden = !estado.requiereDados || estado.resuelto;
-    const tiradaPropia = estado.tiradas?.[`${estado.etapa}:${window.usuarioSesionId}`];
-    const caras = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
-    escribirTextoGlobal("global-dado-1", tiradaPropia == null ? "–" :
-        caras[Math.floor(tiradaPropia / 10)] ?? "–");
-    escribirTextoGlobal("global-dado-2", tiradaPropia == null ? "–" :
-        caras[tiradaPropia % 10] ?? "–");
-}
-
 
 function actualizarControlesEventoGlobal() {
     const estado = estadoEventoGlobalCliente;
@@ -2246,11 +2396,20 @@ function actualizarControlesEventoGlobal() {
     const jugador = window.usuarioSesionId;
     const activo = estado.jugadores.some(participante => String(participante.id) === String(jugador) && participante.activo);
     const tirar = document.getElementById("global-tirar");
-    tirar.hidden = estado.resuelto;
+    if (mostrandoTiradaGlobal) {
+        tirar.disabled = true;
+        return;
+    }
+    const habilitado = (estado.habilitados ?? []).some(id => String(id) === String(jugador));
+    const tirada = estado.tiradas?.[`${estado.etapa}:${jugador}`];
+    tirar.hidden = estado.resuelto || !estado.requiereDados || !activo || !habilitado;
+    tirar.textContent = tirada == null ? "Tirar dados" : "Esperando al resto…";
     tirar.disabled = !puedeTirarEnEvento(estado, jugador) || peticionEventoGlobal;
     const continuar = document.getElementById("global-continuar");
     continuar.hidden = !estado.resuelto;
-    continuar.disabled = !activo || peticionEventoGlobal || estado.confirmados.some(id => String(id) === String(jugador));
+    const confirmado = estado.confirmados.some(id => String(id) === String(jugador));
+    continuar.disabled = !activo || peticionEventoGlobal || confirmado;
+    continuar.textContent = confirmado ? "Esperando al resto…" : "Continuar partida";
     document.getElementById("global-deuda").hidden = !estadoDeudaLocal.deuda;
 }
 
@@ -2259,7 +2418,8 @@ function actualizarTiempoEventoGlobal() {
     const segundos = Math.max(0,
         Math.ceil((Number(estadoEventoGlobalCliente.vence) - Date.now()) / 1000));
     const tiempo = Number.isFinite(segundos) ? segundos : 0;
-    escribirTextoGlobal("global-tiempo", `00:${String(tiempo).padStart(2, "0")}`);
+    escribirTextoGlobal("global-tiempo", `${Math.floor(tiempo / 60)}:${String(tiempo % 60).padStart(2, "0")}`);
+    document.querySelector(".aviso-global__reloj").classList.toggle("aviso-global__reloj--urgente", tiempo <= 5);
     actualizarControlesEventoGlobal();
 }
 
@@ -2267,6 +2427,20 @@ async function enviarAccionEventoGlobal(accion) {
     if (peticionEventoGlobal || !estadoEventoGlobalCliente?.activo) return;
     const estado = estadoEventoGlobalCliente;
     peticionEventoGlobal = true;
+    const dados = document.getElementById("global-dados");
+    let giro;
+    let cambioCaras;
+    if (accion === "tirar") {
+        mostrandoTiradaGlobal = true;
+        dados.classList.add("aviso-global__dados--girando");
+        escribirTextoGlobal("global-etapa", "Tirando…");
+        reproducirDadosGlobales();
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            const caraAlAzar = () => 1 + Math.floor(Math.random() * 6);
+            cambioCaras = setInterval(() => pintarCarasDadosGlobales(caraAlAzar(), caraAlAzar()), 75);
+        }
+        giro = new Promise(resolve => setTimeout(resolve, 480));
+    }
     actualizarControlesEventoGlobal();
     try {
         const parametros = new URLSearchParams({ ronda: estado.ronda, etapa: estado.etapa });
@@ -2276,9 +2450,30 @@ async function enviarAccionEventoGlobal(accion) {
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.error || "No se pudo completar la acción del evento.");
         aplicarEventoGlobal(datos);
+        if (giro) {
+            await giro;
+            clearInterval(cambioCaras);
+            dados.classList.remove("aviso-global__dados--girando");
+            const vigente = estadoEventoGlobalCliente;
+            const tirada = vigente?.ronda === estado.ronda
+                ? vigente.tiradas?.[`${estado.etapa}:${window.usuarioSesionId}`] : null;
+            if (tirada != null && vigente.activo) {
+                pintarDadosGlobales(tirada);
+                if (vigente.resuelto || vigente.etapa !== estado.etapa) {
+                    await new Promise(resolve => setTimeout(resolve, 650));
+                }
+            }
+            if (estadoEventoGlobalCliente?.activo) pintarEventoGlobal(estadoEventoGlobalCliente);
+        }
     } catch (error) {
+        if (giro && estadoEventoGlobalCliente?.activo) pintarEventoGlobal(estadoEventoGlobalCliente);
         escribirTextoGlobal("global-mensaje", error.message);
     } finally {
+        if (giro) {
+            clearInterval(cambioCaras);
+            dados.classList.remove("aviso-global__dados--girando");
+            mostrandoTiradaGlobal = false;
+        }
         peticionEventoGlobal = false;
         actualizarControlesEventoGlobal();
         sincronizarEventoGlobal();
@@ -2299,8 +2494,8 @@ document.addEventListener("click", evento => {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
-    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #modal-bono-propiedades, #modal-vender-propiedad, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
-    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat]")) return;
+    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat]")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
@@ -2309,12 +2504,6 @@ window.addEventListener("DOMContentLoaded", () => {
     window.setInterval(sincronizarEventoGlobal, 3000);
     window.setInterval(actualizarTiempoEventoGlobal, 250);
 });
-
-function sincronizarTiempoPopupCompra() {
-    if (!modalCompra?.open) return;
-    const contadorCompra = document.getElementById("tiempo-compra");
-    if (contadorCompra) contadorCompra.textContent = String(Math.max(0, tiempoRestante));
-}
 
 function actualizarTextoReloj(elemento) {
     if (!elemento) return;
@@ -2512,6 +2701,7 @@ const jugadoresAbandonados = new Set();
 
 function eliminarFichaJugadorAbandonado(idJugador) {
     jugadoresAbandonados.add(String(idJugador));
+    actualizarCompradoresVenta();
 
     const ficha = document.querySelector(`.ficha[data-jugador-id="${idJugador}"]`);
 
@@ -2644,12 +2834,18 @@ let consultaResultadosEnCurso = null;
 let resultadosFinalesMostrados = false;
 
 function esModalPermitidoDuranteEvento(modal) {
-    return ["modal-deuda-pendiente", "modal-bono-propiedades", "modal-vender-propiedad", "modal-abandonar", "modal-oferta-recibida", "modal-intercambio", "modal-intercambio-recibido", "chat-telefono"].includes(modal.id);
+    return ["modal-deuda-pendiente", "deuda-confirmacion", "modal-bono-propiedades", "modal-ayuda-propiedades", "modal-vender-propiedad", "modal-elegir-propiedad-venta", "modal-abandonar", "modal-oferta-recibida", "modal-intercambio", "modal-intercambio-recibido", "chat-telefono"].includes(modal.id);
 }
 
 function abrirModalPartida(modal) {
     if (estadoEventoGlobalCliente?.activo && !esModalPermitidoDuranteEvento(modal)) return;
-    if (!partidaFinalizada && !modal.open) modal.showModal();
+    if (partidaFinalizada || modal.open) return;
+    const anterior = [...document.querySelectorAll("dialog[open]:not(.dialogo-en-pausa)")].at(-1);
+    modal.showModal();
+    if (anterior) {
+        anterior.classList.add("dialogo-en-pausa");
+        modal.addEventListener("close", () => anterior.classList.remove("dialogo-en-pausa"), { once: true });
+    }
 }
 
 function bloquearAccionesFinalizadas() {
@@ -2744,7 +2940,7 @@ function mostrarResultadosFinales(datos) {
 
 function actualizarAvisoEsperaQuiebra() {
     sincronizarEsperaQuiebra(document.getElementById("aviso-espera-quiebra"), {
-        pausado: window.turnoPausadoPorDeuda || estadoEventoGlobalCliente?.deudaPendiente,
+        pausado: !document.getElementById("chat-telefono")?.open && !viendoPropiedadesDuranteEspera && (window.turnoPausadoPorDeuda || estadoEventoGlobalCliente?.deudaPendiente),
         estadoDeuda: estadoDeudaLocal,
         finalizada: partidaFinalizada,
     });
@@ -2753,7 +2949,14 @@ function actualizarAvisoEsperaQuiebra() {
 document.getElementById("aviso-espera-quiebra")?.addEventListener("cancel", evento => evento.preventDefault());
 
 document.getElementById("espera-ver-propiedades")?.addEventListener("click", () => {
+    viendoPropiedadesDuranteEspera = true;
+    actualizarAvisoEsperaQuiebra();
     abrirModalPartida(modalBonoPropiedades);
+    if (!modalBonoPropiedades.open) {
+        viendoPropiedadesDuranteEspera = false;
+        actualizarAvisoEsperaQuiebra();
+        return;
+    }
     cargarPropiedadesPropias();
 });
 
@@ -2768,10 +2971,27 @@ document.getElementById("btn-info-vender")?.addEventListener("click", () => {
     abrirOpcionesVenta(propiedad);
 });
 
+function crearTarjetaResumenPropiedad(propiedad, titulo) {
+    const tarjeta = crearTarjetaPropiedad(propiedad, null, true);
+    tarjeta.style.setProperty("--color-propiedad", posicionesParadas.has(Number(propiedad.posicion))
+        ? colorParadas : coloresLocalidades[propiedad.grupo] || "#c3b9d2");
+    if (titulo) {
+        const etiqueta = document.createElement("p");
+        etiqueta.className = "intercambio-etiqueta";
+        etiqueta.textContent = titulo;
+        tarjeta.prepend(etiqueta);
+    }
+    return tarjeta;
+}
+
 gestionIntercambios = inicializarIntercambios({
     basePath, codigo: codigoPartida, usuarioId: window.usuarioSesionId,
     propiedades: () => [...catalogoPropiedadesActual.values()],
     cargarPropiedades: cargarPropiedadesPropias, abrirModal: abrirModalPartida,
+    elegirPropiedad: abrirSelectorPropiedades,
+    reproducirConfirmacion: reproducirIntercambioConfirmado,
+    pintarJugadores: pintarJugadoresParaElegir,
+    crearTarjetaResumen: crearTarjetaResumenPropiedad,
     finalizada: () => partidaFinalizada, espectador: () => Boolean(window.usuarioEnBancarrota),
     avisar: mostrarAvisoPartida, aplicarPropiedad: propiedad => {
         actualizarEtiquetaPrecioPropiedad(propiedad);
@@ -2779,8 +2999,6 @@ gestionIntercambios = inicializarIntercambios({
     },
 });
 
-document.getElementById("btn-info-intercambiar")?.addEventListener("click", () => {
-    if (propiedadSeleccionada) gestionIntercambios?.abrir(propiedadSeleccionada.posicion);
+chatPartida = inicializarChat({
+    basePath, codigo: codigoPartida, usuarioId: window.usuarioSesionId, notificar: reproducirChatEntrante, alCambiarVisibilidad: actualizarAvisoEsperaQuiebra,
 });
-
-chatPartida = inicializarChat({ basePath, codigo: codigoPartida, usuarioId: window.usuarioSesionId });

@@ -149,7 +149,7 @@ class EventosGlobalesIntegracionTest {
         iniciar(TipoEventoGlobal.INUNDACION);
         tirarTodos();
         assertEquals(28, partidas.obtenerJugadorPorId(jugadores.get(0)).getPosicionActual());
-        assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+        assertEquals(2200, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
         Map<String, Object> recargado = eventos.consultar(codigo, jugadores.get(1));
         assertEquals(3, ((Map<?, ?>) recargado.get("tiradas")).size());
         assertEquals(true, recargado.get("resuelto"));

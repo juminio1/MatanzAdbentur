@@ -24,7 +24,7 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
     private final Clock reloj;
     private final Map<String, Propuesta> propuestas = new ConcurrentHashMap<>();
     private final Map<String, Propuesta> reservas = new ConcurrentHashMap<>();
-    private static final Duration VIGENCIA = Duration.ofMinutes(5);
+    private static final Duration VIGENCIA = Duration.ofMinutes(2);
 
     @Autowired
     public ServicioIntercambioPropiedadImpl(ServicioPartida partidas, ServicioCasillero casilleros,
@@ -48,9 +48,10 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
         participante(partida, destinatario);
         if (Objects.equals(actor, destinatario)) throw new IllegalArgumentException("Elegí otro jugador para intercambiar.");
         CasilleroPropiedad propia = propiedadDe(partida, ofrecida, actor);
-        CasilleroPropiedad ajena = propiedadDe(partida, solicitada, destinatario);
+        CasilleroPropiedad ajena = solicitada == null ? null : propiedadDe(partida, solicitada, destinatario);
         Propuesta propuesta = new Propuesta(UUID.randomUUID().toString(), codigo, actor, destinatario,
-            ofrecida, solicitada, proponente.getApodo(), propia.getNombre(), ajena.getNombre(), reloj.instant().plus(VIGENCIA));
+            ofrecida, solicitada, proponente.getApodo(), propia.getNombre(),
+            ajena == null ? null : ajena.getNombre(), reloj.instant().plus(VIGENCIA), solicitada == null);
         reservar(partida, propuesta);
         DespuesDeConfirmar.ejecutar(() -> propuestas.put(propuesta.id(), propuesta));
         return propuesta;
@@ -64,7 +65,7 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
         participante(partida, actor);
         limpiarVencidas();
         return propuestas.values().stream().filter(p -> p.codigoPartida().equals(codigo)
-                && p.idDestinatario().equals(actor))
+                && p.idJugadorQueResponde().equals(actor))
             .filter(p -> participantesActivos(partida, p))
             .sorted(Comparator.comparing(Propuesta::vence)).toList();
     }
@@ -117,11 +118,32 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
     }
 
     @Override
+    public Propuesta elegirContrapropiedad(String codigo, String id, Long actor, Integer posicion) {
+        Partida partida = cargar(codigo);
+        Propuesta inicial = vigente(codigo, id, actor);
+        if (!inicial.requiereConfirmacion() || inicial.esperaConfirmacionFinal()) {
+            throw new IllegalStateException("La propuesta ya tiene una contrapropiedad.");
+        }
+        participante(partida, actor);
+        participante(partida, inicial.idProponente());
+        propiedadDe(partida, inicial.posicionOfrecida(), inicial.idProponente());
+        CasilleroPropiedad elegida = propiedadDe(partida, posicion, actor);
+        Propuesta respondida = new Propuesta(id, codigo, inicial.idProponente(), actor,
+            inicial.posicionOfrecida(), posicion, inicial.apodoProponente(), inicial.nombreOfrecida(),
+            elegida.getNombre(), reloj.instant().plus(VIGENCIA), true);
+        DespuesDeConfirmar.ejecutar(() -> {
+            propuestas.replace(id, inicial, respondida);
+            reservas.replace(clave(inicial), inicial, respondida);
+        });
+        return respondida;
+    }
+
+    @Override
     public Resultado aceptar(String codigo, String id, Long actor) {
         Partida partida = cargar(codigo);
         Propuesta propuesta = vigente(codigo, id, actor);
         Jugador proponente = participante(partida, propuesta.idProponente());
-        Jugador destinatario = participante(partida, actor);
+        Jugador destinatario = participante(partida, propuesta.idDestinatario());
         CasilleroPropiedad ofrecida = propiedadDe(partida, propuesta.posicionOfrecida(), proponente.getId());
         CasilleroPropiedad solicitada = propiedadDe(partida, propuesta.posicionSolicitada(), destinatario.getId());
         ofrecida.getPropiedad().setPropietario(destinatario);
@@ -162,6 +184,7 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
     }
 
     private CasilleroPropiedad propiedadDe(Partida partida, Integer posicion, Long propietario) {
+        if (posicion == null) throw new IllegalStateException("Elegí una propiedad para intercambiar.");
         CasilleroPropiedad casillero = casilleros.buscarCasilleroPropiedad(partida, posicion);
         if (casillero == null || casillero.getPropiedad() == null
                 || casillero.getPropiedad().getPropietario() == null
@@ -174,7 +197,7 @@ public class ServicioIntercambioPropiedadImpl implements ServicioIntercambioProp
     private Propuesta vigente(String codigo, String id, Long actor) {
         Propuesta propuesta = id == null ? null : propuestas.get(id);
         if (propuesta == null || !propuesta.codigoPartida().equals(codigo)
-                || !propuesta.idDestinatario().equals(actor) || !propuesta.vence().isAfter(reloj.instant())) {
+                || !propuesta.idJugadorQueResponde().equals(actor) || !propuesta.vence().isAfter(reloj.instant())) {
             throw new IllegalStateException("El intercambio ya no está disponible para este jugador.");
         }
         return propuesta;

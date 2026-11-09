@@ -237,6 +237,13 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    const jugadoresConFicha = [...document.querySelectorAll("#lista-jugadores [data-ficha-inicial]")];
+    miFichaSeleccionada = jugadoresConFicha.find(
+        jugador => jugador.dataset.jugadorId === datosSala.dataset.usuarioId
+    )?.dataset.fichaInicial ?? null;
+    actualizarDisponibilidadFichas({
+        fichasOcupadas: jugadoresConFicha.map(jugador => jugador.dataset.fichaInicial)
+    });
     conectarWebSocket(codigoSala, urlWebSocket);
 });
 
@@ -323,6 +330,7 @@ function actualizarDisponibilidadFichas(salaActualizada) {
         // Limpiamos estados con la clase exacta de tu CSS
         boton.classList.remove("salaEspera__ficha--ocupada", "salaEspera__ficha--seleccionada");
         boton.disabled = false;
+        boton.removeAttribute("title");
         if (check) check.style.display = "none";
 
         if (esMia) {

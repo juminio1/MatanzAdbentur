@@ -23,7 +23,7 @@ public class ControladorIntercambioPropiedad {
     private final MapeadorPropiedad mapeador;
 
     public record Solicitud(Long idDestinatario, Integer posicionOfrecida, Integer posicionSolicitada) { }
-    public record Respuesta(Boolean aceptar) { }
+    public record Respuesta(Boolean aceptar, Integer posicionElegida) { }
 
     public ControladorIntercambioPropiedad(ServicioPartida partidas, ServicioIntercambioPropiedad intercambios,
             ServicioParticipacion participacion, SimpMessagingTemplate mensajes,
@@ -76,6 +76,11 @@ public class ControladorIntercambioPropiedad {
                 publicar(codigo, dto);
                 return ResponseEntity.ok(dto);
             }
+            if (datos.posicionElegida() != null) {
+                Map<String, Object> dto = dto(intercambios.elegirContrapropiedad(codigo, id, actor, datos.posicionElegida()));
+                publicar(codigo, dto);
+                return ResponseEntity.ok(dto);
+            }
             return notificarAceptacion(codigo, intercambios.aceptar(codigo, id, actor));
         } catch (RuntimeException ex) {
             return error(ex);
@@ -114,6 +119,8 @@ public class ControladorIntercambioPropiedad {
         datos.put("apodoProponente", propuesta.apodoProponente());
         datos.put("vence", propuesta.vence().toEpochMilli());
         datos.put("estado", "pendiente");
+        datos.put("requiereConfirmacion", propuesta.requiereConfirmacion());
+        datos.put("confirmacionFinal", propuesta.esperaConfirmacionFinal());
         return datos;
     }
 
