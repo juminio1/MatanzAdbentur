@@ -13,8 +13,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=barrio-12)}"
-            href="../../../resources/core/css/partida.css?v=barrio-12"
+            th:href="@{/css/partida.css(v=barrio-13)}"
+            href="../../../resources/core/css/partida.css?v=barrio-13"
         />
         <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=violeta-1)}" href="../../../resources/core/css/chat-partida.css?v=violeta-1">
     </head>
@@ -267,7 +267,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 2; --fila: 5" data-casillero="10">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -435,7 +435,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 6; --fila: 1" data-casillero="20">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">

@@ -294,7 +294,8 @@
 
 .casillero__nombre--inicio,
 .casillero__nombre--comisaria,
-.casillero__nombre--evento {
+.casillero__nombre--evento,
+.casillero__nombre--trivia {
     display: grid;
     justify-items: center;
     gap: 3px;
@@ -302,7 +303,8 @@
 
 .casillero__nombre--inicio::before,
 .casillero__nombre--comisaria::before,
-.casillero__nombre--evento::before {
+.casillero__nombre--evento::before,
+.casillero__nombre--trivia::before {
     content: "";
     width: clamp(14px, 3cqw, 32px);
     aspect-ratio: 1;
@@ -320,6 +322,18 @@
 
 .casillero__nombre--comisaria {
     --icono-casillero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' d='M3 4h18M3 20h18M3 13h18M5 4v16M10 4v16M14 4v16M19 4v16'/%3E%3C/svg%3E");
+}
+
+/* Trivia: misma forma que los eventos, en ámbar para distinguirse del violeta. */
+.tablero .casillero:has(.casillero__nombre--trivia) {
+    border: 1px solid #e0b54a;
+    border-radius: 7px;
+    background: #4a3512;
+    color: #ffe7a8;
+}
+
+.casillero__nombre--trivia {
+    --icono-casillero: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3Cg id='p'%3E%3Cpath fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' d='M-1.3-1.8a1.3 1.3 0 1 1 1.9 1.15c-.4.2-.6.5-.6.9v.4'/%3E%3Ccircle cy='1.6' r='.65' fill='black'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23p' transform='translate(12 4.2)'/%3E%3Cuse href='%23p' transform='translate(5.2 8.4) rotate(-22)'/%3E%3Cuse href='%23p' transform='translate(18.8 8.4) rotate(22)'/%3E%3Ccircle cx='12' cy='14.2' r='2.8' fill='black'/%3E%3Cpath fill='black' d='M6.2 23c0-3.3 2.6-5.5 5.8-5.5s5.8 2.2 5.8 5.5z'/%3E%3C/svg%3E");
 }
 
 .casillero__nombre {
