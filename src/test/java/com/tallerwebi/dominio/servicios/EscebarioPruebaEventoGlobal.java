@@ -90,7 +90,6 @@ class EscenarioPruebaEventoGlobal {
             turnos,
             abandonos,
             quiebras,
-            null,
             mock(ServicioFinalizacionPartida.class),
             transacciones
         );

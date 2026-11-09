@@ -206,6 +206,10 @@ public class ServicioJugadaImpl implements ServicioJugada {
     }
 
     private void validarTirada(String codigo, Jugador jugador) {
+        Integer restantes = partidas.obtenerSegundosRestantesTurno(codigo);
+        if (restantes != null && restantes <= 0) {
+            throw new TiradaNoPermitidaException("El tiempo del turno terminó.");
+        }
         validarJugadorEnTurno(codigo, jugador);
         validarPenalizacionTurno(jugador);
         validarTiradaAnterior(jugador);
