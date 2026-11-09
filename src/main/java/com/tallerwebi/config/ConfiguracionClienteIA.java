@@ -16,9 +16,14 @@ import org.springframework.context.annotation.Configuration;
 public class ConfiguracionClienteIA {
 
     @Bean
-    public ClienteIA clienteIA(ObjectMapper objectMapper, ServicioGeneradorPromptTrivia generadorPrompt,
+    public ClienteIA clienteIA(HttpClient clienteHttp, ObjectMapper objectMapper, ServicioGeneradorPromptTrivia generadorPrompt,
                                  @Value("${gemini.api-key}") String apiKey, @Value("${gemini.modelo}") String modelo) {
 
-        return new ClienteGeminiImpl(HttpClient.newHttpClient(), objectMapper, generadorPrompt, apiKey, modelo);
+        return new ClienteGeminiImpl(clienteHttp, objectMapper, generadorPrompt, apiKey, modelo);
+    }
+
+    @Bean
+    public HttpClient clienteHttp() {
+        return HttpClient.newHttpClient(); //Spring crea y adminitra un objeto HttpClient
     }
 }
