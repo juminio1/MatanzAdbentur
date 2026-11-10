@@ -13,15 +13,16 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=mesa-23)}"
-            href="../../../resources/core/css/partida.css?v=mesa-23"
+            th:href="@{/css/partida.css(v=mesa-38)}"
+            href="../../../resources/core/css/partida.css?v=mesa-38"
         />
         <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=violeta-1)}" href="../../../resources/core/css/chat-partida.css?v=violeta-1">
     </head>
     <body class="pagina-partida">
         <!-- La pava y el mate de la mesa del fondo: al hacer clic, la pava ceba un mate. -->
         <div class="mesa-mate" aria-hidden="true">
-            <img class="mesa-mate__pava" th:src="@{/images/fondo/pava.png}" src="../../../resources/core/images/fondo/pava.png" alt="">
+            <span class="mesa-mate__sombra"></span>
+            <img class="mesa-mate__pava" th:src="@{/images/fondo/pava.png(v=2)}" src="../../../resources/core/images/fondo/pava.png?v=2" alt="">
             <span class="mesa-mate__chorro"></span>
             <span class="mesa-mate__vapor"></span>
             <span class="mesa-mate__vapor"></span>
@@ -159,7 +160,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 10; --fila: 5" data-casillero="2">
-                            <span class="casillero__nombre">Parroquia Stella Maris</span>
+                            <span class="casillero__nombre">Parro&shy;quia Stella Maris</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -219,7 +220,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 6; --fila: 5" data-casillero="6">
-                            <span class="casillero__nombre">Colectivo 242</span>
+                            <span class="casillero__nombre">Colec&shy;tivo 242</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -234,7 +235,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 5; --fila: 5" data-casillero="7">
-                            <span class="casillero__nombre">San Justo Shopping</span>
+                            <span class="casillero__nombre">San Justo Shop&shy;ping</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -315,7 +316,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 1; --fila: 4" data-casillero="12">
-                            <span class="casillero__nombre">Colectivo 96</span>
+                            <span class="casillero__nombre">Colec&shy;tivo 96</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -331,7 +332,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 1; --fila: 3" data-casillero="13">
-                            <span class="casillero__nombre">Plaza Hipólito Yrigoyen</span>
+                            <span class="casillero__nombre">Plaza Hipó&shy;lito Yri&shy;goyen</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -399,7 +400,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 3; --fila: 1" data-casillero="17">
-                            <span class="casillero__nombre">Colectivo 621</span>
+                            <span class="casillero__nombre">Colec&shy;tivo 621</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -415,7 +416,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 4; --fila: 1" data-casillero="18">
-                            <span class="casillero__nombre">Estación Laferrere</span>
+                            <span class="casillero__nombre">Esta&shy;ción Lafe&shy;rrere</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -479,7 +480,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 8; --fila: 1" data-casillero="22">
-                            <span class="casillero__nombre">Superchino Luna</span>
+                            <span class="casillero__nombre">Super&shy;chino Luna</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -495,7 +496,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 9; --fila: 1" data-casillero="23">
-                            <span class="casillero__nombre">Cementerio Israelita</span>
+                            <span class="casillero__nombre">Cemen&shy;terio Israe&shy;lita</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -511,7 +512,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 10; --fila: 1" data-casillero="24">
-                            <span class="casillero__nombre">Colectivo 620</span>
+                            <span class="casillero__nombre">Colec&shy;tivo 620</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -527,7 +528,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 11; --fila: 1" data-casillero="25">
-                            <span class="casillero__nombre">Regimiento de La Tablada</span>
+                            <span class="casillero__nombre">Regi&shy;miento de La Tablada</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -563,7 +564,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 12; --fila: 2" data-casillero="27">
-                            <span class="casillero__nombre">Estación Ramos Mejía</span>
+                            <span class="casillero__nombre">Esta&shy;ción Ramos Mejía</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -1171,8 +1172,8 @@
 
         <!-- Script de cliente -->
 
-<script type="module" th:src="@{/js/partida.js(v=mesa-4)}" src="../../../resources/core/js/partida.js?v=mesa-4" charset="UTF-8"></script>
-<script type="module" th:src="@{/js/cebar-mate.js(v=4)}" src="../../../resources/core/js/cebar-mate.js?v=4" charset="UTF-8"></script>
+<script type="module" th:src="@{/js/partida.js(v=mesa-10)}" src="../../../resources/core/js/partida.js?v=mesa-10" charset="UTF-8"></script>
+<script type="module" th:src="@{/js/cebar-mate.js(v=5)}" src="../../../resources/core/js/cebar-mate.js?v=5" charset="UTF-8"></script>
 
 </body>
 

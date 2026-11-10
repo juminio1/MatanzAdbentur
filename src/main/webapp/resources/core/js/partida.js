@@ -4,7 +4,7 @@ import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero } from "./efectos-compra.js?v=partida-13";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio } from "./efectos-compra.js?v=partida-18";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -684,21 +684,39 @@ function registrarPremioPorInicio(movimiento) {
         `${nombreJugador} recibió $${monto} por pasar por Inicio.`,
         movimiento.idJugador,
     );
+    animarPasoPorInicio(
+        document.querySelector('.casillero[data-casillero="0"]'),
+        document.getElementById(String(movimiento.idJugador)),
+        monto,
+    );
     if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(`Recibiste $${monto} por pasar por Inicio.`);
     }
 }
 
-function mostrarAvisoAlquiler(aviso) {
+function mostrarAvisoAlquiler(aviso, posicion) {
     agregarAlHistorial(
         `${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`,
         aviso.idJugadorPagador,
     );
+    animarAlquiler(aviso, posicion);
     if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(
             `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`,
         );
     }
+}
+
+// Monedas que vuelan del que paga el alquiler al dueño de la propiedad.
+// El aviso no trae el id del dueño: lo saco de la propiedad donde cayó y, si no está, lo busco por nombre.
+function animarAlquiler(aviso, posicion) {
+    const tarjetaPagador = document.getElementById(String(aviso.idJugadorPagador));
+    const idDueno = catalogoPropiedadesActual.get(Number(posicion))?.propietarioId;
+    const tarjetaDueno = (idDueno != null && document.getElementById(String(idDueno)))
+        || [...document.querySelectorAll(".jugador")].find(
+            (tarjeta) => tarjeta.querySelector(".nombre-jugador")?.textContent.trim() === aviso.propietario,
+        );
+    animarPagoEntreJugadores(tarjetaPagador, tarjetaDueno, aviso.monto);
 }
 
 function aplicarSaldosMovimiento(movimiento) {
@@ -716,7 +734,7 @@ function aplicarSaldosMovimiento(movimiento) {
 function registrarCaidaEnHistorial(idJugador, posicion) {
     const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
     const nombreCasillero =
-        casillero?.querySelector(".casillero__nombre")?.textContent.trim() ||
+        casillero?.querySelector(".casillero__nombre")?.textContent.replace(/\u00ad/g, "").trim() ||
         `casillero #${posicion}`;
     const nombreJugador =
         document
@@ -874,7 +892,7 @@ async function procesarMovimiento(movimiento) {
             }
             aplicarSaldosMovimiento(movimiento);
             registrarPremioPorInicio(movimiento);
-            if (movimiento.alquiler) mostrarAvisoAlquiler(movimiento.alquiler);
+            if (movimiento.alquiler) mostrarAvisoAlquiler(movimiento.alquiler, posicionFinal);
             if (permiteCompra && Date.now() < vencimientoMovimiento) {
                 await atenderCaidaEnCasillero(movimiento.idJugador, posicionFinal);
             }
@@ -1269,7 +1287,7 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
         ? `Alquiler: $${monto} \u00b7 Propietario: ${propiedad.propietario}`
         : `Precio de compra: $${monto}`;
     etiqueta.setAttribute("aria-label", etiqueta.title);
-    casillero.title = `${propiedad.nombre || casillero.querySelector(".casillero__nombre")?.textContent.trim()} · ${etiqueta.title}`;
+    casillero.title = `${propiedad.nombre || casillero.querySelector(".casillero__nombre")?.textContent.replace(/\u00ad/g, "").trim()} ·${etiqueta.title}`;
     const colorPropietario = tieneDueno ? obtenerColorFichaJugador(propiedad.propietarioId) : null;
     if (colorPropietario) {
         etiqueta.dataset.color = colorPropietario;
@@ -1292,6 +1310,7 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
                 `${comprador} compr\u00f3 ${propiedad.nombre} por $${propiedad.precioCompra}.`,
                 propietarioId,
             );
+            animarCompra(posicion, propietarioId);
         } else if (propietarioId == null) {
             const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
             const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
@@ -1307,6 +1326,15 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
                 propiedad.intercambio ? `${comprador} recibió ${propiedad.nombre} de ${vendedor} en un intercambio.` : `${comprador} compr\u00f3 ${propiedad.nombre} a ${vendedor} por $${precio}.`,
                 propietarioId,
             );
+            if (!propiedad.intercambio) {
+                animarCompra(posicion, propietarioId);
+                // Venta entre jugadores: la plata va del comprador al vendedor.
+                animarPagoEntreJugadores(
+                    document.getElementById(String(propietarioId)),
+                    document.getElementById(String(anterior.propietarioId)),
+                    propiedad.precioVenta ?? 0,
+                );
+            }
         }
     } else if (anterior && nivel > anterior.nivel) {
         const propietario = obtenerNombreJugadorHistorial(propietarioId);
@@ -1317,6 +1345,12 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
     }
 
     estadoPropiedadesConocido.set(posicion, { propietarioId, nivel });
+}
+
+// Sello de "VENDIDO" con el color del comprador sobre el casillero que se acaba de comprar.
+function animarCompra(posicion, idComprador) {
+    const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
+    animarCompraCasillero(casillero, obtenerColorFichaJugador(idComprador));
 }
 
 function obtenerNombreJugadorHistorial(idJugador) {

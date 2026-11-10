@@ -9,6 +9,7 @@ const DURACION = 2600;
 const boton = document.querySelector(".mesa-mate__boton");
 const pava = document.querySelector(".mesa-mate__pava");
 const chorro = document.querySelector(".mesa-mate__chorro");
+const sombra = document.querySelector(".mesa-mate__sombra");
 const vapores = [...document.querySelectorAll(".mesa-mate__vapor")];
 
 let cebando = false;
@@ -34,6 +35,18 @@ async function cebarMate() {
             { transform: "translateY(-2%) rotate(4deg)", offset: 0.88, easing: "ease-in" },
             { transform: "translateY(0) rotate(0deg)" },
         ], { duration: DURACION }));
+
+        // La sombra sobre la mesa se achica y se aclara mientras la pava está levantada.
+        if (sombra) {
+            animaciones.push(sombra.animate([
+                { scale: "1", opacity: 1 },
+                { scale: "0.8", opacity: 0.55, offset: 0.16, easing: "ease-out" },
+                { scale: "0.72", opacity: 0.45, offset: 0.32 },
+                { scale: "0.72", opacity: 0.45, offset: 0.7 },
+                { scale: "0.88", opacity: 0.75, offset: 0.88, easing: "ease-in" },
+                { scale: "1", opacity: 1 },
+            ], { duration: DURACION }));
+        }
 
         // El chorro aparece cuando la pava ya está inclinada y se corta antes de que vuelva.
         animaciones.push(chorro.animate([
