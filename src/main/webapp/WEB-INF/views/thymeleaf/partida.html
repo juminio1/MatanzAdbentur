@@ -17,6 +17,7 @@
             href="../../../resources/core/css/partida.css?v=barrio-13"
         />
         <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=violeta-1)}" href="../../../resources/core/css/chat-partida.css?v=violeta-1">
+        <link rel="stylesheet" th:href="@{/css/trivia.css(v=1)}" href="../../../resources/core/css/trivia.css?v=1">
     </head>
     <body class="pagina-partida">
         <dialog id="aviso-espera-quiebra" class="aviso-espera-quiebra"
@@ -1003,6 +1004,25 @@
     <p id="aviso-evento-descripcion"></p>
     <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
 </section>
+
+<!-- Trivia: se abre con showModal() para todos y bloquea el resto de la pantalla hasta que termina.
+     Ronda, reloj, opciones y mensajes los completa trivia.js. -->
+<dialog id="trivia" class="trivia" aria-labelledby="trivia-enunciado">
+    <header class="trivia__cabecera">
+        <span class="trivia__etiqueta">Trivia</span>
+        <span id="trivia-ronda" class="trivia__ronda"></span>
+        <span id="trivia-dificultad" class="trivia__dificultad"></span>
+    </header>
+    <div class="trivia__reloj" role="timer" aria-label="Tiempo para responder">
+        <span class="trivia__reloj-barra"></span>
+        <span id="trivia-segundos" class="trivia__reloj-segundos"></span>
+    </div>
+    <p id="trivia-aviso" class="trivia__aviso"></p>
+    <h2 id="trivia-enunciado" class="trivia__enunciado"></h2>
+    <ol id="trivia-opciones" class="trivia__opciones"></ol>
+    <p id="trivia-estado" class="trivia__estado" role="status" aria-live="polite"></p>
+    <p id="trivia-jugadores" class="trivia__jugadores"></p>
+</dialog>
 
 <section id="aviso-global" class="aviso-evento aviso-global" role="dialog"
          aria-modal="true" aria-labelledby="global-nombre"
