@@ -16,10 +16,11 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
+import com.tallerwebi.config.ConfiguracionRuleta;
 
 @EnableWebMvc
 @Configuration
-@Import(ObservadoresConfig.class)
+@Import({ObservadoresConfig.class, ConfiguracionRuleta.class})
 @ComponentScan({
     "com.tallerwebi.presentacion",
     "com.tallerwebi.dominio",

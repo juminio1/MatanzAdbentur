@@ -30,7 +30,7 @@ public class ClienteGeminiImpl implements ClienteIA{ //Esta clase se encarga de 
 
     private static final Integer CANTIDAD_MINIMA = 0;
     private static final Integer CANTIDAD_MAXIMA_OPCIONES = 4;
-   private static final Integer INDICE_MAXIMO_RESPUESTA_CORRECTA = 3;
+    private static final Integer INDICE_MAXIMO_RESPUESTA_CORRECTA = 3;
     private static final Integer SEGUNDOS = 15;
     private static final Integer HTTP_OK = 200;
 
@@ -39,9 +39,6 @@ public class ClienteGeminiImpl implements ClienteIA{ //Esta clase se encarga de 
     private static final String DIFICULTAD_DIFICIL = "DIFICIL";
     private static final String MENSAJE_PREGUNTA_INVALIDA = "Gemini devolvió una pregunta inválida";
 
-   
-    
-    
     public ClienteGeminiImpl(HttpClient clienteHttp, ObjectMapper objectMapper,
             ServicioGeneradorPromptTrivia generadorPrompt, String apiKey, String modelo) {
 
