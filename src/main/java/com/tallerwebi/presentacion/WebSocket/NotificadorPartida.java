@@ -5,8 +5,10 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
+import com.tallerwebi.presentacion.DTO.EstadoRuletaDTO;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.presentacion.DTO.TurnoDTO;
+import com.tallerwebi.presentacion.DTO.EstadoRuletaDTO;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,4 +134,11 @@ public class NotificadorPartida {
 
         this.template.convertAndSend(TOPIC_PARTIDA_PREFIX + partida.getCodigoUnico() + "/abandono", datos);
     }
+
+
+    public void notificarRuleta(String codigoPartida, EstadoRuletaDTO estadoRuleta) {
+
+        this.template.convertAndSend("/topic/partida/" + codigoPartida + "/ruleta",estadoRuleta);
+    }
+
 }

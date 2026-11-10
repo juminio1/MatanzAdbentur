@@ -1,8 +1,10 @@
+
 package com.tallerwebi.dominio.servicios.interfaces;
 
-@FunctionalInterface
+import com.tallerwebi.dominio.enums.DificultadRuleta;
+
+@FunctionalInterface 
 public interface ServicioRuleta {
 
-    public String sortearDificultad();
-
-} 
+    public DificultadRuleta sortearDificultad();
+}

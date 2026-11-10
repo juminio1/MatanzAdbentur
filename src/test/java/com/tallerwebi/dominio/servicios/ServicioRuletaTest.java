@@ -1,3 +1,4 @@
+
 package com.tallerwebi.dominio.servicios;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,17 +12,19 @@ import java.util.Random;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.tallerwebi.dominio.enums.DificultadRuleta;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta;
 
 public class ServicioRuletaTest {
 
     private Random generadorAleatorioMock;
+    private ServicioRuleta servicioRuleta;
 
-     @BeforeEach
+
+    @BeforeEach
     public void init() {
-
         this.generadorAleatorioMock = mock(Random.class);
-    
+        this.servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
     }
 
     @Test
@@ -29,11 +32,9 @@ public class ServicioRuletaTest {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(24);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("FACIL", dificultad);
+        assertEquals(DificultadRuleta.FACIL, dificultad);
     }
 
     @Test
@@ -41,119 +42,91 @@ public class ServicioRuletaTest {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(60);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("MEDIO", dificultad);
+        assertEquals(DificultadRuleta.MEDIO, dificultad);
     }
-
 
     @Test
     public void deberiaSortearDificultadDificil() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(85);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("DIFICIL", dificultad);
+        assertEquals(DificultadRuleta.DIFICIL, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadFacilCuandoElNumeroEsCero(){
+    @Test
+    public void deberiaSortearDificultadFacilCuandoElNumeroEsCero() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(0);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("FACIL", dificultad);
+        assertEquals(DificultadRuleta.FACIL, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadFacilCuandoElNumeroEsCuarentaYNueve(){
+    @Test
+    public void deberiaSortearDificultadFacilCuandoElNumeroEsCuarentaYNueve() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(49);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("FACIL", dificultad);
-
+        assertEquals(DificultadRuleta.FACIL, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadMediaCuandoElNumeroEsCincuenta(){
+    @Test
+    public void deberiaSortearDificultadMediaCuandoElNumeroEsCincuenta() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(50);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("MEDIO", dificultad);
-
+        assertEquals(DificultadRuleta.MEDIO, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadMediaCuandoElNumeroEsSetentaYNueve(){
+    @Test
+    public void deberiaSortearDificultadMediaCuandoElNumeroEsSetentaYNueve() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(79);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("MEDIO", dificultad);
-
+        assertEquals(DificultadRuleta.MEDIO, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadDificilCuandoElNumeroEsOchenta(){
+    @Test
+    public void deberiaSortearDificultadDificilCuandoElNumeroEsOchenta() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(80);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("DIFICIL", dificultad);
-
+        assertEquals(DificultadRuleta.DIFICIL, dificultad);
     }
 
-    @Test 
-    public void deberiaSortearDificultadDificilCuandoElNumeroEsNoventaYNueve(){
+    @Test
+    public void deberiaSortearDificultadDificilCuandoElNumeroEsNoventaYNueve() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(99);
 
-        ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
+        DificultadRuleta dificultad = servicioRuleta.sortearDificultad();
 
-        String dificultad = servicioRuleta.sortearDificultad();
-
-        assertEquals("DIFICIL", dificultad);
-
+        assertEquals(DificultadRuleta.DIFICIL, dificultad);
     }
 
-    
     @Test
     public void deberiaUtilizarElGeneradorAleatorioParaSortearDificultad() {
 
         when(generadorAleatorioMock.nextInt(100)).thenReturn(25);
-
-        ServicioRuleta servicioRuleta =
-                new ServicioRuletaImpl(generadorAleatorioMock);
 
         servicioRuleta.sortearDificultad();
 
         verify(generadorAleatorioMock, times(1)).nextInt(100);
     }
 
-
-        
     @Test
     public void deberiaSortearUnaNuevaDificultadEnCadaInvocacion() {
 
@@ -161,19 +134,16 @@ public class ServicioRuletaTest {
 
         ServicioRuleta servicioRuleta = new ServicioRuletaImpl(generadorAleatorioMock);
 
-        String primeraDificultad = servicioRuleta.sortearDificultad();
-        String segundaDificultad = servicioRuleta.sortearDificultad();
-        String terceraDificultad = servicioRuleta.sortearDificultad();
+        DificultadRuleta primeraDificultad = servicioRuleta.sortearDificultad();
 
-        assertEquals("FACIL", primeraDificultad);
-        assertEquals("MEDIO", segundaDificultad);
-        assertEquals("DIFICIL", terceraDificultad);
+        DificultadRuleta segundaDificultad = servicioRuleta.sortearDificultad();
+
+        DificultadRuleta terceraDificultad = servicioRuleta.sortearDificultad();
+
+        assertEquals(DificultadRuleta.FACIL, primeraDificultad);
+        assertEquals(DificultadRuleta.MEDIO, segundaDificultad);
+        assertEquals(DificultadRuleta.DIFICIL, terceraDificultad);
 
         verify(generadorAleatorioMock, times(3)).nextInt(100);
     }
-
-
-
-
 }
-
