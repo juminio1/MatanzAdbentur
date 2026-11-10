@@ -288,3 +288,18 @@
     background: #EF9299;
 }
 
+/* Cuenta regresiva para el giro automático */
+.ruleta-temporizador {
+    margin: 6px 0 14px;
+    color: #F5CA78;
+    font-family: "Nunito", "Trebuchet MS", sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.ruleta-temporizador[hidden] {
+    display: none;
+}
+
+

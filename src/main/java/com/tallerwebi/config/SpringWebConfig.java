@@ -19,7 +19,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 @ComponentScan(
     { "com.tallerwebi.presentacion", "com.tallerwebi.dominio", "com.tallerwebi.infraestructura" }
 )
-@Import({ WebSocketConfig.class, ObservadoresConfig.class })
+@Import({ WebSocketConfig.class, ObservadoresConfig.class,  ConfiguracionRuleta.class })
 public class SpringWebConfig implements WebMvcConfigurer {
 
     // Spring + Thymeleaf need this
