@@ -35,10 +35,8 @@
 
     margin: 0;
     background-color: var(--p-fondo);
-    background-image:
-        radial-gradient(ellipse at 82% 10%, #4a2a3c 0%, transparent 46%),
-        radial-gradient(ellipse at 16% 36%, #302347 0%, transparent 56%),
-        linear-gradient(160deg, #1d1728, #14121b 68%, #22191f);
+    /* Fondo sin la pava: la pava va encima como imagen aparte (.mesa-mate__pava) para poder animarla. */
+    background-image: url("../images/fondo/mesa-matancera-sin-pava.webp?v=2");
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
@@ -68,6 +66,12 @@
 }
 
 .pagina-partida {
+    /* Altura donde empieza el tablero: justo debajo de la pava y el mate, que apoyan al 40 % de la imagen de fondo
+       (1755 × 896, mostrada con cover). Así se ven sobre la mesa. */
+    --borde-mesa: calc(50dvh - 0.10 * max(100dvw * 896 / 1755, 100dvh));
+    /* Borde real de la mesa (33 % de la imagen): ahí empieza el historial. */
+    --filo-mesa: calc(50dvh - 0.17 * max(100dvw * 896 / 1755, 100dvh));
+
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
     grid-template-rows: auto minmax(0, 1fr);
@@ -77,7 +81,7 @@
     box-sizing: border-box;
 }
 
-.barra-superior { grid-column: 1 / -1; }
+.barra-superior { grid-column: 1 / -1; align-self: start; }
 .partida__main { min-width: 0; min-height: 0; }
 .partida__lateral { min-width: 0; min-height: 0; }
 
@@ -206,7 +210,7 @@
     gap: var(--p-gap);
     height: 100%;
     min-height: 0;
-    padding-top: 2rem;
+    padding-top: 0;
 }
 
 .tablero-wrap {
@@ -215,6 +219,7 @@
     min-height: 0;
     container-type: size;
     display: grid;
+    justify-items: center;
 }
 
 .tablero {
@@ -224,15 +229,19 @@
     display: grid;
     grid-template-columns: repeat(var(--columnas), 1fr);
     grid-template-rows: repeat(var(--filas), 1fr);
-    width: min(100cqw, calc(100cqh * 12 / 5));
-    aspect-ratio: 12 / 5;
+    /* Usa todo el alto y se estira a lo ancho hasta 3:1; si falta ancho, mantiene la proporción 12:5. */
+    width: min(100cqw, calc(100cqh * 3));
+    height: min(100cqh, calc(100cqw * 5 / 12));
     container-type: inline-size;
     box-sizing: border-box;
 
     background: var(--p-crema);
-    border: var(--p-borde-tablero);
-    border-radius: 12px;
-    box-shadow: 5px 5px 0 #111;
+    /* Marco bordó apoyado sobre la mesa. */
+    border: clamp(5px, 0.6cqw, 10px) solid #8c2b3d;
+    border-radius: 16px;
+    box-shadow:
+        0 0 0 3px #3b1018,
+        0 14px 24px rgb(0 0 0 / 50%);
     overflow: hidden;
 }
 
@@ -338,7 +347,8 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: var(--p-violeta) url("../images/barrio-luna-atardecer.png") center / cover no-repeat;
+    /* Luz en el centro que se apaga hacia los bordes, con los grises del tema. */
+    background: radial-gradient(ellipse at center, var(--tema-elevado) 0%, var(--tema-panel) 55%, var(--tema-fondo) 100%);
     border: 2px solid var(--tema-sombra);
 }
 .tablero__titulo {
@@ -348,6 +358,19 @@
     color: #ffffff;
     text-shadow: 3px 3px 0 #111;
     transition: opacity 160ms ease;
+}
+
+/* Franja con los colores de los ocho barrios debajo del título. */
+.tablero__titulo::after {
+    content: "";
+    display: block;
+    height: clamp(3px, 0.45cqw, 7px);
+    margin-top: 0.12em;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        #91d64b 0 12.5%, #ed5da8 12.5% 25%, #42b6e8 25% 37.5%, #ffbd42 37.5% 50%,
+        #a17be8 50% 62.5%, #f16c5e 62.5% 75%, #38c8b5 75% 87.5%, #f0df4c 87.5% 100%);
+    box-shadow: 2px 2px 0 #111;
 }
 
 .dados-tablero {
@@ -367,7 +390,30 @@
 .tablero__centro:has(.dados-tablero:not([hidden])) .carcel-turno {
     display: none;
 }
-.dados-tablero__caras { display: flex; gap: 16px; }
+.dados-tablero__caras { display: flex; gap: 28px; }
+
+/* Dado que cae sobre el tablero: el dado se mueve y su sombra queda apoyada en la mesa. */
+.dados-tablero__dado {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+.dados-tablero__dado .aviso-global__dado {
+    position: relative;
+    z-index: 1;
+    /* Sin sombra propia: la pone .dados-tablero__sombra, que no sube con el dado. */
+    box-shadow: inset 0 -4px #cdb9ec, 0 5px 0 #6845a4;
+}
+.dados-tablero__sombra {
+    position: absolute;
+    left: 50%;
+    bottom: -12px;
+    width: 76px;
+    height: 18px;
+    margin-left: -38px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 85%) 0%, rgb(0 0 0 / 45%) 55%, transparent 72%);
+}
 .dados-tablero__total {
     padding: 4px 12px;
     border-radius: 8px;
@@ -1771,47 +1817,55 @@
 .casillero__precio[data-color="amarillo"] { background: #735a00; color: #fff; border-color: #F5C400; }
 
 .fichas-en-casillero {
+    /* Ancho de cada ficha: crece con el tablero (cqw es el ancho del tablero). */
+    --tam-ficha: clamp(14px, 2.2cqw, 34px);
     position: absolute;
     inset: 0;
     display: flex;
     align-content: center;
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
     flex-wrap: wrap;
-    gap: 4px;
-    width: min(54px, 100%);
-    height: min(54px, 100%);
+    gap: 2px 3px;
+    /* Entran dos fichas por fila. */
+    width: min(calc(2 * var(--tam-ficha) + 3px), 100%);
+    height: 100%;
     margin: auto;
     z-index: 5;
     pointer-events: none;
 }
+
+/* Ficha: peón en pixel art (12 × 16 píxeles) con luz, sombra y contorno, parado sobre el casillero. */
 .ficha {
     position: static;
-    flex: 0 0 24px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid #111;
-    box-sizing: border-box;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
+    flex: 0 0 var(--tam-ficha, 18px);
+    width: var(--tam-ficha, 18px);
+    aspect-ratio: 3 / 4;
+    background: var(--sprite-ficha) center / contain no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(1px 2px 0 rgb(0 0 0 / 45%));
     transition: transform .15s ease;
     pointer-events: auto;
 }
 
 .ficha-rojo {
-    background-color: #e74c5b;
+    --color-ficha: #e74c5b;
+    --sprite-ficha: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' shape-rendering='crispEdges'%3E%3Cpath fill='%231a1020' d='M4 0h4v1h-4zM3 1h1v1h-1zM8 1h1v1h-1zM2 2h1v1h-1zM9 2h1v1h-1zM2 3h1v1h-1zM9 3h1v1h-1zM2 4h1v1h-1zM9 4h1v1h-1zM3 5h1v1h-1zM8 5h1v1h-1zM3 6h6v1h-6zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h6v1h-6zM4 9h1v1h-1zM7 9h1v1h-1zM3 10h1v1h-1zM8 10h1v1h-1zM3 11h1v1h-1zM8 11h1v1h-1zM2 12h1v1h-1zM9 12h1v1h-1zM1 13h10v1h-10zM0 14h1v1h-1zM11 14h1v1h-1zM0 15h12v1h-12z'/%3E%3Cpath fill='%23ffd0d4' d='M4 1h1v1h-1zM3 2h1v1h-1z'/%3E%3Cpath fill='%23ff8a95' d='M5 1h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 7h2v1h-2zM5 9h1v1h-1zM4 10h2v1h-2zM4 11h1v1h-1zM3 12h2v1h-2zM1 14h3v1h-3z'/%3E%3Cpath fill='%23e74c5b' d='M6 1h2v1h-2zM5 2h3v1h-3zM4 3h4v1h-4zM4 4h3v1h-3zM4 5h2v1h-2zM5 7h2v1h-2zM6 10h1v1h-1zM5 11h2v1h-2zM5 12h2v1h-2zM4 14h4v1h-4z'/%3E%3Cpath fill='%23a8283a' d='M8 2h1v1h-1zM8 3h1v1h-1zM7 4h2v1h-2zM6 5h2v1h-2zM7 7h2v1h-2zM6 9h1v1h-1zM7 10h1v1h-1zM7 11h1v1h-1zM7 12h2v1h-2zM8 14h3v1h-3z'/%3E%3C/svg%3E");
 }
 
 .ficha-azul {
-    background-color: #5dc7e5;
+    --color-ficha: #5dc7e5;
+    --sprite-ficha: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' shape-rendering='crispEdges'%3E%3Cpath fill='%231a1020' d='M4 0h4v1h-4zM3 1h1v1h-1zM8 1h1v1h-1zM2 2h1v1h-1zM9 2h1v1h-1zM2 3h1v1h-1zM9 3h1v1h-1zM2 4h1v1h-1zM9 4h1v1h-1zM3 5h1v1h-1zM8 5h1v1h-1zM3 6h6v1h-6zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h6v1h-6zM4 9h1v1h-1zM7 9h1v1h-1zM3 10h1v1h-1zM8 10h1v1h-1zM3 11h1v1h-1zM8 11h1v1h-1zM2 12h1v1h-1zM9 12h1v1h-1zM1 13h10v1h-10zM0 14h1v1h-1zM11 14h1v1h-1zM0 15h12v1h-12z'/%3E%3Cpath fill='%23e4fbff' d='M4 1h1v1h-1zM3 2h1v1h-1z'/%3E%3Cpath fill='%23a6ecfb' d='M5 1h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 7h2v1h-2zM5 9h1v1h-1zM4 10h2v1h-2zM4 11h1v1h-1zM3 12h2v1h-2zM1 14h3v1h-3z'/%3E%3Cpath fill='%235dc7e5' d='M6 1h2v1h-2zM5 2h3v1h-3zM4 3h4v1h-4zM4 4h3v1h-3zM4 5h2v1h-2zM5 7h2v1h-2zM6 10h1v1h-1zM5 11h2v1h-2zM5 12h2v1h-2zM4 14h4v1h-4z'/%3E%3Cpath fill='%232a7fa8' d='M8 2h1v1h-1zM8 3h1v1h-1zM7 4h2v1h-2zM6 5h2v1h-2zM7 7h2v1h-2zM6 9h1v1h-1zM7 10h1v1h-1zM7 11h1v1h-1zM7 12h2v1h-2zM8 14h3v1h-3z'/%3E%3C/svg%3E");
 }
 
 .ficha-verde {
-    background-color: #12B981;
+    --color-ficha: #12b981;
+    --sprite-ficha: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' shape-rendering='crispEdges'%3E%3Cpath fill='%231a1020' d='M4 0h4v1h-4zM3 1h1v1h-1zM8 1h1v1h-1zM2 2h1v1h-1zM9 2h1v1h-1zM2 3h1v1h-1zM9 3h1v1h-1zM2 4h1v1h-1zM9 4h1v1h-1zM3 5h1v1h-1zM8 5h1v1h-1zM3 6h6v1h-6zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h6v1h-6zM4 9h1v1h-1zM7 9h1v1h-1zM3 10h1v1h-1zM8 10h1v1h-1zM3 11h1v1h-1zM8 11h1v1h-1zM2 12h1v1h-1zM9 12h1v1h-1zM1 13h10v1h-10zM0 14h1v1h-1zM11 14h1v1h-1zM0 15h12v1h-12z'/%3E%3Cpath fill='%23c9f7e4' d='M4 1h1v1h-1zM3 2h1v1h-1z'/%3E%3Cpath fill='%236fe3b7' d='M5 1h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 7h2v1h-2zM5 9h1v1h-1zM4 10h2v1h-2zM4 11h1v1h-1zM3 12h2v1h-2zM1 14h3v1h-3z'/%3E%3Cpath fill='%2312b981' d='M6 1h2v1h-2zM5 2h3v1h-3zM4 3h4v1h-4zM4 4h3v1h-3zM4 5h2v1h-2zM5 7h2v1h-2zM6 10h1v1h-1zM5 11h2v1h-2zM5 12h2v1h-2zM4 14h4v1h-4z'/%3E%3Cpath fill='%230b7a55' d='M8 2h1v1h-1zM8 3h1v1h-1zM7 4h2v1h-2zM6 5h2v1h-2zM7 7h2v1h-2zM6 9h1v1h-1zM7 10h1v1h-1zM7 11h1v1h-1zM7 12h2v1h-2zM8 14h3v1h-3z'/%3E%3C/svg%3E");
 }
 
 .ficha-amarillo {
-    background-color: #ffd24c;
+    --color-ficha: #ffd24c;
+    --sprite-ficha: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' shape-rendering='crispEdges'%3E%3Cpath fill='%231a1020' d='M4 0h4v1h-4zM3 1h1v1h-1zM8 1h1v1h-1zM2 2h1v1h-1zM9 2h1v1h-1zM2 3h1v1h-1zM9 3h1v1h-1zM2 4h1v1h-1zM9 4h1v1h-1zM3 5h1v1h-1zM8 5h1v1h-1zM3 6h6v1h-6zM2 7h1v1h-1zM9 7h1v1h-1zM3 8h6v1h-6zM4 9h1v1h-1zM7 9h1v1h-1zM3 10h1v1h-1zM8 10h1v1h-1zM3 11h1v1h-1zM8 11h1v1h-1zM2 12h1v1h-1zM9 12h1v1h-1zM1 13h10v1h-10zM0 14h1v1h-1zM11 14h1v1h-1zM0 15h12v1h-12z'/%3E%3Cpath fill='%23fffbe0' d='M4 1h1v1h-1zM3 2h1v1h-1z'/%3E%3Cpath fill='%23fff0a6' d='M5 1h1v1h-1zM4 2h1v1h-1zM3 3h1v1h-1zM3 4h1v1h-1zM3 7h2v1h-2zM5 9h1v1h-1zM4 10h2v1h-2zM4 11h1v1h-1zM3 12h2v1h-2zM1 14h3v1h-3z'/%3E%3Cpath fill='%23ffd24c' d='M6 1h2v1h-2zM5 2h3v1h-3zM4 3h4v1h-4zM4 4h3v1h-3zM4 5h2v1h-2zM5 7h2v1h-2zM6 10h1v1h-1zM5 11h2v1h-2zM5 12h2v1h-2zM4 14h4v1h-4z'/%3E%3Cpath fill='%23c48f12' d='M8 2h1v1h-1zM8 3h1v1h-1zM7 4h2v1h-2zM6 5h2v1h-2zM7 7h2v1h-2zM6 9h1v1h-1zM7 10h1v1h-1zM7 11h1v1h-1zM7 12h2v1h-2zM8 14h3v1h-3z'/%3E%3C/svg%3E");
 }
 
 .historial__cabecera { display: flex; justify-content: space-between; align-items: center; }
@@ -2550,14 +2604,46 @@
 
 }
 
-/* Ventana amplia: distribución original con historial al costado del tablero. */
+/* Ventana amplia: el tablero ocupa todo el alto y al costado van el historial y, debajo, los botones. */
 @media (min-width: 1251px) {
-    .pagina-partida { grid-template-rows: auto minmax(0, 1fr) auto; }
+    /* La fila de arriba llega hasta el borde de la mesa, así el tablero queda apoyado sobre ella. */
+    .pagina-partida { grid-template-rows: minmax(calc(var(--borde-mesa) - 1.5rem), auto) minmax(0, 1fr); }
     .partida__main { grid-column: 1; grid-row: 2; }
-    .zona-tablero { box-sizing: border-box; }
-    .partida__pie { display: contents; }
-    .partida__pie .acciones { grid-column: 1; grid-row: 3; }
-    .partida__pie .partida__lateral { grid-column: 2; grid-row: 2 / span 2; }
+    /* Espacio de mesa debajo del tablero, para que el marco y la sombra no se corten. */
+    .zona-tablero { box-sizing: border-box; padding-bottom: clamp(20px, 6dvh, 64px); }
+    .partida__pie {
+        grid-column: 2;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        gap: var(--p-gap);
+        min-height: 0;
+        /* El historial arranca más arriba que el tablero, un poco por debajo del borde de la mesa. */
+        margin-top: calc(var(--filo-mesa) - var(--borde-mesa) + clamp(12px, 2.5dvh, 28px));
+        /* Lugar libre abajo para el botón flotante del chat. */
+        padding-bottom: 92px;
+    }
+    .partida__pie .partida__lateral { order: -1; }
+    /* Botones centrados y parejos dentro del recuadro; el recuadro no se aplasta. */
+    .partida__pie .acciones {
+        flex-shrink: 0;
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        justify-content: stretch;
+        padding: 10px;
+    }
+    .partida__pie .acciones__secundarias {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+    }
+    .partida__pie .acciones__secundarias :is(.btn-accion, .btn-tirar, .deuda-acceso) {
+        width: 100%;
+        margin: 0;
+        text-align: center;
+    }
+    .partida__pie .acciones__secundarias :is(.btn-tirar, .deuda-acceso) { grid-column: 1 / -1; }
 }
 
 .aviso-global__acciones #global-deuda {
@@ -2566,3 +2652,72 @@
     color: var(--tema-texto);
 }
 .aviso-global__acciones #global-deuda:hover { background: #432d75; }
+
+/* ===== Mate de la mesa =====
+   La pava, el chorro y el vapor se ubican con coordenadas de la imagen de fondo (1755 × 896).
+   El fondo se muestra con "cover" y centrado, así que 1 píxel de la imagen mide --escala-fondo en pantalla. */
+.mesa-mate {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    container-type: size;
+    pointer-events: none;
+}
+.mesa-mate > * {
+    --escala-fondo: max(100cqw / 1755, 100cqh / 896);
+    position: absolute;
+    /* Convierte una posición de la imagen (--x, --y) en una posición de la pantalla. */
+    left: calc(50cqw + (var(--x) - 877.5) * var(--escala-fondo));
+    top: calc(50cqh + (var(--y) - 448) * var(--escala-fondo));
+    width: calc(var(--ancho) * var(--escala-fondo));
+    height: calc(var(--alto) * var(--escala-fondo));
+}
+.mesa-mate__pava {
+    --x: 902; --y: 131; --ancho: 214; --alto: 214;
+    max-width: none;
+    image-rendering: pixelated;
+    /* Gira apoyada en el borde de abajo a la derecha, como cuando se levanta para cebar. */
+    transform-origin: 76.6% 96.7%;
+    transition: filter 0.2s ease;
+}
+.mesa-mate__chorro {
+    --x: 1156; --y: 235; --ancho: 3; --alto: 22;
+    border-radius: 999px;
+    background: linear-gradient(#d9f3ff, #8fd3f2 60%, rgb(143 211 242 / 40%));
+    transform-origin: top center;
+    rotate: 19.6deg;
+    scale: 1 0;
+    opacity: 0;
+}
+.mesa-mate__vapor {
+    --x: 1134; --y: 232; --ancho: 16; --alto: 18;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgb(255 240 250 / 80%) 0%, rgb(255 230 245 / 40%) 45%, transparent 70%);
+    opacity: 0;
+}
+
+/* Zona invisible para hacer clic sobre la pava y el mate. Solo en pantalla ancha,
+   porque en pantallas chicas el tablero tapa esa parte de la mesa. */
+.mesa-mate__boton { display: none; }
+@media (min-width: 1251px) {
+    .mesa-mate__boton {
+        --escala-fondo: max(100vw / 1755, 100dvh / 896);
+        display: block;
+        position: fixed;
+        z-index: 2;
+        left: calc(50vw + (905 - 877.5) * var(--escala-fondo));
+        top: calc(50dvh + (190 - 448) * var(--escala-fondo));
+        width: calc(300 * var(--escala-fondo));
+        height: calc(155 * var(--escala-fondo));
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        cursor: pointer;
+    }
+    .mesa-mate__boton:focus-visible { outline: 2px dashed #ffda6a; outline-offset: 2px; }
+    /* Al pasar el mouse, la pava brilla un poco para mostrar que se puede tocar. */
+    .mesa-mate:has(+ .mesa-mate__boton:is(:hover, :focus-visible)) .mesa-mate__pava {
+        filter: drop-shadow(0 0 3px rgb(255 218 106 / 80%));
+    }
+}

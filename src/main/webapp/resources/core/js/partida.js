@@ -198,9 +198,14 @@ function moverFichaEnTablero(idJugador, nuevaPosicion, efecto) {
     casilleroDestino.appendChild(ficha);
     if (efecto) animarPasoFicha(ficha, efecto === "llegada", posicionesPropiedad.has(Number(nuevaPosicion)));
     if (efecto === "llegada") {
-        const colorFicha = getComputedStyle(ficha).backgroundColor;
+        // Brillo del color de la ficha alrededor del peón al llegar.
+        const colorFicha = getComputedStyle(ficha).getPropertyValue("--color-ficha").trim() || "#ffffff";
+        const sombraBase = "drop-shadow(1px 2px 0 rgb(0 0 0 / 45%))";
         ficha.animate(
-            [{ boxShadow: `0 0 0 3px ${colorFicha}` }, { boxShadow: "0 0 0 8px transparent" }],
+            [
+                { filter: `${sombraBase} drop-shadow(0 0 2px ${colorFicha}) drop-shadow(0 0 6px ${colorFicha})` },
+                { filter: `${sombraBase} drop-shadow(0 0 0 transparent) drop-shadow(0 0 0 transparent)` },
+            ],
             { duration: 650, easing: "ease-out" },
         );
     }
@@ -740,14 +745,31 @@ function iniciarAnimacionDadosTablero() {
     let cambio;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         pintarAlAzar();
-        giro = [...caras].map((cara, indice) => {
+        const sombras = [...panel.querySelectorAll(".dados-tablero__sombra")];
+        // Los dados caen desde arriba (grandes, como cerca de la cámara), golpean el tablero y rebotan dos veces.
+        // "ease-in" en las bajadas simula la gravedad y "ease-out" en las subidas, el frenado del rebote.
+        giro = caras.flatMap((cara, indice) => {
             const lado = indice === 0 ? -1 : 1;
-            return cara.animate([
-                { transform: `translate(${lado * 60}px, -64px) rotate(0deg) scale(.76)`, opacity: 0.65 },
-                { transform: `translate(${lado * 28}px, 8px) rotate(${lado * 155}deg)`, opacity: 1, offset: 0.42 },
-                { transform: `translate(${lado * 10}px, -14px) rotate(${lado * 270}deg)`, offset: 0.68 },
-                { transform: `translate(0, 0) rotate(${lado * 360}deg)` },
-            ], { duration: 530, easing: "ease-out" });
+            const demora = indice * 70;
+            const caida = cara.animate([
+                { transform: `translate(${lado * 46}px, -190px) rotate(${lado * -90}deg) scale(2.2)`, opacity: 0, easing: "ease-in" },
+                { opacity: 1, offset: 0.08, easing: "ease-in" },
+                { transform: `translate(${lado * 10}px, 0) rotate(${lado * 200}deg) scale(1.12, 0.86)`, offset: 0.46, easing: "ease-out" },
+                { transform: `translate(${lado * 5}px, -38px) rotate(${lado * 290}deg) scale(1.06)`, offset: 0.62, easing: "ease-in" },
+                { transform: `translate(${lado * 2}px, 0) rotate(${lado * 340}deg) scale(1.06, 0.94)`, offset: 0.76, easing: "ease-out" },
+                { transform: `translate(0, -12px) rotate(${lado * 354}deg) scale(1.02)`, offset: 0.86, easing: "ease-in" },
+                { transform: `translate(0, 0) rotate(${lado * 360}deg) scale(1)` },
+            ], { duration: 950, delay: demora, fill: "backwards" });
+            // La sombra queda en el tablero: chica y clara mientras el dado está alto, grande y oscura al tocar.
+            const sombra = sombras[indice]?.animate([
+                { transform: `translateX(${lado * 46}px) scale(.25)`, opacity: 0, easing: "ease-in" },
+                { transform: `translateX(${lado * 10}px) scale(1.05)`, opacity: 1, offset: 0.46, easing: "ease-out" },
+                { transform: `translateX(${lado * 5}px) scale(.7)`, opacity: 0.6, offset: 0.62, easing: "ease-in" },
+                { transform: `translateX(${lado * 2}px) scale(1)`, opacity: 1, offset: 0.76, easing: "ease-out" },
+                { transform: "translateX(0) scale(.88)", opacity: 0.85, offset: 0.86, easing: "ease-in" },
+                { transform: "translateX(0) scale(1)", opacity: 1 },
+            ], { duration: 950, delay: demora, fill: "backwards" });
+            return sombra ? [caida, sombra] : [caida];
         });
         cambio = setInterval(() => {
             if (numero === numeroTiradaTablero) pintarAlAzar();
@@ -2586,9 +2608,11 @@ function desbloquearControles() {
 }
 
 // Alineo el historial con el tamaño del tablero.
+// En pantalla ancha los botones van debajo del historial, así que le resto su alto para que la columna termine donde termina el tablero.
 function alinearHistorialConTablero() {
     const tablero = document.querySelector(".tablero");
     const lateral = document.querySelector(".partida__lateral");
+    const acciones = document.querySelector(".partida__pie .acciones");
     if (!tablero || !lateral) return;
     const actualizar = () => {
         if (window.matchMedia("(max-width: 1250px)").matches) {
@@ -2596,14 +2620,20 @@ function alinearHistorialConTablero() {
             lateral.style.removeProperty("--historial-desplazamiento");
             return;
         }
+        // El historial puede empezar más arriba que el tablero (en el borde de la mesa), pero termina a su misma altura.
         const limites = tablero.getBoundingClientRect();
-        const desplazamiento = Math.max(0, limites.top - lateral.getBoundingClientRect().top);
-        lateral.style.setProperty("--historial-alto", `${limites.height}px`);
-        lateral.style.setProperty("--historial-desplazamiento", `${desplazamiento}px`);
+        const inicio = lateral.getBoundingClientRect().top;
+        const estiloPie = getComputedStyle(lateral.parentElement);
+        const separacion = parseFloat(estiloPie.rowGap) || 0;
+        const reservaChat = parseFloat(estiloPie.paddingBottom) || 0;
+        const altoAcciones = acciones ? acciones.offsetHeight + separacion : 0;
+        lateral.style.setProperty("--historial-alto", `${Math.max(0, limites.bottom - inicio - altoAcciones - reservaChat)}px`);
+        lateral.style.setProperty("--historial-desplazamiento", "0px");
     };
     const observador = new ResizeObserver(actualizar);
     observador.observe(tablero);
     observador.observe(document.querySelector(".partida__main"));
+    if (acciones) observador.observe(acciones);
     window.addEventListener("resize", actualizar);
     actualizar();
 }

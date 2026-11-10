@@ -13,12 +13,24 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=barrio-12)}"
-            href="../../../resources/core/css/partida.css?v=barrio-12"
+            th:href="@{/css/partida.css(v=mesa-23)}"
+            href="../../../resources/core/css/partida.css?v=mesa-23"
         />
         <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=violeta-1)}" href="../../../resources/core/css/chat-partida.css?v=violeta-1">
     </head>
     <body class="pagina-partida">
+        <!-- La pava y el mate de la mesa del fondo: al hacer clic, la pava ceba un mate. -->
+        <div class="mesa-mate" aria-hidden="true">
+            <img class="mesa-mate__pava" th:src="@{/images/fondo/pava.png}" src="../../../resources/core/images/fondo/pava.png" alt="">
+            <span class="mesa-mate__chorro"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+        </div>
+        <button type="button" class="mesa-mate__boton" aria-label="Cebar un mate" title="Cebar un mate"></button>
+
         <dialog id="aviso-espera-quiebra" class="aviso-espera-quiebra"
                 aria-labelledby="espera-quiebra-titulo" aria-describedby="espera-quiebra-texto">
             <div role="status" aria-live="polite">
@@ -604,8 +616,15 @@
                             <h1 class="tablero__titulo">El Matancero</h1>
                             <div id="dados-tablero" class="dados-tablero" hidden>
                                 <div class="dados-tablero__caras" aria-hidden="true">
-                                    <span class="aviso-global__dado" data-cara="1"></span>
-                                    <span class="aviso-global__dado" data-cara="1"></span>
+                                    <!-- Cada dado tiene su sombra sobre el tablero, que crece mientras cae. -->
+                                    <span class="dados-tablero__dado">
+                                        <span class="dados-tablero__sombra"></span>
+                                        <span class="aviso-global__dado" data-cara="1"></span>
+                                    </span>
+                                    <span class="dados-tablero__dado">
+                                        <span class="dados-tablero__sombra"></span>
+                                        <span class="aviso-global__dado" data-cara="1"></span>
+                                    </span>
                                 </div>
                                 <output id="dados-tablero-total" class="dados-tablero__total"></output>
                             </div>
@@ -1152,7 +1171,8 @@
 
         <!-- Script de cliente -->
 
-<script type="module" th:src="@{/js/partida.js(v=barrio-15)}" src="../../../resources/core/js/partida.js?v=barrio-15" charset="UTF-8"></script>
+<script type="module" th:src="@{/js/partida.js(v=mesa-4)}" src="../../../resources/core/js/partida.js?v=mesa-4" charset="UTF-8"></script>
+<script type="module" th:src="@{/js/cebar-mate.js(v=4)}" src="../../../resources/core/js/cebar-mate.js?v=4" charset="UTF-8"></script>
 
 </body>
 
