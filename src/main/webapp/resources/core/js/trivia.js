@@ -53,6 +53,11 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     const premio = dialogo.querySelector("#trivia-premio");
     const tiempos = dialogo.querySelector("#trivia-tiempos");
     const botonCerrar = dialogo.querySelector("#trivia-cerrar");
+    const elegirPremio = dialogo.querySelector("#trivia-elegir-premio");
+    const botonRobar = elegirPremio.querySelector('[data-premio="ROBAR"]');
+    const robar = dialogo.querySelector("#trivia-robar");
+    const robarLista = dialogo.querySelector("#trivia-robar-lista");
+    const robarVolver = dialogo.querySelector("#trivia-robar-volver");
 
     let detenerReloj = () => {};
     let enCurso = false;
@@ -170,8 +175,49 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
 
     // Pantalla final. ganador: nombre o null si le erraron todos.
     // desempate: [{ nombre, milisegundos }] cuando llegaron varios al final de la última ronda.
-    // Devuelve una promesa que se resuelve cuando tocan "Volver al tablero".
-    function mostrarFinal({ ganador = null, soyGanador = false, dificultad, desempate = [] } = {}) {
+    // Arma la lista de propiedades para robar, agrupadas por dueño.
+    function pintarPropiedadesParaRobar(propiedades, alElegir) {
+        const porDueno = new Map();
+        for (const propiedad of propiedades) {
+            if (!porDueno.has(propiedad.propietario)) porDueno.set(propiedad.propietario, []);
+            porDueno.get(propiedad.propietario).push(propiedad);
+        }
+        robarLista.replaceChildren(...[...porDueno].map(([dueno, suyas]) => {
+            const grupo = document.createElement("section");
+            const titulo = document.createElement("h3");
+            titulo.className = "trivia__robar-dueno";
+            titulo.textContent = `De ${dueno}`;
+            const lista = document.createElement("ul");
+            lista.className = "trivia__robar-propiedades";
+            lista.append(...suyas.map(propiedad => {
+                const boton = document.createElement("button");
+                boton.type = "button";
+                boton.className = "trivia__robar-opcion";
+                boton.textContent = propiedad.nombre;
+                if (propiedad.nivelMejora > 0) {
+                    const mejoras = document.createElement("span");
+                    mejoras.className = "trivia__robar-mejoras";
+                    mejoras.textContent = "Tiene mejoras: se pierden al robarla";
+                    boton.append(mejoras);
+                }
+                boton.addEventListener("click", () => alElegir(propiedad));
+                const item = document.createElement("li");
+                item.append(boton);
+                return item;
+            }));
+            grupo.append(titulo, lista);
+            return grupo;
+        }));
+    }
+
+    // Si ganaste una Complicada, primero elegís el premio: "PLATA" ($500) o "ROBAR" (una propiedad).
+    // obtenerPropiedadesParaRobar: async () => propiedades de los demás ({ posicion, nombre, propietario, nivelMejora }).
+    // Devuelve una promesa con { premio, posicion } cuando tocan "Volver al tablero"
+    // (premio null si no había que elegir; posicion solo si robó).
+    function mostrarFinal({
+        ganador = null, soyGanador = false, dificultad, desempate = [],
+        obtenerPropiedadesParaRobar = async () => [],
+    } = {}) {
         detenerReloj();
         dialogo.classList.remove("trivia--resuelta", "trivia--cargando", "trivia--espectador");
         dialogo.classList.add("trivia--final");
@@ -201,13 +247,74 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
             return item;
         }));
 
+        const eligePremio = Boolean(ganador) && soyGanador && dificultad === "DIFICIL";
+        elegirPremio.hidden = !eligePremio;
+        robar.hidden = true;
+        botonRobar.disabled = false;
+        botonCerrar.hidden = eligePremio;
+        if (eligePremio) premio.textContent = "Elegí tu premio";
+
         abrir();
-        botonCerrar.focus();
+        (eligePremio ? elegirPremio.querySelector("button") : botonCerrar).focus();
+
         return new Promise(resolve => {
-            botonCerrar.addEventListener("click", () => {
+            let premioElegido = null;
+            let posicionRobada = null;
+
+            function confirmar(texto) {
+                premio.textContent = texto;
+                elegirPremio.hidden = true;
+                robar.hidden = true;
+                botonCerrar.hidden = false;
+                botonCerrar.focus();
+            }
+
+            function volverAElegir(texto = "Elegí tu premio") {
+                premio.textContent = texto;
+                robar.hidden = true;
+                elegirPremio.hidden = false;
+                elegirPremio.querySelector("button").focus();
+            }
+
+            elegirPremio.querySelector('[data-premio="PLATA"]').onclick = () => {
+                premioElegido = "PLATA";
+                confirmar("Premio: $500");
+            };
+
+            botonRobar.onclick = async () => {
+                elegirPremio.hidden = true;
+                premio.textContent = "Cargando propiedades…";
+                let propiedades;
+                try {
+                    propiedades = await obtenerPropiedadesParaRobar();
+                } catch (error) {
+                    console.error("No se pudieron cargar las propiedades para robar:", error);
+                    volverAElegir("No se pudieron cargar las propiedades");
+                    return;
+                }
+                if (propiedades.length === 0) {
+                    botonRobar.disabled = true;
+                    volverAElegir("Nadie tiene propiedades para robar");
+                    return;
+                }
+                premio.textContent = "Elegí qué propiedad robar";
+                pintarPropiedadesParaRobar(propiedades, propiedad => {
+                    premioElegido = "ROBAR";
+                    posicionRobada = propiedad.posicion;
+                    confirmar(`Premio: ${propiedad.nombre}, robada a ${propiedad.propietario}`);
+                });
+                robar.hidden = false;
+                robarLista.querySelector("button")?.focus();
+            };
+
+            robarVolver.onclick = () => volverAElegir();
+
+            botonCerrar.onclick = () => {
                 cerrar();
-                resolve();
-            }, { once: true });
+                resolve(posicionRobada === null
+                    ? { premio: premioElegido }
+                    : { premio: premioElegido, posicion: posicionRobada });
+            };
         });
     }
 

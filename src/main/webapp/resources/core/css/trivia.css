@@ -393,6 +393,99 @@
     margin-top: 10px;
 }
 
+/* ---------- Elegir premio (ganador de una Complicada) ---------- */
+
+.trivia__elegir-premio {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 380px;
+    margin-top: 4px;
+}
+
+.trivia__elegir-premio[hidden],
+.trivia__robar[hidden],
+.trivia__cerrar[hidden] {
+    display: none;
+}
+
+/* ---------- Elegir qué propiedad robar ---------- */
+
+.trivia__robar {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    max-width: 420px;
+}
+
+/* Si hay muchas propiedades, la lista scrollea y el modal no crece de más. */
+.trivia__robar-lista {
+    display: grid;
+    gap: 12px;
+    max-height: min(46vh, 340px);
+    overflow-y: auto;
+    padding-right: 4px;
+    text-align: left;
+}
+
+.trivia .trivia__robar-dueno {
+    margin: 0 0 6px;
+    color: var(--p-texto-suave);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.trivia .trivia__robar-propiedades {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.trivia__robar-opcion {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 2px solid var(--p-borde, #000);
+    border-radius: 10px;
+    background: var(--p-gris);
+    color: var(--p-texto);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.trivia__robar-opcion:hover,
+.trivia__robar-opcion:focus-visible {
+    border-color: var(--trivia-ambar);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.trivia__robar-mejoras {
+    color: var(--trivia-incorrecta);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.trivia__robar-volver {
+    justify-self: center;
+}
+
+@media (max-width: 480px) {
+    .trivia__elegir-premio {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ---------- Cargando (entre rondas) ---------- */
 
 .trivia--cargando .trivia__enunciado,

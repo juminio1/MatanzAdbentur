@@ -32,8 +32,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/trivia.css(v=2)}"
-            href="../../../resources/core/css/trivia.css?v=2"
+            th:href="@{/css/trivia.css(v=4)}"
+            href="../../../resources/core/css/trivia.css?v=4"
         />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1364,6 +1364,30 @@
                 <h2 id="trivia-final-titulo" class="trivia__final-titulo"></h2>
                 <p id="trivia-final-detalle" class="trivia__final-detalle"></p>
                 <p id="trivia-premio" class="trivia__premio"></p>
+                <!-- Solo para quien gana una Complicada: elige entre la plata o robar una propiedad. -->
+                <div id="trivia-elegir-premio" class="trivia__elegir-premio" hidden>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--principal"
+                        data-premio="PLATA"
+                    >
+                        Cobrar $500
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--secundario"
+                        data-premio="ROBAR"
+                    >
+                        Robar una propiedad
+                    </button>
+                </div>
+                <!-- Lista de propiedades de los demás para elegir cuál robar. La completa trivia.js. -->
+                <div id="trivia-robar" class="trivia__robar" hidden>
+                    <div id="trivia-robar-lista" class="trivia__robar-lista"></div>
+                    <button type="button" id="trivia-robar-volver" class="btn-casillero trivia__robar-volver">
+                        Volver
+                    </button>
+                </div>
                 <ol id="trivia-tiempos" class="trivia__tiempos"></ol>
                 <button
                     id="trivia-cerrar"
@@ -1702,8 +1726,8 @@
         ></script>
         <script
             type="module"
-            th:src="@{/js/trivia-partida.js(v=1)}"
-            src="../../../resources/core/js/trivia-partida.js?v=1"
+            th:src="@{/js/trivia-partida.js(v=3)}"
+            src="../../../resources/core/js/trivia-partida.js?v=3"
         ></script>
     </body>
 </html>

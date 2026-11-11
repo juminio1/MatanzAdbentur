@@ -1,4 +1,4 @@
-import { crearModalTrivia } from "./trivia.js?v=1";
+import { crearModalTrivia } from "./trivia.js?v=3";
 import { crearApiTriviaPrueba } from "./trivia-api.js?v=1";
 
 // Cuando la ruleta frena, arranca la trivia con la dificultad que salió.
@@ -12,11 +12,28 @@ function esperarMs(milisegundos) {
     return new Promise(resolve => setTimeout(resolve, milisegundos));
 }
 
+// Se pueden robar las propiedades que tienen dueño y no son del jugador.
+export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
+    return propiedades.filter(propiedad =>
+        propiedad.propietarioId != null && String(propiedad.propietarioId) !== String(idJugador));
+}
+
+async function pedirPropiedadesParaRobar() {
+    const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
+    const codigo = new URLSearchParams(window.location.search).get("codigo") || window.codigoSala || "";
+    const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigo)}/propiedades`, {
+        cache: "no-store", credentials: "same-origin",
+    });
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    return filtrarPropiedadesParaRobar(await respuesta.json(), window.usuarioSesionId);
+}
+
 export function conectarTriviaConRuleta({
     documento = document,
     modal = crearModalTrivia(),
     api = crearApiTriviaPrueba(),
     esperar = esperarMs,
+    obtenerPropiedadesParaRobar = pedirPropiedadesParaRobar,
 } = {}) {
     let jugando = false;
 
@@ -32,7 +49,10 @@ export function conectarTriviaConRuleta({
         const acerto = modal.mostrarResultado(elegida, opcionCorrecta);
 
         await esperar(PAUSA_TRAS_RESULTADO);
-        await modal.mostrarFinal({ ganador: acerto ? "vos" : null, soyGanador: acerto, dificultad });
+        // Lo elegido ({ premio, posicion }) se le va a mandar al back cuando tenga el endpoint.
+        await modal.mostrarFinal({
+            ganador: acerto ? "vos" : null, soyGanador: acerto, dificultad, obtenerPropiedadesParaRobar,
+        });
     }
 
     documento.addEventListener("ruleta:frenada", async evento => {
