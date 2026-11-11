@@ -1,7 +1,7 @@
 // Datos de prueba de la trivia mientras el back no tiene sus endpoints.
 //
 // Contrato que espera el front (para acordar con el back):
-//   pedirPregunta()            -> { id, enunciado, opciones: [4 textos], dificultad: "FACIL" | "MEDIO" | "DIFICIL" }
+//   pedirPregunta(dificultad)  -> { id, enunciado, opciones: [4 textos], dificultad: "FACIL" | "MEDIO" | "DIFICIL" }
 //   enviarRespuesta(id, opcion) -> { correcta: boolean, opcionCorrecta: 0..3 }
 // La respuesta correcta nunca viaja con la pregunta: la comprueba el servidor.
 // Cuando el back esté listo, solo hay que reemplazar esta API por llamadas fetch.
@@ -50,10 +50,13 @@ function esperar(milisegundos) {
 
 export function crearApiTriviaPrueba({ preguntas = PREGUNTAS_PRUEBA, demora = 700, azar = Math.random } = {}) {
     return {
-        async pedirPregunta() {
+        // Con dificultad, elige entre las preguntas de esa dificultad.
+        async pedirPregunta(dificultad) {
             await esperar(demora);
+            const deEsaDificultad = preguntas.filter(p => p.dificultad === dificultad);
+            const candidatas = deEsaDificultad.length > 0 ? deEsaDificultad : preguntas;
             const { respuestaCorrecta: _oculta, ...pregunta } =
-                preguntas[Math.floor(azar() * preguntas.length)];
+                candidatas[Math.floor(azar() * candidatas.length)];
             return { ...pregunta, opciones: [...pregunta.opciones] };
         },
         async enviarRespuesta(id, opcion) {

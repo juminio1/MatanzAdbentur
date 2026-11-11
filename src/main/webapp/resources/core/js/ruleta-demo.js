@@ -365,6 +365,13 @@ export function configurarRuleta(
 
         } else {
             mostrarResultado(segmento.value);
+
+            // Avisa a la trivia que la ruleta frenó, para que arranque con esta dificultad.
+            if (typeof documento.dispatchEvent === "function") {
+                documento.dispatchEvent(new CustomEvent("ruleta:frenada", {
+                    detail: { dificultad: segmento.value, activacionId: activacionActual?.activacionId }
+                }));
+            }
         }
 
         girando = false;
