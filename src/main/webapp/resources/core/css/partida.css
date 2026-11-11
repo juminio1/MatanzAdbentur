@@ -35,17 +35,15 @@
 
     margin: 0;
     background-color: var(--p-fondo);
-    background-image:
-        radial-gradient(ellipse at 82% 10%, #4a2a3c 0%, transparent 46%),
-        radial-gradient(ellipse at 16% 36%, #302347 0%, transparent 56%),
-        linear-gradient(160deg, #1d1728, #14121b 68%, #22191f);
+    /* Fondo sin la pava: la pava va encima como imagen aparte (.mesa-mate__pava) para poder animarla. */
+    background-image: url("../images/fondo/mesa-matancera-sin-pava.webp?v=4");
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
     color: var(--p-texto);
     font-family: var(--font-texto), sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     color-scheme: dark;
 
@@ -68,6 +66,12 @@
 }
 
 .pagina-partida {
+    /* Altura donde empieza el tablero: justo debajo de la pava y el mate, que apoyan al 40 % de la imagen de fondo
+       (1756 × 895, mostrada con cover). Así se ven sobre la mesa. */
+    --borde-mesa: calc(50dvh - 0.10 * max(100dvw * 895 / 1756, 100dvh));
+    /* Borde real de la mesa (33 % de la imagen): ahí empieza el historial. */
+    --filo-mesa: calc(50dvh - 0.17 * max(100dvw * 895 / 1756, 100dvh));
+
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;
     grid-template-rows: auto minmax(0, 1fr);
@@ -77,7 +81,7 @@
     box-sizing: border-box;
 }
 
-.barra-superior { grid-column: 1 / -1; }
+.barra-superior { grid-column: 1 / -1; align-self: start; }
 .partida__main { min-width: 0; min-height: 0; }
 .partida__lateral { min-width: 0; min-height: 0; }
 
@@ -124,7 +128,7 @@
 }
 .cronometro-nro {
     color: var(--p-texto);
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 800;
 }
 
@@ -169,16 +173,23 @@
     margin-left: 2rem;
     height: 42px;
     border-radius: 8px 6px 0 0;
-    background-color: var(--p-violeta);
+    /* La cinta del nombre lleva el color de la ficha del jugador (violeta si todavía no eligió). */
+    background-color: var(--color-ficha, var(--p-violeta));
+    background-image: linear-gradient(rgb(255 255 255 / 18%), transparent 55%, rgb(0 0 0 / 14%));
     border-bottom: var(--p-borde-grueso);
 }
 
 .nombre-jugador {
     margin-left: 4rem;
     font-family: var(--font-titulos), sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 800;
     color: #ffffff;
+}
+/* Sobre el color de la ficha el nombre va oscuro, como en la etiqueta "Tu turno", para que se lea. */
+.jugador[data-ficha] .nombre-jugador {
+    color: #1b1525;
+    text-shadow: 0 1px 0 rgb(255 255 255 / 35%);
 }
 
 .datos-jugador {
@@ -192,7 +203,7 @@
 .dinero,
 .cantidad-propiedades {
     color: var(--p-texto);
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 800;
 }
 
@@ -206,7 +217,7 @@
     gap: var(--p-gap);
     height: 100%;
     min-height: 0;
-    padding-top: 2rem;
+    padding-top: 0;
 }
 
 .tablero-wrap {
@@ -215,6 +226,7 @@
     min-height: 0;
     container-type: size;
     display: grid;
+    justify-items: center;
 }
 
 .tablero {
@@ -222,17 +234,21 @@
     --filas: 5;
 
     display: grid;
-    grid-template-columns: repeat(var(--columnas), 1fr);
-    grid-template-rows: repeat(var(--filas), 1fr);
-    width: min(100cqw, calc(100cqh * 12 / 5));
-    aspect-ratio: 12 / 5;
+    grid-template-columns: repeat(var(--columnas), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--filas), minmax(0, 1fr));
+    /* Usa todo el alto y se estira a lo ancho hasta 3:1; si falta ancho, mantiene la proporción 12:5. */
+    width: min(100cqw, calc(100cqh * 3));
+    height: min(100cqh, calc(100cqw * 5 / 12));
     container-type: inline-size;
     box-sizing: border-box;
 
     background: var(--p-crema);
-    border: var(--p-borde-tablero);
-    border-radius: 12px;
-    box-shadow: 5px 5px 0 #111;
+    /* Marco bordó apoyado sobre la mesa. */
+    border: clamp(5px, 0.6cqw, 10px) solid #8c2b3d;
+    border-radius: 16px;
+    box-shadow:
+        0 0 0 3px #3b1018,
+        0 14px 24px rgb(0 0 0 / 50%);
     overflow: hidden;
 }
 
@@ -248,7 +264,7 @@
     color: var(--p-texto);
     border: 1px solid var(--tema-sombra);
     text-align: center;
-    font-size: clamp(8px, 1.1cqw, 13px);
+    font-size: clamp(8px, 1.13cqw, 12px);
     font-weight: 800;
     line-height: 1.1;
     overflow: hidden;
@@ -267,10 +283,12 @@
 .casillero[data-grupo-localidad] .casillero__nombre {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     overflow: hidden;
-    overflow-wrap: anywhere;
-    line-height: 1.18;
+    overflow-wrap: break-word;
+    /* Las palabras largas se cortan por sílaba y con guion (la página está en español). */
+    hyphens: auto;
+    line-height: 1.08;
 }
 
 .tablero .casillero[data-grupo-localidad]:is(:hover, :focus-visible) {
@@ -352,7 +370,10 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: var(--p-violeta) url("../images/barrio-luna-atardecer.png") center / cover no-repeat;
+    /* Resplandor del atardecer sobre el fondo violeta. */
+    background:
+        radial-gradient(ellipse at 20% 116%, #efaf79 0%, #c96d91 18%, #744177 41%, transparent 73%),
+        linear-gradient(161deg, #321747 6%, #4c2b76 49%, #1b173e 100%);
     border: 2px solid var(--tema-sombra);
 }
 .tablero__titulo {
@@ -381,7 +402,30 @@
 .tablero__centro:has(.dados-tablero:not([hidden])) .carcel-turno {
     display: none;
 }
-.dados-tablero__caras { display: flex; gap: 16px; }
+.dados-tablero__caras { display: flex; gap: 28px; }
+
+/* Dado que cae sobre el tablero: el dado se mueve y su sombra queda apoyada en la mesa. */
+.dados-tablero__dado {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+.dados-tablero__dado .aviso-global__dado {
+    position: relative;
+    z-index: 1;
+    /* Sin sombra propia: la pone .dados-tablero__sombra, que no sube con el dado. */
+    box-shadow: inset 0 -4px #cdb9ec, 0 5px 0 #6845a4;
+}
+.dados-tablero__sombra {
+    position: absolute;
+    left: 50%;
+    bottom: -12px;
+    width: 76px;
+    height: 18px;
+    margin-left: -38px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 85%) 0%, rgb(0 0 0 / 45%) 55%, transparent 72%);
+}
 .dados-tablero__total {
     padding: 4px 12px;
     border-radius: 8px;
@@ -420,7 +464,7 @@
     background: var(--p-superficie);
     color: var(--p-texto);
     font-family: var(--font-titulos);
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 800;
     cursor: pointer;
     box-shadow: 2px 2px 0 #111;
@@ -460,7 +504,7 @@
     background: var(--p-acento);
     color: var(--tema-sobre-acento);
     font-family: var(--font-titulos);
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 900;
     cursor: pointer;
     box-shadow: var(--p-sombra);
@@ -617,7 +661,7 @@
     .dados { gap: 5px; }
     .dado { width: 32px; height: 32px; }
     .btn-tirar { padding: 7px 12px; font-size: 14px; }
-    .casillero { padding: 1px; font-size: clamp(6px, 1.55cqw, 9px); }
+    .casillero { padding: 1px; font-size: clamp(7px, 1.8cqw, 8px); }
 }
 
 .btn-casillero {
@@ -679,9 +723,10 @@
     border-radius: 20px;
     background: var(--p-acento);
     color: var(--tema-sobre-acento);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.5px;
+    white-space: nowrap;
     box-shadow: 2px 2px 0 #111;
 }
 .etiqueta--vivo {
@@ -1765,7 +1810,7 @@
     color: var(--tema-texto);
     box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
     font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
-    font-size: clamp(6px, 0.85cqw, 11px);
+    font-size: clamp(8px, 1cqw, 14px);
     font-weight: 800;
     line-height: 1;
     text-align: center;
@@ -1787,53 +1832,65 @@
 .fichas-en-casillero {
     position: absolute;
     inset: 0;
-    display: flex;
-    align-content: center;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: min(54px, 100%);
-    height: min(54px, 100%);
-    margin: auto;
     z-index: 5;
+    container-type: size;
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    grid-auto-rows: max-content;
+    place-content: center;
+    justify-items: center;
+    gap: clamp(2px, 0.25cqw, 5px);
     pointer-events: none;
 }
+
+.fichas-en-casillero:not(:has(.ficha)) {
+    display: none;
+}
+
+/* Las cuatro fichas conservan espacio entre sí dentro del casillero. */
 .ficha {
-    position: static;
-    flex: 0 0 24px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid #111;
-    box-sizing: border-box;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .4);
-    transition: transform .15s ease;
+    --tam-ficha: min(42cqw, 42cqh, 58px);
+    width: var(--tam-ficha);
+    aspect-ratio: 1;
+    background: var(--sprite-ficha) center bottom / contain no-repeat;
+    filter: drop-shadow(1px 2px 0 rgb(0 0 0 / 45%));
     pointer-events: auto;
 }
 
+.ficha:only-child {
+    grid-column: 1 / -1;
+}
+
+.fichas-en-casillero:has(.ficha:nth-child(3)) .ficha:nth-child(3):last-child {
+    grid-column: 1 / -1;
+}
 .ficha-rojo {
-    background-color: #e74c5b;
+    --color-ficha: #e74c5b;
+    --sprite-ficha: url("../images/fichas/ficha-roja.png");
 }
 
 .ficha-azul {
-    background-color: #5dc7e5;
+    --color-ficha: #5dc7e5;
+    --sprite-ficha: url("../images/fichas/ficha-azul.png");
 }
 
 .ficha-verde {
-    background-color: #12B981;
+    --color-ficha: #12b981;
+    --sprite-ficha: url("../images/fichas/ficha-verde.png");
 }
 
 .ficha-amarillo {
-    background-color: #ffd24c;
+    --color-ficha: #ffd24c;
+    --sprite-ficha: url("../images/fichas/ficha-amarilla.png");
 }
 
 .historial__cabecera { display: flex; justify-content: space-between; align-items: center; }
 .historial__cabecera h2 {
     font-family: var(--font-titulos);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.6px;
+    white-space: nowrap;
     text-transform: uppercase;
     color: var(--p-acento);
 }
@@ -1870,7 +1927,7 @@
     border: var(--p-borde-grueso);
     border-radius: 8px;
     color: var(--p-texto);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
 }
 .historial__lista li[data-color="rojo"] { color: #ff8591; }
@@ -1902,13 +1959,13 @@
 }
 
 .ronda-titulo {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--p-texto-suave);
 }
 
 #ronda-actual {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 900;
     color: var(--p-acento);
 }
@@ -1955,7 +2012,7 @@
     box-shadow: 3px 3px 0 #111;
     font-family: var(--font-titulos, sans-serif);
     font-weight: 800;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
     pointer-events: none;
     transform-origin: top center;
@@ -2476,7 +2533,7 @@
     flex: 0 0 auto;
     min-height: 34px;
     padding: 5px 11px;
-    font-size: 13px;
+    font-size: 15px;
 }
 .partida__pie .btn-accion {
     background: #303036;
@@ -2497,7 +2554,7 @@
 .aviso-global #global-tirar {
     min-height: 46px;
     padding: 8px 20px;
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .partida__pie .btn-tirar:not(:disabled) {
@@ -2538,7 +2595,6 @@
     height: auto;
     max-height: max(200px, calc(100dvh - var(--alto-panel-inferior) - 150px - 2 * var(--separacion-bloques)));
     aspect-ratio: 12 / 5;
-    grid-template-rows: repeat(5, minmax(0, 1fr));
 }
 .partida__pie {
     grid-column: 1 / -1;
@@ -2552,9 +2608,9 @@
 .partida__pie .partida__lateral { grid-column: auto; height: var(--alto-panel-inferior); min-height: 0; }
 .partida__pie .historial { height: 100%; max-height: none; margin: 0; padding: 10px; gap: 8px; }
 .partida__pie .historial__cabecera { justify-content: space-between; gap: 10px; }
-.partida__pie .historial__cabecera h2 { font-size: 12px; }
+.partida__pie .historial__cabecera h2 { font-size: 14px; }
 .partida__pie .historial__lista { min-height: 0; flex: 1; overflow-y: auto; gap: 6px; }
-.partida__pie .historial__lista li { padding: 8px; font-size: 11px; line-height: 1.35; }
+.partida__pie .historial__lista li { padding: 8px; font-size: 13px; line-height: 1.35; }
 @media (max-width: 640px) {
     .partida__pie .acciones { min-height: 0; }
     .partida__pie .btn-tirar { margin-left: 0; }
@@ -2564,14 +2620,63 @@
 
 }
 
-/* Ventana amplia: distribución original con historial al costado del tablero. */
+/* Ventana amplia: el tablero ocupa todo el alto y al costado van el historial y, debajo, los botones. */
 @media (min-width: 1251px) {
-    .pagina-partida { grid-template-rows: auto minmax(0, 1fr) auto; }
+    /* La fila de arriba llega hasta el borde de la mesa, así el tablero queda apoyado sobre ella. */
+    .pagina-partida {
+        grid-template-rows: minmax(calc(var(--borde-mesa) - 1.5rem), auto) minmax(0, 1fr);
+        /* El espacio que sobra a los costados se reparte en tres partes iguales:
+           borde izquierdo – tablero – columna del historial – borde derecho. */
+        --hueco-minimo: 0.75rem;
+        --ancho-lateral: 320px;
+        /* Alto que le queda al tablero: la fila de abajo menos el margen de mesa que dejamos debajo. */
+        --alto-tablero: calc(100dvh - var(--borde-mesa) - 0.75rem - clamp(20px, 6dvh, 64px));
+        /* El tablero usa todo el ancho posible, sin pasar de 3 veces su alto (proporción máxima 3:1). */
+        --ancho-tablero: min(calc(100vw - var(--ancho-lateral) - 3 * var(--hueco-minimo)), calc(var(--alto-tablero) * 3));
+        grid-template-columns: var(--ancho-tablero) var(--ancho-lateral);
+        justify-content: space-evenly;
+        column-gap: 0;
+        padding-inline: 0;
+    }
     .partida__main { grid-column: 1; grid-row: 2; }
-    .zona-tablero { box-sizing: border-box; }
-    .partida__pie { display: contents; }
-    .partida__pie .acciones { grid-column: 1; grid-row: 3; }
-    .partida__pie .partida__lateral { grid-column: 2; grid-row: 2 / span 2; }
+    /* El contenedor del chat no ocupa lugar en la grilla (su botón flota): si no, crea una fila vacía
+       cuya separación le quita 12 px al tablero y descuadra el cálculo de --alto-tablero. */
+    #chat-partida { display: contents; }
+    /* Espacio de mesa debajo del tablero, para que el marco y la sombra no se corten. */
+    .zona-tablero { box-sizing: border-box; padding-bottom: clamp(20px, 6dvh, 64px); }
+    .partida__pie {
+        grid-column: 2;
+        grid-row: 2;
+        display: flex;
+        flex-direction: column;
+        gap: var(--p-gap);
+        min-height: 0;
+        /* El historial arranca más arriba que el tablero, un poco por debajo del borde de la mesa. */
+        margin-top: calc(var(--filo-mesa) - var(--borde-mesa) + clamp(12px, 2.5dvh, 28px));
+        /* Lugar libre abajo para el botón flotante del chat. */
+        padding-bottom: 92px;
+    }
+    .partida__pie .partida__lateral { order: -1; }
+    /* Botones centrados y parejos dentro del recuadro; el recuadro no se aplasta. */
+    .partida__pie .acciones {
+        flex-shrink: 0;
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        justify-content: stretch;
+        padding: 10px;
+    }
+    .partida__pie .acciones__secundarias {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+    }
+    .partida__pie .acciones__secundarias :is(.btn-accion, .btn-tirar, .deuda-acceso) {
+        width: 100%;
+        margin: 0;
+        text-align: center;
+    }
+    .partida__pie .acciones__secundarias :is(.btn-tirar, .deuda-acceso) { grid-column: 1 / -1; }
 }
 
 .aviso-global__acciones #global-deuda {
@@ -2580,3 +2685,156 @@
     color: var(--tema-texto);
 }
 .aviso-global__acciones #global-deuda:hover { background: #432d75; }
+
+/* ===== Mate de la mesa =====
+   La pava, el chorro y el vapor se ubican con coordenadas de la imagen de fondo (1756 × 895).
+   El fondo se muestra con "cover" y centrado, así que 1 píxel de la imagen mide --escala-fondo en pantalla. */
+.mesa-mate {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    container-type: size;
+    pointer-events: none;
+}
+.mesa-mate > * {
+    --escala-fondo: max(100cqw / 1756, 100cqh / 895);
+    position: absolute;
+    /* Convierte una posición de la imagen (--x, --y) en una posición de la pantalla. */
+    left: calc(50cqw + (var(--x) - 878) * var(--escala-fondo));
+    top: calc(50cqh + (var(--y) - 447.5) * var(--escala-fondo));
+    width: calc(var(--ancho) * var(--escala-fondo));
+    height: calc(var(--alto) * var(--escala-fondo));
+}
+/* Sombra de la pava sobre la mesa: se achica y aclara cuando la pava se levanta. */
+.mesa-mate__sombra {
+    --x: 905; --y: 328; --ancho: 190; --alto: 24;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgb(40 8 0 / 55%) 0%, rgb(40 8 0 / 25%) 55%, transparent 72%);
+}
+/* La imagen viene al doble de tamaño (415 × 428) para que se vea nítida en pantallas grandes. */
+.mesa-mate__pava {
+    --x: 900; --y: 131; --ancho: 208; --alto: 214;
+    max-width: none;
+    /* Gira apoyada en el borde de abajo a la derecha, como cuando se levanta para cebar. */
+    transform-origin: 76.1% 97%;
+    transition: filter 0.2s ease;
+}
+.mesa-mate__chorro {
+    --x: 1145; --y: 224; --ancho: 3; --alto: 37;
+    border-radius: 999px;
+    background: linear-gradient(#d9f3ff, #8fd3f2 60%, rgb(143 211 242 / 40%));
+    transform-origin: top center;
+    rotate: 29deg;
+    scale: 1 0;
+    opacity: 0;
+}
+.mesa-mate__vapor {
+    --x: 1118; --y: 240; --ancho: 16; --alto: 18;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgb(255 240 250 / 80%) 0%, rgb(255 230 245 / 40%) 45%, transparent 70%);
+    opacity: 0;
+}
+
+/* Zona invisible para hacer clic sobre la pava y el mate. Solo en pantalla ancha,
+   porque en pantallas chicas el tablero tapa esa parte de la mesa. */
+.mesa-mate__boton { display: none; }
+@media (min-width: 1251px) {
+    .mesa-mate__boton {
+        --escala-fondo: max(100vw / 1756, 100dvh / 895);
+        display: block;
+        position: fixed;
+        z-index: 2;
+        left: calc(50vw + (900 - 878) * var(--escala-fondo));
+        top: calc(50dvh + (190 - 447.5) * var(--escala-fondo));
+        width: calc(290 * var(--escala-fondo));
+        height: calc(160 * var(--escala-fondo));
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        cursor: pointer;
+    }
+    .mesa-mate__boton:focus-visible { outline: 2px dashed #ffda6a; outline-offset: 2px; }
+    /* Al pasar el mouse, la pava brilla un poco para mostrar que se puede tocar. */
+    .mesa-mate:has(+ .mesa-mate__boton:is(:hover, :focus-visible)) .mesa-mate__pava {
+        filter: drop-shadow(0 0 3px rgb(255 218 106 / 80%));
+    }
+}
+
+/* Sello de "VENDIDO" que cae sobre el casillero al comprarse (lo crea animarCompraCasillero). */
+.sello-compra {
+    --color-sello: #ffda6a;
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    margin: auto;
+    width: max-content;
+    height: max-content;
+    padding: 0.15em 0.45em;
+    border: 0.18em solid var(--color-sello);
+    border-radius: 0.35em;
+    background: rgb(17 12 24 / 78%);
+    color: var(--color-sello);
+    font-family: var(--font-titulos);
+    font-size: clamp(8px, 1.15cqw, 15px);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 50%);
+    rotate: -14deg;
+    pointer-events: none;
+}
+.sello-compra[data-color="rojo"] { --color-sello: #ff6b78; }
+.sello-compra[data-color="azul"] { --color-sello: #5dc7e5; }
+.sello-compra[data-color="verde"] { --color-sello: #2fd59a; }
+.sello-compra[data-color="amarillo"] { --color-sello: #ffd24c; }
+
+/* Monedas que vuelan al pagar un alquiler (las crea animarPagoAlquiler). */
+.moneda-alquiler {
+    position: fixed;
+    z-index: 30;
+    width: 22px;
+    height: 22px;
+    translate: -50% -50%;
+    border: 2px solid #8a5a00;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff6c2 0 18%, #ffd24c 40%, #e0a314 75%, #b07a00 100%);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 45%);
+    pointer-events: none;
+}
+.moneda-alquiler::before {
+    content: "$";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #7a4c00;
+    font: 900 12px/1 var(--font-titulos), sans-serif;
+}
+
+/* Monto que sube y se desvanece sobre la tarjeta del jugador: rojo si pierde, verde si gana. */
+.monto-flotante {
+    position: fixed;
+    z-index: 31;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font: 900 15px/1.2 var(--font-titulos), sans-serif;
+    text-shadow: 1px 1px 0 #000;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.monto-flotante--pierde { color: #ff7a85; background: rgb(60 10 18 / 75%); }
+.monto-flotante--gana { color: #5df0a6; background: rgb(8 48 30 / 75%); }
+
+/* Papelitos del confeti al pasar por Inicio (los crea animarPasoPorInicio). */
+.confeti {
+    position: fixed;
+    z-index: 30;
+    width: 7px;
+    height: 10px;
+    margin: -5px 0 0 -3px;
+    border-radius: 1px;
+    box-shadow: 0 1px 1px rgb(0 0 0 / 35%);
+    pointer-events: none;
+}
