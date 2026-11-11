@@ -13,11 +13,13 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorSalaWebSocket;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTriviaWebSocket;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,28 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ObservadoresConfigTest {
+
+    @Test
+    void springConectaElPublicadorDeTriviaConElObservadorWebSocket() {
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(NotificadorPartida.class, () -> notificador);
+            contexto.register(ObservadoresConfig.class, ObservadorTriviaWebSocket.class,
+                    PublicadorTriviaInyectado.class);
+            contexto.refresh();
+            Map<String, Object> contenido = Map.of("contenido", "notificacion de prueba");
+
+            contexto.getBean(PublicadorTriviaInyectado.class).trivia
+                    .notificar(new EventoTriviaActualizada("ABC123", contenido));
+
+            verify(notificador).notificarTrivia("ABC123", contenido);
+        }
+    }
+
+    static class PublicadorTriviaInyectado {
+        @Autowired
+        private PublicadorEventos<EventoTriviaActualizada> trivia;
+    }
 
     @Test
     void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() {

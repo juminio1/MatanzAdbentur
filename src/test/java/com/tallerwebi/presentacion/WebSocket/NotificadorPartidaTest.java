@@ -27,6 +27,17 @@ public class NotificadorPartidaTest {
         notificadorPartida = new NotificadorPartida(templateMock);
     }
 
+
+   //comprueba que el back notifique por websockets la trivia.
+    @Test
+    public void dadoUnaNotificacionDeTriviaLaPublicaEnElTopicDeLaPartidaConElContenidoEnviado() {
+        Map<String, Object> notificacion = Map.of("contenido", "notificacion de prueba");
+
+        notificadorPartida.notificarTrivia("ABC123", notificacion);
+
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/trivia", notificacion);
+    }
+
     @Test
     void laTiradaAutomaticaSePublicaComoTurnoVencido() {
         var resultado = new com.tallerwebi.dominio.resultados.ResultadoJugada(
