@@ -233,3 +233,39 @@ ON CONFLICT (id) DO UPDATE SET
     valor = EXCLUDED.valor,
     tipoEventoGlobal = EXCLUDED.tipoEventoGlobal;
 
+-- Las respuestas correctas se guardan como índices de 0 a 3.
+INSERT INTO pregunta_trivia (
+    enunciado, opcion1, opcion2, opcion3, opcion4, respuesta_correcta, dificultad
+) VALUES
+    ('¿Cuál es la capital de Argentina?', 'Córdoba', 'Buenos Aires', 'Mendoza', 'Rosario', 1, 'SIMPLE'),
+    ('¿Qué colores predominan en la bandera argentina?', 'Rojo y blanco', 'Verde y amarillo', 'Celeste y blanco', 'Azul y rojo', 2, 'SIMPLE'),
+    ('¿Cuál es la moneda de Argentina?', 'Peso argentino', 'Real', 'Guaraní', 'Sol', 0, 'SIMPLE'),
+    ('¿Con qué país limita Argentina al oeste a lo largo de los Andes?', 'Brasil', 'Paraguay', 'Uruguay', 'Chile', 3, 'SIMPLE'),
+    ('¿En qué deporte ganó Argentina el Mundial de Catar 2022?', 'Rugby', 'Fútbol', 'Básquet', 'Hockey sobre césped', 1, 'SIMPLE'),
+    ('¿Qué infusión tradicional se prepara con yerba y se toma con bombilla?', 'Café', 'Té negro', 'Mate', 'Submarino', 2, 'SIMPLE'),
+    ('¿En qué ciudad argentina está el Obelisco de la avenida 9 de Julio?', 'Buenos Aires', 'La Plata', 'Santa Fe', 'Salta', 0, 'SIMPLE'),
+    ('¿Qué océano baña la costa argentina?', 'Pacífico', 'Índico', 'Ártico', 'Atlántico', 3, 'SIMPLE'),
+    ('¿En qué provincia argentina se encuentran las Cataratas del Iguazú?', 'Corrientes', 'Misiones', 'Chaco', 'Formosa', 1, 'SIMPLE'),
+    ('¿Qué baile rioplatense está asociado con Carlos Gardel?', 'Chacarera', 'Zamba', 'Tango', 'Carnavalito', 2, 'SIMPLE'),
+    ('¿En qué ciudad se declaró la independencia argentina en 1816?', 'Buenos Aires', 'San Miguel de Tucumán', 'Córdoba', 'Salta', 1, 'MEDIA'),
+    ('¿Quién escribió El Aleph?', 'Julio Cortázar', 'Ernesto Sabato', 'Jorge Luis Borges', 'Adolfo Bioy Casares', 2, 'MEDIA'),
+    ('¿En qué provincia se encuentra el Aconcagua?', 'Mendoza', 'San Juan', 'La Rioja', 'Neuquén', 0, 'MEDIA'),
+    ('¿Qué río separa las ciudades de Posadas y Encarnación?', 'Uruguay', 'Paraguay', 'Pilcomayo', 'Paraná', 3, 'MEDIA'),
+    ('¿En qué provincia está el glaciar Perito Moreno?', 'Tierra del Fuego', 'Santa Cruz', 'Chubut', 'Río Negro', 1, 'MEDIA'),
+    ('¿Quién creó la bandera argentina?', 'José de San Martín', 'Mariano Moreno', 'Manuel Belgrano', 'Martín Miguel de Güemes', 2, 'MEDIA'),
+    ('¿Qué ciudad fue fundada en 1882 como capital de la provincia de Buenos Aires?', 'La Plata', 'Bahía Blanca', 'Mar del Plata', 'San Nicolás', 0, 'MEDIA'),
+    ('¿Qué provincia argentina alberga el Parque Nacional Talampaya?', 'San Luis', 'Mendoza', 'Catamarca', 'La Rioja', 3, 'MEDIA'),
+    ('¿Qué músico argentino compuso Libertango?', 'Aníbal Troilo', 'Astor Piazzolla', 'Osvaldo Pugliese', 'Juan D’Arienzo', 1, 'MEDIA'),
+    ('¿Quién escribió El túnel?', 'Roberto Arlt', 'Ricardo Piglia', 'Ernesto Sabato', 'Julio Cortázar', 2, 'MEDIA'),
+    ('¿En qué año tuvo lugar la batalla de Caseros?', '1845', '1852', '1859', '1861', 1, 'COMPLICADA'),
+    ('¿Qué científico argentino compartió el Nobel de Medicina de 1984 por el trabajo sobre anticuerpos monoclonales?', 'Bernardo Houssay', 'Luis Federico Leloir', 'César Milstein', 'René Favaloro', 2, 'COMPLICADA'),
+    ('¿Qué ley de 1912 estableció el voto secreto y obligatorio para los varones argentinos?', 'Ley 8871', 'Ley 1420', 'Ley 13010', 'Ley 24012', 0, 'COMPLICADA'),
+    ('¿Quién escribió Museo de la Novela de la Eterna, publicado de forma póstuma?', 'Oliverio Girondo', 'Leopoldo Marechal', 'Ricardo Güiraldes', 'Macedonio Fernández', 3, 'COMPLICADA'),
+    ('¿En qué provincia argentina se encuentra el Parque Nacional El Leoncito?', 'Mendoza', 'San Juan', 'La Rioja', 'San Luis', 1, 'COMPLICADA'),
+    ('¿Qué ciudad fue sede del Congreso que sancionó la Constitución argentina de 1853?', 'Paraná', 'Buenos Aires', 'Santa Fe', 'San Miguel de Tucumán', 2, 'COMPLICADA'),
+    ('¿En qué año se lanzó el satélite argentino ARSAT-1?', '2014', '2010', '2012', '2016', 0, 'COMPLICADA'),
+    ('¿Qué arqueólogo argentino inició excavaciones en el Pucará de Tilcara junto con Salvador Debenedetti?', 'Florentino Ameghino', 'Juan Bautista Ambrosetti', 'Eduardo Holmberg', 'Francisco Moreno', 1, 'COMPLICADA'),
+    ('¿Quién dirigió la película argentina La historia oficial?', 'Adolfo Aristarain', 'Fernando Solanas', 'Luis Puenzo', 'Héctor Olivera', 2, 'COMPLICADA'),
+    ('¿En qué provincia está el campo de lava de la Payunia?', 'Neuquén', 'Río Negro', 'San Juan', 'Mendoza', 3, 'COMPLICADA')
+ON CONFLICT (enunciado) DO NOTHING;
+
