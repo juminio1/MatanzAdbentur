@@ -332,6 +332,12 @@ function conectarWebSocketTurnos(base, codigo) {
                 aplicarTurnoDTO(turnoDTO);
             });
 
+            // Sincroniza la ruleta entre todos los jugadores de la partida.
+            stompClient.subscribe(`/topic/partida/${codigo}/ruleta`, (mensaje) => {
+                const estadoRuleta = JSON.parse(mensaje.body);
+                document.dispatchEvent(new CustomEvent("ruleta:estado", { detail: estadoRuleta }));
+            });
+
             stompClient.subscribe(`/topic/partida/${codigo}`, async (mensaje) => {
                 const movimiento = JSON.parse(mensaje.body);
                 await procesarMovimiento(movimiento);
@@ -408,6 +414,7 @@ function conectarWebSocketTurnos(base, codigo) {
                 if (modalOfertaRecibida?.open) return; // Se muestra al cerrar la oferta actual.
                 mostrarOfertaRecibida(oferta);
             });
+
             // Recupera las ofertas que llegaron antes de conectarse (por ejemplo, al recargar la página).
             revisarOfertasPendientes();
             stompClient.subscribe(`/topic/partida/${codigo}/abandono`, async (mensaje) => {

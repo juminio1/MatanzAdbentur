@@ -1,0 +1,305 @@
+
+.panel-ruleta[hidden] {
+    display: none;
+}
+
+.panel-ruleta {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+
+    box-sizing: border-box;
+    width: min(92vw, 490px);
+    max-height: 94vh;
+    overflow-y: auto;
+
+    padding: 24px 30px;
+    background: #222222;
+    color: #ffffff;
+
+    border: 3px solid #ffc247;
+    border-radius: 26px;
+    box-shadow: 0 18px 70px #000b;
+
+    text-align: center;
+    font-family: inherit;
+}
+
+.ruleta-cabecera h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(23px, 4vw, 30px);
+    font-weight: 800;
+}
+
+.ruleta-decoracion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    margin: 10px auto 18px;
+    color: #ffc247;
+    font-size: 23px;
+}
+
+.ruleta-decoracion span:first-child,
+.ruleta-decoracion span:last-child {
+    width: 75px;
+    height: 3px;
+    background: #ffc247;
+    border-radius: 10px;
+}
+
+.ruleta-contenedor {
+    position: relative;
+    width: min(100%, 330px);
+    aspect-ratio: 1;
+    margin: 0 auto 18px;
+}
+
+#ruleta-visual {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 4px #e7ad38,
+        0 8px 22px #0008;
+}
+
+.ruleta-puntero {
+    position: absolute;
+    right: -13px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+
+    width: 0;
+    height: 0;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent;
+    border-right: 30px solid #ffffff;
+
+    filter: drop-shadow(0 2px 3px #0009);
+    pointer-events: none;
+}
+
+.ruleta-resultado {
+    display: inline-block;
+    min-width: 210px;
+    margin: 10px auto 16px;
+    padding: 10px 18px;
+
+    color: #ffffff;
+    background: #191919;
+    border: 1px solid #bc903d;
+    border-radius: 16px;
+
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.ruleta-resultado--facil {
+    color: #53d99c;
+}
+
+.ruleta-resultado--medio {
+    color: #ffcf56;
+}
+
+.ruleta-resultado--dificil {
+    color: #ff7777;
+}
+
+.ruleta-premios {
+    margin: 0 auto 18px;
+    padding: 14px 18px;
+
+    background: #292929;
+    border: 1px solid #766950;
+    border-radius: 15px;
+
+    text-align: left;
+}
+
+.ruleta-premios h3 {
+    margin: 0 0 10px;
+    text-align: center;
+    color: #ffd16b;
+    font-size: 18px;
+}
+
+.ruleta-premio {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.ruleta-premio + .ruleta-premio {
+    border-top: 1px solid #484848;
+}
+
+.ruleta-color {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+}
+
+.ruleta-color--facil {
+    background: #279161;
+}
+
+.ruleta-color--medio {
+    background: #d69a2a;
+}
+
+.ruleta-color--dificil {
+    background: #d14848;
+}
+
+.ruleta-btn-girar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    width: min(100%, 250px);
+    margin: 0 auto 12px;
+    padding: 13px 20px;
+
+    background: linear-gradient(
+        180deg,
+        #ffe090 0%,
+        #ffc53d 45%,
+        #eda900 100%
+    );
+
+    color: #241900;
+    border: 2px solid #ffdb7e;
+    border-radius: 15px;
+    box-shadow: 0 5px 0 #9c6900;
+
+    font-size: 23px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.ruleta-btn-girar:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.ruleta-btn-girar:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.ruleta-btn-girar span {
+    font-size: 30px;
+    line-height: 1;
+}
+
+.ruleta-btn-cerrar {
+    display: block;
+    margin: 12px auto 0;
+    padding: 8px 20px;
+
+    background: #393939;
+    color: #ffffff;
+    border: 1px solid #777777;
+    border-radius: 9px;
+
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.ruleta-btn-cerrar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-height: 740px) {
+    .panel-ruleta {
+        padding: 14px 20px;
+    }
+
+    .ruleta-contenedor {
+        width: min(100%, 240px);
+    }
+
+    .ruleta-premio {
+        padding: 6px 0;
+    }
+
+
+
+}
+
+
+/* Tipografía redondeada de la ruleta */
+.panel-ruleta,
+.panel-ruleta button {
+    font-family: "Nunito", "Trebuchet MS", sans-serif;
+}
+
+.ruleta-cabecera h2 {
+    font-size: 30px;
+    font-weight: 900;
+    letter-spacing: -0.6px;
+}
+
+.ruleta-premios h3 {
+    font-weight: 900;
+}
+
+.ruleta-premio {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.ruleta-premio strong {
+    font-weight: 900;
+}
+
+.ruleta-resultado {
+    font-weight: 900;
+}
+
+.ruleta-btn-girar {
+    font-weight: 900;
+    letter-spacing: 0.5px;
+}
+
+/* Colores pastel que coinciden con los segmentos */
+.ruleta-color--facil {
+    background: #83CBA8;
+}
+
+.ruleta-color--medio {
+    background: #F5CA78;
+}
+
+.ruleta-color--dificil {
+    background: #EF9299;
+}
+
+/* Cuenta regresiva para el giro automático */
+.ruleta-temporizador {
+    margin: 6px 0 14px;
+    color: #F5CA78;
+    font-family: "Nunito", "Trebuchet MS", sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.ruleta-temporizador[hidden] {
+    display: none;
+}
+
+
