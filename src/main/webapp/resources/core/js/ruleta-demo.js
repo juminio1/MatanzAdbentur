@@ -3,7 +3,7 @@ import { Wheel } from "./vendor/spin-wheel-esm.js";
 import { solicitarSorteoPartida, consultarEstadoRuleta } from "./servicio-ruleta.js";
 import { calcularSegundosRestantes } from "./temporizador-ruleta.js";
 
-import { crearRuleta, girarRuleta } from "./ruleta.js";
+import { crearRuleta, girarRuleta } from "./ruleta.js?v=sin-texto-1";
 
 export function inicializarRuleta(contenedor) {
     return crearRuleta(contenedor, Wheel);
