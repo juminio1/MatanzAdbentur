@@ -233,12 +233,26 @@ ON CONFLICT (id) DO UPDATE SET
     valor = EXCLUDED.valor,
     tipoEventoGlobal = EXCLUDED.tipoEventoGlobal;
 
+-- Actualiza el banco en instalaciones que ya cargaron las preguntas anteriores.
+UPDATE pregunta_trivia
+SET opcion4 = 'Azul y blanco'
+WHERE enunciado = '¿Qué colores predominan en la bandera argentina?'
+    AND opcion4 = 'Azul y rojo';
+
+DELETE FROM pregunta_trivia
+WHERE enunciado IN (
+    '¿Qué río separa las ciudades de Posadas y Encarnación?',
+    '¿Qué provincia argentina alberga el Parque Nacional Talampaya?',
+    '¿Quién escribió El túnel?',
+    '¿Qué ley de 1912 estableció el voto secreto y obligatorio para los varones argentinos?'
+);
+
 -- Las respuestas correctas se guardan como índices de 0 a 3.
 INSERT INTO pregunta_trivia (
     enunciado, opcion1, opcion2, opcion3, opcion4, respuesta_correcta, dificultad
 ) VALUES
     ('¿Cuál es la capital de Argentina?', 'Córdoba', 'Buenos Aires', 'Mendoza', 'Rosario', 1, 'SIMPLE'),
-    ('¿Qué colores predominan en la bandera argentina?', 'Rojo y blanco', 'Verde y amarillo', 'Celeste y blanco', 'Azul y rojo', 2, 'SIMPLE'),
+    ('¿Qué colores predominan en la bandera argentina?', 'Rojo y blanco', 'Verde y amarillo', 'Celeste y blanco', 'Azul y blanco', 2, 'SIMPLE'),
     ('¿Cuál es la moneda de Argentina?', 'Peso argentino', 'Real', 'Guaraní', 'Sol', 0, 'SIMPLE'),
     ('¿Con qué país limita Argentina al oeste a lo largo de los Andes?', 'Brasil', 'Paraguay', 'Uruguay', 'Chile', 3, 'SIMPLE'),
     ('¿En qué deporte ganó Argentina el Mundial de Catar 2022?', 'Rugby', 'Fútbol', 'Básquet', 'Hockey sobre césped', 1, 'SIMPLE'),
@@ -250,16 +264,16 @@ INSERT INTO pregunta_trivia (
     ('¿En qué ciudad se declaró la independencia argentina en 1816?', 'Buenos Aires', 'San Miguel de Tucumán', 'Córdoba', 'Salta', 1, 'MEDIA'),
     ('¿Quién escribió El Aleph?', 'Julio Cortázar', 'Ernesto Sabato', 'Jorge Luis Borges', 'Adolfo Bioy Casares', 2, 'MEDIA'),
     ('¿En qué provincia se encuentra el Aconcagua?', 'Mendoza', 'San Juan', 'La Rioja', 'Neuquén', 0, 'MEDIA'),
-    ('¿Qué río separa las ciudades de Posadas y Encarnación?', 'Uruguay', 'Paraguay', 'Pilcomayo', 'Paraná', 3, 'MEDIA'),
+    ('¿Qué instrumento es característico de las orquestas de tango?', 'Charango', 'Quena', 'Bombo legüero', 'Bandoneón', 3, 'MEDIA'),
     ('¿En qué provincia está el glaciar Perito Moreno?', 'Tierra del Fuego', 'Santa Cruz', 'Chubut', 'Río Negro', 1, 'MEDIA'),
     ('¿Quién creó la bandera argentina?', 'José de San Martín', 'Mariano Moreno', 'Manuel Belgrano', 'Martín Miguel de Güemes', 2, 'MEDIA'),
     ('¿Qué ciudad fue fundada en 1882 como capital de la provincia de Buenos Aires?', 'La Plata', 'Bahía Blanca', 'Mar del Plata', 'San Nicolás', 0, 'MEDIA'),
-    ('¿Qué provincia argentina alberga el Parque Nacional Talampaya?', 'San Luis', 'Mendoza', 'Catamarca', 'La Rioja', 3, 'MEDIA'),
+    ('¿Cuál es el ingrediente principal de la humita?', 'Papa', 'Zapallo', 'Mandioca', 'Choclo', 3, 'MEDIA'),
     ('¿Qué músico argentino compuso Libertango?', 'Aníbal Troilo', 'Astor Piazzolla', 'Osvaldo Pugliese', 'Juan D’Arienzo', 1, 'MEDIA'),
-    ('¿Quién escribió El túnel?', 'Roberto Arlt', 'Ricardo Piglia', 'Ernesto Sabato', 'Julio Cortázar', 2, 'MEDIA'),
+    ('¿Quién escribió el Martín Fierro?', 'Esteban Echeverría', 'Domingo Faustino Sarmiento', 'José Hernández', 'Ricardo Güiraldes', 2, 'MEDIA'),
     ('¿En qué año tuvo lugar la batalla de Caseros?', '1845', '1852', '1859', '1861', 1, 'COMPLICADA'),
     ('¿Qué científico argentino compartió el Nobel de Medicina de 1984 por el trabajo sobre anticuerpos monoclonales?', 'Bernardo Houssay', 'Luis Federico Leloir', 'César Milstein', 'René Favaloro', 2, 'COMPLICADA'),
-    ('¿Qué ley de 1912 estableció el voto secreto y obligatorio para los varones argentinos?', 'Ley 8871', 'Ley 1420', 'Ley 13010', 'Ley 24012', 0, 'COMPLICADA'),
+    ('¿En qué año se sancionó la ley de voto femenino en Argentina?', '1947', '1930', '1951', '1955', 0, 'COMPLICADA'),
     ('¿Quién escribió Museo de la Novela de la Eterna, publicado de forma póstuma?', 'Oliverio Girondo', 'Leopoldo Marechal', 'Ricardo Güiraldes', 'Macedonio Fernández', 3, 'COMPLICADA'),
     ('¿En qué provincia argentina se encuentra el Parque Nacional El Leoncito?', 'Mendoza', 'San Juan', 'La Rioja', 'San Luis', 1, 'COMPLICADA'),
     ('¿Qué ciudad fue sede del Congreso que sancionó la Constitución argentina de 1853?', 'Paraná', 'Buenos Aires', 'Santa Fe', 'San Miguel de Tucumán', 2, 'COMPLICADA'),
