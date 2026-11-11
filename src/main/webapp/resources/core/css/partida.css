@@ -342,6 +342,7 @@
 
 .casillero__nombre {
     font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
+    font-size: 0.95em;
     font-weight: 800;
 }
 
