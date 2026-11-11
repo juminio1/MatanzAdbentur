@@ -197,7 +197,7 @@
 }
 
 .trivia__opcion:not(:disabled):hover,
-.trivia__opcion:focus-visible {
+.trivia__opcion:not(:disabled):focus-visible {
     border-color: var(--trivia-ambar);
     transform: translateY(-1px);
     outline: none;
