@@ -1833,6 +1833,7 @@
     --tam-ficha: clamp(10px, 3.8cqw, 56px);
     position: absolute;
     inset: 0;
+    translate: 0 -5px;
     display: flex;
     /* Las fichas se apoyan abajo del casillero, lejos de la etiqueta del precio. */
     align-content: flex-end;
@@ -1865,6 +1866,7 @@
     width: var(--tam-ficha, 18px);
     aspect-ratio: 1;
     background: var(--sprite-ficha) center bottom / contain no-repeat;
+    transform: scale(1.25);
     filter: drop-shadow(1px 2px 0 rgb(0 0 0 / 45%));
     transition: transform .15s ease;
     pointer-events: auto;
