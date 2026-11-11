@@ -5,7 +5,11 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>El Matancero – Partida</title>
-        <link rel="stylesheet" th:href="@{/css/tema-oscuro.css(v=violeta-1)}" href="../../../resources/core/css/tema-oscuro.css">
+        <link
+            rel="stylesheet"
+            th:href="@{/css/tema-oscuro.css(v=violeta-1)}"
+            href="../../../resources/core/css/tema-oscuro.css"
+        />
         <link
             rel="stylesheet"
             th:href="@{/css/style.css}"
@@ -16,19 +20,63 @@
             th:href="@{/css/partida.css(v=barrio-13)}"
             href="../../../resources/core/css/partida.css?v=barrio-13"
         />
-        <link rel="stylesheet" th:href="@{/css/chat-partida.css(v=violeta-1)}" href="../../../resources/core/css/chat-partida.css?v=violeta-1">
-        <link rel="stylesheet" th:href="@{/css/trivia.css(v=1)}" href="../../../resources/core/css/trivia.css?v=1">
+        <link
+            rel="stylesheet"
+            th:href="@{/css/chat-partida.css(v=violeta-1)}"
+            href="../../../resources/core/css/chat-partida.css?v=violeta-1"
+        />
+        <link
+            rel="stylesheet"
+            th:href="@{/css/ruleta.css}"
+            href="../../../resources/core/css/ruleta.css"
+        />
+        <link
+            rel="stylesheet"
+            th:href="@{/css/trivia.css(v=2)}"
+            href="../../../resources/core/css/trivia.css?v=2"
+        />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+        <link
+            href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap"
+            rel="stylesheet"
+        />
     </head>
     <body class="pagina-partida">
-        <dialog id="aviso-espera-quiebra" class="aviso-espera-quiebra"
-                aria-labelledby="espera-quiebra-titulo" aria-describedby="espera-quiebra-texto">
+        <dialog
+            id="aviso-espera-quiebra"
+            class="aviso-espera-quiebra"
+            aria-labelledby="espera-quiebra-titulo"
+            aria-describedby="espera-quiebra-texto"
+        >
             <div role="status" aria-live="polite">
                 <h2 id="espera-quiebra-titulo" tabindex="-1" autofocus>Espera un toque</h2>
-                <p id="espera-quiebra-texto">Un jugador está solucionando su quiebra<span class="espera-puntos" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
+                <p id="espera-quiebra-texto">
+                    Un jugador está solucionando su quiebra<span
+                        class="espera-puntos"
+                        aria-hidden="true"
+                        ><span>.</span><span>.</span><span>.</span></span
+                    >
+                </p>
             </div>
             <div class="deuda-acciones">
-                <button type="button" id="espera-ver-propiedades" class="btn-casillero btn-casillero--secundario">Ver mis propiedades</button>
-                <button type="button" class="btn-casillero btn-casillero--secundario" data-abrir-chat aria-controls="chat-telefono">Chat <span data-chat-contador hidden>0</span></button>
+                <button
+                    type="button"
+                    id="espera-ver-propiedades"
+                    class="btn-casillero btn-casillero--secundario"
+                >
+                    Ver mis propiedades
+                </button>
+                <button
+                    type="button"
+                    class="btn-casillero btn-casillero--secundario"
+                    data-abrir-chat
+                    aria-controls="chat-telefono"
+                >
+                    Chat <span data-chat-contador hidden>0</span>
+                </button>
             </div>
         </dialog>
         <!-- Barra superior: contador + jugadores -->
@@ -237,8 +285,14 @@
                             </div>
                         </li>
 
-                        <li class="casillero casillero--comisaria" style="--col: 4; --fila: 5" data-casillero="8">
-                            <span class="casillero__nombre casillero__nombre--comisaria">COMISARÍA</span>
+                        <li
+                            class="casillero casillero--comisaria"
+                            style="--col: 4; --fila: 5"
+                            data-casillero="8"
+                        >
+                            <span class="casillero__nombre casillero__nombre--comisaria"
+                                >COMISARÍA</span
+                            >
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -608,112 +662,193 @@
                                     <span class="aviso-global__dado" data-cara="1"></span>
                                     <span class="aviso-global__dado" data-cara="1"></span>
                                 </div>
-                                <output id="dados-tablero-total" class="dados-tablero__total"></output>
+                                <output
+                                    id="dados-tablero-total"
+                                    class="dados-tablero__total"
+                                ></output>
                             </div>
-                            <section class="carcel-turno" id="carcel-turno" aria-labelledby="carcel-turno-titulo" hidden>
+                            <section
+                                class="carcel-turno"
+                                id="carcel-turno"
+                                aria-labelledby="carcel-turno-titulo"
+                                hidden
+                            >
                                 <h2 id="carcel-turno-titulo">Comisaría</h2>
                                 <p class="carcel-turno__texto" id="carcel-turno-texto"></p>
-                                <button type="button" class="btn-casillero btn-casillero--secundario" id="btn-pagar-fianza">
+                                <button
+                                    type="button"
+                                    class="btn-casillero btn-casillero--secundario"
+                                    id="btn-pagar-fianza"
+                                >
                                     Pagar fianza ($100)
                                 </button>
                             </section>
                         </li>
                     </ol>
                 </div>
-
             </section>
         </main>
 
         <footer class="partida__pie" aria-label="Controles e historial">
-                <!-- Barra de acciones -->
+            <!-- Barra de acciones -->
 
-                <div class="acciones" role="group" aria-label="Acciones del turno">
-                    <div class="acciones__secundarias">
-                        <button type="button" class="btn-accion" id="btn-abandonar">
-                            Abandonar
-                        </button>
+            <div class="acciones" role="group" aria-label="Acciones del turno">
+                <div class="acciones__secundarias">
+                    <button type="button" class="btn-accion" id="btn-abandonar">Abandonar</button>
 
-                        <button type="button" class="btn-accion" id="btn-bono-propiedades">
-                            Propiedades
-                        </button>
-                        <button type="button" class="btn-tirar" id="btn-tirar"
-                                th:disabled="${usuarioSesionId != turnoActualId}">
-                            Tirar dados
-                        </button>
-                        <button type="button" class="btn-casillero deuda-acceso"
-                                id="btn-deuda-pendiente" aria-haspopup="dialog"
-                                aria-controls="modal-deuda-pendiente" hidden>
-                            Deuda pendiente
-                        </button>
+                    <button type="button" class="btn-accion" id="btn-bono-propiedades">
+                        Propiedades
+                    </button>
 
-                    </div>
-
+                    <!-- Botón temporal de prueba de Spin Wheel -->
+                    <button type="button" class="btn-accion" id="btn-abrir-ruleta">
+                        Probar ruleta
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-tirar"
+                        id="btn-tirar"
+                        th:disabled="${usuarioSesionId != turnoActualId}"
+                    >
+                        Tirar dados
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-casillero deuda-acceso"
+                        id="btn-deuda-pendiente"
+                        aria-haspopup="dialog"
+                        aria-controls="modal-deuda-pendiente"
+                        hidden
+                    >
+                        Deuda pendiente
+                    </button>
                 </div>
-        <!-- Panel lateral -->
+            </div>
+            <!-- Panel lateral -->
 
-        <aside class="partida__lateral">
-            <section class="historial historial--centrado" aria-labelledby="historial-titulo">
-                <header class="historial__cabecera">
-                    <h2 id="historial-titulo">Historial de partida</h2>
+            <aside class="partida__lateral">
+                <section class="historial historial--centrado" aria-labelledby="historial-titulo">
+                    <header class="historial__cabecera">
+                        <h2 id="historial-titulo">Historial de partida</h2>
 
-                    <span class="etiqueta etiqueta--vivo">En vivo</span>
-                </header>
+                        <span class="etiqueta etiqueta--vivo">En vivo</span>
+                    </header>
 
-                <ol class="historial__lista" aria-live="polite">
-                    <li class="historial__vacio">
-                        ¡Bienvenido a La Matanza! Un lugar donde pasan cosas muy bizarras.
-                    </li>
-                </ol>
-            </section>
-        </aside>
-
+                    <ol class="historial__lista" aria-live="polite">
+                        <li class="historial__vacio">
+                            ¡Bienvenido a La Matanza! Un lugar donde pasan cosas muy bizarras.
+                        </li>
+                    </ol>
+                </section>
+            </aside>
         </footer>
 
-        <dialog id="modal-deuda-pendiente" class="modal-propiedad modal-deuda"
-                aria-labelledby="deuda-titulo">
+        <dialog
+            id="modal-deuda-pendiente"
+            class="modal-propiedad modal-deuda"
+            aria-labelledby="deuda-titulo"
+        >
             <div class="modal-propiedad__contenido">
                 <header class="modal-info-propiedad__cabecera">
                     <h2 id="deuda-titulo">Deuda pendiente</h2>
-                    <button type="button" id="btn-cerrar-deuda" class="modal-info-propiedad__cerrar"
-                            aria-label="Cerrar aviso de deuda" autofocus>×</button>
+                    <button
+                        type="button"
+                        id="btn-cerrar-deuda"
+                        class="modal-info-propiedad__cerrar"
+                        aria-label="Cerrar aviso de deuda"
+                        autofocus
+                    >
+                        ×
+                    </button>
                 </header>
                 <dl class="modal-info-propiedad__datos">
-                    <div><dt>Deuda pendiente</dt><dd id="deuda-importe"></dd></div>
-                    <div><dt>Plata disponible</dt><dd id="deuda-disponible"></dd></div>
+                    <div>
+                        <dt>Deuda pendiente</dt>
+                        <dd id="deuda-importe"></dd>
+                    </div>
+                    <div>
+                        <dt>Plata disponible</dt>
+                        <dd id="deuda-disponible"></dd>
+                    </div>
                 </dl>
                 <div id="deuda-opciones" class="deuda-acciones">
-                    <button type="button" id="btn-vender-desde-deuda"
-                            class="btn-casillero btn-casillero--secundario">Vender propiedades</button>
-                    <button type="button" id="btn-declarar-quiebra"
-                            class="btn-casillero btn-casillero--secundario modal-venta__cancelar">Declararme en quiebra</button>
+                    <button
+                        type="button"
+                        id="btn-vender-desde-deuda"
+                        class="btn-casillero btn-casillero--secundario"
+                    >
+                        Vender propiedades
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-declarar-quiebra"
+                        class="btn-casillero btn-casillero--secundario modal-venta__cancelar"
+                    >
+                        Declararme en quiebra
+                    </button>
                 </div>
-                <p id="deuda-mensaje" class="modal-info-propiedad__descripcion" role="status"
-                   aria-live="polite" aria-atomic="true"></p>
+                <p
+                    id="deuda-mensaje"
+                    class="modal-info-propiedad__descripcion"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                ></p>
             </div>
         </dialog>
 
-        <dialog id="deuda-confirmacion" class="modal-propiedad modal-abandono" aria-labelledby="deuda-confirmacion-titulo">
+        <dialog
+            id="deuda-confirmacion"
+            class="modal-propiedad modal-abandono"
+            aria-labelledby="deuda-confirmacion-titulo"
+        >
             <div class="modal-propiedad__contenido modal-abandono__contenido">
                 <div class="modal-abandono__icono" aria-hidden="true">!</div>
                 <h2 id="deuda-confirmacion-titulo">¿Declararte en quiebra?</h2>
                 <p>Vas a quedar fuera de la partida y tus propiedades volverán al tablero.</p>
                 <p id="quiebra-mensaje" role="alert"></p>
                 <div class="modal-abandono__acciones">
-                    <button type="button" id="btn-cancelar-quiebra" class="btn-abandono btn-abandono--cancelar" autofocus>Cancelar</button>
-                    <button type="button" id="btn-confirmar-quiebra" class="btn-abandono btn-abandono--confirmar">Confirmar quiebra</button>
+                    <button
+                        type="button"
+                        id="btn-cancelar-quiebra"
+                        class="btn-abandono btn-abandono--cancelar"
+                        autofocus
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-confirmar-quiebra"
+                        class="btn-abandono btn-abandono--confirmar"
+                    >
+                        Confirmar quiebra
+                    </button>
                 </div>
             </div>
         </dialog>
 
-        <dialog id="modal-ayuda-propiedades" class="modal-propiedad modal-compra"
-                aria-labelledby="titulo-ayuda-propiedades">
-            <h2 id="titulo-ayuda-propiedades" class="modal-compra__cabecera">Cómo gestionar tus propiedades</h2>
+        <dialog
+            id="modal-ayuda-propiedades"
+            class="modal-propiedad modal-compra"
+            aria-labelledby="titulo-ayuda-propiedades"
+        >
+            <h2 id="titulo-ayuda-propiedades" class="modal-compra__cabecera">
+                Cómo gestionar tus propiedades
+            </h2>
             <div class="modal-compra__contenido">
                 <p><strong>Vender.</strong> Vendé al banco o hacé una oferta a otro jugador.</p>
-                <p><strong>Intercambiar.</strong> Proponé cambiar una propiedad tuya por una de otro jugador.</p>
-                <p><strong>Mejorar.</strong> Si tenés todas las propiedades de una localidad, podés pagar para subir el alquiler en tu turno, antes de tirar.</p>
+                <p>
+                    <strong>Intercambiar.</strong> Proponé cambiar una propiedad tuya por una de
+                    otro jugador.
+                </p>
+                <p>
+                    <strong>Mejorar.</strong> Si tenés todas las propiedades de una localidad, podés
+                    pagar para subir el alquiler en tu turno, antes de tirar.
+                </p>
                 <form method="dialog">
-                    <button type="submit" class="btn-casillero btn-casillero--secundario">Entendido</button>
+                    <button type="submit" class="btn-casillero btn-casillero--secundario">
+                        Entendido
+                    </button>
                 </form>
             </div>
         </dialog>
@@ -725,9 +860,16 @@
         >
             <div class="modal-propiedad__contenido">
                 <header class="modal-info-propiedad__cabecera">
-                    <button type="button" id="btn-ayuda-propiedades" class="btn-ayuda-propiedades"
-                            aria-label="Ayuda sobre propiedades" aria-haspopup="dialog"
-                            aria-controls="modal-ayuda-propiedades">?</button>
+                    <button
+                        type="button"
+                        id="btn-ayuda-propiedades"
+                        class="btn-ayuda-propiedades"
+                        aria-label="Ayuda sobre propiedades"
+                        aria-haspopup="dialog"
+                        aria-controls="modal-ayuda-propiedades"
+                    >
+                        ?
+                    </button>
                     <div>
                         <h2 id="bono-propiedades-titulo">Mis propiedades</h2>
                     </div>
@@ -754,7 +896,9 @@
             class="modal-propiedad modal-venta"
             aria-labelledby="vender-propiedad-titulo vender-propiedad-nombre"
         >
-            <header id="vender-propiedad-titulo" class="modal-compra__cabecera">Vender propiedad</header>
+            <header id="vender-propiedad-titulo" class="modal-compra__cabecera">
+                Vender propiedad
+            </header>
             <div class="modal-compra__contenido">
                 <div class="modal-compra__titulo">
                     <h2 id="vender-propiedad-nombre"></h2>
@@ -762,23 +906,52 @@
                 </div>
                 <div id="venta-destino" class="venta-destino">
                     <button type="button" data-destino-venta="banco">
-                        <svg class="venta-destino__icono" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 12 16 4l13 8H3Zm2 15h22M8 16v7m8-7v7m8-7v7"/>
+                        <svg
+                            class="venta-destino__icono"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M3 12 16 4l13 8H3Zm2 15h22M8 16v7m8-7v7m8-7v7" />
                         </svg>
                         <strong>Al banco</strong><span>Cobrás al confirmar.</span>
                     </button>
                     <button type="button" data-destino-venta="jugador">
-                        <svg class="venta-destino__icono" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="16" cy="10" r="5"/><path d="M6 27v-2a10 10 0 0 1 20 0v2H6Z"/>
+                        <svg
+                            class="venta-destino__icono"
+                            viewBox="0 0 32 32"
+                            aria-hidden="true"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="16" cy="10" r="5" />
+                            <path d="M6 27v-2a10 10 0 0 1 20 0v2H6Z" />
                         </svg>
-                        <strong>A un jugador</strong><span>Elegís el precio y enviás una oferta.</span>
+                        <strong>A un jugador</strong
+                        ><span>Elegís el precio y enviás una oferta.</span>
                     </button>
                 </div>
                 <section id="venta-panel-banco" class="modal-venta__banco" hidden>
                     <p>Recibís <strong id="venta-banco-importe"></strong></p>
-                    <button type="button" id="btn-vender-al-banco"
-                            class="btn-casillero btn-casillero--principal">Confirmar venta</button>
-                    <p id="venta-banco-mensaje" class="modal-info-propiedad__descripcion" role="status"></p>
+                    <button
+                        type="button"
+                        id="btn-vender-al-banco"
+                        class="btn-casillero btn-casillero--principal"
+                    >
+                        Confirmar venta
+                    </button>
+                    <p
+                        id="venta-banco-mensaje"
+                        class="modal-info-propiedad__descripcion"
+                        role="status"
+                    ></p>
                 </section>
                 <div id="venta-panel-jugador" class="oferta-venta-formulario" hidden>
                     <fieldset class="venta-compradores intercambio-paso">
@@ -787,13 +960,25 @@
                     </fieldset>
                     <fieldset class="intercambio-paso">
                         <legend><span aria-hidden="true">2</span> Tu propiedad</legend>
-                        <button type="button" id="btn-elegir-propiedad-venta" class="btn-casillero btn-casillero--secundario"
-                                aria-haspopup="dialog" aria-controls="modal-elegir-propiedad-venta"></button>
+                        <button
+                            type="button"
+                            id="btn-elegir-propiedad-venta"
+                            class="btn-casillero btn-casillero--secundario"
+                            aria-haspopup="dialog"
+                            aria-controls="modal-elegir-propiedad-venta"
+                        ></button>
                     </fieldset>
                     <fieldset class="intercambio-paso">
                         <legend><span aria-hidden="true">3</span> Precio de tu oferta</legend>
-                        <input id="oferta-precio" aria-label="Precio de tu oferta" class="control-propiedad venta-precio-campo"
-                               type="number" min="0" step="1" inputmode="numeric" />
+                        <input
+                            id="oferta-precio"
+                            aria-label="Precio de tu oferta"
+                            class="control-propiedad venta-precio-campo"
+                            type="number"
+                            min="0"
+                            step="1"
+                            inputmode="numeric"
+                        />
                     </fieldset>
                     <button
                         type="button"
@@ -809,17 +994,37 @@
                     ></p>
                 </div>
                 <footer class="venta-navegacion">
-                    <button type="button" id="btn-volver-venta" class="btn-casillero btn-casillero--secundario" hidden>Volver</button>
-                    <button type="button" id="btn-cerrar-vender-propiedad"
-                            class="btn-casillero btn-casillero--secundario modal-venta__cancelar">Cancelar</button>
+                    <button
+                        type="button"
+                        id="btn-volver-venta"
+                        class="btn-casillero btn-casillero--secundario"
+                        hidden
+                    >
+                        Volver
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-cerrar-vender-propiedad"
+                        class="btn-casillero btn-casillero--secundario modal-venta__cancelar"
+                    >
+                        Cancelar
+                    </button>
                 </footer>
             </div>
         </dialog>
 
-        <dialog id="modal-elegir-propiedad-venta" class="modal-propiedad modal-venta"
-                aria-labelledby="titulo-elegir-propiedad-venta">
-            <h2 id="titulo-elegir-propiedad-venta" class="modal-compra__cabecera">Elegí una propiedad</h2>
-            <div id="lista-propiedades-venta" class="modal-compra__contenido lista-propiedades-propias"></div>
+        <dialog
+            id="modal-elegir-propiedad-venta"
+            class="modal-propiedad modal-venta"
+            aria-labelledby="titulo-elegir-propiedad-venta"
+        >
+            <h2 id="titulo-elegir-propiedad-venta" class="modal-compra__cabecera">
+                Elegí una propiedad
+            </h2>
+            <div
+                id="lista-propiedades-venta"
+                class="modal-compra__contenido lista-propiedades-propias"
+            ></div>
             <form method="dialog" class="modal-compra__contenido venta-navegacion">
                 <button class="btn-casillero btn-casillero--secundario">Volver</button>
             </form>
@@ -860,55 +1065,133 @@
             </div>
         </dialog>
 
-        <dialog id="modal-intercambio" class="modal-propiedad modal-venta" aria-labelledby="intercambio-titulo">
-                <header class="modal-compra__cabecera intercambio-cabecera">
-                    <h2 id="intercambio-titulo">Proponer intercambio</h2>
-                    <button type="button" id="cerrar-intercambio" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
-                </header>
+        <dialog
+            id="modal-intercambio"
+            class="modal-propiedad modal-venta"
+            aria-labelledby="intercambio-titulo"
+        >
+            <header class="modal-compra__cabecera intercambio-cabecera">
+                <h2 id="intercambio-titulo">Proponer intercambio</h2>
+                <button
+                    type="button"
+                    id="cerrar-intercambio"
+                    class="modal-info-propiedad__cerrar"
+                    aria-label="Cerrar"
+                >
+                    ×
+                </button>
+            </header>
             <div class="modal-compra__contenido intercambio-contenido intercambio-propuesta">
-                <p class="modal-info-propiedad__descripcion">La otra persona elige qué propiedad darte a cambio.</p>
+                <p class="modal-info-propiedad__descripcion">
+                    La otra persona elige qué propiedad darte a cambio.
+                </p>
                 <fieldset class="venta-compradores intercambio-paso">
                     <legend><span aria-hidden="true">1</span> Elegí un jugador</legend>
                     <div id="intercambio-jugadores" class="intercambio-jugadores"></div>
                 </fieldset>
                 <fieldset class="intercambio-paso">
                     <legend><span aria-hidden="true">2</span> Tu propiedad</legend>
-                    <button type="button" id="intercambio-propia" class="btn-casillero btn-casillero--secundario"
-                        aria-haspopup="dialog" aria-controls="modal-elegir-propiedad-venta">
-                    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M4 15 16 5l12 10M7 13v14h18V13M13 27v-9h6v9"/>
-                    </svg>
-                    <span id="intercambio-propia-texto">Elegí tu propiedad</span>
+                    <button
+                        type="button"
+                        id="intercambio-propia"
+                        class="btn-casillero btn-casillero--secundario"
+                        aria-haspopup="dialog"
+                        aria-controls="modal-elegir-propiedad-venta"
+                    >
+                        <svg
+                            viewBox="0 0 32 32"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <path d="M4 15 16 5l12 10M7 13v14h18V13M13 27v-9h6v9" />
+                        </svg>
+                        <span id="intercambio-propia-texto">Elegí tu propiedad</span>
                     </button>
                 </fieldset>
                 <p id="intercambio-resumen" class="modal-info-propiedad__descripcion"></p>
-                <p id="intercambio-mensaje" class="modal-info-propiedad__descripcion" role="status"></p>
-                <button type="button" id="enviar-intercambio" class="btn-casillero btn-casillero--principal">Confirmar</button>
+                <p
+                    id="intercambio-mensaje"
+                    class="modal-info-propiedad__descripcion"
+                    role="status"
+                ></p>
+                <button
+                    type="button"
+                    id="enviar-intercambio"
+                    class="btn-casillero btn-casillero--principal"
+                >
+                    Confirmar
+                </button>
             </div>
         </dialog>
-        <dialog id="modal-intercambio-recibido" class="modal-propiedad modal-venta" aria-labelledby="intercambio-recibido-titulo">
-                <header class="modal-compra__cabecera intercambio-cabecera">
-                    <h2 id="intercambio-recibido-titulo">Te proponen un intercambio</h2>
-                    <button type="button" id="cerrar-intercambio-recibido" class="modal-info-propiedad__cerrar" aria-label="Cerrar">×</button>
-                </header>
+        <dialog
+            id="modal-intercambio-recibido"
+            class="modal-propiedad modal-venta"
+            aria-labelledby="intercambio-recibido-titulo"
+        >
+            <header class="modal-compra__cabecera intercambio-cabecera">
+                <h2 id="intercambio-recibido-titulo">Te proponen un intercambio</h2>
+                <button
+                    type="button"
+                    id="cerrar-intercambio-recibido"
+                    class="modal-info-propiedad__cerrar"
+                    aria-label="Cerrar"
+                >
+                    ×
+                </button>
+            </header>
             <div class="modal-compra__contenido intercambio-contenido">
                 <div class="intercambio-encabezado-respuesta">
                     <p id="intercambio-proponente" class="modal-info-propiedad__descripcion"></p>
                     <div id="intercambio-reloj" class="intercambio-reloj">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M6 3h12M6 21h12M8 3v4c0 2 2 4 4 5-2 1-4 3-4 5v4m8-18v4c0 2-2 4-4 5 2 1 4 3 4 5v4"/>
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="M6 3h12M6 21h12M8 3v4c0 2 2 4 4 5-2 1-4 3-4 5v4m8-18v4c0 2-2 4-4 5 2 1 4 3 4 5v4"
+                            />
                         </svg>
                         <strong id="intercambio-tiempo" aria-label="Tiempo restante"></strong>
                     </div>
                 </div>
                 <div id="intercambio-tarjetas" class="intercambio-campos"></div>
-                <button type="button" id="intercambio-contrapropiedad" class="btn-casillero btn-casillero--secundario"
-                        aria-haspopup="dialog" aria-controls="modal-elegir-propiedad-venta">Elegí qué propiedad dar</button>
+                <button
+                    type="button"
+                    id="intercambio-contrapropiedad"
+                    class="btn-casillero btn-casillero--secundario"
+                    aria-haspopup="dialog"
+                    aria-controls="modal-elegir-propiedad-venta"
+                >
+                    Elegí qué propiedad dar
+                </button>
                 <div class="intercambio-acciones">
-                    <button type="button" id="rechazar-intercambio" class="btn-casillero btn-casillero--secundario modal-venta__cancelar">Rechazar</button>
-                    <button type="button" id="aceptar-intercambio" class="btn-casillero btn-casillero--principal">Confirmar</button>
+                    <button
+                        type="button"
+                        id="rechazar-intercambio"
+                        class="btn-casillero btn-casillero--secundario modal-venta__cancelar"
+                    >
+                        Rechazar
+                    </button>
+                    <button
+                        type="button"
+                        id="aceptar-intercambio"
+                        class="btn-casillero btn-casillero--principal"
+                    >
+                        Confirmar
+                    </button>
                 </div>
-                <p id="intercambio-recibido-mensaje" class="modal-info-propiedad__descripcion" role="status"></p>
+                <p
+                    id="intercambio-recibido-mensaje"
+                    class="modal-info-propiedad__descripcion"
+                    role="status"
+                ></p>
                 <p class="intercambio-nota">Cada propiedad conserva sus mejoras.</p>
             </div>
         </dialog>
@@ -953,28 +1236,61 @@
                     aria-live="polite"
                 ></p>
                 <div id="popup-acciones-propias" class="modal-propiedad__acciones" hidden>
-                    <button type="button" id="btn-info-mejorar" class="btn-casillero btn-casillero--principal">Mejorar</button>
-                    <button type="button" id="btn-info-vender" class="btn-casillero btn-casillero--secundario">Vender</button>
+                    <button
+                        type="button"
+                        id="btn-info-mejorar"
+                        class="btn-casillero btn-casillero--principal"
+                    >
+                        Mejorar
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-info-vender"
+                        class="btn-casillero btn-casillero--secundario"
+                    >
+                        Vender
+                    </button>
                 </div>
             </div>
         </dialog>
 
-        <dialog id="modal-compra-propiedad" class="modal-propiedad modal-compra" aria-labelledby="modal-propiedad-titulo">
+        <dialog
+            id="modal-compra-propiedad"
+            class="modal-propiedad modal-compra"
+            aria-labelledby="modal-propiedad-titulo"
+        >
             <header class="modal-compra__cabecera">Propiedad disponible</header>
             <div class="modal-compra__contenido">
                 <div class="modal-compra__titulo">
                     <h2 id="modal-propiedad-titulo">Comprar propiedad</h2>
                     <span id="compra-categoria" class="modal-compra__categoria"></span>
                 </div>
-                <img id="compra-ilustracion" class="modal-compra__ilustracion"
-                     th:src="@{/images/propiedades/estacion-laferrere.png}"
-                     src="../../../resources/core/images/propiedades/estacion-laferrere.png"
-                     width="2172" height="724" loading="lazy" alt="" hidden>
+                <img
+                    id="compra-ilustracion"
+                    class="modal-compra__ilustracion"
+                    th:src="@{/images/propiedades/estacion-laferrere.png}"
+                    src="../../../resources/core/images/propiedades/estacion-laferrere.png"
+                    width="2172"
+                    height="724"
+                    loading="lazy"
+                    alt=""
+                    hidden
+                />
                 <dl class="modal-compra__datos">
-                    <div><dt>Precio</dt><dd id="compra-precio"></dd></div>
-                    <div><dt>Alquiler</dt><dd id="compra-alquiler"></dd></div>
+                    <div>
+                        <dt>Precio</dt>
+                        <dd id="compra-precio"></dd>
+                    </div>
+                    <div>
+                        <dt>Alquiler</dt>
+                        <dd id="compra-alquiler"></dd>
+                    </div>
                 </dl>
-                <p id="modal-propiedad-info" class="modal-info-propiedad__descripcion" role="status"></p>
+                <p
+                    id="modal-propiedad-info"
+                    class="modal-info-propiedad__descripcion"
+                    role="status"
+                ></p>
                 <div class="modal-propiedad__acciones">
                     <button
                         type="button"
@@ -994,84 +1310,169 @@
             </div>
         </dialog>
 
-        <div id="aviso-compra" class="aviso-compra" popover="manual" role="status" aria-atomic="true">
-            <span class="aviso-compra__icono" aria-hidden="true"><b class="aviso-compra__simbolo"></b><span id="animacion-compra"></span></span>
+        <div
+            id="aviso-compra"
+            class="aviso-compra"
+            popover="manual"
+            role="status"
+            aria-atomic="true"
+        >
+            <span class="aviso-compra__icono" aria-hidden="true"
+                ><b class="aviso-compra__simbolo"></b><span id="animacion-compra"></span
+            ></span>
             <span id="mensaje-compra"></span>
         </div>
 
-<section id="aviso-evento" class="aviso-evento" role="dialog" aria-labelledby="aviso-evento-nombre" aria-describedby="aviso-evento-descripcion" aria-hidden="true">
-    <h2 id="aviso-evento-nombre"></h2>
-    <p id="aviso-evento-descripcion"></p>
-    <button id="btn-continuar-evento" type="button" class="btn-casillero btn-casillero--principal">Continuar</button>
-</section>
+        <section
+            id="aviso-evento"
+            class="aviso-evento"
+            role="dialog"
+            aria-labelledby="aviso-evento-nombre"
+            aria-describedby="aviso-evento-descripcion"
+            aria-hidden="true"
+        >
+            <h2 id="aviso-evento-nombre"></h2>
+            <p id="aviso-evento-descripcion"></p>
+            <button
+                id="btn-continuar-evento"
+                type="button"
+                class="btn-casillero btn-casillero--principal"
+            >
+                Continuar
+            </button>
+        </section>
 
-<!-- Trivia: se abre con showModal() para todos y bloquea el resto de la pantalla hasta que termina.
-     Ronda, reloj, opciones y mensajes los completa trivia.js. -->
-<dialog id="trivia" class="trivia" aria-labelledby="trivia-enunciado">
-    <header class="trivia__cabecera">
-        <span class="trivia__etiqueta">Trivia</span>
-        <span id="trivia-ronda" class="trivia__ronda"></span>
-        <span id="trivia-dificultad" class="trivia__dificultad"></span>
-    </header>
-    <div class="trivia__reloj" role="timer" aria-label="Tiempo para responder">
-        <span class="trivia__reloj-barra"></span>
-        <span id="trivia-segundos" class="trivia__reloj-segundos"></span>
-    </div>
-    <p id="trivia-aviso" class="trivia__aviso"></p>
-    <h2 id="trivia-enunciado" class="trivia__enunciado"></h2>
-    <ol id="trivia-opciones" class="trivia__opciones"></ol>
-    <p id="trivia-estado" class="trivia__estado" role="status" aria-live="polite"></p>
-    <p id="trivia-jugadores" class="trivia__jugadores"></p>
-    <!-- Pantalla final: ganador, desempate por tiempo o "nadie ganó". -->
-    <div class="trivia__final">
-        <h2 id="trivia-final-titulo" class="trivia__final-titulo"></h2>
-        <p id="trivia-final-detalle" class="trivia__final-detalle"></p>
-        <p id="trivia-premio" class="trivia__premio"></p>
-        <ol id="trivia-tiempos" class="trivia__tiempos"></ol>
-        <button id="trivia-cerrar" type="button" class="btn-casillero btn-casillero--principal trivia__cerrar">Volver al tablero</button>
-    </div>
-</dialog>
+        <!-- Trivia: se abre con showModal() para todos y bloquea el resto de la pantalla hasta que termina.
+             Ronda, reloj, opciones y mensajes los completa trivia.js. -->
+        <dialog id="trivia" class="trivia" aria-labelledby="trivia-enunciado">
+            <header class="trivia__cabecera">
+                <span class="trivia__etiqueta">Trivia</span>
+                <span id="trivia-ronda" class="trivia__ronda"></span>
+                <span id="trivia-dificultad" class="trivia__dificultad"></span>
+            </header>
+            <div class="trivia__reloj" role="timer" aria-label="Tiempo para responder">
+                <span class="trivia__reloj-barra"></span>
+                <span id="trivia-segundos" class="trivia__reloj-segundos"></span>
+            </div>
+            <p id="trivia-aviso" class="trivia__aviso"></p>
+            <h2 id="trivia-enunciado" class="trivia__enunciado"></h2>
+            <ol id="trivia-opciones" class="trivia__opciones"></ol>
+            <p id="trivia-estado" class="trivia__estado" role="status" aria-live="polite"></p>
+            <p id="trivia-jugadores" class="trivia__jugadores"></p>
+            <!-- Pantalla final: ganador, desempate por tiempo o "nadie ganó". -->
+            <div class="trivia__final">
+                <h2 id="trivia-final-titulo" class="trivia__final-titulo"></h2>
+                <p id="trivia-final-detalle" class="trivia__final-detalle"></p>
+                <p id="trivia-premio" class="trivia__premio"></p>
+                <ol id="trivia-tiempos" class="trivia__tiempos"></ol>
+                <button
+                    id="trivia-cerrar"
+                    type="button"
+                    class="btn-casillero btn-casillero--principal trivia__cerrar"
+                >
+                    Volver al tablero
+                </button>
+            </div>
+        </dialog>
 
-<section id="aviso-global" class="aviso-evento aviso-global" role="dialog"
-         aria-modal="true" aria-labelledby="global-nombre"
-         aria-hidden="true">
-    <header class="aviso-global__cabecera">
-        <span class="aviso-global__etiqueta">EVENTO GLOBAL</span>
-        <div class="aviso-global__reloj" aria-label="Tiempo restante">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-                <path d="M6 3h12M6 21h12M8 3v4c0 2 2 4 4 5-2 1-4 3-4 5v4m8-18v4c0 2-2 4-4 5 2 1 4 3 4 5v4"/>
-            </svg>
-            <strong id="global-tiempo">0:30</strong>
-        </div>
-    </header>
+        <section
+            id="aviso-global"
+            class="aviso-evento aviso-global"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="global-nombre"
+            aria-hidden="true"
+        >
+            <header class="aviso-global__cabecera">
+                <span class="aviso-global__etiqueta">EVENTO GLOBAL</span>
+                <div class="aviso-global__reloj" aria-label="Tiempo restante">
+                    <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M6 3h12M6 21h12M8 3v4c0 2 2 4 4 5-2 1-4 3-4 5v4m8-18v4c0 2-2 4-4 5 2 1 4 3 4 5v4"
+                        />
+                    </svg>
+                    <strong id="global-tiempo">0:30</strong>
+                </div>
+            </header>
 
-    <h2 id="global-nombre">Evento global</h2>
-    <div id="global-pantalla-tirada">
-        <p id="global-descripcion" class="aviso-global__descripcion"></p>
-        <div id="global-dados" class="aviso-global__dados" aria-label="Tus dados del evento">
-            <output id="global-dado-1" class="aviso-global__dado" data-cara="1" aria-live="off">1</output>
-            <output id="global-dado-2" class="aviso-global__dado" data-cara="1" aria-live="off">1</output>
-        </div>
-        <p id="global-etapa" aria-live="polite"></p>
-    </div>
+            <h2 id="global-nombre">Evento global</h2>
+            <div id="global-pantalla-tirada">
+                <p id="global-descripcion" class="aviso-global__descripcion"></p>
+                <div
+                    id="global-dados"
+                    class="aviso-global__dados"
+                    aria-label="Tus dados del evento"
+                >
+                    <output
+                        id="global-dado-1"
+                        class="aviso-global__dado"
+                        data-cara="1"
+                        aria-live="off"
+                        >1</output
+                    >
+                    <output
+                        id="global-dado-2"
+                        class="aviso-global__dado"
+                        data-cara="1"
+                        aria-live="off"
+                        >1</output
+                    >
+                </div>
+                <p id="global-etapa" aria-live="polite"></p>
+            </div>
 
-    <div id="global-pantalla-resultado" hidden>
-        <p id="global-descripcion-resultado" class="aviso-global__descripcion"></p>
-        <p id="global-consecuencia" class="aviso-global__resultado" aria-live="polite"></p>
-        <ol id="global-tiradas" class="aviso-global__tiradas" aria-label="Resultados de los jugadores"></ol>
-    </div>
+            <div id="global-pantalla-resultado" hidden>
+                <p id="global-descripcion-resultado" class="aviso-global__descripcion"></p>
+                <p id="global-consecuencia" class="aviso-global__resultado" aria-live="polite"></p>
+                <ol
+                    id="global-tiradas"
+                    class="aviso-global__tiradas"
+                    aria-label="Resultados de los jugadores"
+                ></ol>
+            </div>
 
-    <p id="global-mensaje" class="aviso-global__mensaje" role="status" aria-live="polite"></p>
+            <p
+                id="global-mensaje"
+                class="aviso-global__mensaje"
+                role="status"
+                aria-live="polite"
+            ></p>
 
-    <div class="aviso-global__acciones">
-        <button id="global-tirar" type="button"
-                class="btn-casillero btn-casillero--principal">Tirar dados</button>
-        <button id="global-continuar" type="button"
-                class="btn-casillero btn-casillero--principal" hidden>Continuar partida</button>
-        <button id="global-deuda" type="button"
-                class="btn-casillero btn-casillero--secundario" hidden>Resolver mi deuda</button>
-    </div>
-</section>
+            <div class="aviso-global__acciones">
+                <button
+                    id="global-tirar"
+                    type="button"
+                    class="btn-casillero btn-casillero--principal"
+                >
+                    Tirar dados
+                </button>
+                <button
+                    id="global-continuar"
+                    type="button"
+                    class="btn-casillero btn-casillero--principal"
+                    hidden
+                >
+                    Continuar partida
+                </button>
+                <button
+                    id="global-deuda"
+                    type="button"
+                    class="btn-casillero btn-casillero--secundario"
+                    hidden
+                >
+                    Resolver mi deuda
+                </button>
+            </div>
+        </section>
 
         <dialog
             id="modal-abandonar"
@@ -1110,7 +1511,11 @@
             </div>
         </dialog>
 
-        <dialog id="modal-victoria" class="modal-propiedad modal-victoria" aria-labelledby="titulo-finalizacion">
+        <dialog
+            id="modal-victoria"
+            class="modal-propiedad modal-victoria"
+            aria-labelledby="titulo-finalizacion"
+        >
             <div class="modal-propiedad__contenido">
                 <h2 id="titulo-finalizacion">¡PARTIDA FINALIZADA!</h2>
 
@@ -1123,37 +1528,141 @@
         </dialog>
 
         <div id="chat-partida">
-            <button type="button" class="chat-abrir" data-abrir-chat aria-controls="chat-telefono" aria-expanded="false">
-                <svg class="chat-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v12H9l-5 4V4Z"/><path d="M8 8h8M8 12h5"/></svg>
+            <button
+                type="button"
+                class="chat-abrir"
+                data-abrir-chat
+                aria-controls="chat-telefono"
+                aria-expanded="false"
+            >
+                <svg class="chat-icono" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 4h16v12H9l-5 4V4Z" />
+                    <path d="M8 8h8M8 12h5" />
+                </svg>
                 <span>Chat</span><span class="chat-contador" data-chat-contador hidden>0</span>
             </button>
             <dialog id="chat-telefono" class="chat-telefono" aria-labelledby="chat-titulo">
                 <div class="chat-pantalla">
                     <header class="chat-cabecera">
-                        <button type="button" id="chat-guardar" class="chat-guardar" aria-label="Guardar teléfono y volver al tablero" title="Cerrar chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
-                        <p>EL MATANCERO</p><h2 id="chat-titulo">Chat</h2>
+                        <button
+                            type="button"
+                            id="chat-guardar"
+                            class="chat-guardar"
+                            aria-label="Guardar teléfono y volver al tablero"
+                            title="Cerrar chat"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m6 6 12 12M18 6 6 18" />
+                            </svg>
+                        </button>
+                        <p>EL MATANCERO</p>
+                        <h2 id="chat-titulo">Chat</h2>
                     </header>
-                    <ol id="chat-mensajes" class="chat-mensajes" aria-label="Mensajes de la partida" role="log" aria-live="polite" aria-relevant="additions"></ol>
+                    <ol
+                        id="chat-mensajes"
+                        class="chat-mensajes"
+                        aria-label="Mensajes de la partida"
+                        role="log"
+                        aria-live="polite"
+                        aria-relevant="additions"
+                    ></ol>
                     <form id="chat-formulario" class="chat-formulario">
-                        <label class="chat-etiqueta" for="chat-texto">Mensaje para los jugadores</label>
+                        <label class="chat-etiqueta" for="chat-texto"
+                            >Mensaje para los jugadores</label
+                        >
                         <p id="chat-estado" class="chat-estado" role="status"></p>
-                        <textarea id="chat-texto" rows="1" maxlength="500" placeholder="Bardea con respeto" required></textarea>
-                        <button type="submit" id="chat-enviar" aria-label="Enviar mensaje" title="Enviar mensaje"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 19 9-19 9 4-9-4-9Zm4 9h15"/></svg></button>
+                        <textarea
+                            id="chat-texto"
+                            rows="1"
+                            maxlength="500"
+                            placeholder="Bardea con respeto"
+                            required
+                        ></textarea>
+                        <button
+                            type="submit"
+                            id="chat-enviar"
+                            aria-label="Enviar mensaje"
+                            title="Enviar mensaje"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m3 3 19 9-19 9 4-9-4-9Zm4 9h15" />
+                            </svg>
+                        </button>
                     </form>
                 </div>
             </dialog>
         </div>
 
-        <!-- Librerías de WebSocket -->
+        <!-- Panel temporal de la ruleta -->
 
+        <section id="panel-ruleta" class="panel-ruleta" hidden aria-labelledby="ruleta-titulo">
+            <header class="ruleta-cabecera">
+                <h2 id="ruleta-titulo">Ruleta de dificultad</h2>
+
+                <div class="ruleta-decoracion" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </header>
+
+            <div class="ruleta-contenedor">
+                <div id="ruleta-visual"></div>
+                <div class="ruleta-puntero"></div>
+            </div>
+
+            <p id="ruleta-resultado" class="ruleta-resultado" role="status" aria-live="polite">
+                ¡Probá tu suerte!
+            </p>
+
+            <p id="ruleta-temporizador" class="ruleta-temporizador" hidden>
+                Giro automático en 10 segundos
+            </p>
+
+            <section class="ruleta-premios" aria-labelledby="ruleta-premios-titulo">
+                <h3 id="ruleta-premios-titulo">Premios</h3>
+
+                <div class="ruleta-premio">
+                    <span class="ruleta-color ruleta-color--facil"></span>
+                    <span><strong>Fácil:</strong> $100</span>
+                </div>
+
+                <div class="ruleta-premio">
+                    <span class="ruleta-color ruleta-color--medio"></span>
+                    <span><strong>Media:</strong> $250</span>
+                </div>
+
+                <div class="ruleta-premio">
+                    <span class="ruleta-color ruleta-color--dificil"></span>
+                    <span>
+                        <strong>Difícil:</strong> $500 o robar una propiedad a otro jugador
+                    </span>
+                </div>
+            </section>
+
+            <button type="button" id="btn-girar-ruleta" class="ruleta-btn-girar">
+                <span aria-hidden="true"></span>
+                GIRAR
+            </button>
+
+            <button type="button" id="btn-cerrar-ruleta" class="ruleta-btn-cerrar">Cerrar</button>
+        </section>
+
+        <!-- Librerías de WebSocket -->
         <script
             src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"
             defer
         ></script>
 
         <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.core.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.13.0/lottie_light.min.js" defer></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.core.min.js"
+            defer
+        ></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.13.0/lottie_light.min.js"
+            defer
+        ></script>
 
         <!-- Inyección segura de variables de sesión para el script -->
 
@@ -1180,8 +1689,16 @@
 
         <!-- Script de cliente -->
 
-<script type="module" th:src="@{/js/partida.js(v=barrio-15)}" src="../../../resources/core/js/partida.js?v=barrio-15" charset="UTF-8"></script>
-
-</body>
-
+        <script
+            type="module"
+            th:src="@{/js/partida.js(v=barrio-15)}"
+            src="../../../resources/core/js/partida.js?v=barrio-15"
+            charset="UTF-8"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/ruleta-demo.js}"
+            src="../../../resources/core/js/ruleta-demo.js"
+        ></script>
+    </body>
 </html>
