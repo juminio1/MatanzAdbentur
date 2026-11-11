@@ -234,8 +234,8 @@
     --filas: 5;
 
     display: grid;
-    grid-template-columns: repeat(var(--columnas), 1fr);
-    grid-template-rows: repeat(var(--filas), 1fr);
+    grid-template-columns: repeat(var(--columnas), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--filas), minmax(0, 1fr));
     /* Usa todo el alto y se estira a lo ancho hasta 3:1; si falta ancho, mantiene la proporción 12:5. */
     width: min(100cqw, calc(100cqh * 3));
     height: min(100cqh, calc(100cqw * 5 / 12));
@@ -264,7 +264,7 @@
     color: var(--p-texto);
     border: 1px solid var(--tema-sombra);
     text-align: center;
-    font-size: clamp(9px, 1.25cqw, 17px);
+    font-size: clamp(8px, 1.13cqw, 12px);
     font-weight: 800;
     line-height: 1.1;
     overflow: hidden;
@@ -342,7 +342,6 @@
 
 .casillero__nombre {
     font-family: var(--font-titulos, "Barlow Condensed", sans-serif);
-    font-size: calc(1em - 1.5px);
     font-weight: 800;
 }
 
@@ -357,8 +356,10 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    /* Luz en el centro que se apaga hacia los bordes, con los grises del tema. */
-    background: radial-gradient(ellipse at center, var(--tema-elevado) 0%, var(--tema-panel) 55%, var(--tema-fondo) 100%);
+    /* Resplandor del atardecer sobre el fondo violeta. */
+    background:
+        radial-gradient(ellipse at 20% 116%, #efaf79 0%, #c96d91 18%, #744177 41%, transparent 73%),
+        linear-gradient(161deg, #321747 6%, #4c2b76 49%, #1b173e 100%);
     border: 2px solid var(--tema-sombra);
 }
 .tablero__titulo {
@@ -368,19 +369,6 @@
     color: #ffffff;
     text-shadow: 3px 3px 0 #111;
     transition: opacity 160ms ease;
-}
-
-/* Franja con los colores de los ocho barrios debajo del título. */
-.tablero__titulo::after {
-    content: "";
-    display: block;
-    height: clamp(3px, 0.45cqw, 7px);
-    margin-top: 0.12em;
-    border-radius: 999px;
-    background: linear-gradient(90deg,
-        #91d64b 0 12.5%, #ed5da8 12.5% 25%, #42b6e8 25% 37.5%, #ffbd42 37.5% 50%,
-        #a17be8 50% 62.5%, #f16c5e 62.5% 75%, #38c8b5 75% 87.5%, #f0df4c 87.5% 100%);
-    box-shadow: 2px 2px 0 #111;
 }
 
 .dados-tablero {
@@ -659,7 +647,7 @@
     .dados { gap: 5px; }
     .dado { width: 32px; height: 32px; }
     .btn-tirar { padding: 7px 12px; font-size: 14px; }
-    .casillero { padding: 1px; font-size: clamp(6px, 1.55cqw, 9px); }
+    .casillero { padding: 1px; font-size: clamp(7px, 1.8cqw, 8px); }
 }
 
 .btn-casillero {
@@ -1828,50 +1816,40 @@
 .casillero__precio[data-color="amarillo"] { background: #735a00; color: #fff; border-color: #F5C400; }
 
 .fichas-en-casillero {
-    /* Ancho de cada ficha: crece con el tablero (cqw es el ancho del tablero).
-       Con una o dos fichas en el casillero van grandes, una al lado de la otra. */
-    --tam-ficha: clamp(10px, 3.8cqw, 56px);
     position: absolute;
     inset: 0;
-    translate: 0 -5px;
-    display: flex;
-    /* Las fichas se apoyan abajo del casillero, lejos de la etiqueta del precio. */
-    align-content: flex-end;
-    justify-content: center;
-    align-items: flex-end;
-    flex-wrap: wrap;
-    gap: 0 3px;
-    /* Entran dos fichas por fila. */
-    width: min(calc(2 * var(--tam-ficha) + 3px), 100%);
-    height: 100%;
-    margin: auto;
-    padding-bottom: 0.25cqw;
-    box-sizing: border-box;
     z-index: 5;
+    container-type: size;
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    grid-auto-rows: max-content;
+    place-content: center;
+    justify-items: center;
+    gap: clamp(2px, 0.25cqw, 5px);
     pointer-events: none;
 }
-/* Con tres o cuatro fichas se achican y se agrupan: la fila de adelante tapa un poco a la de atrás. */
-.fichas-en-casillero:has(.ficha:nth-child(3)) {
-    --tam-ficha: clamp(9px, 2.6cqw, 38px);
-}
-.fichas-en-casillero:has(.ficha:nth-child(3)) .ficha:nth-child(n + 3) {
-    margin-top: calc(var(--tam-ficha) * -0.5);
+
+.fichas-en-casillero:not(:has(.ficha)) {
+    display: none;
 }
 
-/* Ficha: dibujo en pixel art sobre un pedestal (pelota, empanada, mate o medialuna), según el color.
-   Las imágenes son de 160 × 160 y se achican al tamaño del casillero. */
+/* Las cuatro fichas conservan espacio entre sí dentro del casillero. */
 .ficha {
-    position: static;
-    flex: 0 0 var(--tam-ficha, 18px);
-    width: var(--tam-ficha, 18px);
+    --tam-ficha: min(42cqw, 42cqh, 58px);
+    width: var(--tam-ficha);
     aspect-ratio: 1;
     background: var(--sprite-ficha) center bottom / contain no-repeat;
-    transform: scale(1.25);
     filter: drop-shadow(1px 2px 0 rgb(0 0 0 / 45%));
-    transition: transform .15s ease;
     pointer-events: auto;
 }
 
+.ficha:only-child {
+    grid-column: 1 / -1;
+}
+
+.fichas-en-casillero:has(.ficha:nth-child(3)) .ficha:nth-child(3):last-child {
+    grid-column: 1 / -1;
+}
 .ficha-rojo {
     --color-ficha: #e74c5b;
     --sprite-ficha: url("../images/fichas/ficha-roja.png");
@@ -2603,7 +2581,6 @@
     height: auto;
     max-height: max(200px, calc(100dvh - var(--alto-panel-inferior) - 150px - 2 * var(--separacion-bloques)));
     aspect-ratio: 12 / 5;
-    grid-template-rows: repeat(5, minmax(0, 1fr));
 }
 .partida__pie {
     grid-column: 1 / -1;
