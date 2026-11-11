@@ -15,7 +15,7 @@
     <!-- Hojas de estilo -->
     <link rel="stylesheet" th:href="@{/css/tema-oscuro.css(v=violeta-1)}" href="../../../resources/core/css/tema-oscuro.css">
     <link rel="stylesheet" th:href="@{/css/header.css(v=violeta-1)}">
-    <link rel="stylesheet" th:href="@{/css/sala-de-espera.css(v=fichas-3)}">
+    <link rel="stylesheet" th:href="@{/css/sala-de-espera.css(v=avatar-1)}">
 </head>
 
 <body>
@@ -29,7 +29,6 @@
         <section class="salaEspera__encabezado">
 
             <div class="salaEspera__titulo">
-                <div class="salaEspera__dado"></div>
 
                 <div>
                     <h1>Sala de espera</h1>
@@ -57,7 +56,6 @@
                 <article class="salaEspera__codigo">
 
                     <div class="salaEspera__subtitulo">
-                        <div class="salaEspera__icono"></div>
 
                         <div>
                             <h2>Código de sala</h2>
@@ -92,7 +90,6 @@
                 <article class="salaEspera__fichas">
 
                     <div class="salaEspera__subtitulo">
-                        <div class="salaEspera__icono">♟</div>
 
                         <div>
                             <h2>Elegí tu ficha</h2>
@@ -177,7 +174,6 @@
                 <div class="salaEspera__jugadoresHeader">
 
                     <div class="salaEspera__subtitulo">
-                        <div class="salaEspera__icono"></div>
 
                         <div>
                             <h2>Jugadores en espera</h2>
@@ -206,12 +202,10 @@
                     <div class="salaEspera__jugador" th:each="usuario : ${usuarios}"
                          th:attr="data-ficha-inicial=${usuario.ficha},data-jugador-id=${usuario.id}">
 
-                        <!-- Avatar con color de ficha o azul -->
-                        <div class="avatar"
-                             th:classappend="${usuario.ficha != null} ? |avatar--${#strings.toLowerCase(usuario.ficha)}| : 'avatar--azul'">
-                            <span th:text="${#strings.toUpperCase(#strings.substring(usuario.username, 0, 1))}">
-                                U
-                            </span>
+                        <!-- Avatar elegido por el usuario en su perfil -->
+                        <div class="avatar">
+                            <img th:src="${#strings.isEmpty(usuario.avatar)} ? 'https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png' : ${usuario.avatar}"
+                                 th:alt="|Avatar de ${usuario.username}|" alt="Avatar del jugador">
                         </div>
 
                         <div class="salaEspera__jugadorInfo">
@@ -293,7 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <!-- SCRIPTS DE LA APLICACIÓN -->
-<script th:src="@{/js/sala-de-espera.js(v=fichas-2)}"></script>
+<script th:src="@{/js/sala-de-espera.js(v=avatar-1)}"></script>
 <script th:src="@{/js/menu-usuario.js(v=100)}"></script>
 </body>
 
