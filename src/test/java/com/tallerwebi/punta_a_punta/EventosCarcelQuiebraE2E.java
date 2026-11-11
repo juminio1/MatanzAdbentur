@@ -116,9 +116,10 @@ class EventosCarcelQuiebraE2E {
         ObjectMapper json = new ObjectMapper();
         for (int intento = 0; intento < MAXIMO_INTENTOS_TIRADA; intento++) {
             transaccion.executeWithoutResult(estado -> ubicarParaTirar(sesiones, idJugador, POSICION_ANTES_DE_EVENTO));
-            pagina.reload();
-            pagina.waitForFunction("() => window.turnoActualId === " + idJugador
-                    + " && typeof clienteWebSocketPartida !== 'undefined' && clienteWebSocketPartida?.connected");
+            // Se espera a que la página vuelva a escuchar la partida para recibir el aviso del evento.
+            pagina.waitForConsoleMessage(new Page.WaitForConsoleMessageOptions()
+                    .setPredicate(mensaje -> mensaje.text().contains("WebSocket conectado")), pagina::reload);
+            pagina.waitForFunction("() => window.turnoActualId === " + idJugador);
             APIResponse respuesta = pagina.context().request()
                     .post(base + "/partida/tirar-dados?codigoUnico=" + codigo + "&idJugador=" + idJugador);
             assertTrue(respuesta.ok(), respuesta.text());
