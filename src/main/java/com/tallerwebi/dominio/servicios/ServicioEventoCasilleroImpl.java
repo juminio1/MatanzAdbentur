@@ -1,9 +1,9 @@
 
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.entidades.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.dominio.excepcion.EventoCasilleroNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.TipoEfectoEventoNoSoportadoException;
@@ -13,6 +13,9 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioMovimiento;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.infraestructura.RepositorioEventoCasillero;
+import com.tallerwebi.infraestructura.RepositorioPartida;
+import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -35,6 +38,8 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     private final ServicioEconomia economia;
     private final ServicioMovimiento movimiento;
     private final ServicioGestionQuiebra servicioGestionQuiebra;
+    private final RepositorioPartida repositorioPartida;
+    private final ServicioParticipacion participacion;
 
     private final Map<TipoEfectoEvento, ToIntBiFunction<EventoCasillero, Jugador>> aplicadores;
 
@@ -43,18 +48,26 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
             RepositorioEventoCasillero repositorioEventoCasillero,
             ServicioCasillero servicioCasillero,
             ServicioEconomia economia, ServicioMovimiento movimiento,
-            ServicioGestionQuiebra servicioGestionQuiebra) {
+            ServicioGestionQuiebra servicioGestionQuiebra, RepositorioPartida repositorioPartida,
+            ServicioParticipacion participacion) {
 
         this.repositorioEventoCasillero = repositorioEventoCasillero;
         this.servicioCasillero = servicioCasillero;
         this.economia = economia;
         this.movimiento = movimiento;
         this.servicioGestionQuiebra = servicioGestionQuiebra;
+        this.repositorioPartida = repositorioPartida;
+        this.participacion = participacion;
         this.aplicadores = crearAplicadores();
     }
 
     @Override
     public Optional<ResultadoEvento> aplicarSiCorresponde(String codigoPartida, Jugador jugador) {
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(jugador.getId());
+        participacion.validarPartidaEnCurso(partida);
+        if (!java.util.Objects.equals(codigoPartida, partida.getCodigoUnico())) {
+            throw new IllegalStateException("El jugador no pertenece a esta partida.");
+        }
 
         Integer posicion = jugador.getPosicionActual();
 
@@ -152,9 +165,15 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     private int avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
-        return movimiento.avanzar(jugador, evento.getCantidadCasilleros());
+        movimiento.moverJugador(jugador, evento.getCantidadCasilleros(),
+                com.tallerwebi.dominio.catalogo.CatalogoTablero.TOTAL_CASILLEROS);
+        return 0;
     }
     private int avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
-        return movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
+        int destino = evento.getPosicionDestino();
+        int total = com.tallerwebi.dominio.catalogo.CatalogoTablero.TOTAL_CASILLEROS;
+        if (destino < 0 || destino >= total) throw new IllegalArgumentException("Posición inválida");
+        movimiento.moverJugador(jugador, Math.floorMod(destino - jugador.getPosicionActual(), total), total);
+        return 0;
     }
 }

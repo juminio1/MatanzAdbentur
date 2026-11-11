@@ -3,6 +3,7 @@ package com.tallerwebi.dominio.entidades;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -42,23 +43,23 @@ public class Partida {
     @JoinColumn(name = "jugador_turno_id")
     private Jugador jugadorTurnoAleatorio;
 
-    private Integer rondaActual;
-    private Integer turnosFinalizadosEnRonda;
+    @Embedded
+    private EstadoRondas estadoRondas = new EstadoRondas();
+    @Embedded
+    private EstadoEventoGlobal eventoGlobal = new EstadoEventoGlobal();
 
      public Partida() {
         this.jugadores = new ArrayList<>();
         this.estado = EstadoPartida.EN_ESPERA;
         this.indiceTurnoActual = 0;
-        this.rondaActual = 1;
-        this.turnosFinalizadosEnRonda = 0;
     }
 
     public Integer getTurnosFinalizadosEnRonda() {
-        return turnosFinalizadosEnRonda;
+        return rondas().getTurnosFinalizadosEnRonda();
     }
 
     public void setTurnosFinalizadosEnRonda(Integer turnosFinalizadosEnRonda) {
-        this.turnosFinalizadosEnRonda = turnosFinalizadosEnRonda;
+        rondas().setTurnosFinalizadosEnRonda(turnosFinalizadosEnRonda);
     }
 
     public Jugador getJugadorTurnoAleatorio() {
@@ -70,11 +71,21 @@ public class Partida {
     }
 
     public Integer getRondaActual() {
-        return this.rondaActual;
+        return rondas().getRondaActual();
     }
 
     public void setRondaActual(Integer rondaActual) {
-        this.rondaActual = rondaActual;
+        rondas().setRondaActual(rondaActual);
+    }
+
+    private EstadoRondas rondas() {
+        if (estadoRondas == null) estadoRondas = new EstadoRondas();
+        return estadoRondas;
+    }
+
+    public EstadoEventoGlobal getEventoGlobal() {
+        if (eventoGlobal == null) eventoGlobal = new EstadoEventoGlobal();
+        return eventoGlobal;
     }
 
     public Long getId() {

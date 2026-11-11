@@ -8,6 +8,7 @@ import com.tallerwebi.dominio.enums.ResultadoDeuda;
 
 public interface ServicioGestionQuiebra {
 
+
     void registrarDeuda(
             String codigoPartida,
             Jugador deudor,
@@ -16,11 +17,12 @@ public interface ServicioGestionQuiebra {
             String motivo);
 
     DeudaPendiente obtenerDeudaPendiente(String codigoPartida, Long idJugador);
+    boolean hayDeudaEnPartidaActiva(String codigoPartida);
     Boolean intentarResolverDeuda(String codigoPartida, Long idJugador);
     Boolean venderPropiedadYResolverDeuda(String codigoPartida,Long idJugador,Long idPropiedad);
     ResultadoDeuda evaluarDeuda(String codigoPartida,Long idJugador);
     Partida declararQuiebra(String codigoPartida, Long idJugador);
     ResultadoDeuda procesarAlquiler(String codigoPartida, Propiedad propiedad, Jugador jugador, Integer montoAlquiler);
-
+    ResultadoDeuda procesarMulta(String codigoPartida, Jugador jugador, Integer montoMulta, String motivo);
 
 }

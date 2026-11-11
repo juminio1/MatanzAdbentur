@@ -5,5 +5,6 @@ import com.tallerwebi.dominio.entidades.DeudaPendiente;
 public interface RepositorioDeudaPendiente {
     void guardar(DeudaPendiente deuda);
     DeudaPendiente buscarPorPartidaYJugador(String codigoPartida,Long idJugador);
+    boolean existeEnPartidaActiva(String codigoPartida);
     void eliminar(DeudaPendiente deuda);
 }

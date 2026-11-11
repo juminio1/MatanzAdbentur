@@ -15,6 +15,9 @@ public class ObservadorTurnoAbandono implements Observador<EventoJugadorAbandona
 
 
     private final ServicioPartida servicioPartida;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
 
     public ObservadorTurnoAbandono(@Lazy ServicioPartida servicioPartida, ServicioParticipacion participacion) {
         this.participacion = participacion;
@@ -25,6 +28,10 @@ public class ObservadorTurnoAbandono implements Observador<EventoJugadorAbandona
     @Override
     public void actualizar(EventoJugadorAbandonado evento) {
         Partida partida = evento.partida();
+        if (partida.getEventoGlobal().estaActivo() && eventosGlobales != null) {
+            eventosGlobales.participantesCambiaron(partida);
+            return;
+        }
         Jugador jugadorQueAbandona = evento.jugador();
 
         long jugadoresRestantes = partida.getJugadores().stream().filter(jugador -> !jugador.getId().equals(jugadorQueAbandona.getId())).filter(participacion::estaActivo).count();

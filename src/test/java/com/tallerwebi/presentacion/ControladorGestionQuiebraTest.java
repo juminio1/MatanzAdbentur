@@ -41,7 +41,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 class ControladorGestionQuiebraTest {
     private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
-    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultasMovimiento = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia,
+            consultasMovimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()));
 
     private ServicioPartida servicioPartidaMock;
     private ServicioGestionQuiebra servicioGestionQuiebraMock;
@@ -53,7 +55,9 @@ class ControladorGestionQuiebraTest {
     private MockHttpSession session;
 
     @BeforeEach
-    void preparar() {
+    void preparar() {        var partidaMovimiento = new com.tallerwebi.dominio.entidades.Partida();
+        partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         servicioPartidaMock = mock(ServicioPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
         servicioPropiedadMock = mock(ServicioPropiedad.class);
@@ -64,6 +68,27 @@ class ControladorGestionQuiebraTest {
         request = new MockHttpServletRequest();
         session = new MockHttpSession();
         request.setSession(session);
+    }
+
+    @Test
+    void laDeudaEsDelNombreAutenticadoAunqueSuCuentaCoincidaConOtroJugador() {
+        Jugador otro = new Jugador(); otro.setId(1L); otro.setApodo("Otro");
+        Jugador deudor = new Jugador(); deudor.setId(2L); deudor.setApodo("Melina");
+        Partida partida = new Partida(); partida.setJugadores(List.of(otro, deudor));
+        session.setAttribute("id", 1L);
+        session.setAttribute("NOMBRE", "Melina");
+        when(servicioPartidaMock.obtenerPartida("PAUSA")).thenReturn(partida);
+        DeudaPendiente deuda = new DeudaPendiente();
+        deuda.setJugadorDeudor(deudor); deuda.setMontoPendiente(100); deuda.setMotivo("ALQUILER");
+        when(servicioGestionQuiebraMock.obtenerDeudaPendiente("PAUSA", 2L)).thenReturn(deuda);
+
+        var respuesta = controladorGestionQuiebra.obtenerDeudaPendiente("PAUSA", request);
+
+        assertEquals(HttpStatus.OK, respuesta.getStatusCode());
+        assertEquals(true, respuesta.getBody().get("tieneDeudaPendiente"));
+        assertEquals(100, respuesta.getBody().get("montoPendiente"));
+        verify(servicioGestionQuiebraMock, never()).obtenerDeudaPendiente("PAUSA", 1L);
+        assertEquals(2L, com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion.resolver(partida, request));
     }
 
     @Test

@@ -15,12 +15,33 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
 
     private static final String CONSULTA_PARTIDAS_ACTIVAS =
         "FROM Partida WHERE estado != :finalizada";
+    private static final String CONSULTA_PARTIDA_COMPLETA =
+        "SELECT DISTINCT p FROM Partida p LEFT JOIN FETCH p.jugadores "
+            + "LEFT JOIN FETCH p.creador LEFT JOIN FETCH p.jugadorTurnoAleatorio "
+            + "WHERE p.codigoUnico = :codigo";
 
     private final SessionFactory sessionFactory;
 
     @Autowired
     public RepositorioPartidaImpl(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
+    }
+
+    @Override
+    public void bloquearPartida(Partida partida) {
+        if (partida == null) return;
+        if (!sessionFactory.getCurrentSession().contains(partida)
+                || sessionFactory.getCurrentSession().getCurrentLockMode(partida) != org.hibernate.LockMode.PESSIMISTIC_WRITE) {
+            // Primero bloqueo sólo la fila padre. La segunda consulta recarga el grafo DESPUÉS
+            // de esperar el bloqueo, para no conservar colecciones leídas antes de otra petición.
+            sessionFactory.getCurrentSession().createNativeQuery(
+                    "SELECT id FROM Partida WHERE id = :id FOR UPDATE", Long.class)
+                    .setParameter("id", partida.getId()).getSingleResult();
+            sessionFactory.getCurrentSession().refresh(partida, org.hibernate.LockMode.PESSIMISTIC_WRITE);
+            // refresh no conserva necesariamente el modo en EntityEntry. Lo registro para
+            // que los servicios anidados reutilicen el bloqueo sin descartar cambios pendientes.
+            sessionFactory.getCurrentSession().lock(partida, org.hibernate.LockMode.PESSIMISTIC_WRITE);
+        }
     }
 
     @Override
@@ -49,14 +70,31 @@ public class RepositorioPartidaImpl implements RepositorioPartida {
     }
 
     @Override
+    public Partida buscarPartidaPorJugador(Long idJugador) {
+        Query<Partida> consulta = this.sessionFactory.getCurrentSession()
+                .createQuery("SELECT partida FROM Partida partida JOIN partida.jugadores jugador "
+                        + "WHERE jugador.id = :idJugador", Partida.class)
+                .setParameter("idJugador", idJugador);
+        return obtenerResultadoUnicoONull(consulta);
+    }
+
+    @Override
     public Partida buscarPartidaActivaPorCodigoUnico(String codigoUnico) {
-        List<Partida> partidas = crearConsultaPartidasActivas(
-            CONSULTA_PARTIDAS_ACTIVAS + " AND codigoUnico = :codigo"
-        )
+        List<Partida> partidas = sessionFactory.getCurrentSession()
+            .createQuery(CONSULTA_PARTIDA_COMPLETA + " AND p.estado <> :finalizada", Partida.class)
+            .setParameter("finalizada", EstadoPartida.FINALIZADA)
             .setParameter("codigo", codigoUnico)
             .getResultList();
 
         return partidas.isEmpty() ? null : partidas.get(0);
+    }
+
+    @Override
+    public Partida buscarPartidaPorCodigoUnico(String codigoUnico) {
+        Query<Partida> consulta = this.sessionFactory.getCurrentSession()
+                .createQuery(CONSULTA_PARTIDA_COMPLETA, Partida.class)
+                .setParameter("codigo", codigoUnico);
+        return obtenerResultadoUnicoONull(consulta);
     }
 
     private Query<Partida> crearConsultaPartidasActivas(String hql) {

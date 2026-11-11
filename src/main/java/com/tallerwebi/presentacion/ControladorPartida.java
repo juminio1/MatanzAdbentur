@@ -2,6 +2,8 @@ package com.tallerwebi.presentacion;
 
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.excepcion.DineroInsuficienteException;
 import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException;
@@ -36,6 +38,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
@@ -128,7 +132,7 @@ public class ControladorPartida {
             return new ModelAndView("redirect:/home");
         }
 
-        Partida partidaReal = servicioPartida.obtenerPartida(codigoFinal);
+        Partida partidaReal = servicioPartida.obtenerPartidaParaVisualizacion(codigoFinal);
         if (partidaReal == null) {
             return new ModelAndView("redirect:/sala-de-espera?codigoUnico=" + codigoFinal);
         }
@@ -140,20 +144,21 @@ public class ControladorPartida {
             return new ModelAndView("redirect:/login");
         }
 
-        Long jugadorSesionId = ResolutorJugadorSesion.resolver(
-                partidaReal,
-                usuarioSesionId,
-                nombreSesion
-        );
-        Jugador jugadorSesion =
-                jugadorSesionId == null ? null : servicioPartida.obtenerJugadorPorId(jugadorSesionId);
+        Long jugadorSesionId = ResolutorJugadorSesion.resolverAutenticado(partidaReal, request);
+        if (!participacion.pertenece(partidaReal, jugadorSesionId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ERROR_JUGADOR_AJENO);
+        }
+        Jugador jugadorSesion = partidaReal.getJugadores().stream()
+                .filter(jugador -> jugadorSesionId.equals(jugador.getId())).findFirst().orElseThrow();
 
         Map<String, Object> model = new HashMap<>();
         model.put("partida", partidaReal);
         model.put("usuarioSesionId", jugadorSesionId);
         model.put("dineroUsuarioSesion", jugadorSesion == null ? 0 : jugadorSesion.getDinero());
         model.put("usuarioEnBancarrota", jugadorSesion != null && jugadorSesion.getEnBancarrota());
-        model.put("turnoActualId", resolverTurnoActualId(codigoFinal));
+        model.put("turnoActualId", partidaReal.getEstado() == EstadoPartida.FINALIZADA
+                ? null : resolverTurnoActualId(codigoFinal));
+        model.put("avataresJugadores", servicioPartida.obtenerAvataresJugadores(codigoFinal));
         model.put("propiedadesTablero", mapeadorPropiedad.catalogoTablero(partidaReal));
 
         return new ModelAndView(VISTA_PARTIDA, model);
@@ -206,22 +211,90 @@ public class ControladorPartida {
             @RequestParam(CLAVE_ID_JUGADOR) Long idJugador,
             HttpServletRequest request
     ) throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        long inicio = System.nanoTime();
         Partida partida = servicioPartida.obtenerPartida(codigoUnico);
         if (partida == null) throw new PartidaNoEncontradaException();
         Long idSesion = ResolutorJugadorSesion.resolverParticipante(partida, request, participacion);
         if (!Objects.equals(idSesion, idJugador)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No podés tirar por otro jugador.");
         }
+        long validacionCompleta = System.nanoTime();
         try {
             RespuestaMovimientoDTO respuesta = MapeadorMovimiento.desde(
                     servicioJugada.tirarYMover(codigoUnico, idJugador));
-            servicioPartida.prepararTiempoTurno(codigoUnico, respuesta.calcularSegundosPresentacion());
+            long jugadaCompleta = System.nanoTime();
+            // La tirada usa el tiempo restante del turno; no reinicia ni extiende el plazo.
             respuesta.setTurnoSiguiente(coordinadorTurno.obtenerTurnoActual(codigoUnico));
+            long turnoConsultado = System.nanoTime();
             DespuesDeConfirmar.ejecutar(
                     () -> notificadorWebSocket.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoUnico, respuesta));
+            registrarTiempoTirada(inicio, validacionCompleta, jugadaCompleta, turnoConsultado);
             return respuesta;
         } catch (TiradaNoPermitidaException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
+    private void registrarTiempoTirada(long inicio, long validacionCompleta, long jugadaCompleta, long turnoConsultado) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes atributos
+                && atributos.getResponse() != null) {
+            atributos.getResponse().setHeader("Server-Timing",
+                    "validacion;dur=" + (validacionCompleta - inicio) / 1_000_000
+                    + ", jugada;dur=" + (jugadaCompleta - validacionCompleta) / 1_000_000
+                    + ", turno;dur=" + (turnoConsultado - jugadaCompleta) / 1_000_000
+                    + ", notificacion;dur=" + (System.nanoTime() - turnoConsultado) / 1_000_000);
+        }
+    }
+
+    @PostMapping("/partida/{codigoPartida}/pagar-fianza")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> pagarFianzaVoluntaria(
+            @PathVariable(PARAM_CODIGO_PARTIDA) String codigoPartida,
+            HttpServletRequest request
+    ) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null) return ResponseEntity.notFound().build();
+
+        // 1. Validamos que el jugador sea parte de la partida y esté logueado
+        Long idSesion = ResolutorJugadorSesion.resolverParticipante(partida, request, participacion);
+        Jugador actual = servicioPartida.obtenerJugadorActual(codigoPartida);
+
+        if (actual == null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, "No hay un jugador activo en esta partida."));
+        }
+        
+        // 2. Validamos que solo pueda pagar en su propio turno
+        if (!Objects.equals(actual.getId(), idSesion)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(CLAVE_ERROR, "No es tu turno para pagar la fianza."));
+        }
+
+        try {
+            // 3. Llamamos al servicio
+            servicioJugada.pagarFianzaVoluntaria(codigoPartida, idSesion);
+
+            // Avisamos a todos los jugadores el nuevo saldo y que salió de la cárcel
+            NotificadorPartida.notificarSaldos(notificadorWebSocket, servicioPartida, codigoPartida);
+
+            // Si sale bien, avisamos al frontend para que le habilite los dados y le mandamos su saldo
+            Map<String, Object> cuerpo = new HashMap<>();
+            cuerpo.put("mensaje", "Fianza pagada con éxito. Ya podés tirar los dados.");
+            Jugador pagador = servicioPartida.obtenerJugadorPorId(idSesion);
+            if (pagador != null) cuerpo.put("dineroJugador", pagador.getDinero());
+            return ResponseEntity.ok(cuerpo);
+            
+        } catch (DineroInsuficienteException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    Map.of("codigoError", "DINERO_INSUFICIENTE", CLAVE_ERROR, ex.getMessage())
+            );
+        } catch (IllegalStateException ex) {
+            // Ataja si intenta pagar y no estaba preso, o si ya tiró los dados
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(CLAVE_ERROR, ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    Map.of(CLAVE_ERROR, "Error interno al procesar el pago de la fianza.")
+            );
         }
     }
 

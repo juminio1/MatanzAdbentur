@@ -12,6 +12,7 @@ import com.tallerwebi.dominio.servicios.interfaces.ServicioOfertaPropiedad;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPropiedad;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Las ofertas viven en memoria y vencen a los cinco minutos.
  */
 @Service("servicioOfertaPropiedad")
+@org.springframework.transaction.annotation.Transactional
 public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     private static final Duration VIGENCIA = Duration.ofMinutes(5);
@@ -41,6 +43,8 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     private final ServicioParticipacion participacion;
     private final Clock reloj;
     private final Map<String, Oferta> ofertas = new ConcurrentHashMap<>();
+    @Autowired
+    private ServicioGestionQuiebra quiebras;
 
     @Autowired
     public ServicioOfertaPropiedadImpl(ServicioPartida servicioPartida, ServicioCasillero servicioCasillero,
@@ -59,7 +63,10 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
     }
 
     @Override
-    public Oferta crearOferta(Partida partida, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
+    public Oferta crearOferta(Partida referencia, Integer posicion, Long idVendedor, Long idComprador, Integer precio) {
+        Partida partida = servicioPartida.obtenerPartida(referencia.getCodigoUnico());
+        servicioPartida.bloquearPartida(partida);
+        validarVenta(partida);
         if (!participantesValidos(partida, idVendedor, idComprador) || precio == null || precio < 0) {
             throw new OfertaInvalidaException("La oferta no es válida.");
         }
@@ -88,17 +95,24 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     @Override
     public void rechazar(String codigoPartida, String idOferta, Long idComprador) {
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        servicioPartida.bloquearPartida(partida);
         Oferta oferta = obtenerVigente(codigoPartida, idOferta, idComprador);
+        validarVenta(partida);
         ofertas.remove(oferta.id(), oferta);
     }
 
     @Override
-    public OfertaAceptada aceptar(Partida partida, String idOferta, Long idComprador) {
+    public OfertaAceptada aceptar(Partida referencia, String idOferta, Long idComprador) {
+        Partida partida = servicioPartida.obtenerPartida(referencia.getCodigoUnico());
+        servicioPartida.bloquearPartida(partida);
+        participacion.validarPartidaEnCurso(partida);
         Oferta oferta = obtenerVigente(partida.getCodigoUnico(), idOferta, idComprador);
+        validarVenta(partida);
         // Evita que dos respuestas a la misma oferta transfieran la propiedad dos veces.
         synchronized (oferta) {
             if (!ofertas.containsKey(oferta.id())) throw new OfertaNoDisponibleException(OFERTA_NO_DISPONIBLE);
-            if (!puedeParticipar(partida, idComprador)) {
+            if (!participantesValidos(partida, oferta.idVendedor(), idComprador)) {
                 throw new OfertaNoPermitidaException("No podés aceptar ofertas en esta partida.");
             }
             CasilleroPropiedad casillero = servicioCasillero.buscarCasilleroPropiedad(partida, oferta.posicion());
@@ -107,6 +121,9 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
             }
             servicioPropiedad.transferirPropiedadParaJugadores(casillero.getPropiedad().getId(),
                     oferta.idVendedor(), oferta.idComprador(), oferta.precio());
+            if (quiebras != null) {
+                quiebras.intentarResolverDeuda(partida.getCodigoUnico(), oferta.idVendedor());
+            }
             ofertas.remove(oferta.id(), oferta);
             return new OfertaAceptada(oferta, casillero);
         }
@@ -119,6 +136,10 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
             throw new OfertaNoDisponibleException(OFERTA_NO_DISPONIBLE);
         }
         return oferta;
+    }
+
+    private void validarVenta(Partida partida) {
+        participacion.validarPartidaEnCurso(partida);
     }
 
     private boolean participantesValidos(Partida partida, Long idVendedor, Long idComprador) {

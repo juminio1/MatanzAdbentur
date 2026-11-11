@@ -18,15 +18,15 @@
     max-width: 1050px;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background-color: rgba(27, 38, 50, 0.97);
-    border: 2px solid #080d13;
+    background-color: color-mix(in srgb, var(--tema-panel) 97%, transparent);
+    border: 2px solid var(--tema-sombra);
     border-radius: 20px;
-    box-shadow: 7px 7px 0 #080d13;
+    box-shadow: 7px 7px 0 var(--tema-sombra);
     overflow: hidden;
 }
 
 .registro-presentacion {
-    background-color: #2b3990;
+    background-color: var(--tema-acento-oscuro);
     color: white;
     padding: 55px 45px;
     display: flex;
@@ -55,7 +55,7 @@
 }
 
 .registro-frase {
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
     color: #111;
     border: 2px solid #111;
     border-radius: 10px;
@@ -77,12 +77,12 @@
 .registro-card-header h2 {
     font-size: 30px;
     font-weight: 900;
-    color: #edf3f8;
+    color: var(--tema-texto);
     margin-bottom: 5px;
 }
 
 .registro-card-header p {
-    color: #b3c1ce;
+    color: var(--tema-secundario);
     font-size: 14px;
 }
 
@@ -95,17 +95,17 @@
     margin-bottom: 7px;
     font-size: 14px;
     font-weight: 700;
-    color: #d6e0e9;
+    color: var(--tema-secundario);
 }
 
 .form-group input {
     width: 100%;
     padding: 12px 14px;
-    border: 2px solid #39495a;
+    border: 2px solid var(--tema-borde);
     border-radius: 9px;
     font-size: 15px;
-    background-color: #111a23;
-    color: #edf3f8;
+    background-color: var(--tema-campo);
+    color: var(--tema-texto);
     outline: none;
     transition:
         border-color 0.2s ease,
@@ -113,8 +113,8 @@
 }
 
 .form-group input:focus {
-    border-color: #2b3990;
-    box-shadow: 0 0 0 3px rgba(43, 57, 144, 0.12);
+    border-color: var(--tema-acento-oscuro);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tema-acento) 12%, transparent);
 }
 
 .form-group input.input-error {
@@ -165,7 +165,7 @@
 }
 
 .password-wrapper .btn-toggle-pass:hover svg {
-    stroke: #2b3990 !important;
+    stroke: var(--tema-acento-oscuro) !important;
 }
 
 /* --- MENSAJES DE ERROR Y AYUDA --- */
@@ -204,7 +204,7 @@
 }
 
 .ayuda-password {
-    color: #aebdcc;
+    color: var(--tema-secundario);
     font-size: 11px;
     line-height: 1.4;
     margin-top: 5px;
@@ -214,7 +214,7 @@
     width: 100%;
     margin-top: 10px;
     padding: 14px;
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
     color: #111;
     border: 2px solid #111;
     border-radius: 10px;
@@ -229,7 +229,7 @@
 }
 
 .btn-registrarse:hover {
-    background-color: #ffc926;
+    background-color: var(--tema-acento-hover);
 }
 
 .btn-registrarse:active {
@@ -241,11 +241,11 @@
     text-align: center;
     margin-top: 22px;
     font-size: 13px;
-    color: #b3c1ce;
+    color: var(--tema-secundario);
 }
 
 .login-link a {
-    color: #76c8f0;
+    color: var(--tema-acento);
     font-weight: 800;
     text-decoration: none;
 }
@@ -261,7 +261,7 @@
 
 .ayuda-password,
 .login-link {
-    color: #b3c1ce;
+    color: var(--tema-secundario);
 }
 
 /* --- MEDIA QUERIES --- */

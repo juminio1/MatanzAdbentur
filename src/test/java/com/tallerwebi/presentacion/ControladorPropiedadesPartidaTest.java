@@ -10,6 +10,7 @@ import com.tallerwebi.dominio.entidades.Casillero.Casillero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 import com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException;
@@ -49,7 +50,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class ControladorPropiedadesPartidaTest {
     private final com.tallerwebi.dominio.servicios.interfaces.ServicioDado dados = org.mockito.Mockito.mock(com.tallerwebi.dominio.servicios.interfaces.ServicioDado.class);
     private final ServicioEconomia economia = org.mockito.Mockito.spy(new ServicioEconomiaImpl());
-    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia));
+    private final com.tallerwebi.infraestructura.RepositorioPartida consultasMovimiento = org.mockito.Mockito.mock(com.tallerwebi.infraestructura.RepositorioPartida.class);
+    private final ServicioMovimiento movimiento = org.mockito.Mockito.spy(new ServicioMovimientoImpl(economia,
+            consultasMovimiento, new com.tallerwebi.dominio.servicios.ServicioParticipacionImpl()));
 
     private static final String CODIGO = "PARTIDA123";
     private static final Long ID_PARTIDA = 10L;
@@ -65,10 +68,18 @@ class ControladorPropiedadesPartidaTest {
     private ServicioGestionQuiebra servicioGestionQuiebraMock;
 
     @BeforeEach
-    void inicializar() throws EstadoPartidaInvalidoException {
+    void inicializar() throws EstadoPartidaInvalidoException {        var partidaMovimiento = new com.tallerwebi.dominio.entidades.Partida();
+        partidaMovimiento.setEstado(com.tallerwebi.dominio.enums.EstadoPartida.EN_CURSO);
+        org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         servicioPartida = mock(ServicioPartida.class);
+        when(servicioPartida.obtenerSegundosRestantesTurno(CODIGO)).thenReturn(60);
         notificador = mock(SimpMessagingTemplate.class);
         servicioCasillero = spy(new ServicioCasilleroImpl(mock(RepositorioCasillero.class)));
+        doAnswer(i -> servicioCasillero.obtenerTodosLosCasilleros().stream()
+            .filter(com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad.class::isInstance)
+            .map(com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad.class::cast)
+            .filter(c -> c.getPropiedad() != null && java.util.Objects.equals(c.getPartidaId(), ((Partida)i.getArgument(0)).getId()))
+            .toList()).when(servicioCasillero).obtenerCasillerosPropiedadDePartida(any());
         servicioPropiedad = mock(ServicioPropiedad.class);
         notificadorPartidaMock = mock(NotificadorPartida.class);
         servicioGestionQuiebraMock = mock(ServicioGestionQuiebra.class);
@@ -378,6 +389,8 @@ class ControladorPropiedadesPartidaTest {
         partida.setJugadores(List.of(jugador));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession().setAttribute("id", jugador.getId());
+        request.getSession().setAttribute("NOMBRE", jugador.getApodo());
+        when(servicioPartida.obtenerPartidaParaVisualizacion(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(partida);
         when(servicioPartida.obtenerJugadorPorId(jugador.getId())).thenReturn(jugador);
         when(servicioCasillero.obtenerTodosLosCasilleros()).thenReturn(List.of());
@@ -547,7 +560,8 @@ class ControladorPropiedadesPartidaTest {
         var orden = inOrder(notificador);
         orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/propiedades"), eq(respuesta.getBody()));
         orden.verify(notificador).convertAndSend(eq("/topic/partida/" + CODIGO + "/dinero"),
-                eq(Map.of("idJugador", vendedor.getId(), "dinero", 850, "enBancarrota", false)));
+                eq(Map.of("idJugador", vendedor.getId(), "dinero", 850, "enBancarrota", false,
+                        "encarcelado", false, "intentosCarcel", 0)));
         verify(servicioPartida, never()).obtenerJugadorActual(any());
         verify(servicioPartida, never()).avanzarTurno(any());
         verify(servicioCasillero, never()).guardarCasillero(any());
@@ -630,6 +644,7 @@ class ControladorPropiedadesPartidaTest {
 
     private Partida crearPartida() {
         Partida partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);
         return partida;
@@ -640,6 +655,7 @@ class ControladorPropiedadesPartidaTest {
         jugador.setId(id);
         jugador.setApodo(apodo);
         jugador.setDinero(dinero);
+        jugador.setOrden(0);
         jugador.setPosicionActual(posicion);
         return jugador;
     }

@@ -7,15 +7,15 @@
 
 body {
     min-height: 100vh;
-    background-color: #111820;
+    background-color: var(--tema-fondo);
     background-image:
-        linear-gradient(rgba(8, 12, 18, 0.2), rgba(8, 12, 18, 0.38)),
+        linear-gradient(color-mix(in srgb, var(--tema-fondo) 45%, transparent), color-mix(in srgb, var(--tema-fondo) 63%, transparent)),
         url('../images/fondo/Wireframe%20-%207.jpg');
     background-repeat: no-repeat, repeat;
     background-attachment: fixed;
     background-size: cover, cover;
     background-position: center;
-    color: #edf3f8;
+    color: var(--tema-texto);
     overflow-x: hidden;
 }
 
@@ -33,11 +33,11 @@ body {
     min-height: 560px;
     display: grid;
     grid-template-columns: 0.9fr 1.1fr;
-    background-color: #1b2632;
-    border: 3px solid #080d13;
+    background-color: var(--tema-panel);
+    border: 3px solid var(--tema-sombra);
     border-radius: 22px;
     overflow: hidden;
-    box-shadow: 9px 9px 0 #080d13;
+    box-shadow: 9px 9px 0 var(--tema-sombra);
 }
 
 .login-info {
@@ -47,7 +47,7 @@ body {
     justify-content: center;
     align-items: flex-start;
     padding: 50px;
-    background-color: #2b3990;
+    background-color: var(--tema-acento-oscuro);
     color: white;
     overflow: hidden;
 }
@@ -60,7 +60,7 @@ body {
     right: -170px;
     bottom: -160px;
     border-radius: 50%;
-    border: 45px solid rgba(255, 210, 76, 0.18);
+    border: 45px solid color-mix(in srgb, var(--tema-acento) 18%, transparent);
 }
 
 /* Etiqueta */
@@ -68,7 +68,7 @@ body {
     display: inline-block;
     margin-bottom: 25px;
     padding: 7px 15px;
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
     color: #111;
     border: 2px solid #111;
     border-radius: 20px;
@@ -133,11 +133,11 @@ body {
 }
 
 .casillero.amarillo {
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
 }
 
 .casillero.celeste {
-    background-color: #5dc7e5;
+    background-color: var(--tema-acento);
 }
 
 .casillero.rojo {
@@ -159,7 +159,7 @@ body {
 .login-form-title > span {
     display: block;
     margin-bottom: 6px;
-    color: #2b3990;
+    color: var(--tema-acento);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -167,35 +167,35 @@ body {
 
 .login-form-title h2 {
     margin-bottom: 8px;
-    color: #edf3f8;
+    color: var(--tema-texto);
     font-size: 36px;
     font-weight: 900;
 }
 
 /* El panel del formulario acompaña el tema oscuro global. */
 .login-form-section {
-    background: #1b2632;
-    color: #edf3f8;
+    background: var(--tema-panel);
+    color: var(--tema-texto);
 }
 
 .login-form-title > span {
-    color: #76c8f0;
+    color: var(--tema-acento);
 }
 
 .register-section,
 .register-section p {
-    color: #d6e0e9;
+    color: var(--tema-secundario);
 }
 
 .register-section a,
 .form-group a {
-    color: #76c8f0;
+    color: var(--tema-acento);
 }
 
-.login-form-title h2 { color: #edf3f8; }
+.login-form-title h2 { color: var(--tema-texto); }
 
 .login-form-title p {
-    color: #b3c1ce;
+    color: var(--tema-secundario);
     font-size: 15px;
     font-weight: 500;
 }
@@ -208,7 +208,7 @@ body {
 
 .form-group label {
     margin-bottom: 8px;
-    color: #d6e0e9;
+    color: var(--tema-secundario);
     font-size: 14px;
     font-weight: 700;
 }
@@ -217,10 +217,10 @@ body {
     width: 100%;
     height: 52px;
     padding: 0 16px;
-    background-color: #111a23;
-    border: 2px solid #39495a;
+    background-color: var(--tema-campo);
+    border: 2px solid var(--tema-borde);
     border-radius: 10px;
-    color: #edf3f8;
+    color: var(--tema-texto);
     font-size: 15px;
     outline: none;
     transition:
@@ -230,13 +230,13 @@ body {
 }
 
 .form-control-login::placeholder {
-    color: #94a3b3;
+    color: var(--tema-secundario);
 }
 
 .form-control-login:focus {
-    background-color: #17232f;
-    border-color: #2b3990;
-    box-shadow: 0 0 0 3px rgba(43, 57, 144, 0.12);
+    background-color: var(--tema-campo);
+    border-color: var(--tema-acento);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tema-acento) 12%, transparent);
 }
 
 /* --- INTEGRACIÓN BOTÓN VER CONTRASEÑA --- */
@@ -274,7 +274,7 @@ body {
 }
 
 .btn-toggle-pass:hover svg {
-    stroke: #2b3990 !important;
+    stroke: var(--tema-acento) !important;
 }
 
 /* --- ERRORES Y BOTÓN SUBMIT --- */
@@ -309,7 +309,7 @@ body {
     min-height: 52px;
     margin-top: 5px;
     padding: 14px 25px;
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
     color: #111;
     border: 2px solid #111;
     border-radius: 10px;
@@ -324,7 +324,7 @@ body {
 }
 
 .btn-ingresar:not(:disabled):hover {
-    background-color: #ffc926;
+    background-color: var(--tema-acento-hover);
     transform: translate(-2px, -2px);
     box-shadow: 6px 6px 0 #111;
 }
@@ -348,12 +348,12 @@ body {
     margin-top: 30px;
     padding-top: 25px;
     border-top: 1px solid #ddd;
-    color: #666;
+    color: var(--tema-secundario);
     font-size: 14px;
 }
 
 .register-section a {
-    color: #2b3990;
+    color: var(--tema-acento);
     font-weight: 800;
     text-decoration: none;
 }

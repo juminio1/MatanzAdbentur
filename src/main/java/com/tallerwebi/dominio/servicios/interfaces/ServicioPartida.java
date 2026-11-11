@@ -12,10 +12,13 @@ import com.tallerwebi.dominio.resultados.PosicionFicha;
 import java.util.List;
 
 public interface ServicioPartida {
+    java.util.Map<Long, String> obtenerAvataresJugadores(String codigoPartida);
+    Partida obtenerPartidaParaVisualizacion(String codigoPartida);
     Partida obtenerPartida(String codigoUnico); //da la info del tablero y sus posiciones
     void iniciarPartida(String codigo, Long idUsuario)
         throws PartidaNoEncontradaException, CantidadJugadoresInsuficienteException, CantidadMaximaJugadoresSuperadaException, PartidaIniciadaException, SalaNoEncontradaException, FichaNoDisponibleException;
     void actualizarJugador(Jugador jugador);
+    void bloquearPartida(Partida partida);
     void incrementarRondas(Partida partida);
     void inicializarTurnos(String codigoUnico);
     void abandonarPartida(String codigoUnico, Long idJugador) throws PartidaNoEncontradaException;
@@ -25,5 +28,8 @@ public interface ServicioPartida {
     void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion);
     Jugador obtenerJugadorPorId(Long idJugador);
     void avanzarTurno(String codigoUnico);
+    void actualizarPausaPorDeuda(String codigoUnico);
+    boolean turnoPausadoPorDeuda(String codigoUnico);
+    void reanudarDespuesDeEvento(String codigoUnico);
     List<PosicionFicha> obtenerPosicionesFichas(String codigo);
 }
