@@ -33,6 +33,9 @@ describe("Filtro de propiedades para robar", () => {
 
 describe("Trivia real", () => {
  let recibir, modal, api, conexion, preso;
+ let pausarCierres = false;
+ let terminarPausa = null;
+ afterEach(() => { pausarCierres = false; });
  const estado = { finalizada: false, ronda: 1, enJuego: [{id: 1, apodo: "Ana"}] };
  const pregunta = {...PREGUNTA, id: 1, ronda: 1, totalRondas: 5, venceEn: Date.now()+10000};
  beforeEach(() => {
@@ -46,7 +49,9 @@ describe("Trivia real", () => {
   api.enviarRespuesta.and.resolveTo({correcta: true});
   api.obtenerEstado.and.resolveTo(null);
   api.obtenerPregunta.and.resolveTo(pregunta);
-  conexion = conectarTriviaPartida({cliente, codigo: "ABC", programarCierre: function (cerrar) { cerrar(); }, idJugador: 1, estaPreso: function () { return preso; }, modal, api,
+  terminarPausa = null;
+  conexion = conectarTriviaPartida({cliente, codigo: "ABC", programarCierre: function (cerrar) { cerrar(); }, idJugador: 1,
+   esperarTrasCierre: function (seguir) { if (pausarCierres) terminarPausa = seguir; else seguir(); }, estaPreso: function () { return preso; }, modal, api,
    documento: new JSDOM('<section id="panel-ruleta"></section>').window.document});
  });
  it("muestraLaPreguntaComunDelServidorSinEsperarLaRuleta", () => {
@@ -120,6 +125,19 @@ describe("Trivia real", () => {
   recibir({tipo:"RONDA_NUEVA",estado:{...estado,ronda:2},pregunta:{...pregunta,id:2,ronda:2}});
   await elegir(3);
   expect(api.enviarRespuesta).toHaveBeenCalledOnceWith(2,3);
+ });
+ it("dejaVerLaCorrectaUnMomentoAntesDeMostrarElFinal", () => {
+  pausarCierres = true;
+  recibir({tipo:"RONDA_NUEVA",estado,pregunta});
+  recibir({tipo:"RONDA_CERRADA",estado:{...estado,enJuego:[]}, rondaCerrada:1, opcionCorrecta:2,eliminados:[{id:1,apodo:"Ana"}]});
+  recibir({tipo:"FINALIZADA",estado:{...estado,finalizada:true,enJuego:[],idGanador:null,ganador:null}});
+
+  expect(modal.mostrarCierre).toHaveBeenCalled();
+  expect(modal.mostrarFinal).withContext("el final tapó la correcta al instante").not.toHaveBeenCalled();
+
+  terminarPausa();
+
+  expect(modal.mostrarFinal).toHaveBeenCalledTimes(1);
  });
  it("ignoraUnErrorHttpDeUnaRondaAnterior", async () => {
   let rechazar;

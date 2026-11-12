@@ -482,6 +482,13 @@ export function configurarRuleta(
                 return;
             }
 
+            // Una ruleta ya sorteada no se vuelve a girar al recargar:
+            // su trivia ya empezó (o terminó) y tiene su propio modal.
+            if (estado?.estado === "SORTEADA") {
+                ultimaActivacionResuelta = estado.activacionId;
+                return;
+            }
+
             if (estado) {
                 procesarEstadoRuleta(estado);
             }

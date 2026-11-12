@@ -1,6 +1,9 @@
 import { crearModalTrivia } from "./trivia.js?v=4";
 import { crearApiTrivia } from "./trivia-api.js?v=2";
 
+// Tiempo para ver la respuesta correcta antes de la ronda siguiente o del final.
+const PAUSA_TRAS_CIERRE = 2500;
+
 export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
     return propiedades.filter(propiedad =>
         propiedad.propietarioId != null && String(propiedad.propietarioId) !== String(idJugador));
@@ -8,7 +11,8 @@ export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
 
 // Usa el cliente STOMP existente y los datos del servidor para cada ronda.
 export function conectarTriviaPartida({ cliente, codigo, base = "", documento = document,
-    idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, 2500); }, alPremioEntregado = function () {}, estaPreso = function () { return false; },
+    idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, 2500); },
+    esperarTrasCierre = function (seguir) { setTimeout(seguir, PAUSA_TRAS_CIERRE); }, alPremioEntregado = function () {}, estaPreso = function () { return false; },
     modal = crearModalTrivia(), api = crearApiTrivia({ base, codigo }) } = {}) {
     let revision = 0;
     let preguntaActual = null;
@@ -194,8 +198,12 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         }
     }
 
-    cliente.subscribe("/topic/partida/" + codigo + "/trivia", function (mensaje) {
-        const evento = JSON.parse(mensaje.body);
+    // Tras cerrar una ronda, el servidor manda enseguida la siguiente o el final.
+    // Se guardan un momento para que todos vean la correcta y quiénes quedaron afuera.
+    let enPausa = false;
+    const enEspera = [];
+
+    function procesar(evento) {
         revision++;
         if (evento.tipo === "RONDA_CERRADA") {
             if (!preguntaActual || evento.rondaCerrada !== preguntaActual.ronda) return;
@@ -203,11 +211,25 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
             estadoActual = evento.estado;
             modal.mostrarCierre(opcionElegida, evento.opcionCorrecta,
                 nombres(evento.eliminados), nombres(evento.estado.enJuego));
+            enPausa = true;
+            esperarTrasCierre(function () {
+                enPausa = false;
+                while (enEspera.length > 0 && !enPausa) procesar(enEspera.shift());
+            });
             return;
         }
         aplicar(evento.estado, evento.tipo === "RONDA_NUEVA" ? evento.pregunta : null, evento.tipo);
         // Si se ingreso durante un cambio de participantes, recuperar la pregunta perdida.
         if (!preguntaActual && !evento.estado.finalizada) recuperar();
+    }
+
+    cliente.subscribe("/topic/partida/" + codigo + "/trivia", function (mensaje) {
+        const evento = JSON.parse(mensaje.body);
+        if (enPausa) {
+            enEspera.push(evento);
+            return;
+        }
+        procesar(evento);
     });
     recuperar();
     return { recuperar };
