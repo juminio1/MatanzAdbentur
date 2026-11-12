@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 //Reglas compartidas de participación, independientes de HTTP y persistencia.
 @Service
 public class ServicioParticipacionImpl implements ServicioParticipacion {
+    // Busca el gestor al consultar el bloqueo, evitando un ciclo al crear los servicios de participación y trivia.
     @Autowired
     private ObjectProvider<GestorTriviaPartida> gestorTrivia;
 

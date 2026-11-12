@@ -6,7 +6,6 @@ import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
 import com.tallerwebi.dominio.eventos.EventoTiempoAgotadoEnCarcel;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
-    import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
 import com.tallerwebi.dominio.observadores.Observador;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
@@ -39,7 +38,6 @@ public class ObservadoresConfig {
         return new PublicadorEventos<>(observadores);
     }
 
-
     @Bean
     public PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono(
         List<Observador<EventoJugadorAbandonado>> observadores
@@ -65,5 +63,4 @@ public class ObservadoresConfig {
             List<Observador<EventoTriviaActualizada>> observadores) {
         return new PublicadorEventos<>(observadores);
     }
-
 }

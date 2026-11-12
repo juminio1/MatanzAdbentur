@@ -28,6 +28,9 @@ import com.tallerwebi.dominio.resultados.ResultadosFinalesPartida;
 @Service
 public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPartida {
     private static final long UNICO_JUGADOR_ACTIVO = 1L;
+    @Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private GestorTriviaPartida gestorTrivia;
 
     @Override
     public boolean cumpleCondicionFinalizacion(Partida partida) {
@@ -110,6 +113,9 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
         repositorioPartida.guardarPartida(partida);
         String codigoPartida = partida.getCodigoUnico();
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoPartida));
+        if (gestorTrivia != null && participacion.estaBloqueadaPorTrivia(partida)) {
+            DespuesDeConfirmar.ejecutar(() -> gestorTrivia.participantesCambiaron(codigoPartida));
+        }
         if (teniaEventoGlobal) {
             long revisionEvento = partida.getEventoGlobal().getRevision();
             DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizadorEvento(

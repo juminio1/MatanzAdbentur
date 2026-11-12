@@ -32,6 +32,8 @@ import com.tallerwebi.presentacion.ControladorGestionQuiebra;
 import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
+import com.tallerwebi.dominio.resultados.ResultadoJugada;
+import org.mockito.ArgumentCaptor;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -116,7 +118,10 @@ class EfectosPartidaIntegracionTest {
         GestorTemporizadorPartida gestorTemporizadorPartida() { return mock(GestorTemporizadorPartida.class); }
 
         @Bean
-        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono() { return new PublicadorEventos<>(List.of()); }
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono(GestorTriviaPartida gestorTrivia) {
+            return new PublicadorEventos<>(List.of(
+                    new com.tallerwebi.dominio.observadores.ObservadorTriviaAbandono(gestorTrivia)));
+        }
 
         @Bean
         ObservadorTurnoQuiebra observadorTurnoQuiebra(
@@ -161,6 +166,7 @@ class EfectosPartidaIntegracionTest {
     @Autowired private GestorRuletaPartida gestorRuleta;
     @Autowired private GestorTriviaPartida gestorTrivia;
     @Autowired private ServicioParticipacion participacionTrivia;
+    @Autowired private ServicioFinalizacionPartida finalizacionTrivia;
     @Autowired private GestorTemporizadorPartida temporizador;
     @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
     @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
@@ -217,6 +223,40 @@ class EfectosPartidaIntegracionTest {
     }
 
     // Ubica al jugador antes de un casillero de trivia para probar su caída al tirar los dados.
+    @Test
+    void abandonoActualizaTriviaSoloDespuesDelCommit() {
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            verify(gestorTrivia, never()).participantesCambiaron(any());
+        });
+
+        verify(gestorTrivia, times(1)).participantesCambiaron(codigo);
+    }
+
+    @Test
+    void rollbackDeAbandonoNoModificaLaTrivia() {
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            tx.setRollbackOnly();
+        });
+
+        verify(gestorTrivia, never()).participantesCambiaron(any());
+        assertFalse(Boolean.TRUE.equals(servicioPartida.obtenerJugadorPorId(idJugador).getAbandono()));
+    }
+
+    @Test
+    void finalizacionDefinitivaSolicitaCancelarTriviaDespuesDelCommit() {
+        bloquearPorTrivia();
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            assertTrue(finalizacionTrivia.finalizarSiCorresponde(servicioPartida.obtenerPartida(codigo)));
+            verify(gestorTrivia, never()).participantesCambiaron(any());
+        });
+
+        verify(gestorTrivia, org.mockito.Mockito.atLeastOnce()).participantesCambiaron(codigo);
+        assertNull(servicioPartida.obtenerPartida(codigo));
+    }
+
     private void bloquearPorTrivia() {
         when(gestorTrivia.estaBloqueandoPartida(codigo)).thenReturn(true);
         clearInvocations(servicioDado, notificador, temporizador);
@@ -274,7 +314,7 @@ class EfectosPartidaIntegracionTest {
     @Test
     void triviaBloqueaCrearOfertaSinGuardarla() {
         propiedadDelRival();
-        var ofertas = ofertasParaTrivia();
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
         bloquearPorTrivia();
 
         assertThrows(IllegalStateException.class,
@@ -286,8 +326,8 @@ class EfectosPartidaIntegracionTest {
     @Test
     void triviaBloqueaAceptarOfertaSinTransferirNiEliminarla() {
         Long propiedad = propiedadDelRival();
-        var ofertas = ofertasParaTrivia();
-        var oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
+        ServicioOfertaPropiedad.Oferta oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
         bloquearPorTrivia();
 
         assertThrows(IllegalStateException.class,
@@ -301,8 +341,8 @@ class EfectosPartidaIntegracionTest {
     @Test
     void triviaBloqueaRechazarOfertaSinEliminarla() {
         propiedadDelRival();
-        var ofertas = ofertasParaTrivia();
-        var oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
+        ServicioOfertaPropiedad.Oferta oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
         bloquearPorTrivia();
 
         assertThrows(IllegalStateException.class, () -> ofertas.rechazar(codigo, oferta.id(), idJugador));
@@ -325,14 +365,14 @@ class EfectosPartidaIntegracionTest {
 
     @Test
     void triviaImpideAvanzarTurnoSinCambiarRondaNiNotificar() {
-        var anterior = servicioPartida.obtenerPartida(codigo);
+        Partida anterior = servicioPartida.obtenerPartida(codigo);
         int ronda = anterior.getRondaActual();
         int turnos = anterior.getTurnosFinalizadosEnRonda();
         bloquearPorTrivia();
 
         servicioPartida.avanzarTurno(codigo);
 
-        var actual = servicioPartida.obtenerPartida(codigo);
+        Partida actual = servicioPartida.obtenerPartida(codigo);
         assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
         assertEquals(ronda, actual.getRondaActual());
         assertEquals(turnos, actual.getTurnosFinalizadosEnRonda());
@@ -408,12 +448,12 @@ class EfectosPartidaIntegracionTest {
     private void verificarActivacionAlConfirmarCaida(int destino) {
         ubicarJugadorAntesDeTrivia(idJugador, destino - 2);
         transaccion.executeWithoutResult(tx -> {
-            var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(destino, resultado.nuevaPosicion());
             verifyNoInteractions(gestorRuleta);
         });
 
-        var activacion = org.mockito.ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> activacion = ArgumentCaptor.forClass(String.class);
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), activacion.capture(), eq(idJugador));
         assertNotNull(activacion.getValue());
         assertFalse(activacion.getValue().isBlank());
@@ -432,7 +472,7 @@ class EfectosPartidaIntegracionTest {
 
     @Test
     void terminarFueraDeTriviaNoActivaRuleta() {
-        var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+        ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
 
         assertEquals(2, resultado.nuevaPosicion());
         verifyNoInteractions(gestorRuleta);
@@ -443,7 +483,7 @@ class EfectosPartidaIntegracionTest {
     void rollbackDeCaidaEnTriviaNoActivaRuleta() {
         ubicarJugadorAntesDeTrivia(idJugador, 8);
         transaccion.executeWithoutResult(tx -> {
-            var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(10, resultado.nuevaPosicion());
             verifyNoInteractions(gestorRuleta);
             tx.setRollbackOnly();
@@ -476,8 +516,8 @@ class EfectosPartidaIntegracionTest {
 
         assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idPropietario));
 
-        var primera = org.mockito.ArgumentCaptor.forClass(String.class);
-        var segunda = org.mockito.ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> primera = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> segunda = ArgumentCaptor.forClass(String.class);
         verify(gestorRuleta).activarRuleta(eq(codigo), primera.capture(), eq(idJugador));
         verify(gestorRuleta).activarRuleta(eq(codigo), segunda.capture(), eq(idPropietario));
         assertFalse(primera.getValue().isBlank());
@@ -490,7 +530,7 @@ class EfectosPartidaIntegracionTest {
     void unaTarjetaQueTerminaEnTriviaActivaRuletaPorLaPosicionFinalEfectiva() {
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 10);
 
-        var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+        ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
 
         assertEquals(10, resultado.nuevaPosicion());
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));

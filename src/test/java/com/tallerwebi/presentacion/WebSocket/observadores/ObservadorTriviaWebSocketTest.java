@@ -172,7 +172,10 @@ public class ObservadorTriviaWebSocketTest {
         JsonNode json = new ObjectMapper().valueToTree(mensaje);
         JsonNode participante = json.path("estado").path("enJuego").path(0);
         Set<String> campos = new java.util.HashSet<>();
-        participante.fieldNames().forEachRemaining(campos::add);
+        java.util.Iterator<String> nombres = participante.fieldNames();
+        while (nombres.hasNext()) {
+            campos.add(nombres.next());
+        }
         assertEquals(Set.of("id", "apodo", "milisegundos"), campos);
         assertFalse(json.toString().contains("preguntaActual"));
         assertFalse(json.toString().contains("respuestaCorrecta"));

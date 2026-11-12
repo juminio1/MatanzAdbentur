@@ -8,6 +8,7 @@ import com.tallerwebi.presentacion.DTO.EstadoTriviaDTO;
 import com.tallerwebi.presentacion.DTO.ParticipanteTriviaDTO;
 import com.tallerwebi.presentacion.DTO.PreguntaTriviaDTO;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
 
@@ -18,14 +19,15 @@ public final class MapeadorTrivia {
     }
 
     public static Map<String, Object> cierre(EventoTriviaActualizada evento) {
-        List<ParticipanteTriviaDTO> eliminados = evento.eliminados().stream()
-                .map(jugador -> new ParticipanteTriviaDTO(jugador.getId(), jugador.getApodo(),
-                        evento.trivia().getTiempoAcumuladoMilisegundos(jugador)))
-                .toList();
+        List<ParticipanteTriviaDTO> eliminados = new ArrayList<>();
+        for (Jugador jugador : evento.eliminados()) {
+            eliminados.add(new ParticipanteTriviaDTO(jugador.getId(), jugador.getApodo(),
+                    evento.trivia().getTiempoAcumuladoMilisegundos(jugador)));
+        }
         return Map.of("tipo", evento.tipo(),
                 "rondaCerrada", evento.rondaCerrada(),
                 "opcionCorrecta", evento.opcionCorrecta(),
-                "eliminados", eliminados,
+                "eliminados", List.copyOf(eliminados),
                 "estado", estado(evento.codigoPartida(), evento.trivia()));
     }
 

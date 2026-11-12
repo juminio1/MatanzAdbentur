@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 public class GestorRuletaPartidaTest {
 
@@ -208,7 +209,7 @@ public class GestorRuletaPartidaTest {
 
         EstadoRuletaDTO resultado = gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
 
-        var orden = inOrder(notificadorMock, gestorTriviaMock);
+        InOrder orden = inOrder(notificadorMock, gestorTriviaMock);
         orden.verify(notificadorMock).notificarRuleta("ABC123", resultado);
         orden.verify(gestorTriviaMock).iniciar("ABC123", DificultadRuleta.DIFICIL);
         verifyNoMoreInteractions(gestorTriviaMock);

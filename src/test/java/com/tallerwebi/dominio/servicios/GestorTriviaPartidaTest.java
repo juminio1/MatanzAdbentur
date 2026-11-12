@@ -41,6 +41,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import com.tallerwebi.presentacion.DTO.EstadoTriviaDTO;
+import com.tallerwebi.presentacion.DTO.ParticipanteTriviaDTO;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -164,7 +171,7 @@ public class GestorTriviaPartidaTest {
 
         assertEquals(List.of("RULETA_SORTEADA", "RONDA_NUEVA"), pasos);
         assertEquals(DificultadRuleta.MEDIO,
-                gestor.consultarEstado(CODIGO, Trivia::getDificultad));
+                gestor.consultarEstado(CODIGO, trivia -> trivia.getDificultad()));
     }
 
     private List<JsonNode> registrarPremiosWebSocket() {
@@ -238,7 +245,7 @@ public class GestorTriviaPartidaTest {
         assertThrows(AccionTriviaInvalidaException.class,
                 () -> gestor.elegirPremio(CODIGO, 1L, GestorTriviaPartida.PREMIO_PLATA, null));
 
-        assertEquals(1L, tiposAvisados().stream().filter(tipo -> tipo == TipoAvisoTrivia.PREMIO_ENTREGADO).count());
+        assertEquals(1, Collections.frequency(tiposAvisados(), TipoAvisoTrivia.PREMIO_ENTREGADO));
         assertEquals(1, premios.size());
         JsonNode estado = premios.get(0).path("estado");
         assertTrue(estado.path("finalizada").asBoolean());
@@ -317,7 +324,7 @@ public class GestorTriviaPartidaTest {
         assertThrows(AccionTriviaInvalidaException.class,
                 () -> gestor.responder(CODIGO, 1L, 1, CORRECTA));
 
-        assertEquals(1L, tiposAvisados().stream().filter(tipo -> tipo == TipoAvisoTrivia.FINALIZADA).count());
+        assertEquals(1, Collections.frequency(tiposAvisados(), TipoAvisoTrivia.FINALIZADA));
         assertEquals(1, finalizaciones.size());
         JsonNode estado = finalizaciones.get(0).path("estado");
         assertTrue(estado.path("finalizada").asBoolean());
@@ -381,7 +388,10 @@ public class GestorTriviaPartidaTest {
         assertEquals(3L, eliminados.path(0).path("id").asLong());
         assertEquals("Sol", eliminados.path(0).path("apodo").asText());
         java.util.Set<String> campos = new java.util.HashSet<>();
-        eliminados.path(0).fieldNames().forEachRemaining(campos::add);
+        Iterator<String> nombres = eliminados.path(0).fieldNames();
+        while (nombres.hasNext()) {
+            campos.add(nombres.next());
+        }
         assertTrue(campos.containsAll(java.util.Set.of("id", "apodo")));
         assertTrue(java.util.Set.of("id", "apodo", "milisegundos").containsAll(campos));
 
@@ -410,8 +420,11 @@ public class GestorTriviaPartidaTest {
         assertEquals(1, cierres.size());
         JsonNode cierre = cierres.get(0);
         List<Long> eliminados = new ArrayList<>();
-        cierre.path("eliminados").forEach(jugador -> eliminados.add(jugador.path("id").asLong()));
-        assertEquals(List.of(2L, 3L), eliminados.stream().sorted().toList());
+        for (JsonNode jugador : cierre.path("eliminados")) {
+            eliminados.add(jugador.path("id").asLong());
+        }
+        Collections.sort(eliminados);
+        assertEquals(List.of(2L, 3L), eliminados);
         assertEquals(1, cierre.path("rondaCerrada").asInt());
         assertEquals(CORRECTA, cierre.path("opcionCorrecta").asInt(-1));
         assertTrue(cierre.path("estado").path("finalizada").asBoolean());
@@ -496,6 +509,104 @@ public class GestorTriviaPartidaTest {
     }
 
     @Test
+    public void abandonoRetiraAlJugadorYNotificaUnaVezSinReiniciarLaRonda() {
+        Jugador sol = jugador(3L, "Sol");
+        partida.getJugadores().add(sol);
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        publicador.suscribir(new ObservadorTriviaWebSocket(notificador));
+        luna.setAbandono(true);
+
+        gestor.participantesCambiaron(CODIGO);
+        gestor.participantesCambiaron(CODIGO);
+
+        assertEquals(List.of(ana, sol), trivia.getParticipantes());
+        assertEquals(1, trivia.getRondaActual());
+        assertThrows(ParticipanteTriviaNoHabilitadoException.class,
+                () -> gestor.responder(CODIGO, luna.getId(), 1, CORRECTA));
+        assertTrue(gestor.responder(CODIGO, ana.getId(), 1, CORRECTA));
+        ArgumentCaptor<Map<String, Object>> mensaje = ArgumentCaptor.forClass(Map.class);
+        verify(notificador).notificarTrivia(eq(CODIGO), mensaje.capture());
+        org.mockito.Mockito.verifyNoMoreInteractions(notificador);
+        assertEquals(TipoAvisoTrivia.PARTICIPANTES_ACTUALIZADOS, mensaje.getValue().get("tipo"));
+        assertEquals(java.util.Set.of("tipo", "estado"), mensaje.getValue().keySet());
+        EstadoTriviaDTO estado = org.junit.jupiter.api.Assertions.assertInstanceOf(
+                EstadoTriviaDTO.class, mensaje.getValue().get("estado"));
+        List<Long> participantes = new ArrayList<>();
+        for (ParticipanteTriviaDTO participante : estado.enJuego()) {
+            participantes.add(participante.id());
+        }
+        assertEquals(List.of(ana.getId(), sol.getId()), participantes);
+    }
+
+    @Test
+    public void finalizacionDePartidaCancelaTriviaYCierreProgramadoSinPremioNiDuplicados() {
+        java.util.concurrent.ScheduledFuture<?> tarea = mock(java.util.concurrent.ScheduledFuture.class);
+        org.mockito.Mockito.doReturn(tarea).when(planificador).schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS));
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        Runnable cierre = cierreProgramado(1);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(null);
+
+        gestor.participantesCambiaron(CODIGO);
+        int avisosFinales = avisos.size();
+        gestor.participantesCambiaron(CODIGO);
+        reloj.adelantar(Duration.ofSeconds(31));
+        cierre.run();
+
+        assertTrue(trivia.estaFinalizada());
+        assertNull(trivia.getGanador());
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        assertEquals(avisosFinales, avisos.size());
+        verify(tarea).cancel(false);
+        org.mockito.Mockito.verifyNoInteractions(servicioPremio);
+        assertThrows(AccionTriviaInvalidaException.class,
+                () -> gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null));
+    }
+
+    @Test
+    public void abandonoDelGanadorConPremioPendienteCancelaSinEntregarlo() {
+        Jugador sol = jugador(3L, "Sol");
+        sol.getEstadoCarcel().encarcelar();
+        partida.getJugadores().add(sol);
+        Trivia trivia = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        ana.setAbandono(true);
+
+        gestor.participantesCambiaron(CODIGO);
+
+        assertNull(trivia.getGanador());
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        org.mockito.Mockito.verifyNoInteractions(servicioPremio);
+    }
+
+    @Test
+    public void abandonoConfirmadoAntesDelBloqueoDelPremioImpideLaEntrega() {
+        triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        doAnswer(invocacion -> { ana.setAbandono(true); return null; })
+                .when(servicioPartida).bloquearPartida(partida);
+
+        assertThrows(AccionTriviaInvalidaException.class,
+                () -> gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null));
+
+        org.mockito.Mockito.verifyNoInteractions(servicioPremio);
+        gestor.participantesCambiaron(CODIGO);
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void abandonoQueCompletaLasRespuestasPermiteContinuarALaSiguienteRonda() {
+        partida.getJugadores().add(jugador(3L, "Sol"));
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        gestor.responder(CODIGO, ana.getId(), 1, CORRECTA);
+        gestor.responder(CODIGO, luna.getId(), 1, CORRECTA);
+        partida.getJugadores().get(2).setAbandono(true);
+
+        gestor.participantesCambiaron(CODIGO);
+
+        assertEquals(2, trivia.getRondaActual());
+        assertEquals(List.of(ana, luna), trivia.getParticipantes());
+    }
+
+    @Test
     public void entregaTardiaFallidaNoDesbloqueaNiReanudaElTurno() {
         simularEntregaExitosa();
         doAnswer(invocacion -> { throw new IllegalStateException("Fallo al confirmar el premio"); })
@@ -558,10 +669,10 @@ public class GestorTriviaPartidaTest {
     @Test
     public void consultarBloqueoNoEsperaElMonitorDelGestor() {
         gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
-        var ejecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        ExecutorService ejecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
         try {
             synchronized (gestor) {
-                var consulta = ejecutor.submit(() -> gestor.estaBloqueandoPartida(CODIGO));
+                Future<Boolean> consulta = ejecutor.submit(() -> gestor.estaBloqueandoPartida(CODIGO));
                 assertTrue(org.junit.jupiter.api.Assertions.assertDoesNotThrow(
                         () -> consulta.get(1, TimeUnit.SECONDS)));
             }
@@ -573,7 +684,7 @@ public class GestorTriviaPartidaTest {
     @Test
     public void springConectaLaValidacionSinCicloYMantieneElBloqueoHastaEntregarPremio() {
         partida.setCodigoUnico(CODIGO);
-        try (var contexto = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
             contexto.register(ServicioParticipacionImpl.class, ServicioTriviaImpl.class, GestorTriviaPartida.class);
             ServicioPreguntasTrivia preguntas = mock(ServicioPreguntasTrivia.class);
             when(preguntas.obtenerParaCasillero(any(), any())).thenReturn(cincoPreguntas());

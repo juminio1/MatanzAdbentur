@@ -19,6 +19,7 @@ import com.tallerwebi.dominio.enums.DificultadRuleta;
 import com.tallerwebi.dominio.enums.TipoAvisoTrivia;
 import com.tallerwebi.dominio.resultados.PreguntaGenerada;
 import com.tallerwebi.presentacion.mapeadores.MapeadorTrivia;
+import com.tallerwebi.dominio.servicios.GestorTriviaPartida;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
@@ -34,6 +35,22 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ObservadoresConfigTest {
+
+    @Test
+    void desconectarWebSocketNoSeInterpretaComoAbandono() {
+        GestorTriviaPartida gestor = mock(GestorTriviaPartida.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(com.tallerwebi.dominio.servicios.GestorTriviaPartida.class, () -> gestor);
+            contexto.register(com.tallerwebi.dominio.observadores.ObservadorTriviaAbandono.class);
+            contexto.refresh();
+
+            contexto.publishEvent(new org.springframework.web.socket.messaging.SessionDisconnectEvent(
+                    this, org.springframework.messaging.support.MessageBuilder.withPayload(new byte[0]).build(),
+                    "sesion-prueba", org.springframework.web.socket.CloseStatus.NORMAL));
+
+            verifyNoInteractions(gestor);
+        }
+    }
 
     @Test
     void springConectaElPublicadorDeTriviaConElObservadorWebSocket() {

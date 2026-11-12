@@ -4,6 +4,7 @@ import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.entidades.Evento.Trivia;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.DificultadRuleta;
 import com.tallerwebi.dominio.enums.TipoAvisoTrivia;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
@@ -18,14 +19,15 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,12 +35,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Guarda la trivia en juego de cada partida y coordina sus rondas.
- * Valida cada acción antes de delegar las reglas del torneo en ServicioTriviaImpl
- * y los premios en ServicioPremioTriviaImpl. Las trivias se guardan en memoria, como la ruleta.
- */
+//Guarda la trivia en juego de cada partida y coordina sus rondas.
+// Valida cada acción antes de delegar las reglas del torneo en ServicioTriviaImpl
+// y los premios en ServicioPremioTriviaImpl. Las trivias se guardan en memoria, como la ruleta.
+
 @Service
 public class GestorTriviaPartida {
 
@@ -49,6 +52,7 @@ public class GestorTriviaPartida {
 
     // Margen para que el cierre programado ocurra después del vencimiento.
     private static final long MARGEN_CIERRE_MILISEGUNDOS = 250;
+    // Registra fallos de avisos o premios automáticos sin interrumpir los pasos restantes del torneo.
     private static final Logger LOG = LoggerFactory.getLogger(GestorTriviaPartida.class);
 
     private final ServicioTriviaImpl servicioTrivia;
@@ -57,11 +61,16 @@ public class GestorTriviaPartida {
     private final ServicioCasillero servicioCasillero;
     private final PublicadorEventos<EventoTriviaActualizada> publicador;
     private final ScheduledExecutorService planificador;
+    // Agrupa la entrega y el guardado del premio; la partida se libera después de confirmar la transacción.
     private final TransactionTemplate transaccion;
+    // Controla el tiempo de las preguntas y permite adelantarlo en los tests sin esperar.
     private final Clock reloj;
     private final Map<String, Trivia> trivias = new HashMap<>();
+    // Permite consultar el bloqueo sin esperar al gestor, evitando bloqueos cruzados con la base de datos.
     private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
     private final Map<String, List<Jugador>> participantesAlInicioDeRonda = new HashMap<>();
+    // Guarda las tareas de cierre para cancelarlas cuando termina la ronda o se cancela la trivia.
+    private final Map<String, ScheduledFuture<?>> cierresProgramados = new HashMap<>();
 
     @Autowired
     public GestorTriviaPartida(ServicioTriviaImpl servicioTrivia, ServicioPremioTriviaImpl servicioPremio,
@@ -131,6 +140,42 @@ public class GestorTriviaPartida {
         return codigoPartida != null && partidasBloqueadas.contains(codigoPartida);
     }
 
+    //actuliza los participantes de la trivia
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)//significa q este metodo se ejecuta sin una transaccion.
+    public synchronized void participantesCambiaron(String codigoPartida) {
+        if (!estaBloqueandoPartida(codigoPartida)) return;
+        Trivia trivia = trivias.get(codigoPartida);
+        if (trivia == null) return;
+        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+        if (partida == null || partida.getEstado() == EstadoPartida.FINALIZADA) {
+            cancelarTrivia(codigoPartida, trivia);
+            return;
+        }
+        int ronda = trivia.getRondaActual();
+        PreguntaGenerada pregunta = trivia.getPreguntaActual();
+        boolean estabaFinalizada = trivia.estaFinalizada();
+        if (!servicioTrivia.actualizarParticipantes(trivia, partida.getJugadores())) return;
+        if (estabaFinalizada) {
+            cancelarTrivia(codigoPartida, trivia);
+            return;
+        }
+        publicar(codigoPartida, TipoAvisoTrivia.PARTICIPANTES_ACTUALIZADOS, trivia, null);
+        procesarCambios(codigoPartida, trivia, ronda, pregunta);
+    }
+
+    private void cancelarTrivia(String codigoPartida, Trivia trivia) {
+        trivia.cancelarSinPremio();
+        trivia.getParticipantes().clear();
+        participantesAlInicioDeRonda.remove(codigoPartida);
+        cancelarCierre(codigoPartida);
+        publicar(codigoPartida, TipoAvisoTrivia.FINALIZADA, trivia, null);
+    }
+
+    private void cancelarCierre(String codigoPartida) {
+        ScheduledFuture<?> cierre = cierresProgramados.remove(codigoPartida);
+        if (cierre != null) cierre.cancel(false);
+    }
+
     private void actualizarBloqueo(String codigoPartida) {
         Trivia trivia = trivias.get(codigoPartida);
         boolean bloqueada = trivia != null && (!trivia.estaFinalizada()
@@ -155,6 +200,7 @@ public class GestorTriviaPartida {
 
     /** Registra la respuesta y devuelve si fue correcta. La opción correcta se avisa al cerrar la ronda. */
     public synchronized boolean responder(String codigoPartida, Long idJugador, Integer ronda, Integer opcion) {
+        participantesCambiaron(codigoPartida);
         Trivia trivia = enJuego(codigoPartida);
         Jugador jugador = participante(trivia, idJugador);
         if (!Objects.equals(ronda, trivia.getRondaActual())) {
@@ -178,21 +224,19 @@ public class GestorTriviaPartida {
 
     /** El ganador de una trivia difícil elige "PLATA" o "ROBAR" (con la posición de la propiedad). */
     public synchronized void elegirPremio(String codigoPartida, Long idJugador, String premio, Integer posicion) {
+        participantesCambiaron(codigoPartida);
         Trivia trivia = buscar(codigoPartida);
         validarEleccionDePremio(trivia, idJugador);
-        if (PREMIO_PLATA.equals(premio)) {
-            entregarPremio(codigoPartida, trivia, partida -> servicioPremio.entregarPremioEnDinero(trivia));
-        } else if (PREMIO_ROBAR.equals(premio)) {
-            entregarPremio(codigoPartida, trivia, partida ->
-                    servicioPremio.entregarPremioRobandoPropiedad(trivia, partida, idPropiedad(partida, posicion)));
-        } else {
+        if (!PREMIO_PLATA.equals(premio) && !PREMIO_ROBAR.equals(premio)) {
             throw new IllegalArgumentException("El premio elegido no es válido.");
         }
+        entregarPremio(codigoPartida, trivia, premio, posicion);
         publicar(codigoPartida, TipoAvisoTrivia.PREMIO_ENTREGADO, trivia, null);
     }
 
     // Lo ejecuta el planificador cuando vence la pregunta, aunque nadie haya respondido.
     synchronized void cerrarPorTiempo(String codigoPartida, Trivia trivia, int ronda) {
+        participantesCambiaron(codigoPartida);
         if (!Objects.equals(trivias.get(codigoPartida), trivia) || trivia.estaFinalizada() || trivia.getRondaActual() != ronda) {
             return;
         }
@@ -280,8 +324,9 @@ public class GestorTriviaPartida {
         publicar(codigoPartida, TipoAvisoTrivia.RONDA_NUEVA, trivia, null);
         int ronda = trivia.getRondaActual();
         long demora = Duration.between(reloj.instant(), vencimiento(trivia)).toMillis() + MARGEN_CIERRE_MILISEGUNDOS;
-        planificador.schedule(() -> cerrarPorTiempo(codigoPartida, trivia, ronda),
+        ScheduledFuture<?> cierre = planificador.schedule(() -> cerrarPorTiempo(codigoPartida, trivia, ronda),
                 Math.max(demora, 0), TimeUnit.MILLISECONDS);
+        cierresProgramados.put(codigoPartida, cierre);
     }
 
     private void procesarCambios(String codigoPartida, Trivia trivia, int rondaAnterior,
@@ -290,13 +335,17 @@ public class GestorTriviaPartida {
         if (!seCerroLaRonda) {
             return;
         }
+        cancelarCierre(codigoPartida);
         List<Jugador> participantesIniciales = participantesAlInicioDeRonda.remove(codigoPartida);
         if (participantesIniciales == null) {
             return;
         }
-        List<Jugador> eliminados = participantesIniciales.stream()
-                .filter(jugador -> !trivia.getParticipantes().contains(jugador))
-                .toList();
+        List<Jugador> eliminados = new ArrayList<>();
+        for (Jugador jugador : participantesIniciales) {
+            if (!trivia.getParticipantes().contains(jugador)) {
+                eliminados.add(jugador);
+            }
+        }
         publicar(new EventoTriviaActualizada(codigoPartida, TipoAvisoTrivia.RONDA_CERRADA, trivia,
                 preguntaAnterior.getRespuestaCorrecta(), rondaAnterior, eliminados));
         if (trivia.estaFinalizada()) {
@@ -310,7 +359,7 @@ public class GestorTriviaPartida {
     private void finalizar(String codigoPartida, Trivia trivia) {
         if (trivia.getGanador() != null && trivia.getDificultad() != DificultadRuleta.DIFICIL) {
             try {
-                entregarPremio(codigoPartida, trivia, partida -> servicioPremio.entregarPremioEnDinero(trivia));
+                entregarPremio(codigoPartida, trivia, PREMIO_PLATA, null);
                 publicar(codigoPartida, TipoAvisoTrivia.PREMIO_ENTREGADO, trivia, null);
             } catch (RuntimeException ex) {
                 LOG.error("No se pudo entregar el premio de la trivia de la partida {}", codigoPartida, ex);
@@ -320,19 +369,35 @@ public class GestorTriviaPartida {
     }
 
     // Recarga al ganador dentro de la transacción para que el premio se guarde sobre datos actuales.
-    private void entregarPremio(String codigoPartida, Trivia trivia, Consumer<Partida> entrega) {
+    private void entregarPremio(String codigoPartida, Trivia trivia, String premio, Integer posicion) {
         transaccion.executeWithoutResult(estado -> {
             Partida partida = servicioPartida.obtenerPartida(codigoPartida);
             if (partida == null) {
                 throw new AccionTriviaInvalidaException("La partida ya terminó.");
             }
+            servicioPartida.bloquearPartida(partida);
+            if (partida.getEstado() != EstadoPartida.EN_CURSO) {
+                throw new AccionTriviaInvalidaException("La partida ya terminó.");
+            }
             Long idGanador = trivia.getGanador().getId();
-            Jugador ganador = partida.getJugadores().stream()
-                    .filter(jugador -> Objects.equals(jugador.getId(), idGanador))
-                    .findFirst()
-                    .orElseThrow(() -> new AccionTriviaInvalidaException("El ganador ya no está en la partida."));
+            Jugador ganador = null;
+            for (Jugador jugador : partida.getJugadores()) {
+                if (Objects.equals(jugador.getId(), idGanador)
+                        && !Boolean.TRUE.equals(jugador.getAbandono())
+                        && !Boolean.TRUE.equals(jugador.getEnBancarrota())) {
+                    ganador = jugador;
+                    break;
+                }
+            }
+            if (ganador == null) {
+                throw new AccionTriviaInvalidaException("El ganador ya no está en la partida.");
+            }
             trivia.declararGanador(ganador);
-            entrega.accept(partida);
+            if (PREMIO_PLATA.equals(premio)) {
+                servicioPremio.entregarPremioEnDinero(trivia);
+            } else {
+                servicioPremio.entregarPremioRobandoPropiedad(trivia, partida, idPropiedad(partida, posicion));
+            }
             servicioPartida.actualizarJugador(ganador);
         });
     }

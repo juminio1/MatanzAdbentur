@@ -19,7 +19,8 @@ public class ObservadorTriviaWebSocket implements Observador<EventoTriviaActuali
 
     @Override
     public void actualizar(EventoTriviaActualizada evento) {
-        if (evento.tipo() == TipoAvisoTrivia.FINALIZADA || evento.tipo() == TipoAvisoTrivia.PREMIO_ENTREGADO) {
+        if (evento.tipo() == TipoAvisoTrivia.FINALIZADA || evento.tipo() == TipoAvisoTrivia.PREMIO_ENTREGADO
+                || evento.tipo() == TipoAvisoTrivia.PARTICIPANTES_ACTUALIZADOS) {
             Map<String, Object> contenido = Map.of(
                     "tipo", evento.tipo(),
                     "estado", MapeadorTrivia.estado(evento.codigoPartida(), evento.trivia()));

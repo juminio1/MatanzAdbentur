@@ -16,6 +16,8 @@ import com.tallerwebi.infraestructura.RepositorioEventoCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
+import com.tallerwebi.dominio.resultados.ResultadoEvento;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
@@ -54,13 +56,12 @@ class ServicioEventoCasilleroImplTest {
                 1, "Premio", "Cobrar $100", TipoEfectoEvento.SUMA, 100, null, null);
         when(tarjetas.obtenerTodos()).thenReturn(List.of(tarjeta));
 
-        var resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador);
+        Optional<ResultadoEvento> resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador);
 
-        assertAll(
-                () -> assertTrue(resultado.isEmpty()),
-                () -> verifyNoInteractions(tarjetas, economia, movimiento, quiebras),
-                () -> assertEquals(posicion, jugador.getPosicionActual()),
-                () -> assertEquals(2000, jugador.getDinero()));
+        assertTrue(resultado.isEmpty());
+        verifyNoInteractions(tarjetas, economia, movimiento, quiebras);
+        assertEquals(posicion, jugador.getPosicionActual());
+        assertEquals(2000, jugador.getDinero());
     }
 
     @Test
@@ -86,7 +87,7 @@ class ServicioEventoCasilleroImplTest {
                 1, "Premio", "Cobrar $100", TipoEfectoEvento.SUMA, 100, null, null);
         when(tarjetas.obtenerTodos()).thenReturn(List.of(tarjeta));
 
-        var resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador).orElseThrow();
+        ResultadoEvento resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador).orElseThrow();
 
         assertSame(tarjeta, resultado.evento());
         verify(tarjetas, times(1)).obtenerTodos();
