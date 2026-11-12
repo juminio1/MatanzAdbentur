@@ -192,7 +192,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
             repositorioPartida.bloquearPartida(partida);
 
             // No inicia el temporizador mientras haya un evento global activo.
-            if (!partida.getEventoGlobal().estaActivo() && !turnoPausadoPorDeuda(codigoUnico)) {
+            if (!turnoPausado(partida)) {
                 participacion.validarPartidaEnCurso(partida);
                 Jugador pendiente = servicioTurno.obtenerJugadorActual(partida);
 
@@ -222,7 +222,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
     public void prepararTiempoTurno(String codigoUnico, Integer segundosPresentacion) {
         Partida partida = obtenerPartida(codigoUnico);
         if (partida == null) return;
-        if (partida.getEventoGlobal().estaActivo() || turnoPausadoPorDeuda(codigoUnico)) return;
+        if (turnoPausado(partida)) return;
         notificarTurnoActual(partida, true, DURACION_TURNO_SEGUNDOS + segundosPresentacion);
     }
 
@@ -234,7 +234,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        if (partida.getEventoGlobal().estaActivo() || turnoPausadoPorDeuda(codigoUnico)) return;
+        if (turnoPausado(partida)) return;
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
         Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
         incrementarRondas(partida);
@@ -267,6 +267,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
         if (partida != null) {
             repositorioPartida.bloquearPartida(partida);
+            if (participacion.estaBloqueadaPorTrivia(partida)) return;
 
             Boolean puedeReanudar =
                 !partida.getEventoGlobal().estaActivo() &&
@@ -390,6 +391,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (!turnoSigueVigente(partida, marca)) {
             return;
         }
+        if (participacion.estaBloqueadaPorTrivia(partida)) return;
         Jugador jugadorActual = servicioTurno.obtenerJugadorActual(partida);
         if (jugadorActual == null) {
             return;
@@ -434,6 +436,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (!turnoSigueVigente(partida, marcaProgramada)) {
             return;
         }
+        if (participacion.estaBloqueadaPorTrivia(partida)) return;
         if (turnoPausadoPorDeuda(codigoUnico)) {
             actualizarPausaPorDeuda(codigoUnico);
             return;
@@ -450,12 +453,18 @@ public class ServicioPartidaImpl implements ServicioPartida {
         return quiebras != null && quiebras.hayDeudaEnPartidaActiva(codigo);
     }
 
+    private boolean turnoPausado(Partida partida) {
+        return participacion.estaBloqueadaPorTrivia(partida)
+                || partida.getEventoGlobal().estaActivo()
+                || turnoPausadoPorDeuda(partida.getCodigoUnico());
+    }
+
     @Override
     public void actualizarPausaPorDeuda(String codigo) {
         DespuesDeConfirmar.ejecutar(() -> lecturaTurno.executeWithoutResult(tx -> {
             Partida partida = obtenerPartida(codigo);
             if (partida == null) return;
-            if (turnoPausadoPorDeuda(codigo)) {
+            if (turnoPausado(partida)) {
                 gestorTemporizador.pausar(codigo);
             } else {
                 Integer restantes = gestorTemporizador.consumirPausa(codigo);

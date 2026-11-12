@@ -109,6 +109,8 @@ class EfectosPartidaIntegracionTest {
         @Bean
         GestorRuletaPartida gestorRuletaPartida() { return mock(GestorRuletaPartida.class); }
         @Bean
+        GestorTriviaPartida gestorTriviaPartida() { return mock(GestorTriviaPartida.class); }
+        @Bean
         ServicioInicioPartida servicioInicioPartida() { return mock(ServicioInicioPartida.class); }
         @Bean
         GestorTemporizadorPartida gestorTemporizadorPartida() { return mock(GestorTemporizadorPartida.class); }
@@ -157,6 +159,8 @@ class EfectosPartidaIntegracionTest {
     @Autowired private ServicioEventoCasillero servicioEvento;
     @Autowired private ServicioDado servicioDado;
     @Autowired private GestorRuletaPartida gestorRuleta;
+    @Autowired private GestorTriviaPartida gestorTrivia;
+    @Autowired private ServicioParticipacion participacionTrivia;
     @Autowired private GestorTemporizadorPartida temporizador;
     @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
     @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
@@ -175,6 +179,7 @@ class EfectosPartidaIntegracionTest {
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
         reset(gestorRuleta);
+        reset(gestorTrivia);
         reset(temporizador);
         when(temporizador.obtenerSegundosRestantes(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         controlador = new ControladorPartida(servicioPartida,
@@ -212,6 +217,188 @@ class EfectosPartidaIntegracionTest {
     }
 
     // Ubica al jugador antes de un casillero de trivia para probar su caída al tirar los dados.
+    private void bloquearPorTrivia() {
+        when(gestorTrivia.estaBloqueandoPartida(codigo)).thenReturn(true);
+        clearInvocations(servicioDado, notificador, temporizador);
+    }
+
+    private Long propiedadDelRival() {
+        cargarPropiedadConDueno();
+        return servicioCasillero.buscarCasilleroPropiedad(servicioPartida.obtenerPartida(codigo), 2)
+                .getPropiedad().getId();
+    }
+
+    private ServicioOfertaPropiedadImpl ofertasParaTrivia() {
+        return new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero,
+                servicioPropiedad, participacionTrivia);
+    }
+
+    @Test
+    void triviaBloqueaDadosSinRegistrarTiradaNiMover() {
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
+        assertEquals(0, jugador.getPosicionActual());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDado, notificador);
+    }
+
+    @Test
+    void triviaBloqueaCompraSinCobrarNiAsignarPropiedad() {
+        cargarPropiedadDisponible(2);
+        Long propiedad = servicioCasillero.buscarCasilleroPropiedad(servicioPartida.obtenerPartida(codigo), 2)
+                .getPropiedad().getId();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.comprarPropiedadParaJugador(propiedad, idJugador));
+
+        assertNull(servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaVentaSinModificarPropiedadNiSaldo() {
+        Long propiedad = propiedadDelRival();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.venderPropiedadParaJugador(propiedad, idPropietario));
+
+        assertEquals(idPropietario, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaCrearOfertaSinGuardarla() {
+        propiedadDelRival();
+        var ofertas = ofertasParaTrivia();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100));
+
+        assertTrue(ofertas.ofertasPendientes(codigo, idJugador).isEmpty());
+    }
+
+    @Test
+    void triviaBloqueaAceptarOfertaSinTransferirNiEliminarla() {
+        Long propiedad = propiedadDelRival();
+        var ofertas = ofertasParaTrivia();
+        var oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> ofertas.aceptar(servicioPartida.obtenerPartida(codigo), oferta.id(), idJugador));
+
+        assertEquals(1, ofertas.ofertasPendientes(codigo, idJugador).size());
+        assertEquals(idPropietario, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaRechazarOfertaSinEliminarla() {
+        propiedadDelRival();
+        var ofertas = ofertasParaTrivia();
+        var oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class, () -> ofertas.rechazar(codigo, oferta.id(), idJugador));
+
+        assertEquals(1, ofertas.ofertasPendientes(codigo, idJugador).size());
+    }
+
+    @Test
+    void triviaBloqueaQuiebraVoluntariaSinEliminarDeuda() {
+        registrarDeudaVoluntaria();
+        bloquearPorTrivia();
+
+        assertThrows(ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException.class,
+                () -> servicioGestionQuiebra.declararQuiebra(codigo, idJugador));
+
+        assertFalse(Boolean.TRUE.equals(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota()));
+        assertNotNull(servicioGestionQuiebra.obtenerDeudaPendiente(codigo, idJugador));
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void triviaImpideAvanzarTurnoSinCambiarRondaNiNotificar() {
+        var anterior = servicioPartida.obtenerPartida(codigo);
+        int ronda = anterior.getRondaActual();
+        int turnos = anterior.getTurnosFinalizadosEnRonda();
+        bloquearPorTrivia();
+
+        servicioPartida.avanzarTurno(codigo);
+
+        var actual = servicioPartida.obtenerPartida(codigo);
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        assertEquals(ronda, actual.getRondaActual());
+        assertEquals(turnos, actual.getTurnosFinalizadosEnRonda());
+        verifyNoInteractions(notificador, temporizador);
+    }
+
+    @Test
+    void callbackProgramadoAntesDeTriviaNoAvanzaAlVencer() {
+        Runnable vencimiento = capturarVencimiento();
+        bloquearPorTrivia();
+        when(temporizador.obtenerSegundosRestantes(codigo)).thenReturn(0);
+
+        transaccion.executeWithoutResult(tx -> vencimiento.run());
+
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void triviaImpideProgramarOPrepararElTemporizadorNormal() {
+        bloquearPorTrivia();
+
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+        servicioPartida.prepararTiempoTurno(codigo, 5);
+
+        verifyNoInteractions(temporizador, notificador);
+    }
+
+    @Test
+    void pausaPorTriviaConservaElTurnoYReanudaSoloLosSegundosGuardados() {
+        bloquearPorTrivia();
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+        verify(temporizador).pausar(codigo);
+        verify(temporizador, never()).consumirPausa(codigo);
+        when(gestorTrivia.estaBloqueandoPartida(codigo)).thenReturn(false);
+        when(temporizador.consumirPausa(codigo)).thenReturn(17, (Integer) null);
+
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verify(temporizador, times(1)).programarTemporizador(eq(codigo), eq(17), any(Runnable.class));
+    }
+
+    @Test
+    void preparacionDeTurnoDiferidaCompruebaTriviaOtraVezDespuesDelCommit() {
+        transaccion.executeWithoutResult(tx -> {
+            servicioPartida.prepararTiempoTurno(codigo, 5);
+            bloquearPorTrivia();
+        });
+
+        verifyNoInteractions(temporizador, notificador);
+    }
+
+    @Test
+    void triviaPermiteLaTransferenciaInternaNecesariaParaElPremio() {
+        Long propiedad = propiedadDelRival();
+        bloquearPorTrivia();
+
+        assertDoesNotThrow(() -> servicioPropiedad.transferirPropiedadParaJugadores(
+                propiedad, idPropietario, idJugador, 0));
+
+        assertEquals(idJugador, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
     private void ubicarJugadorAntesDeTrivia(Long id, int posicion) {
         //Simula una jugada que llega a trivia, pero cuya transacción se cancela.
         transaccion.executeWithoutResult(tx ->

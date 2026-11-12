@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -58,6 +60,7 @@ public class GestorTriviaPartida {
     private final TransactionTemplate transaccion;
     private final Clock reloj;
     private final Map<String, Trivia> trivias = new HashMap<>();
+    private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
     private final Map<String, List<Jugador>> participantesAlInicioDeRonda = new HashMap<>();
 
     @Autowired
@@ -104,14 +107,40 @@ public class GestorTriviaPartida {
         if (partida == null) {
             throw new AccionTriviaInvalidaException("La partida no existe o ya terminó.");
         }
-        Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
-        trivias.put(codigoPartida, trivia);
-        if (trivia.estaFinalizada()) {
-            publicar(codigoPartida, TipoAvisoTrivia.FINALIZADA, trivia, null);
-        } else {
-            comenzarRonda(codigoPartida, trivia);
+        partidasBloqueadas.add(codigoPartida);
+        try {
+            servicioPartida.actualizarPausaPorDeuda(codigoPartida);
+            Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
+            trivias.put(codigoPartida, trivia);
+            if (trivia.estaFinalizada()) {
+                publicar(codigoPartida, TipoAvisoTrivia.FINALIZADA, trivia, null);
+            } else {
+                comenzarRonda(codigoPartida, trivia);
+            }
+            return trivia;
+        } catch (RuntimeException ex) {
+            actualizarBloqueo(codigoPartida);
+            if (!estaBloqueandoPartida(codigoPartida)) {
+                servicioPartida.actualizarPausaPorDeuda(codigoPartida);
+            }
+            throw ex;
         }
-        return trivia;
+    }
+
+    public boolean estaBloqueandoPartida(String codigoPartida) {
+        return codigoPartida != null && partidasBloqueadas.contains(codigoPartida);
+    }
+
+    private void actualizarBloqueo(String codigoPartida) {
+        Trivia trivia = trivias.get(codigoPartida);
+        boolean bloqueada = trivia != null && (!trivia.estaFinalizada()
+                || (trivia.getGanador() != null && (estaBloqueandoPartida(codigoPartida)
+                        || !trivia.estaPremioEntregado())));
+        if (bloqueada) {
+            partidasBloqueadas.add(codigoPartida);
+        } else {
+            partidasBloqueadas.remove(codigoPartida);
+        }
     }
 
     /** Lee la trivia de la partida (en juego o terminada) sin que cambie mientras se arma la respuesta. */
@@ -176,9 +205,8 @@ public class GestorTriviaPartida {
         if (codigoPartida == null || codigoPartida.isBlank() || dificultad == null) {
             throw new IllegalArgumentException("Los datos para iniciar la trivia son obligatorios.");
         }
-        Trivia actual = trivias.get(codigoPartida);
-        if (actual != null && !actual.estaFinalizada()) {
-            throw new AccionTriviaInvalidaException("Ya hay una trivia en juego en esta partida.");
+        if (estaBloqueandoPartida(codigoPartida)) {
+            throw new AccionTriviaInvalidaException("Ya hay una trivia en juego o un premio pendiente en esta partida.");
         }
     }
 
@@ -314,12 +342,21 @@ public class GestorTriviaPartida {
     }
 
     private void publicar(EventoTriviaActualizada evento) {
+        boolean estabaBloqueada = estaBloqueandoPartida(evento.codigoPartida());
+        if (evento.tipo() == TipoAvisoTrivia.PREMIO_ENTREGADO) {
+            partidasBloqueadas.remove(evento.codigoPartida());
+        } else if (evento.tipo() != TipoAvisoTrivia.RONDA_CERRADA) {
+            actualizarBloqueo(evento.codigoPartida());
+        }
         try {
             publicador.notificar(evento);
         } catch (RuntimeException ex) {
             if (LOG.isWarnEnabled()) {
                 LOG.warn("No se pudo avisar el cambio de la trivia de la partida {}", evento.codigoPartida(), ex);
             }
+        }
+        if (estabaBloqueada && !estaBloqueandoPartida(evento.codigoPartida())) {
+            servicioPartida.actualizarPausaPorDeuda(evento.codigoPartida());
         }
     }
 }

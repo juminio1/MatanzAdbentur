@@ -72,7 +72,7 @@ public class GestorTriviaPartidaTest {
     private Jugador ana;
     private Jugador luna;
 
-    /** Reloj que los tests pueden adelantar. */
+    // Reloj que los tests pueden adelantar.
     private static final class RelojAjustable extends Clock {
         private Instant ahora = Instant.parse("2026-11-12T12:00:00Z");
 
@@ -481,12 +481,189 @@ public class GestorTriviaPartidaTest {
 
     @Test
     public void deberiaPermitirIniciarUnaNuevaTriviaCuandoLaAnteriorTermino() {
+        simularEntregaExitosa();
         Trivia anterior = triviaGanadaPorAna(DificultadRuleta.FACIL);
 
         Trivia nueva = gestor.iniciar(CODIGO, DificultadRuleta.MEDIO);
 
         assertTrue(anterior.estaFinalizada());
         assertFalse(nueva.estaFinalizada());
+    }
+
+    @Test
+    public void sinTriviaLaPartidaNoEstaBloqueada() {
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void entregaTardiaFallidaNoDesbloqueaNiReanudaElTurno() {
+        simularEntregaExitosa();
+        doAnswer(invocacion -> { throw new IllegalStateException("Fallo al confirmar el premio"); })
+                .when(servicioPartida).actualizarJugador(any());
+
+        Trivia trivia = triviaGanadaPorAna(DificultadRuleta.FACIL);
+
+        assertTrue(trivia.estaPremioEntregado());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+        assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+    }
+
+    @Test
+    public void falloDelCommitDelPremioMantieneLaPausaAunqueLaMarcaEnMemoriaSeaVerdadera() {
+        ServicioPreguntasTrivia preguntas = mock(ServicioPreguntasTrivia.class);
+        when(preguntas.obtenerParaCasillero(any(), any())).thenReturn(cincoPreguntas());
+        PlatformTransactionManager administrador = mock(PlatformTransactionManager.class);
+        when(administrador.getTransaction(any())).thenReturn(
+                new org.springframework.transaction.support.SimpleTransactionStatus());
+        org.mockito.Mockito.doThrow(new IllegalStateException("Fallo de commit"))
+                .when(administrador).commit(any());
+        gestor = new GestorTriviaPartida(
+                new ServicioTriviaImpl(new ServicioParticipacionImpl(), preguntas, reloj),
+                servicioPremio, servicioPartida, servicioCasillero, publicador, planificador, administrador, reloj);
+        simularEntregaExitosa();
+
+        Trivia trivia = triviaGanadaPorAna(DificultadRuleta.FACIL);
+
+        assertTrue(trivia.estaPremioEntregado());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+        assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+    }
+
+    @Test
+    public void inicioPausaElTurnoYFinalSinGanadorSolicitaReanudarUnaSolaVez() {
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        verify(servicioPartida).actualizarPausaPorDeuda(CODIGO);
+        gestor.responder(CODIGO, ana.getId(), 1, INCORRECTA);
+        gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
+        gestor.cerrarPorTiempo(CODIGO, trivia, 1);
+
+        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void premioPendienteMantieneLaPausaHastaLaEntregaExitosa() {
+        simularEntregaExitosa();
+        triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        verify(servicioPartida).actualizarPausaPorDeuda(CODIGO);
+
+        gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+
+        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void consultarBloqueoNoEsperaElMonitorDelGestor() {
+        gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        var ejecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            synchronized (gestor) {
+                var consulta = ejecutor.submit(() -> gestor.estaBloqueandoPartida(CODIGO));
+                assertTrue(org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                        () -> consulta.get(1, TimeUnit.SECONDS)));
+            }
+        } finally {
+            ejecutor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void springConectaLaValidacionSinCicloYMantieneElBloqueoHastaEntregarPremio() {
+        partida.setCodigoUnico(CODIGO);
+        try (var contexto = new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+            contexto.register(ServicioParticipacionImpl.class, ServicioTriviaImpl.class, GestorTriviaPartida.class);
+            ServicioPreguntasTrivia preguntas = mock(ServicioPreguntasTrivia.class);
+            when(preguntas.obtenerParaCasillero(any(), any())).thenReturn(cincoPreguntas());
+            contexto.registerBean(ServicioPreguntasTrivia.class, () -> preguntas);
+            contexto.registerBean(ServicioPremioTriviaImpl.class, () -> servicioPremio);
+            contexto.registerBean(ServicioPartida.class, () -> servicioPartida);
+            contexto.registerBean(ServicioCasillero.class, () -> servicioCasillero);
+            contexto.registerBean(PublicadorEventos.class, () -> publicador);
+            contexto.registerBean(ScheduledExecutorService.class, () -> planificador);
+            contexto.registerBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class));
+            contexto.refresh();
+            GestorTriviaPartida torneo = contexto.getBean(GestorTriviaPartida.class);
+            ServicioParticipacionImpl participacion = contexto.getBean(ServicioParticipacionImpl.class);
+            simularEntregaExitosa();
+
+            torneo.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+            assertThrows(IllegalStateException.class, () -> participacion.validarAccionOrdinaria(partida));
+            torneo.responder(CODIGO, ana.getId(), 1, CORRECTA);
+            torneo.responder(CODIGO, luna.getId(), 1, INCORRECTA);
+            assertThrows(IllegalStateException.class, () -> participacion.validarAccionOrdinaria(partida));
+            torneo.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+
+            org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> participacion.validarAccionOrdinaria(partida));
+        }
+    }
+
+    @Test
+    public void unaTriviaEnCursoBloqueaLaPartida() {
+        gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void unaTriviaFinalizadaConGanadorYPremioPendienteSigueBloqueando() {
+        Trivia trivia = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        assertTrue(trivia.estaFinalizada());
+        assertSame(ana, trivia.getGanador());
+        assertFalse(trivia.estaPremioEntregado());
+
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void unaTriviaFinalizadaConPremioEntregadoNoBloquea() {
+        simularEntregaExitosa();
+        Trivia trivia = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+
+        gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+
+        assertTrue(trivia.estaFinalizada());
+        assertTrue(trivia.estaPremioEntregado());
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void unaTriviaFinalizadaSinGanadorNoBloquea() {
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        gestor.responder(CODIGO, ana.getId(), 1, INCORRECTA);
+        gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
+        assertTrue(trivia.estaFinalizada());
+        assertNull(trivia.getGanador());
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void noSePuedeReemplazarUnaTriviaConPremioPendiente() {
+        Trivia anterior = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        int cantidadAvisos = avisos.size();
+
+        assertThrows(AccionTriviaInvalidaException.class,
+                () -> gestor.iniciar(CODIGO, DificultadRuleta.MEDIO));
+
+        assertSame(anterior, gestor.consultarEstado(CODIGO, trivia -> trivia));
+        assertEquals(cantidadAvisos, avisos.size());
+    }
+
+    @Test
+    public void sePuedeIniciarOtraTriviaDespuesDeEntregarElPremioElegido() {
+        simularEntregaExitosa();
+        Trivia anterior = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+
+        Trivia nueva = gestor.iniciar(CODIGO, DificultadRuleta.MEDIO);
+
+        assertTrue(anterior.estaFinalizada());
+        assertTrue(anterior.estaPremioEntregado());
+        assertFalse(nueva.estaFinalizada());
+        assertSame(nueva, gestor.consultarEstado(CODIGO, trivia -> trivia));
     }
 
     @Test
