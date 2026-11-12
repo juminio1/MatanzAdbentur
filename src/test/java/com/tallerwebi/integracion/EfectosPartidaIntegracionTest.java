@@ -107,6 +107,8 @@ class EfectosPartidaIntegracionTest {
         @Bean
         ServicioDado servicioDado() { return mock(ServicioDado.class); }
         @Bean
+        GestorRuletaPartida gestorRuletaPartida() { return mock(GestorRuletaPartida.class); }
+        @Bean
         ServicioInicioPartida servicioInicioPartida() { return mock(ServicioInicioPartida.class); }
         @Bean
         GestorTemporizadorPartida gestorTemporizadorPartida() { return mock(GestorTemporizadorPartida.class); }
@@ -154,6 +156,7 @@ class EfectosPartidaIntegracionTest {
     @Autowired private ServicioPropiedad servicioPropiedad;
     @Autowired private ServicioEventoCasillero servicioEvento;
     @Autowired private ServicioDado servicioDado;
+    @Autowired private GestorRuletaPartida gestorRuleta;
     @Autowired private GestorTemporizadorPartida temporizador;
     @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
     @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
@@ -171,6 +174,7 @@ class EfectosPartidaIntegracionTest {
         org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
+        reset(gestorRuleta);
         reset(temporizador);
         when(temporizador.obtenerSegundosRestantes(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         controlador = new ControladorPartida(servicioPartida,
@@ -205,6 +209,105 @@ class EfectosPartidaIntegracionTest {
             sesiones.getCurrentSession().persist(new CasilleroEvento(null, 3, "Eventos", "Eventos", null, null));
         });
         when(servicioDado.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+    }
+
+    // Ubica al jugador antes de un casillero de trivia para probar su caída al tirar los dados.
+    private void ubicarJugadorAntesDeTrivia(Long id, int posicion) {
+        //Simula una jugada que llega a trivia, pero cuya transacción se cancela.
+        transaccion.executeWithoutResult(tx ->
+                sesiones.getCurrentSession().find(Jugador.class, id).setPosicionActual(posicion));
+    }
+
+    private void verificarActivacionAlConfirmarCaida(int destino) {
+        ubicarJugadorAntesDeTrivia(idJugador, destino - 2);
+        transaccion.executeWithoutResult(tx -> {
+            var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            assertEquals(destino, resultado.nuevaPosicion());
+            verifyNoInteractions(gestorRuleta);
+        });
+
+        var activacion = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), activacion.capture(), eq(idJugador));
+        assertNotNull(activacion.getValue());
+        assertFalse(activacion.getValue().isBlank());
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+    }
+
+    @Test
+    void caerEnDiezActivaUnaRuletaSoloDespuesDelCommit() {
+        verificarActivacionAlConfirmarCaida(10);
+    }
+
+    @Test
+    void caerEnVeinteActivaUnaRuletaSoloDespuesDelCommit() {
+        verificarActivacionAlConfirmarCaida(20);
+    }
+
+    @Test
+    void terminarFueraDeTriviaNoActivaRuleta() {
+        var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertEquals(2, resultado.nuevaPosicion());
+        verifyNoInteractions(gestorRuleta);
+    }
+
+    //Simula una jugada que llega a trivia, pero cuya transacción se cancela
+    @Test
+    void rollbackDeCaidaEnTriviaNoActivaRuleta() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        transaccion.executeWithoutResult(tx -> {
+            var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            assertEquals(10, resultado.nuevaPosicion());
+            verifyNoInteractions(gestorRuleta);
+            tx.setRollbackOnly();
+        });
+
+        assertEquals(8, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        verifyNoInteractions(gestorRuleta);
+    }
+
+    @Test
+    void repetirLaTiradaDelMismoTurnoNoActivaOtraRuleta() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertThrows(com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException.class,
+                () -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+        assertEquals(10, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+    }
+
+    @Test
+    void dosCaidasValidasGeneranIdentificacionesDeActivacionDistintas() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        ubicarJugadorAntesDeTrivia(idPropietario, 18);
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+        servicioPartida.avanzarTurno(codigo);
+        assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
+
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idPropietario));
+
+        var primera = org.mockito.ArgumentCaptor.forClass(String.class);
+        var segunda = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(gestorRuleta).activarRuleta(eq(codigo), primera.capture(), eq(idJugador));
+        verify(gestorRuleta).activarRuleta(eq(codigo), segunda.capture(), eq(idPropietario));
+        assertFalse(primera.getValue().isBlank());
+        assertFalse(segunda.getValue().isBlank());
+        assertNotEquals(primera.getValue(), segunda.getValue());
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+    }
+
+    @Test
+    void unaTarjetaQueTerminaEnTriviaActivaRuletaPorLaPosicionFinalEfectiva() {
+        cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 10);
+
+        var resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertEquals(10, resultado.nuevaPosicion());
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
     @Test

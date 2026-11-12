@@ -141,6 +141,32 @@ public class GestorTriviaPartidaTest {
         return avisos.stream().map(EventoTriviaActualizada::tipo).toList();
     }
 
+    @Test
+    public void resultadoDeRuletaSeNotificaAntesDeLaPrimeraRondaDelTorneoReal() {
+        List<String> pasos = new ArrayList<>();
+        publicador.suscribir(evento -> pasos.add(evento.tipo().name()));
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        doAnswer(invocacion -> {
+            com.tallerwebi.presentacion.DTO.EstadoRuletaDTO estado = invocacion.getArgument(1);
+            if (estado.estado() == com.tallerwebi.dominio.enums.EstadoRuleta.SORTEADA) {
+                pasos.add("RULETA_SORTEADA");
+            }
+            return null;
+        }).when(notificador).notificarRuleta(eq(CODIGO), any());
+        com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta sorteo =
+                mock(com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta.class);
+        when(sorteo.sortearDificultad()).thenReturn(DificultadRuleta.MEDIO);
+        GestorRuletaPartida ruleta = new GestorRuletaPartida(sorteo, notificador,
+                mock(ScheduledExecutorService.class), gestor);
+        ruleta.activarRuleta(CODIGO, "ACT-1", ana.getId());
+
+        ruleta.sortearDificultad(CODIGO, "ACT-1", ana.getId());
+
+        assertEquals(List.of("RULETA_SORTEADA", "RONDA_NUEVA"), pasos);
+        assertEquals(DificultadRuleta.MEDIO,
+                gestor.consultarEstado(CODIGO, Trivia::getDificultad));
+    }
+
     private List<JsonNode> registrarPremiosWebSocket() {
         List<JsonNode> premios = new ArrayList<>();
         NotificadorPartida notificador = mock(NotificadorPartida.class);

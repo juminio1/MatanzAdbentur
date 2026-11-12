@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.entidades.Jugador;
@@ -14,6 +15,7 @@ import com.tallerwebi.dominio.servicios.interfaces.*;
 import com.tallerwebi.infraestructura.RepositorioEventoCasillero;
 import com.tallerwebi.infraestructura.RepositorioPartida;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
@@ -28,6 +30,71 @@ class ServicioEventoCasilleroImplTest {
     private ServicioGestionQuiebra quiebras;
     private ServicioEventoCasilleroImpl servicio;
     private Jugador jugador;
+
+    @Test
+    void elCatalogoIdentificaUnicamenteDiezYVeinteComoTrivia() {
+        assertEquals(Set.of(10, 20), CatalogoTablero.POSICIONES_TRIVIA);
+    }
+
+    @Test
+    void elCasilleroDiezNoConsultaTarjetasNiProduceEfectosGenericos() {
+        verificarCasilleroDeTriviaSinEfectos(10);
+    }
+
+    @Test
+    void elCasilleroVeinteNoConsultaTarjetasNiProduceEfectosGenericos() {
+        verificarCasilleroDeTriviaSinEfectos(20);
+    }
+
+    private void verificarCasilleroDeTriviaSinEfectos(Integer posicion) {
+        jugador.setPosicionActual(posicion);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(
+                List.of(new CasilleroEvento(null, posicion, "EVENTOS", "", null, null)));
+        EventoCasillero tarjeta = new EventoCasillero(
+                1, "Premio", "Cobrar $100", TipoEfectoEvento.SUMA, 100, null, null);
+        when(tarjetas.obtenerTodos()).thenReturn(List.of(tarjeta));
+
+        var resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador);
+
+        assertAll(
+                () -> assertTrue(resultado.isEmpty()),
+                () -> verifyNoInteractions(tarjetas, economia, movimiento, quiebras),
+                () -> assertEquals(posicion, jugador.getPosicionActual()),
+                () -> assertEquals(2000, jugador.getDinero()));
+    }
+
+    @Test
+    void elCasilleroTresSigueAplicandoTarjetasGenericas() {
+        verificarCasilleroConTarjetaGenerica(3);
+    }
+
+    @Test
+    void elCasilleroCatorceSigueAplicandoTarjetasGenericas() {
+        verificarCasilleroConTarjetaGenerica(14);
+    }
+
+    @Test
+    void elCasilleroVeintiochoSigueAplicandoTarjetasGenericas() {
+        verificarCasilleroConTarjetaGenerica(28);
+    }
+
+    private void verificarCasilleroConTarjetaGenerica(Integer posicion) {
+        jugador.setPosicionActual(posicion);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(
+                List.of(new CasilleroEvento(null, posicion, "EVENTOS", "", null, null)));
+        EventoCasillero tarjeta = new EventoCasillero(
+                1, "Premio", "Cobrar $100", TipoEfectoEvento.SUMA, 100, null, null);
+        when(tarjetas.obtenerTodos()).thenReturn(List.of(tarjeta));
+
+        var resultado = servicio.aplicarSiCorresponde("GLOBAL", jugador).orElseThrow();
+
+        assertSame(tarjeta, resultado.evento());
+        verify(tarjetas, times(1)).obtenerTodos();
+        verify(economia, times(1)).sumarDinero(jugador, 100);
+        verifyNoMoreInteractions(economia);
+        verifyNoInteractions(movimiento, quiebras);
+        assertEquals(posicion, jugador.getPosicionActual());
+    }
 
     @BeforeEach
     void preparar() {
