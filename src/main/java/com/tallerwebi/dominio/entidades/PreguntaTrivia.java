@@ -85,6 +85,11 @@ public class PreguntaTrivia {
         return dificultad;
     }
 
+    @JsonIgnore
+    public int getRespuestaCorrecta() {
+        return respuestaCorrecta;
+    }
+
     public boolean esRespuestaCorrecta(int opcionElegida) {
         return respuestaCorrecta == opcionElegida;
     }
