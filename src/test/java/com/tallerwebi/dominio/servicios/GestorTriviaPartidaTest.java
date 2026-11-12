@@ -27,6 +27,7 @@ import com.tallerwebi.dominio.enums.DificultadTrivia;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.enums.TipoAvisoTrivia;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
+import com.tallerwebi.dominio.resultados.PreguntaGenerada;
 import com.tallerwebi.dominio.excepcion.AccionTriviaInvalidaException;
 import com.tallerwebi.dominio.excepcion.ParticipanteTriviaNoHabilitadoException;
 import com.tallerwebi.dominio.excepcion.TriviaNoEncontradaException;
@@ -41,6 +42,11 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTriviaWebSocket;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +66,7 @@ public class GestorTriviaPartidaTest {
     private ServicioCasillero servicioCasillero;
     private ScheduledExecutorService planificador;
     private List<EventoTriviaActualizada> avisos;
+    private PublicadorEventos<EventoTriviaActualizada> publicador;
     private GestorTriviaPartida gestor;
     private Partida partida;
     private Jugador ana;
@@ -101,8 +108,9 @@ public class GestorTriviaPartidaTest {
         planificador = mock(ScheduledExecutorService.class);
         avisos = new ArrayList<>();
         Observador<EventoTriviaActualizada> registro = avisos::add;
+        publicador = new PublicadorEventos<>(List.of(registro));
         gestor = new GestorTriviaPartida(servicioTrivia, servicioPremio, servicioPartida, servicioCasillero,
-                new PublicadorEventos<>(List.of(registro)), planificador, mock(PlatformTransactionManager.class), reloj);
+                publicador, planificador, mock(PlatformTransactionManager.class), reloj);
 
         ana = jugador(1L, "Ana");
         luna = jugador(2L, "Luna");
@@ -131,6 +139,279 @@ public class GestorTriviaPartidaTest {
 
     private List<TipoAvisoTrivia> tiposAvisados() {
         return avisos.stream().map(EventoTriviaActualizada::tipo).toList();
+    }
+
+    private List<JsonNode> registrarPremiosWebSocket() {
+        List<JsonNode> premios = new ArrayList<>();
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        doAnswer(invocacion -> {
+            Map<String, Object> mensaje = invocacion.getArgument(1);
+            if (mensaje.get("tipo") == TipoAvisoTrivia.PREMIO_ENTREGADO) {
+                premios.add(new ObjectMapper().valueToTree(mensaje));
+            }
+            return null;
+        }).when(notificador).notificarTrivia(eq(CODIGO), any());
+        publicador.suscribir(new ObservadorTriviaWebSocket(notificador));
+        return premios;
+    }
+
+    private void simularEntregaExitosa() {
+        doAnswer(invocacion -> {
+            invocacion.<Trivia>getArgument(0).registrarPremioEntregado();
+            return null;
+        }).when(servicioPremio).entregarPremioEnDinero(any(Trivia.class));
+    }
+
+    private void verificarPremioAutomatico(DificultadRuleta dificultad) {
+        List<JsonNode> premios = registrarPremiosWebSocket();
+        simularEntregaExitosa();
+        List<Boolean> entregadoAlPublicar = new ArrayList<>();
+        publicador.suscribir(evento -> {
+            if (evento.tipo() == TipoAvisoTrivia.PREMIO_ENTREGADO) {
+                entregadoAlPublicar.add(evento.trivia().estaPremioEntregado());
+            }
+        });
+        gestor.iniciar(CODIGO, dificultad);
+        Runnable cierre = cierreProgramado(1);
+
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        gestor.responder(CODIGO, 2L, 1, INCORRECTA);
+        reloj.adelantar(Duration.ofSeconds(31));
+        cierre.run();
+        cierre.run();
+
+        assertEquals(List.of(TipoAvisoTrivia.RONDA_NUEVA, TipoAvisoTrivia.RONDA_CERRADA,
+                TipoAvisoTrivia.PREMIO_ENTREGADO, TipoAvisoTrivia.FINALIZADA), tiposAvisados());
+        assertEquals(List.of(true), entregadoAlPublicar);
+        verify(servicioPremio, times(1)).entregarPremioEnDinero(any(Trivia.class));
+        assertEquals(1, premios.size());
+        assertTrue(premios.get(0).path("estado").path("finalizada").asBoolean());
+        assertEquals(1L, premios.get(0).path("estado").path("idGanador").asLong());
+        assertTrue(premios.get(0).path("estado").path("premioPendiente").isBoolean());
+        assertFalse(premios.get(0).path("estado").path("premioPendiente").asBoolean());
+    }
+
+    @Test
+    public void premioAutomaticoFacilSeNotificaUnaVezAntesDeFinalizada() {
+        verificarPremioAutomatico(DificultadRuleta.FACIL);
+    }
+
+    @Test
+    public void premioAutomaticoMedioSeNotificaUnaVezAntesDeFinalizada() {
+        verificarPremioAutomatico(DificultadRuleta.MEDIO);
+    }
+
+    @Test
+    public void premioElegidoSeNotificaUnaVezAunqueSeRepitaLaEleccion() {
+        List<JsonNode> premios = registrarPremiosWebSocket();
+        simularEntregaExitosa();
+        triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        assertTrue(premios.isEmpty());
+
+        gestor.elegirPremio(CODIGO, 1L, GestorTriviaPartida.PREMIO_PLATA, null);
+        assertThrows(AccionTriviaInvalidaException.class,
+                () -> gestor.elegirPremio(CODIGO, 1L, GestorTriviaPartida.PREMIO_PLATA, null));
+
+        assertEquals(1L, tiposAvisados().stream().filter(tipo -> tipo == TipoAvisoTrivia.PREMIO_ENTREGADO).count());
+        assertEquals(1, premios.size());
+        JsonNode estado = premios.get(0).path("estado");
+        assertTrue(estado.path("finalizada").asBoolean());
+        assertEquals(1L, estado.path("idGanador").asLong());
+        assertEquals("Ana", estado.path("ganador").asText());
+        assertTrue(estado.path("premioPendiente").isBoolean());
+        assertFalse(estado.path("premioPendiente").asBoolean());
+    }
+
+    @Test
+    public void entregaAutomaticaFallidaNoPublicaNiNotificaPremioEntregado() {
+        List<JsonNode> premios = registrarPremiosWebSocket();
+        doAnswer(invocacion -> {
+            throw new IllegalStateException("Falla de entrega");
+        }).when(servicioPremio).entregarPremioEnDinero(any(Trivia.class));
+
+        triviaGanadaPorAna(DificultadRuleta.FACIL);
+
+        assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
+        assertTrue(premios.isEmpty());
+        assertEquals(TipoAvisoTrivia.FINALIZADA, tiposAvisados().getLast());
+    }
+
+    @Test
+    public void entregaElegidaFallidaNoPublicaNiNotificaPremioEntregado() {
+        List<JsonNode> premios = registrarPremiosWebSocket();
+        triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        doAnswer(invocacion -> {
+            throw new IllegalStateException("Falla de entrega");
+        }).when(servicioPremio).entregarPremioEnDinero(any(Trivia.class));
+
+        assertThrows(IllegalStateException.class,
+                () -> gestor.elegirPremio(CODIGO, 1L, GestorTriviaPartida.PREMIO_PLATA, null));
+
+        assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
+        assertTrue(premios.isEmpty());
+    }
+
+    @Test
+    public void torneoSinGanadorNoPublicaNiNotificaPremioEntregado() {
+        List<JsonNode> premios = registrarPremiosWebSocket();
+        gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        gestor.responder(CODIGO, 1L, 1, INCORRECTA);
+        gestor.responder(CODIGO, 2L, 1, INCORRECTA);
+
+        assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
+        assertTrue(premios.isEmpty());
+        verify(servicioPremio, never()).entregarPremioEnDinero(any(Trivia.class));
+        assertEquals(TipoAvisoTrivia.FINALIZADA, tiposAvisados().getLast());
+    }
+
+    @Test
+    public void laFinalizacionWebSocketSeNotificaUnaSolaVezDespuesDeLaEntregaAutomatica() {
+        List<JsonNode> finalizaciones = new ArrayList<>();
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        doAnswer(invocacion -> {
+            Map<String, Object> mensaje = invocacion.getArgument(1);
+            if (mensaje.get("tipo") == TipoAvisoTrivia.FINALIZADA) {
+                finalizaciones.add(new ObjectMapper().valueToTree(mensaje));
+            }
+            return null;
+        }).when(notificador).notificarTrivia(eq(CODIGO), any());
+        publicador.suscribir(new ObservadorTriviaWebSocket(notificador));
+        doAnswer(invocacion -> {
+            invocacion.<Trivia>getArgument(0).registrarPremioEntregado();
+            return null;
+        }).when(servicioPremio).entregarPremioEnDinero(any(Trivia.class));
+        gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        Runnable cierrePendiente = cierreProgramado(1);
+
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        gestor.responder(CODIGO, 2L, 1, INCORRECTA);
+        reloj.adelantar(Duration.ofSeconds(31));
+        cierrePendiente.run();
+        cierrePendiente.run();
+        assertThrows(AccionTriviaInvalidaException.class,
+                () -> gestor.responder(CODIGO, 1L, 1, CORRECTA));
+
+        assertEquals(1L, tiposAvisados().stream().filter(tipo -> tipo == TipoAvisoTrivia.FINALIZADA).count());
+        assertEquals(1, finalizaciones.size());
+        JsonNode estado = finalizaciones.get(0).path("estado");
+        assertTrue(estado.path("finalizada").asBoolean());
+        assertEquals(1L, estado.path("idGanador").asLong());
+        assertEquals("Ana", estado.path("ganador").asText());
+        assertTrue(estado.path("premioPendiente").isBoolean());
+        assertFalse(estado.path("premioPendiente").asBoolean());
+    }
+
+    private List<JsonNode> registrarCierresWebSocket() {
+        List<JsonNode> cierres = new ArrayList<>();
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        doAnswer(invocacion -> {
+            Map<String, Object> mensaje = invocacion.getArgument(1);
+            if (mensaje.get("tipo") == TipoAvisoTrivia.RONDA_CERRADA) {
+                cierres.add(new ObjectMapper().valueToTree(mensaje));
+            }
+            return null;
+        }).when(notificador).notificarTrivia(eq(CODIGO), any());
+        publicador.suscribir(new ObservadorTriviaWebSocket(notificador));
+        return cierres;
+    }
+
+    @Test
+    public void elCierreWebSocketIdentificaLaRondaAnteriorYNoLaPreguntaSiguiente() {
+        List<JsonNode> cierres = registrarCierresWebSocket();
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        trivia.prepararPreguntas(List.of(
+                new PreguntaGenerada("DIFICIL", "Primera pregunta", List.of("A", "B", "C", "D"), CORRECTA),
+                new PreguntaGenerada("DIFICIL", "Siguiente pregunta", List.of("A", "B", "C", "D"), 3)));
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        gestor.responder(CODIGO, 2L, 1, CORRECTA);
+        gestor.cerrarPorTiempo(CODIGO, trivia, 1);
+
+        assertEquals(2, trivia.getRondaActual());
+        assertEquals(3, trivia.getPreguntaActual().getRespuestaCorrecta());
+        assertEquals(1, cierres.size());
+        JsonNode cierre = cierres.get(0);
+        assertEquals(1, cierre.path("rondaCerrada").asInt());
+        assertEquals(CORRECTA, cierre.path("opcionCorrecta").asInt(-1));
+        assertEquals(2, cierre.path("estado").path("ronda").asInt());
+        assertEquals(0, cierre.path("eliminados").size());
+        assertTrue(cierre.path("eliminados").isArray());
+        assertFalse(cierre.has("pregunta"));
+    }
+
+    @Test
+    public void elCierreWebSocketIncluyeAlEliminadoAntesDeLaUltimaRespuestaYSoloEnSuRonda() {
+        Jugador sol = jugador(3L, "Sol");
+        partida.getJugadores().add(sol);
+        List<JsonNode> cierres = registrarCierresWebSocket();
+        gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        gestor.responder(CODIGO, 3L, 1, INCORRECTA);
+        assertTrue(cierres.isEmpty());
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        gestor.responder(CODIGO, 2L, 1, CORRECTA);
+
+        assertEquals(1, cierres.size());
+        JsonNode eliminados = cierres.get(0).path("eliminados");
+        assertEquals(1, eliminados.size());
+        assertEquals(3L, eliminados.path(0).path("id").asLong());
+        assertEquals("Sol", eliminados.path(0).path("apodo").asText());
+        java.util.Set<String> campos = new java.util.HashSet<>();
+        eliminados.path(0).fieldNames().forEachRemaining(campos::add);
+        assertTrue(campos.containsAll(java.util.Set.of("id", "apodo")));
+        assertTrue(java.util.Set.of("id", "apodo", "milisegundos").containsAll(campos));
+
+        gestor.responder(CODIGO, 1L, 2, CORRECTA);
+        gestor.responder(CODIGO, 2L, 2, CORRECTA);
+
+        assertEquals(2, cierres.size());
+        assertEquals(2, cierres.get(1).path("rondaCerrada").asInt());
+        assertTrue(cierres.get(1).path("eliminados").isArray());
+        assertEquals(0, cierres.get(1).path("eliminados").size());
+    }
+
+    @Test
+    public void elCierreWebSocketPorVencimientoIncluyeErroresPreviosYJugadoresSinRespuestaUnaSolaVez() {
+        partida.getJugadores().add(jugador(3L, "Sol"));
+        List<JsonNode> cierres = registrarCierresWebSocket();
+        gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        gestor.responder(CODIGO, 3L, 1, INCORRECTA);
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        Runnable cierreProgramado = cierreProgramado(1);
+        reloj.adelantar(Duration.ofSeconds(31));
+
+        cierreProgramado.run();
+        cierreProgramado.run();
+
+        assertEquals(1, cierres.size());
+        JsonNode cierre = cierres.get(0);
+        List<Long> eliminados = new ArrayList<>();
+        cierre.path("eliminados").forEach(jugador -> eliminados.add(jugador.path("id").asLong()));
+        assertEquals(List.of(2L, 3L), eliminados.stream().sorted().toList());
+        assertEquals(1, cierre.path("rondaCerrada").asInt());
+        assertEquals(CORRECTA, cierre.path("opcionCorrecta").asInt(-1));
+        assertTrue(cierre.path("estado").path("finalizada").asBoolean());
+        assertEquals(1, cierre.path("estado").path("enJuego").size());
+        assertEquals(1L, cierre.path("estado").path("enJuego").path(0).path("id").asLong());
+    }
+
+    @Test
+    public void elCierreWebSocketFinalConVariosParticipantesNoLosPresentaComoEliminados() {
+        List<JsonNode> cierres = registrarCierresWebSocket();
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.DIFICIL);
+        for (int ronda = 1; ronda <= 5; ronda++) {
+            gestor.responder(CODIGO, 1L, ronda, CORRECTA);
+            gestor.responder(CODIGO, 2L, ronda, CORRECTA);
+        }
+
+        assertTrue(trivia.estaFinalizada());
+        assertEquals(5, cierres.size());
+        JsonNode cierre = cierres.get(4);
+        assertEquals(5, cierre.path("rondaCerrada").asInt());
+        assertEquals(CORRECTA, cierre.path("opcionCorrecta").asInt(-1));
+        assertTrue(cierre.path("estado").path("finalizada").asBoolean());
+        assertEquals(2, cierre.path("estado").path("enJuego").size());
+        assertTrue(cierre.path("eliminados").isArray());
+        assertEquals(0, cierre.path("eliminados").size());
+        assertTrue(cierre.path("estado").path("idGanador").isNull());
     }
 
     private Runnable cierreProgramado(int cantidadEsperada) {

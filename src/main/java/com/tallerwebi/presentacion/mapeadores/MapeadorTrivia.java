@@ -8,11 +8,25 @@ import com.tallerwebi.presentacion.DTO.EstadoTriviaDTO;
 import com.tallerwebi.presentacion.DTO.ParticipanteTriviaDTO;
 import com.tallerwebi.presentacion.DTO.PreguntaTriviaDTO;
 import java.util.List;
+import java.util.Map;
+import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
 
-/** Convierte los datos de la trivia en lo que se envía al navegador. Nunca copia la respuesta correcta. */
+// Convierte los datos de la trivia en lo que se envía al navegador.
 public final class MapeadorTrivia {
 
     private MapeadorTrivia() {
+    }
+
+    public static Map<String, Object> cierre(EventoTriviaActualizada evento) {
+        List<ParticipanteTriviaDTO> eliminados = evento.eliminados().stream()
+                .map(jugador -> new ParticipanteTriviaDTO(jugador.getId(), jugador.getApodo(),
+                        evento.trivia().getTiempoAcumuladoMilisegundos(jugador)))
+                .toList();
+        return Map.of("tipo", evento.tipo(),
+                "rondaCerrada", evento.rondaCerrada(),
+                "opcionCorrecta", evento.opcionCorrecta(),
+                "eliminados", eliminados,
+                "estado", estado(evento.codigoPartida(), evento.trivia()));
     }
 
     public static PreguntaTriviaDTO desdePregunta(PreguntaGenerada pregunta, Integer ronda, Integer totalRondas,

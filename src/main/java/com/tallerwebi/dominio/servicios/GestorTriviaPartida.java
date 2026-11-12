@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
@@ -57,6 +58,7 @@ public class GestorTriviaPartida {
     private final TransactionTemplate transaccion;
     private final Clock reloj;
     private final Map<String, Trivia> trivias = new HashMap<>();
+    private final Map<String, List<Jugador>> participantesAlInicioDeRonda = new HashMap<>();
 
     @Autowired
     public GestorTriviaPartida(ServicioTriviaImpl servicioTrivia, ServicioPremioTriviaImpl servicioPremio,
@@ -246,6 +248,7 @@ public class GestorTriviaPartida {
     }
 
     private void comenzarRonda(String codigoPartida, Trivia trivia) {
+        participantesAlInicioDeRonda.put(codigoPartida, List.copyOf(trivia.getParticipantes()));
         publicar(codigoPartida, TipoAvisoTrivia.RONDA_NUEVA, trivia, null);
         int ronda = trivia.getRondaActual();
         long demora = Duration.between(reloj.instant(), vencimiento(trivia)).toMillis() + MARGEN_CIERRE_MILISEGUNDOS;
@@ -259,7 +262,15 @@ public class GestorTriviaPartida {
         if (!seCerroLaRonda) {
             return;
         }
-        publicar(codigoPartida, TipoAvisoTrivia.RONDA_CERRADA, trivia, preguntaAnterior.getRespuestaCorrecta());
+        List<Jugador> participantesIniciales = participantesAlInicioDeRonda.remove(codigoPartida);
+        if (participantesIniciales == null) {
+            return;
+        }
+        List<Jugador> eliminados = participantesIniciales.stream()
+                .filter(jugador -> !trivia.getParticipantes().contains(jugador))
+                .toList();
+        publicar(new EventoTriviaActualizada(codigoPartida, TipoAvisoTrivia.RONDA_CERRADA, trivia,
+                preguntaAnterior.getRespuestaCorrecta(), rondaAnterior, eliminados));
         if (trivia.estaFinalizada()) {
             finalizar(codigoPartida, trivia);
         } else {
@@ -272,6 +283,7 @@ public class GestorTriviaPartida {
         if (trivia.getGanador() != null && trivia.getDificultad() != DificultadRuleta.DIFICIL) {
             try {
                 entregarPremio(codigoPartida, trivia, partida -> servicioPremio.entregarPremioEnDinero(trivia));
+                publicar(codigoPartida, TipoAvisoTrivia.PREMIO_ENTREGADO, trivia, null);
             } catch (RuntimeException ex) {
                 LOG.error("No se pudo entregar el premio de la trivia de la partida {}", codigoPartida, ex);
             }
@@ -298,10 +310,16 @@ public class GestorTriviaPartida {
     }
 
     private void publicar(String codigoPartida, TipoAvisoTrivia tipo, Trivia trivia, Integer opcionCorrecta) {
+        publicar(new EventoTriviaActualizada(codigoPartida, tipo, trivia, opcionCorrecta));
+    }
+
+    private void publicar(EventoTriviaActualizada evento) {
         try {
-            publicador.notificar(new EventoTriviaActualizada(codigoPartida, tipo, trivia, opcionCorrecta));
+            publicador.notificar(evento);
         } catch (RuntimeException ex) {
-            LOG.warn("No se pudo avisar el cambio de la trivia de la partida {}", codigoPartida, ex);
+            if (LOG.isWarnEnabled()) {
+                LOG.warn("No se pudo avisar el cambio de la trivia de la partida {}", evento.codigoPartida(), ex);
+            }
         }
     }
 }
