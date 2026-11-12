@@ -90,9 +90,9 @@ ON CONFLICT (id) DO UPDATE SET
 WITH datos(posicion, nombre, descripcion) AS (
     VALUES
         (3, 'EVENTOS', 'Casillero de eventos'),
-        (10, 'EVENTOS', 'Casillero de eventos'),
+        (10, 'TRIVIA', 'Casillero de trivia'),
         (14, 'EVENTOS', 'Casillero de eventos'),
-        (20, 'EVENTOS', 'Casillero de eventos'),
+        (20, 'TRIVIA', 'Casillero de trivia'),
         (28, 'EVENTOS', 'Casillero de eventos')
 ), casilleros_nuevos AS (
     INSERT INTO Casillero (posicion, nombre, descripcion)

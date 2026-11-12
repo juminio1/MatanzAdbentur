@@ -8,6 +8,10 @@ import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.resultados.*;
 import com.tallerwebi.dominio.servicios.interfaces.*;
 import java.util.Objects;
+import java.util.UUID;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
+import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
     private final ServicioEventoCasillero eventos;
     private final ServicioGestionQuiebra quiebras;
     private final ServicioMovimiento movimiento;
+    @Autowired
+    private GestorRuletaPartida gestorRuleta;
 
     //inyecta las dependencias por constructor
     public ServicioJugadaImpl(
@@ -132,6 +138,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
             );
         }
 
+        activarRuletaSiCorresponde(codigo, idJugador, jugador.getPosicionActual());
+
         //Devuelve el resultado completo de la jugada.
         return new ResultadoJugada(
             idJugador,
@@ -184,6 +192,14 @@ public class ServicioJugadaImpl implements ServicioJugada {
         jugador.getEstadoCarcel().liberar();
 
         partidas.actualizarJugador(jugador);
+    }
+
+    private void activarRuletaSiCorresponde(String codigo, Long idJugador, Integer posicion) {
+        if (posicion == null || !CatalogoTablero.POSICIONES_TRIVIA.contains(posicion)) {
+            return;
+        }
+        String activacionId = UUID.randomUUID().toString();
+        DespuesDeConfirmar.ejecutar(() -> gestorRuleta.activarRuleta(codigo, activacionId, idJugador));
     }
 
     //busca al jugador por id.

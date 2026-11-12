@@ -142,6 +142,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throws EstadoPartidaInvalidoException {
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
+        participacion.validarSinTrivia(partida);
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
@@ -167,7 +168,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        participacion.validarPartidaEnCurso(partida);
+        participacion.validarSinTrivia(partida);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
         Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
