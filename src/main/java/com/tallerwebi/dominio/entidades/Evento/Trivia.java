@@ -30,6 +30,7 @@ public class Trivia extends Evento {
 
     private int rondaActual;
     private boolean finalizada;
+    private boolean premioEntregado;
 
     @ManyToOne
     private Jugador ganador;
@@ -116,6 +117,15 @@ public Instant getInicioRonda() {
 public void setInicioRonda(Instant inicioRonda) {
     this.inicioRonda = inicioRonda;
 }
+
+public boolean estaPremioEntregado() {
+    return premioEntregado;
+}
+
+public void registrarPremioEntregado() {
+    this.premioEntregado = true;
+}
+
 
 public long getTiempoAcumuladoMilisegundos(Jugador jugador) {
     return tiemposAcumulados.getOrDefault(jugador, 0L);
