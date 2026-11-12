@@ -24,6 +24,7 @@ public class ServicioTriviaImpl {
             Duration.ofSeconds(30);
 
     private static final int MAXIMO_RONDAS = 5;
+    private static final int CANTIDAD_UNICA = 1;
 
     private final ServicioParticipacion servicioParticipacion;
     private final ClienteIA clienteIA;
@@ -206,7 +207,7 @@ public class ServicioTriviaImpl {
             return;
         }
 
-        if (trivia.getParticipantes().size() == 1) {
+        if (trivia.getParticipantes().size() == CANTIDAD_UNICA) {
             Jugador ultimoParticipante =
                     trivia.getParticipantes().get(0);
 
@@ -252,7 +253,7 @@ public class ServicioTriviaImpl {
                                         == menorTiempo)
                         .toList();
 
-        if (jugadoresMasRapidos.size() == 1) {
+        if (jugadoresMasRapidos.size() == CANTIDAD_UNICA) {
             trivia.declararGanador(jugadoresMasRapidos.get(0));
         }
     }
