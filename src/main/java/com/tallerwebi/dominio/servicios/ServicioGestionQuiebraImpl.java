@@ -1,6 +1,8 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
+import com.tallerwebi.dominio.enums.EstadoParticipante;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
@@ -8,6 +10,8 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.enums.EstadoPartida;
+import com.tallerwebi.dominio.enums.TipoEventoGlobal;
+import java.util.Objects;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
@@ -24,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional//permite que la operación se realice dentro de una transacción de base de datos.
 public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private final ServicioParticipacion participacion;
+    private final ServicioFinalizacionPartida finalizacion;
 
     //se necesitan dos repositorios:
     //guarda la deuda
@@ -34,6 +39,13 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     private final ServicioPropiedad servicioPropiedad;
     private final RepositorioPropiedad repositorioPropiedad;
     private final PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
+    @Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
+
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private com.tallerwebi.dominio.servicios.interfaces.ServicioPartida turnos;
 
     @Autowired
     public ServicioGestionQuiebraImpl(
@@ -42,8 +54,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             ServicioPropiedad servicioPropiedad,
             RepositorioPropiedad repositorioPropiedad,
             PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra,
-            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia, ServicioParticipacion participacion) {
+            com.tallerwebi.dominio.servicios.interfaces.ServicioEconomia economia,
+            ServicioParticipacion participacion, ServicioFinalizacionPartida finalizacion) {
         this.participacion = participacion;
+        this.finalizacion = finalizacion;
         this.economia = economia;
 
         this.repositorioDeudaPendiente = repositorioDeudaPendiente;
@@ -54,28 +68,17 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
-    public void registrarDeuda(
-            String codigoPartida,
-            Jugador deudor,
-            Jugador acreedor,
-            Integer monto,
-            String motivo) {
+    public void registrarDeuda(String codigoPartida, Jugador deudor, Jugador acreedor, Integer monto, String motivo) {
 
         if (deudor == null || monto == null || monto <= 0) {
             throw new IllegalArgumentException("Datos de deuda inválidos");
         }
 
-        Partida partida = repositorioPartida
-                .buscarPartidaActivaPorCodigoUnico(codigoPartida);
-
-        if (partida == null) {
-            throw new IllegalArgumentException("La partida no existe");
-        }
+        Partida partida = validarPartidaEconomica(codigoPartida, deudor.getId());
 
         if (repositorioDeudaPendiente.buscarPorPartidaYJugador(
                 codigoPartida, deudor.getId()) != null) {
-            throw new IllegalStateException(
-                    "El jugador ya tiene un pago pendiente");
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
         }
 
         DeudaPendiente deuda = new DeudaPendiente();
@@ -86,6 +89,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         deuda.setMotivo(motivo);
 
         repositorioDeudaPendiente.guardar(deuda);
+        if (turnos != null) turnos.actualizarPausaPorDeuda(codigoPartida);
     }
 
     //Busca la deuda, verifica el saldo, descuenta el importe, actualiza al acreedor, elimina la deuda.
@@ -93,6 +97,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     public Boolean intentarResolverDeuda(
             String codigoPartida,
             Long idJugador) {
+        Partida partida = validarPartidaEconomica(codigoPartida, idJugador);
 
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
@@ -103,10 +108,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         Jugador deudor = deuda.getJugadorDeudor();
         Integer monto = deuda.getMontoPendiente();
 
-        if (deudor.getDinero() == null
-                || monto == null
-                || monto <= 0
-                || !economia.tieneDineroSuficiente(deudor, monto)) {
+        if (!puedeResolverDeuda(deuda)) {
             return false;
         }
 
@@ -122,7 +124,30 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         repositorioPartida.actualizarJugador(deudor);
         repositorioDeudaPendiente.eliminar(deuda);
 
+        if (eventosGlobales != null && partida.getEventoGlobal().estaActivo()) {
+            eventosGlobales.participantesCambiaron(partida);
+        }
+
+        cerrarTurnoTrasPagar(partida, codigoPartida, idJugador);
         return true;
+    }
+
+    private boolean puedeResolverDeuda(DeudaPendiente deuda) {
+        Jugador deudor = deuda.getJugadorDeudor();
+        Integer monto = deuda.getMontoPendiente();
+        return deudor.getDinero() != null && monto != null && monto > 0 && economia.tieneDineroSuficiente(deudor, monto);
+    }
+
+    private void cerrarTurnoTrasPagar(Partida partida, String codigoPartida, Long idJugador) {
+        if (turnos != null) {
+            Jugador actual = turnos.obtenerJugadorActual(codigoPartida);
+            if (!partida.getEventoGlobal().estaActivo() && actual != null
+                    && Objects.equals(actual.getId(), idJugador)
+                    && Boolean.TRUE.equals(actual.getTiroEnTurno())) {
+                turnos.avanzarTurno(codigoPartida);
+            }
+            turnos.actualizarPausaPorDeuda(codigoPartida);
+        }
     }
 
     @Override
@@ -132,7 +157,14 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean hayDeudaEnPartidaActiva(String codigoPartida) {
+        return repositorioDeudaPendiente.existeEnPartidaActiva(codigoPartida);
+    }
+
+    @Override
     public Boolean venderPropiedadYResolverDeuda(String codigoPartida, Long idJugador, Long idPropiedad) {
+        validarPartidaEconomica(codigoPartida, idJugador);
         DeudaPendiente deuda = obtenerDeudaPendiente(codigoPartida, idJugador);
 
         if (deuda == null) {
@@ -155,6 +187,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     @Override
     public ResultadoDeuda evaluarDeuda(
             String codigoPartida, Long idJugador) {
+        validarPartidaEconomica(codigoPartida, idJugador);
 
         DeudaPendiente deuda =
                 obtenerDeudaPendiente(codigoPartida, idJugador);
@@ -190,17 +223,32 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
+        finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.QUEBRADO);
         jugador.setEnBancarrota(true);
         repositorioPartida.actualizarJugador(jugador);
         repositorioDeudaPendiente.eliminar(deuda);
         EventoJugadorQuebrado evento = new EventoJugadorQuebrado(partida, jugador);
         publicadorQuiebra.notificar(evento);
+        if (esQuiebraPorCaidaGlobal(partida, idJugador)) {
+            // Los observadores pueden recargar el estado embebido durante esta caída.
+            // Se conserva la quiebra que este mismo servicio acaba de declarar.
+            jugador.setEnBancarrota(true);
+        }
+        if (turnos != null) turnos.actualizarPausaPorDeuda(codigoPartida);
         return partida;
+    }
+
+    private Boolean esQuiebraPorCaidaGlobal(Partida partida, Long idJugador) {
+        var estado = partida.getEventoGlobal();
+        return estado.estaActivo() && Objects.equals(estado.getSeleccionado(), idJugador)
+            && (estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.INUNDACION
+                || estado.getEvento().getTipoEventoGlobal() == TipoEventoGlobal.TRAMITES_AFIP);
     }
 
     // Comprueba que la partida esté en curso y que el jugador participe en ella.
     private Partida validarPartidaParaQuiebra(String codigoPartida, Long idJugador) {
         Partida partida = repositorioPartida.buscarPartidaActivaPorCodigoUnico(codigoPartida);
+        repositorioPartida.bloquearPartida(partida);
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
@@ -226,6 +274,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             Propiedad propiedad,
             Jugador jugador,
             Integer montoAlquiler) {
+        validarPartidaEconomica(codigoPartida, jugador.getId());
 
         Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
 
@@ -246,13 +295,36 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             return ResultadoDeuda.RESUELTA;
         }
 
-        registrarDeuda(
-                codigoPartida,
-                pagador,
-                propiedad.getPropietario(),
-                montoAlquiler,
-                "ALQUILER"
-        );
+        registrarDeuda(codigoPartida, pagador, propiedad.getPropietario(), montoAlquiler, "ALQUILER");
+
+        return evaluarDeuda(codigoPartida, pagador.getId());
+    }
+
+    @Override
+    public ResultadoDeuda procesarMulta( String codigoPartida, Jugador jugador, Integer montoMulta, String motivo) {
+        validarPartidaEconomica(codigoPartida, jugador.getId());
+
+        Jugador pagador = repositorioPartida.buscarJugadorPorId(jugador.getId());
+
+        if (pagador == null) {
+            throw new IllegalArgumentException("Jugador no encontrado");
+        }
+
+        if (obtenerDeudaPendiente(codigoPartida, pagador.getId()) != null) {
+            throw new IllegalStateException("El jugador ya tiene un pago pendiente");
+        }
+
+        if (montoMulta == null || montoMulta < 0) {
+            throw new IllegalArgumentException("Monto de multa inválido");
+        }
+
+        if (economia.tieneDineroSuficiente(pagador, montoMulta)) {
+            economia.restarDinero(pagador, montoMulta);
+            repositorioPartida.actualizarJugador(pagador);
+            return ResultadoDeuda.RESUELTA;
+        }
+
+        registrarDeuda(codigoPartida, pagador, null, montoMulta, motivo);
 
         return evaluarDeuda(codigoPartida, pagador.getId());
     }
@@ -262,5 +334,15 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         return !repositorioPropiedad
                 .buscarPropiedadesPorPropietario(jugador)
                 .isEmpty();
+    }
+
+    private Partida validarPartidaEconomica(String codigoPartida, Long idJugador) {
+        Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
+        repositorioPartida.bloquearPartida(partida);
+        participacion.validarPartidaEnCurso(partida);
+        if (!java.util.Objects.equals(codigoPartida, partida.getCodigoUnico())) {
+            throw new IllegalStateException("El jugador no pertenece a esta partida.");
+        }
+        return partida;
     }
 }

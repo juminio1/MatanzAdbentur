@@ -46,12 +46,7 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
 
     @Override
     public List<CasilleroPropiedad> obtenerCasillerosPropiedadDePartida(Partida partida) {
-        return obtenerTodosLosCasilleros().stream()
-                .filter(CasilleroPropiedad.class::isInstance)
-                .map(CasilleroPropiedad.class::cast)
-                .filter(casillero -> casillero.getPropiedad() != null)
-                .filter(casillero -> Objects.equals(partida.getId(), casillero.getPartidaId()))
-                .toList();
+        return repositorioCasillero.obtenerPropiedadesDePartida(partida.getId());
     }
 
     @Override

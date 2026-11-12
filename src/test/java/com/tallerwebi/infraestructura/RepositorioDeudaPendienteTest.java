@@ -3,6 +3,8 @@ package com.tallerwebi.infraestructura;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
 import com.tallerwebi.dominio.entidades.Jugador;
@@ -74,6 +76,58 @@ class RepositorioDeudaPendienteTest {
         partida.setEstado(EstadoPartida.EN_CURSO);
         sessionFactory.getCurrentSession().persist(partida);
         return partida;
+    }
+
+    @Test
+    void detectaDeudaSoloDeParticipantesDeLaPartidaActiva() {
+        Usuario creador = new Usuario();
+        creador.setUsername("CreadorConsultaPausa");
+        creador.setEmail("pausa@example.test");
+        sessionFactory.getCurrentSession().persist(creador);
+        Partida partida = crearPartida("PAUSA", creador);
+        Partida otra = crearPartida("OTRA", creador);
+        Jugador jugador = crearJugador("Con deuda");
+        partida.getJugadores().add(jugador);
+        DeudaPendiente deuda = crearDeuda(partida, jugador, null, 100);
+        repositorio.guardar(deuda);
+
+        assertTrue(repositorio.existeEnPartidaActiva("PAUSA"));
+        assertFalse(repositorio.existeEnPartidaActiva(otra.getCodigoUnico()));
+        assertFalse(repositorio.existeEnPartidaActiva("NO_EXISTE"));
+
+        partida.setEstado(EstadoPartida.FINALIZADA);
+        assertFalse(repositorio.existeEnPartidaActiva("PAUSA"));
+        partida.setEstado(EstadoPartida.EN_CURSO);
+        partida.getJugadores().clear();
+        assertFalse(repositorio.existeEnPartidaActiva("PAUSA"));
+    }
+
+    @Test
+    void laAlertaDePruebaAntiguaNoBloqueaNiImpideRegistrarUnaDeudaReal() {
+        Usuario creador = new Usuario();
+        creador.setUsername("CreadorPruebaRetirada");
+        creador.setEmail("prueba-retirada@example.test");
+        sessionFactory.getCurrentSession().persist(creador);
+        Partida partida = crearPartida("PRUEBA-RETIRADA", creador);
+        Jugador jugador = crearJugador("Deudor prueba");
+        partida.getJugadores().add(jugador);
+        DeudaPendiente alerta = crearDeuda(partida, jugador, null, 0);
+        alerta.setMotivo("SALDO_MINIMO_PRUEBA");
+        sessionFactory.getCurrentSession().persist(alerta);
+        sessionFactory.getCurrentSession().flush();
+
+        assertNull(repositorio.buscarPorPartidaYJugador("PRUEBA-RETIRADA", jugador.getId()));
+        assertFalse(repositorio.existeEnPartidaActiva("PRUEBA-RETIRADA"));
+        DeudaPendiente deudaReal = crearDeuda(partida, jugador, null, 100);
+        repositorio.guardar(deudaReal);
+        sessionFactory.getCurrentSession().flush();
+        sessionFactory.getCurrentSession().clear();
+
+        DeudaPendiente recuperada = repositorio.buscarPorPartidaYJugador("PRUEBA-RETIRADA", jugador.getId());
+        assertNotNull(recuperada);
+        assertEquals(100, recuperada.getMontoPendiente());
+        assertEquals(deudaReal.getId(), recuperada.getId());
+        assertTrue(repositorio.existeEnPartidaActiva("PRUEBA-RETIRADA"));
     }
 
     private Jugador crearJugador(String apodo) {

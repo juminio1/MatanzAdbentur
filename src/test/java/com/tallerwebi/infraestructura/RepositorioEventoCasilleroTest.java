@@ -2,7 +2,7 @@ package com.tallerwebi.infraestructura;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.tallerwebi.dominio.entidades.EventoCasillero;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
 import com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig;
 import jakarta.transaction.Transactional;

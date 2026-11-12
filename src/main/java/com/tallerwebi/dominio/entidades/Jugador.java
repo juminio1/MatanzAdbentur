@@ -6,37 +6,29 @@ import jakarta.persistence.*;
 @Entity
 public class Jugador {
 
-@Id
-@GeneratedValue(strategy= GenerationType.IDENTITY)
-private Long id;
-private String apodo;
-private Boolean tiroEnTurno = false;
-private Integer dinero;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String apodo;
+    private Integer dinero;
 
-@Enumerated(EnumType.STRING)
-private ColorFicha ficha;
+    @Enumerated(EnumType.STRING)
+    private ColorFicha ficha;
 
     private Integer posicionActual;
-
     private Integer orden;
-    private Boolean pierdeTurno;
-    private Boolean enBancarrota;
-    private Boolean abandono;
+
+    @Embedded
+    private EstadoCarcel estadoCarcel;
+
+    @Embedded
+    private EstadoJugador estadoJugador;
 
     public Jugador() {
         this.dinero = 0;
         this.posicionActual = 0;
-        this.pierdeTurno = false;
-        this.enBancarrota = false;
-        this.abandono = false;
-    }
-
-    public Boolean getTiroEnTurno() {
-        return tiroEnTurno;
-    }
-
-    public void setTiroEnTurno(Boolean tiroEnTurno) {
-        this.tiroEnTurno = tiroEnTurno;
+        this.estadoCarcel = new EstadoCarcel();
+        this.estadoJugador = new EstadoJugador();
     }
 
     public Long getId() {
@@ -87,27 +79,61 @@ private ColorFicha ficha;
         this.orden = orden;
     }
 
+    public EstadoCarcel getEstadoCarcel() {
+        if (this.estadoCarcel == null) {
+            this.estadoCarcel = new EstadoCarcel();
+        }
+        return this.estadoCarcel;
+    }
+
+    private EstadoJugador getEstadoJugador() {
+        if (this.estadoJugador == null) {
+            this.estadoJugador = new EstadoJugador();
+        }
+        return this.estadoJugador;
+    }
+
+    public Boolean getTiroEnTurno() {
+        return getEstadoJugador().getTiroEnTurno();
+    }
+
+    public Integer getUltimaRondaConOportunidad() {
+        return getEstadoJugador().getUltimaRondaConOportunidad();
+    }
+
+    public void setUltimaRondaConOportunidad(Integer ultimaRondaConOportunidad) {
+        getEstadoJugador().setUltimaRondaConOportunidad(ultimaRondaConOportunidad);
+    }
+
+    public void setTiroEnTurno(Boolean tiroEnTurno) {
+        getEstadoJugador().setTiroEnTurno(tiroEnTurno);
+    }
+
     public Boolean getPierdeTurno() {
-        return pierdeTurno;
+        return getEstadoJugador().getPierdeTurno();
     }
 
     public void setPierdeTurno(Boolean pierdeTurno) {
-        this.pierdeTurno = pierdeTurno;
+        getEstadoJugador().setPierdeTurno(pierdeTurno);
+    }
+
+    public void limpiarTurnosPenalizados() {
+        getEstadoJugador().limpiarTurnosPenalizados();
     }
 
     public Boolean getEnBancarrota() {
-        return Boolean.TRUE.equals(enBancarrota);
+        return Boolean.TRUE.equals(getEstadoJugador().getEnBancarrota());
     }
 
     public void setEnBancarrota(Boolean enBancarrota) {
-        this.enBancarrota = Boolean.TRUE.equals(enBancarrota);
+        getEstadoJugador().setEnBancarrota(enBancarrota);
     }
 
     public Boolean getAbandono() {
-        return Boolean.TRUE.equals(abandono);
+        return Boolean.TRUE.equals(getEstadoJugador().getAbandono());
     }
 
     public void setAbandono(Boolean abandono) {
-        this.abandono = Boolean.TRUE.equals(abandono);
+        getEstadoJugador().setAbandono(abandono);
     }
 }

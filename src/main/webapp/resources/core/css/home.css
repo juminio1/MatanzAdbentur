@@ -8,15 +8,15 @@
 
 body {
     min-height: 100vh;
-    background-color: #111820;
+    background-color: var(--tema-fondo);
     background-image:
-        linear-gradient(rgba(8, 12, 18, 0.26), rgba(8, 12, 18, 0.42)),
+        linear-gradient(color-mix(in srgb, var(--tema-fondo) 51%, transparent), color-mix(in srgb, var(--tema-fondo) 67%, transparent)),
         url('../images/fondo/Wireframe%20-%207.jpg');
     background-repeat: no-repeat, repeat;
     background-size: cover, cover;
     background-position: center;
     background-attachment: fixed;
-    color: #edf3f8;
+    color: var(--tema-texto);
     overflow-x: hidden;
 }
 
@@ -40,9 +40,9 @@ body {
     flex: 0 1 560px;
     padding: clamp(26px, 4vw, 52px);
     max-width: 610px;
-    border: 1px solid rgba(191, 211, 230, 0.24);
+    border: 1px solid var(--tema-borde);
     border-radius: 28px;
-    background: linear-gradient(145deg, rgba(30, 44, 58, 0.96), rgba(19, 29, 40, 0.94));
+    background: linear-gradient(145deg, var(--tema-elevado), var(--tema-panel));
     box-shadow: 0 28px 70px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(9px);
 }
@@ -53,10 +53,10 @@ body {
     gap: 7px;
     margin-bottom: 22px;
     padding: 8px 13px;
-    border: 1px solid rgba(255, 210, 76, 0.46);
+    border: 1px solid color-mix(in srgb, var(--tema-acento) 46%, transparent);
     border-radius: 999px;
-    background: rgba(255, 210, 76, 0.12);
-    color: #ffe08a;
+    background: color-mix(in srgb, var(--tema-acento) 12%, transparent);
+    color: var(--tema-acento);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.09em;
@@ -78,7 +78,7 @@ body {
     font-size: clamp(28px, 3vw, 38px);
     font-weight: 800;
     margin-bottom: 18px;
-    color: #fff2cd;
+    color: var(--tema-texto);
     line-height: 1.15;
 }
 
@@ -87,29 +87,29 @@ body {
     line-height: 1.5;
     margin-bottom: 16px;
     font-weight: 500;
-    color: #d7e1eb;
+    color: var(--tema-secundario);
 }
 
 /* Botón Jugar Ahora */
 .btn-play {
     display: inline-block;
-    background-color: #ffd24c;
+    background-color: var(--tema-acento);
     color: #111;
     text-decoration: none;
     font-weight: 800;
     font-size: 18px;
     padding: 15px 30px;
-    border: 2px solid #ffe08a;
+    border: 2px solid var(--tema-acento);
     border-radius: 14px;
     margin-top: 8px;
-    box-shadow: 0 10px 24px rgba(255, 190, 45, 0.2);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--tema-acento) 20%, transparent);
     transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
 
 .btn-play:hover {
-    background-color: #ffc926;
+    background-color: var(--tema-acento-hover);
     transform: translateY(-2px);
-    box-shadow: 0 14px 30px rgba(255, 190, 45, 0.3);
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--tema-acento) 30%, transparent);
 }
 
 .btn-play:active {
@@ -135,7 +135,7 @@ body {
     width: min(88%, 700px);
     aspect-ratio: 1;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 195, 72, 0.18), rgba(38, 133, 176, 0.12) 45%, transparent 72%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--tema-acento) 18%, transparent), color-mix(in srgb, var(--tema-acento) 12%, transparent) 45%, transparent 72%);
     filter: blur(8px);
 }
 
@@ -154,8 +154,8 @@ body {
 }
 
 .hero--logueado .hero-text {
-    border-color: rgba(255, 210, 76, 0.36);
-    background: linear-gradient(145deg, rgba(34, 48, 62, 0.97), rgba(20, 31, 42, 0.96));
+    border-color: color-mix(in srgb, var(--tema-acento) 36%, transparent);
+    background: linear-gradient(145deg, var(--tema-elevado), var(--tema-panel));
 }
 
 .hero--logueado .hero-image img {

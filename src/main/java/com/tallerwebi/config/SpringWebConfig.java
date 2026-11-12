@@ -19,7 +19,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 @ComponentScan(
     { "com.tallerwebi.presentacion", "com.tallerwebi.dominio", "com.tallerwebi.infraestructura" }
 )
-@Import({ WebSocketConfig.class, ObservadoresConfig.class })
+@Import({ WebSocketConfig.class, ObservadoresConfig.class, ConfiguracionRuleta.class, ConfiguracionClienteIA.class })
 public class SpringWebConfig implements WebMvcConfigurer {
 
     // Spring + Thymeleaf need this
@@ -31,6 +31,7 @@ public class SpringWebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/css/**").addResourceLocations("/resources/core/css/");
 
         registry.addResourceHandler("/js/**").addResourceLocations("/resources/core/js/");
+        registry.addResourceHandler("/audio/**").addResourceLocations("/resources/core/audio/");
 
         registry.addResourceHandler("/images/**").addResourceLocations("/resources/core/images/");
 

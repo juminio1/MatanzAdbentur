@@ -1,0 +1,21 @@
+:root {
+    color-scheme: dark;
+    --tema-fondo: #131217;
+    --tema-sombra: #0b0a0e;
+    --tema-campo: #1b1921;
+    --tema-panel: #24212c;
+    --tema-elevado: #302c3a;
+    --tema-borde: #51495f;
+    --tema-texto: #f4effa;
+    --tema-secundario: #c4bbcf;
+    --tema-acento: #b99afb;
+    --tema-acento-hover: #d0b9ff;
+    --tema-acento-oscuro: #6545a3;
+    --tema-acento-oscuro-hover: #56368f;
+    --tema-sobre-acento: #1b1328;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--tema-acento);
+    outline-offset: 3px;
+}

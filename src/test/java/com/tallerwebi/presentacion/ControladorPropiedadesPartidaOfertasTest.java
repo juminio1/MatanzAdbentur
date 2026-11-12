@@ -5,6 +5,7 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
+import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.servicios.ServicioOfertaPropiedadImpl;
 import com.tallerwebi.dominio.servicios.ServicioParticipacionImpl;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -63,6 +64,7 @@ class ControladorPropiedadesPartidaOfertasTest {
                 servicioPropiedad, mock(ServicioGestionQuiebra.class), participacion,
                 new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero, servicioPropiedad, participacion));
         partida = new Partida();
+        partida.setEstado(EstadoPartida.EN_CURSO);
         partida.setId(ID_PARTIDA);
         partida.setCodigoUnico(CODIGO);
         vendedor = crearJugador(ID_VENDEDOR, "Ana");
@@ -222,6 +224,47 @@ class ControladorPropiedadesPartidaOfertasTest {
                 Map.of("aceptar", true), sesion(ID_COMPRADOR));
 
         assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+    }
+
+    @Test
+    void permiteProponerUnaVentaMientrasEstaActivoElEventoGlobal() throws Exception {
+        activarEventoGlobal();
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
+        var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/partida/" + CODIGO + "/propiedades/1/ofertas")
+                .sessionAttr("id", ID_VENDEDOR).contentType("application/json")
+                .content("{\"idJugadorComprador\":2,\"precio\":450}"))
+                .andReturn().getResponse();
+        assertEquals(200, resultado.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString());
+        assertEquals("pendiente", json.get("estado").asText());
+        verify(servicioPropiedad, never()).transferirPropiedadParaJugadores(any(), any(), any(), any());
+    }
+
+    @Test
+    void permiteAceptarLaVentaDuranteUnEventoYTransfiereAlComprador() throws Exception {
+        String idOferta = crearOfertaDeVendedor(450).getBody().get("idOferta").toString();
+        activarEventoGlobal();
+        doAnswer(invocacion -> { propiedad.setPropietario(comprador); return null; })
+                .when(servicioPropiedad).transferirPropiedadParaJugadores(50L, ID_VENDEDOR, ID_COMPRADOR, 450);
+        when(servicioPropiedad.obtenerPropiedadExistente(50L)).thenReturn(propiedad);
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controlador).build();
+        var resultado = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/partida/" + CODIGO + "/ofertas/" + idOferta + "/responder")
+                .sessionAttr("id", ID_COMPRADOR).contentType("application/json").content("{\"aceptar\":true}"))
+                .andReturn().getResponse();
+        assertEquals(200, resultado.getStatus());
+        org.junit.jupiter.api.Assertions.assertTrue(resultado.getContentType().startsWith("application/json"));
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(resultado.getContentAsString());
+        assertEquals(ID_COMPRADOR.longValue(), json.get("propietarioId").asLong());
+        verify(servicioPropiedad).transferirPropiedadParaJugadores(50L, ID_VENDEDOR, ID_COMPRADOR, 450);
+    }
+
+    private void activarEventoGlobal() {
+        var evento = new com.tallerwebi.dominio.entidades.Evento.EventoGlobal();
+        evento.setTipoEventoGlobal(com.tallerwebi.dominio.enums.TipoEventoGlobal.ROBO);
+        partida.getEventoGlobal().iniciar(evento, 5, java.util.Set.of(ID_VENDEDOR, ID_COMPRADOR));
     }
 
     private ResponseEntity<Map<String, Object>> crearOfertaDeVendedor(Integer precio) {

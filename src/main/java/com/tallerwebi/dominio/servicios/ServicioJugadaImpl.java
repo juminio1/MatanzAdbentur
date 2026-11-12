@@ -1,16 +1,13 @@
-
 package com.tallerwebi.dominio.servicios;
 
-import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
+import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.ResultadoDeuda;
 import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.resultados.*;
 import com.tallerwebi.dominio.servicios.interfaces.*;
-
 import java.util.Objects;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(rollbackFor = Exception.class)
 // La jugada se ejecuta dentro de una trasaccion de base de datos. Protege los cambios transaccionales de base de datos.
 public class ServicioJugadaImpl implements ServicioJugada {
+
+    private static final Integer POSICION_COMISARIA = 8;
+    private static final Integer COSTO_FIANZA = EstadoCarcel.COSTO_FIANZA;
 
     private final ServicioParticipacion participacion;
     private final ServicioDado dados;
@@ -30,10 +30,16 @@ public class ServicioJugadaImpl implements ServicioJugada {
     private final ServicioMovimiento movimiento;
 
     //inyecta las dependencias por constructor
-    public ServicioJugadaImpl(ServicioPartida partidas, ServicioCasillero casilleros,
-                              ServicioPropiedad propiedades, ServicioEventoCasillero eventos,
-                              ServicioGestionQuiebra quiebras, ServicioMovimiento movimiento,
-                              ServicioParticipacion participacion, ServicioDado dados) {
+    public ServicioJugadaImpl(
+        ServicioPartida partidas,
+        ServicioCasillero casilleros,
+        ServicioPropiedad propiedades,
+        ServicioEventoCasillero eventos,
+        ServicioGestionQuiebra quiebras,
+        ServicioMovimiento movimiento,
+        ServicioParticipacion participacion,
+        ServicioDado dados
+    ) {
         this.dados = dados;
         this.participacion = participacion;
         this.partidas = partidas;
@@ -50,11 +56,13 @@ public class ServicioJugadaImpl implements ServicioJugada {
     // los saldos actualizados de todos los jugadores y la info del alquiler si corresponde).
     @Override
     public ResultadoJugada tirarYMover(String codigo, Long idJugador)
-            throws PartidaNoEncontradaException, JugadorNoEncontradoException {
-
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         //busca la partida y sino la encuentra lanza excepcion
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
+        partidas.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
+        validarPausaPorDeuda(codigo);
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
         Jugador jugador = obtenerJugador(partida, idJugador);
@@ -67,9 +75,28 @@ public class ServicioJugadaImpl implements ServicioJugada {
         //Llama al ServicioDado y devuelve un objeto ResultadoTirada, que representa el resultado obtenido.
         ResultadoTirada tirada = dados.tirarDados();
 
+        // --- VALIDACIÓN DE CÁRCEL ---
+        if (!puedeAvanzarDesdeCarcel(codigo, jugador, tirada)) {
+            partidas.actualizarJugador(jugador);
+            avanzarTurnoSiCorresponde(codigo, jugador, false);
+
+            return new ResultadoJugada(
+                idJugador,
+                anterior,
+                anterior,
+                anterior,
+                tirada,
+                null,
+                0,
+                partida.getJugadores().stream().map(SaldoJugador::desdeJugador).toList(),
+                null
+            );
+        }
+
         //Obtiene la suma de ambos dados y le solicita a ServicioMovimiento que avance al jugador.
         int premio = movimiento.avanzar(jugador, tirada.sumarDados());
-        Integer caida = jugador.getPosicionActual();// guarda la nueva posicion
+
+        Integer caida = jugador.getPosicionActual(); // guarda la nueva posicion
 
         //Revisa si corresponde aplicar algún evento al jugador.
         ResultadoEvento evento = aplicarEvento(codigo, jugador);
@@ -77,11 +104,11 @@ public class ServicioJugadaImpl implements ServicioJugada {
         if (evento != null) {
             premio = premio + evento.dineroPorInicio();
         }
-        partidas.actualizarJugador(jugador);//actualiza el estado del juagdor.
+        partidas.actualizarJugador(jugador); //actualiza el estado del juagdor.
 
         //Revisa donde termino el jugador despues de tirar y comprueba si la jugada puede terminar y pasar al siguiente jugador.
         Destino destino = resolverDestino(partida, jugador);
-        avanzarTurnoSiCorresponde(codigo, jugador, destino.requiereDecision());
+        // El turno se cierra al completar la presentación y la decisión de compra, o al vencer.
 
         //verifican que la partida este actualizada.
         Partida actualizada = partidas.obtenerPartida(codigo);
@@ -99,117 +126,237 @@ public class ServicioJugadaImpl implements ServicioJugada {
             EventoCasillero eventoCasillero = evento.evento();
 
             eventoAplicado = new ResultadoJugada.EventoAplicado(
-                    eventoCasillero.getNombre(),
-                    eventoCasillero.getDescripcion(),
-                    eventoCasillero.getTipoEfecto().name());
+                eventoCasillero.getNombre(),
+                eventoCasillero.getDescripcion(),
+                eventoCasillero.getTipoEfecto().name()
+            );
         }
 
         //Devuelve el resultado completo de la jugada.
-        return new ResultadoJugada(idJugador, anterior,
-                jugador.getPosicionActual(),
-                caida,
-                tirada,
-                eventoAplicado,
-                premio,
-                //obtiene la lista de jugadores y la recorre para hacer una operacion con c/uno (.stream)
-                paraSaldos.getJugadores().stream()
-                        //Ese metodo convierte un objeto Jugador en un objeto SaldoJugador
-                        .map(SaldoJugador::desdeJugador)
-                        .toList(),//crea la lista
-                destino.alquiler());
+        return new ResultadoJugada(
+            idJugador,
+            anterior,
+            jugador.getPosicionActual(),
+            caida,
+            tirada,
+            eventoAplicado,
+            premio,
+            //obtiene la lista de jugadores y la recorre para hacer una operacion con c/uno (.stream)
+            paraSaldos
+                .getJugadores()
+                .stream()
+                //Ese metodo convierte un objeto Jugador en un objeto SaldoJugador
+                .map(SaldoJugador::desdeJugador)
+                .toList(), //crea la lista
+            destino.alquiler()
+        );
+    }
+
+    @Override
+    public void pagarFianzaVoluntaria(String codigo, Long idJugador)
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        Partida partida = partidas.obtenerPartida(codigo);
+        if (partida == null) throw new PartidaNoEncontradaException();
+        partidas.bloquearPartida(partida);
+        participacion.validarAccionOrdinaria(partida);
+        validarPausaPorDeuda(codigo);
+
+        Jugador jugador = obtenerJugador(partida, idJugador);
+
+        if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
+            throw new IllegalStateException("No podés pagar fianza porque no estás en la cárcel.");
+        }
+
+        if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new IllegalStateException(
+                "Ya tiraste los dados, debés esperar al próximo turno."
+            );
+        }
+
+        if (jugador.getDinero() == null || jugador.getDinero() < COSTO_FIANZA) {
+            throw new DineroInsuficienteException(
+                "No tenés los $100 necesarios para pagar la fianza anticipada."
+            );
+        }
+
+        quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+
+        jugador.getEstadoCarcel().liberar();
+
+        partidas.actualizarJugador(jugador);
     }
 
     //busca al jugador por id.
     private Jugador obtenerJugador(Partida partida, Long idJugador)
-            throws JugadorNoEncontradoException {
-
-        return partida.getJugadores().stream()
-                .filter(j -> Objects.equals(j.getId(), idJugador))
-                .findFirst()
-                .orElseThrow(() -> new JugadorNoEncontradoException(
-                        "No se encontró el jugador en esta partida"));
+        throws JugadorNoEncontradoException {
+        return partida
+            .getJugadores()
+            .stream()
+            .filter(j -> Objects.equals(j.getId(), idJugador))
+            .findFirst()
+            .orElseThrow(() ->
+                new JugadorNoEncontradoException("No se encontró el jugador en esta partida")
+            );
     }
 
-    //valida que el jugador pueda tirar los dados en su turno.
+    private void validarPausaPorDeuda(String codigo) {
+        if (partidas.turnoPausadoPorDeuda(codigo)) {
+            throw new IllegalStateException("La partida está pausada hasta resolver la deuda pendiente.");
+        }
+    }
+
     private void validarTirada(String codigo, Jugador jugador) {
+        Integer restantes = partidas.obtenerSegundosRestantesTurno(codigo);
+        if (restantes != null && restantes <= 0) {
+            throw new TiradaNoPermitidaException("El tiempo del turno terminó.");
+        }
+        validarJugadorEnTurno(codigo, jugador);
+        validarPenalizacionTurno(jugador);
+        validarTiradaAnterior(jugador);
+        validarDeudaPendiente(codigo, jugador);
+    }
+
+    // Verifica que el jugador esté activo y sea su turno.
+    private void validarJugadorEnTurno(String codigo, Jugador jugador) {
         Jugador actual = partidas.obtenerJugadorActual(codigo);
-        //verifica que el jugador este activo y que sea su turno
-        if (!participacion.estaActivo(jugador)
-                || actual == null
-                || !Objects.equals(actual.getId(), jugador.getId())) {
-            throw new TiradaNoPermitidaException(
-                    "No podés tirar los dados en este turno.");
+
+        if (
+            !participacion.estaActivo(jugador) ||
+            actual == null ||
+            !Objects.equals(actual.getId(), jugador.getId())
+        ) {
+            throw new TiradaNoPermitidaException("No podés tirar los dados en este turno.");
         }
-        //verifica que el jugador no haya tirado los dados en ese turno
+    }
+
+    // Impide tirar si tiene una penalización pendiente.
+    private void validarPenalizacionTurno(Jugador jugador) {
+        if (Boolean.TRUE.equals(jugador.getPierdeTurno())) {
+            throw new TiradaNoPermitidaException(
+                "Perdés esta oportunidad de turno por una penalización pendiente."
+            );
+        }
+    }
+
+    // Verifica que no haya tirado anteriormente.
+    private void validarTiradaAnterior(Jugador jugador) {
         if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
-            throw new TiradaNoPermitidaException(
-                    "Ya tiraste los dados en este turno.");
+            throw new TiradaNoPermitidaException("Ya tiraste los dados en este turno.");
         }
-        //si tiene deuda pendiente no puede volver a tirar hasta pagarla.
+    }
+
+    // Impide tirar mientras exista una deuda pendiente.
+    private void validarDeudaPendiente(String codigo, Jugador jugador) {
         if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) {
             throw new TiradaNoPermitidaException(
-                    "Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados.");
+                "Tenés una deuda pendiente. Debés resolverla antes de volver a tirar los dados."
+            );
         }
     }
 
     //revisa si corresponde aplicar un evento al jugador y devuelve el rtdo del evento o null si no hubo.
     private ResultadoEvento aplicarEvento(String codigo, Jugador jugador) {
         if (eventos == null) {
-            return null; }
+            return null;
+        }
         return eventos.aplicarSiCorresponde(codigo, jugador).orElse(null);
     }
 
     //revisa en que casillero terminó el jugador y resuelve lo que corresponda
     private Destino resolverDestino(Partida partida, Jugador jugador) {
+        if (
+            jugador.getPosicionActual() != null &&
+            jugador.getPosicionActual().equals(POSICION_COMISARIA)
+        ) {
+            jugador.getEstadoCarcel().encarcelar();
+            return new Destino(false, null);
+        }
 
         //si el jugador no esta activo o pierde el turno, no procesa la propiedad
-        if (!participacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno()))
-            return new Destino(false, null);
+        if (
+            !participacion.estaActivo(jugador) || Boolean.TRUE.equals(jugador.getPierdeTurno())
+        ) return new Destino(false, null);
 
         //busca el casillero de propiedad donde terminó el jugador
-        CasilleroPropiedad casillero = casilleros.buscarOCrearPropiedadEnPosicion(partida, jugador.getPosicionActual());
+        CasilleroPropiedad casillero = casilleros.buscarOCrearPropiedadEnPosicion(
+            partida,
+            jugador.getPosicionActual()
+        );
         //si no es un casillero de propiedad no hay nada que resolver
         if (casillero == null) return new Destino(false, null);
 
         Propiedad propiedad = casillero.getPropiedad();
         //si la propiedad es disponible, espera a que el jugador quiera comprarla
-        if (propiedades.estaDisponible(propiedad))
-            return new Destino(true, null);
+        if (propiedades.estaDisponible(propiedad)) return new Destino(true, null);
 
         Jugador propietario = propiedad.getPropietario();
 
         //si no tiene propietario o es del mismo jugador, no paga alquiler
-        if (propietario == null || Objects.equals(propietario.getId(), jugador.getId()))
-            return new Destino(false, null);
+        if (
+            propietario == null || Objects.equals(propietario.getId(), jugador.getId())
+        ) return new Destino(false, null);
         //si es de otro jugador, calcula el alquiler y procesa el pago
         int alquiler = propiedades.calcularAlquiler(casillero, propiedad);
-        ResultadoDeuda deuda = quiebras.procesarAlquiler(partida.getCodigoUnico(), propiedad, jugador, alquiler);
+        ResultadoDeuda deuda = quiebras.procesarAlquiler(
+            partida.getCodigoUnico(),
+            propiedad,
+            jugador,
+            alquiler
+        );
         //devuelve si quedó una deuda pendiente y los datos del alquiler
 
-        return new Destino(deuda == ResultadoDeuda.PENDIENTE,
-                new AlquilerJugada(
-                        jugador.getId(),
-                        jugador.getApodo(),
-                        propietario.getApodo(),
-                        propiedad.getNombre(),
-                        alquiler)
+        return new Destino(
+            deuda == ResultadoDeuda.PENDIENTE,
+            new AlquilerJugada(
+                jugador.getId(),
+                jugador.getApodo(),
+                propietario.getApodo(),
+                propiedad.getNombre(),
+                alquiler
+            )
         );
     }
 
     //verifica si puede pasar al siguiente jugador o si tiene que esperar
     private void avanzarTurnoSiCorresponde(
-            String codigo, Jugador jugador, boolean requiereDecision) {
+        String codigo,
+        Jugador jugador,
+        boolean requiereDecision
+    ) {
+        if (requiereDecision || !participacion.estaActivo(jugador)) return;
 
-        if (requiereDecision || !participacion.estaActivo(jugador))
-            return;
-
-        if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null)
-            return;
+        if (quiebras.obtenerDeudaPendiente(codigo, jugador.getId()) != null) return;
 
         partidas.avanzarTurno(codigo);
     }
+
+    private boolean puedeAvanzarDesdeCarcel(
+        String codigo,
+        Jugador jugador,
+        ResultadoTirada tirada
+    ) {
+        if (!Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())) {
+            return true;
+        }
+
+        if (tirada.getDado1().equals(tirada.getDado2())) {
+            jugador.getEstadoCarcel().liberar();
+            return true;
+        }
+
+        // Al último intento fallido se cobra la fianza, pero se queda en el lugar hasta el próximo turno (castigo).
+        if (jugador.getEstadoCarcel().registrarIntentoFallido()) {
+            quiebras.procesarMulta(codigo, jugador, COSTO_FIANZA, "FIANZA_CARCEL");
+
+            jugador.getEstadoCarcel().liberar();
+
+            return false;
+        }
+
+        return false;
+    }
+
     //Record: crea clases pequeñas para guardar datos
     //indica si existe algo q el jugador debe resolver y guarda la info. del alquiler
-    private record Destino(boolean requiereDecision, AlquilerJugada alquiler) {
-    }
+    private record Destino(boolean requiereDecision, AlquilerJugada alquiler) {}
 }

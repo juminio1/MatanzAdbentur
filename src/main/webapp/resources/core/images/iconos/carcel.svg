@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cárcel">
+  <!-- Luz de patrullero -->
+  <rect x="26" y="2" width="12" height="7" rx="2" fill="#e74c5b" stroke="#080d13" stroke-width="2"/>
+  <rect x="32" y="2" width="6" height="7" rx="2" fill="#5dc7e5" stroke="#080d13" stroke-width="2"/>
+  <!-- Marco de la ventana -->
+  <rect x="6" y="10" width="52" height="48" rx="6" fill="#25313e" stroke="#080d13" stroke-width="3"/>
+  <rect x="11" y="15" width="42" height="38" rx="3" fill="#111820"/>
+  <!-- Rejas -->
+  <g fill="#b3c1ce" stroke="#080d13" stroke-width="1.5">
+    <rect x="15" y="13" width="5" height="42" rx="2"/>
+    <rect x="25" y="13" width="5" height="42" rx="2"/>
+    <rect x="35" y="13" width="5" height="42" rx="2"/>
+    <rect x="45" y="13" width="5" height="42" rx="2"/>
+    <rect x="9" y="31" width="46" height="5" rx="2"/>
+  </g>
+</svg>

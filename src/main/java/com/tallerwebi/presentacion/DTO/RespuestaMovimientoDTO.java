@@ -5,6 +5,10 @@ import java.util.List;
 @SuppressWarnings("PMD.TooManyFields")
 public class RespuestaMovimientoDTO {
 
+    private boolean turnoVencido;
+    public boolean isTurnoVencido() { return turnoVencido; }
+    public void setTurnoVencido(boolean valor) { turnoVencido = valor; }
+
     private Integer dado1;
     private Integer dado2;
     private Integer suma;

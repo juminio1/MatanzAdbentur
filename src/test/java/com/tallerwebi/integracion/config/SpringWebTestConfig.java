@@ -16,10 +16,12 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
+import com.tallerwebi.config.ConfiguracionRuleta;
+import com.tallerwebi.dominio.servicios.interfaces.ClienteIA;
 
 @EnableWebMvc
 @Configuration
-@Import(ObservadoresConfig.class)
+@Import({ObservadoresConfig.class, ConfiguracionRuleta.class})
 @ComponentScan({
     "com.tallerwebi.presentacion",
     "com.tallerwebi.dominio",
@@ -84,5 +86,10 @@ public class SpringWebTestConfig implements WebMvcConfigurer {
    @Bean
   public SimpMessagingTemplate simpMessagingTemplate() {
     return Mockito.mock(SimpMessagingTemplate.class);
+  }
+
+  @Bean
+  public ClienteIA clienteIA() {
+    return Mockito.mock(ClienteIA.class);
   }
 }
