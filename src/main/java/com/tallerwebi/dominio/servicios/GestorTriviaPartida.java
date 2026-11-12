@@ -162,7 +162,7 @@ public class GestorTriviaPartida {
 
     // Lo ejecuta el planificador cuando vence la pregunta, aunque nadie haya respondido.
     synchronized void cerrarPorTiempo(String codigoPartida, Trivia trivia, int ronda) {
-        if (trivias.get(codigoPartida) != trivia || trivia.estaFinalizada() || trivia.getRondaActual() != ronda) {
+        if (!Objects.equals(trivias.get(codigoPartida), trivia) || trivia.estaFinalizada() || trivia.getRondaActual() != ronda) {
             return;
         }
         PreguntaGenerada pregunta = trivia.getPreguntaActual();
