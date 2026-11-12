@@ -2591,7 +2591,7 @@ document.addEventListener("click", evento => {
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
     if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
-    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat]")) return;
+    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat], #btn-sonido")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
@@ -2964,7 +2964,7 @@ function abrirModalPartida(modal) {
 function bloquearAccionesFinalizadas() {
     if (!partidaFinalizada) return;
     document.querySelectorAll("button").forEach(boton => {
-        if (!boton.closest("#modal-victoria, #chat-partida, [data-abrir-chat]") && !boton.disabled) boton.disabled = true;
+        if (!boton.closest("#modal-victoria, #chat-partida, [data-abrir-chat], #btn-sonido") && !boton.disabled) boton.disabled = true;
     });
 }
 
@@ -2975,7 +2975,7 @@ observadorFinalizacion.observe(document.body, {
 window.addEventListener("pagehide", () => observadorFinalizacion.disconnect());
 
 document.addEventListener("click", evento => {
-    if (partidaFinalizada && !evento.target.closest("#modal-victoria, #chat-partida, [data-abrir-chat]")) {
+    if (partidaFinalizada && !evento.target.closest("#modal-victoria, #chat-partida, [data-abrir-chat], #btn-sonido")) {
         evento.preventDefault();
         evento.stopImmediatePropagation();
     }
