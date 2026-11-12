@@ -55,18 +55,6 @@ body {
     gap: 18px;
 }
 
-.salaEspera__dado {
-    width: 65px;
-    height: 65px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: #10223a;
-    font-size: 54px;
-    transform: rotate(-8deg);
-}
-
 .salaEspera__titulo h1 {
     margin: 0 0 7px;
     color: #101827;
@@ -126,19 +114,6 @@ body {
     display: flex;
     align-items: flex-start;
     gap: 13px;
-}
-
-.salaEspera__icono {
-    width: 42px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: #e7f4ff;
-    border-radius: 11px;
-    color: var(--tema-acento);
-    font-size: 21px;
 }
 
 .salaEspera__subtitulo h2 {
@@ -542,11 +517,6 @@ body {
     color: var(--tema-secundario);
 }
 
-.salaEspera__icono {
-    background: var(--tema-elevado);
-    color: var(--tema-acento);
-}
-
 .salaEspera__codigoNumero,
 .salaEspera__copiar {
     background: var(--tema-campo);
@@ -608,11 +578,6 @@ body {
     .salaEspera__titulo {
         align-items: flex-start;
     }
-    .salaEspera__dado {
-        width: 42px;
-        height: 42px;
-        font-size: 36px;
-    }
     .salaEspera__titulo h1 {
         font-size: 29px;
     }
@@ -634,7 +599,19 @@ body {
                 radial-gradient(ellipse at 12% 45%, #302347, transparent 58%),
                 #14121b;
 }
-.salaEspera__contenedor { border-color: var(--tema-acento); }
+/* Mismo marco que login y registro: esquinas de 16px y sombra dura tipo pixel art. */
+.salaEspera__contenedor {
+    box-sizing: border-box;
+    border-color: var(--tema-acento);
+    border-radius: 16px;
+    box-shadow: 6px 6px 0 #100e16;
+}
+.salaEspera__codigo,
+.salaEspera__fichas,
+.salaEspera__jugadores {
+    border-radius: 12px;
+    box-shadow: none;
+}
 .salaEspera__iniciar:not(:disabled) {
     background: #ffda6a;
     color: #211829;
@@ -645,3 +622,104 @@ body {
 }
 .salaEspera__ficha > span { color: var(--tema-texto); }
 .salaEspera__ficha--ocupada::before { opacity: .45; }
+
+/* Encabezado con el barrio de fondo, como el panel del login y del registro. */
+.salaEspera__encabezado {
+    padding: clamp(22px, 3vw, 34px);
+    border: 1px solid var(--tema-borde);
+    border-radius: 12px;
+    background: linear-gradient(to right, #20172af5 35%, #20172a66),
+                url("../images/barrio-luna-atardecer.png") 70% center / cover;
+}
+.salaEspera__titulo h1 { color: #fff; }
+.salaEspera__matanza { color: #ffda6a; opacity: 1; }
+
+/* Paneles livianos: sin caja propia, solo los elementos de adentro llevan fondo. */
+.salaEspera__contenido { gap: 34px; }
+.salaEspera__izquierda { gap: 30px; }
+.salaEspera__codigo,
+.salaEspera__fichas,
+.salaEspera__jugadores {
+    padding: 0;
+    background: none;
+    border: 0;
+}
+
+/* Jugadores: la inicial en un círculo del tema y la ficha en pixel art bien visible. */
+.salaEspera__jugador {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+.salaEspera__jugador .avatar {
+    width: 42px;
+    height: 42px;
+    background: var(--tema-acento-oscuro);
+    border: 2px solid var(--tema-acento);
+    box-shadow: 3px 3px 0 #100e16;
+}
+.salaEspera__jugador .avatar--vacio {
+    background: none;
+    border: 2px dashed var(--tema-borde);
+    box-shadow: none;
+}
+.salaEspera__jugadorFicha:not(.ficha-vacia, .salaEspera__jugadorFicha--vacia) {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 #100e16);
+}
+.salaEspera__jugadorFicha {
+    justify-self: center;
+}
+
+/* Copiar código: botón secundario con la sombra dura del resto de la página. */
+.salaEspera__copiar {
+    background: var(--tema-acento-oscuro);
+    border: 2px solid var(--tema-acento);
+    color: #fff;
+    box-shadow: 4px 4px 0 #100e16;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.salaEspera__copiar:hover {
+    background: var(--tema-acento-oscuro-hover);
+    color: #fff;
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 #100e16;
+}
+.salaEspera__copiar:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #100e16;
+}
+
+/* La imagen del avatar llena el círculo. */
+.salaEspera__jugador .avatar {
+    overflow: hidden;
+    background: var(--tema-elevado);
+}
+.salaEspera__jugador .avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+}
+
+/* El cuadro queda centrado en el alto que deja libre el header, sin scroll de más. */
+body:has(.salaEspera) {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.salaEspera {
+    flex: 1;
+    box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 40px;
+    padding-bottom: 40px;
+}
