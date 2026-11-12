@@ -14,13 +14,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
-import com.tallerwebi.dominio.servicios.interfaces.ClienteIA;
+import com.tallerwebi.dominio.entidades.PreguntaTrivia;
+import com.tallerwebi.dominio.enums.DificultadTrivia;
 import com.tallerwebi.dominio.resultados.PreguntaGenerada;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.junit.jupiter.api.BeforeEach;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,11 +35,11 @@ class ServicioTriviaTest {
     private final ServicioParticipacion servicioParticipacion =
         mock(ServicioParticipacion.class);
 
-    private final ClienteIA clienteIA =
-        mock(ClienteIA.class);
+    private final ServicioPreguntasTrivia preguntas =
+        mock(ServicioPreguntasTrivia.class);
 
     private final ServicioTriviaImpl servicio =
-        new ServicioTriviaImpl(servicioParticipacion, clienteIA);
+        new ServicioTriviaImpl(servicioParticipacion, preguntas);
 
     
 @BeforeEach
@@ -51,8 +51,17 @@ void configurarPreguntaPorDefecto() {
             1
     );
 
-    when(clienteIA.generarPreguntas(anyString(), eq(1)))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), any()))
+            .thenReturn(enPreguntasTrivia(pregunta, pregunta, pregunta, pregunta, pregunta));
+}
+
+// Convierte las preguntas de prueba al formato que devuelve ServicioPreguntasTrivia.
+private static List<PreguntaTrivia> enPreguntasTrivia(PreguntaGenerada... generadas) {
+    return java.util.Arrays.stream(generadas)
+            .map(pregunta -> new PreguntaTrivia(pregunta.getEnunciado(), pregunta.getOpciones(),
+                    pregunta.getRespuestaCorrecta(),
+                    DificultadTrivia.desdeRuleta(DificultadRuleta.valueOf(pregunta.getDificultad()))))
+            .toList();
 }
     
 
@@ -165,8 +174,8 @@ void noDeberiaDeclararGanadorAutomaticamenteSiSoloHayUnParticipante() {
         1
 );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-        .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     // Ejecución
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
@@ -192,8 +201,6 @@ void deberiaGenerarUnaPreguntaSiHayUnSoloParticipante() {
     when(servicioParticipacion.estaActivo(any(Jugador.class)))
             .thenReturn(true);
 
-    ClienteIA clienteIA = mock(ClienteIA.class);
-
     PreguntaGenerada pregunta = new PreguntaGenerada(
             "DIFICIL",
             "¿Cuál es la capital de Argentina?",
@@ -201,17 +208,17 @@ void deberiaGenerarUnaPreguntaSiHayUnSoloParticipante() {
             1
     );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     ServicioTriviaImpl servicioConIA =
-            new ServicioTriviaImpl(servicioParticipacion, clienteIA);
+            new ServicioTriviaImpl(servicioParticipacion, preguntas);
 
     // Ejecución
     servicioConIA.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
 
     // Verificación
-    verify(clienteIA).generarPreguntas("DIFICIL", 1);
+    verify(preguntas).obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL));
 }
 
 
@@ -237,8 +244,8 @@ void deberiaConservarLaPreguntaGeneradaParaLaTrivia() {
             1
     );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     // Ejecución
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
@@ -271,8 +278,8 @@ void deberiaGanarLaTriviaSiElUnicoParticipanteRespondeCorrectamente() {
             1
     );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
 
@@ -306,8 +313,8 @@ void deberiaFinalizarSinGanadorSiElUnicoParticipanteRespondeIncorrectamente() {
             1
     );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
 
@@ -342,8 +349,8 @@ void noDeberiaPermitirResponderUnaTriviaFinalizada() {
             1
     );
 
-    when(clienteIA.generarPreguntas("DIFICIL", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.DIFICIL)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.DIFICIL);
 
@@ -378,17 +385,17 @@ void deberiaGenerarUnaPreguntaComunParaVariosParticipantes() {
             1
     );
 
-    when(clienteIA.generarPreguntas("MEDIO", 1))
-            .thenReturn(List.of(pregunta));
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.MEDIO)))
+            .thenReturn(enPreguntasTrivia(pregunta));
 
     // Ejecución
     Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.MEDIO);
 
     // Verificación
     assertEquals(3, trivia.getParticipantes().size());
-    assertSame(pregunta, trivia.getPreguntaActual());
+    assertEquals(pregunta.getEnunciado(), trivia.getPreguntaActual().getEnunciado());
 
-    verify(clienteIA).generarPreguntas("MEDIO", 1);
+    verify(preguntas).obtenerParaCasillero(any(), eq(DificultadRuleta.MEDIO));
 }
 
 
@@ -534,11 +541,8 @@ void deberiaGenerarUnaNuevaPreguntaAlAvanzarDeRonda() {
             1
     );
 
-    when(clienteIA.generarPreguntas("FACIL", 1))
-            .thenReturn(
-                    List.of(preguntaRonda1),
-                    List.of(preguntaRonda2)
-            );
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.FACIL)))
+            .thenReturn(enPreguntasTrivia(preguntaRonda1, preguntaRonda2));
 
     Trivia trivia = servicio.iniciarTrivia(
             partida, DificultadRuleta.FACIL
@@ -550,7 +554,7 @@ void deberiaGenerarUnaNuevaPreguntaAlAvanzarDeRonda() {
 
     // Verificación
     assertEquals(2, trivia.getRondaActual());
-    assertSame(preguntaRonda2, trivia.getPreguntaActual());
+    assertEquals(preguntaRonda2.getEnunciado(), trivia.getPreguntaActual().getEnunciado());
 }
 
 
@@ -578,8 +582,8 @@ void noDeberiaSuperarLasCincoRondas() {
     // Verificación
     assertEquals(5, trivia.getRondaActual());
 
-    verify(clienteIA, times(5))
-            .generarPreguntas("FACIL", 1);
+    verify(preguntas, times(1))
+            .obtenerParaCasillero(any(), eq(DificultadRuleta.FACIL));
     assertTrue(trivia.estaFinalizada());
 }
 
@@ -605,7 +609,7 @@ void deberiaRegistrarElTiempoDeRespuestaDeUnJugador() {
     when(reloj.instant()).thenReturn(inicio, respuesta);
 
     ServicioTriviaImpl servicioConReloj =
-            new ServicioTriviaImpl(servicioParticipacion, clienteIA, reloj);
+            new ServicioTriviaImpl(servicioParticipacion, preguntas, reloj);
 
     Trivia trivia = servicioConReloj.iniciarTrivia(
             partida, DificultadRuleta.FACIL
@@ -639,7 +643,7 @@ void deberiaGanarQuienAcumulaMenorTiempoAlCompletarCincoRondas() {
     when(reloj.instant()).thenAnswer(invocacion -> ahora.get());
 
     ServicioTriviaImpl servicioConReloj =
-            new ServicioTriviaImpl(servicioParticipacion, clienteIA, reloj);
+            new ServicioTriviaImpl(servicioParticipacion, preguntas, reloj);
 
     Trivia trivia = servicioConReloj.iniciarTrivia(
             partida, DificultadRuleta.FACIL
@@ -689,7 +693,7 @@ void deberiaEliminarAlJugadorQueNoRespondioCuandoVenceLaRonda() {
 
     ServicioTriviaImpl servicioConLimite = new ServicioTriviaImpl(
             servicioParticipacion,
-            clienteIA,
+            preguntas,
             reloj,
             Duration.ofSeconds(10)
     );
@@ -736,7 +740,7 @@ void deberiaFinalizarSinGanadorSiNadieRespondeAntesDelVencimiento() {
 
     ServicioTriviaImpl servicioConLimite = new ServicioTriviaImpl(
             servicioParticipacion,
-            clienteIA,
+            preguntas,
             reloj,
             Duration.ofSeconds(10)
     );
@@ -790,7 +794,7 @@ void deberiaExcluirAlJugadorQueAbandonaDuranteLaTrivia() {
 
 
 @Test
-void deberiaManejarCuandoGeminiNoDevuelvePreguntas() {
+void deberiaFinalizarSinGanadorSiNoHayPreguntasDisponibles() {
     Jugador jugador1 = new Jugador();
     Jugador jugador2 = new Jugador();
 
@@ -801,12 +805,13 @@ void deberiaManejarCuandoGeminiNoDevuelvePreguntas() {
     when(servicioParticipacion.estaActivo(any(Jugador.class)))
             .thenReturn(true);
 
-    when(clienteIA.generarPreguntas("FACIL", 1))
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.FACIL)))
             .thenReturn(List.of());
 
-    assertThrows(IllegalStateException.class, () ->
-            servicio.iniciarTrivia(partida, DificultadRuleta.FACIL)
-    );
+    Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.FACIL);
+
+    assertTrue(trivia.estaFinalizada());
+    assertNull(trivia.getGanador());
 }
 
 
@@ -833,7 +838,7 @@ void deberiaEliminarAlJugadorQueRespondeFueraDeTiempo() {
 
     ServicioTriviaImpl servicioConLimite = new ServicioTriviaImpl(
             servicioParticipacion,
-            clienteIA,
+            preguntas,
             reloj,
             Duration.ofSeconds(10)
     );
@@ -873,7 +878,7 @@ void noDeberiaCerrarUnaRondaAntesDeQueVenzaElTiempo() {
 
     ServicioTriviaImpl servicioConLimite = new ServicioTriviaImpl(
             servicioParticipacion,
-            clienteIA,
+            preguntas,
             reloj,
             Duration.ofSeconds(10)
     );
@@ -966,8 +971,94 @@ void deberiaFinalizarSinGanadorSiNoHayJugadoresHabilitados() {
     assertTrue(trivia.estaFinalizada());
     assertNull(trivia.getGanador());
 
-    verifyNoInteractions(clienteIA);
+    verifyNoInteractions(preguntas);
 }
 
 
+
+@Test
+void deberiaJugarSoloLasRondasQueTienenPregunta() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    PreguntaGenerada primera = new PreguntaGenerada("FACIL", "¿Uno?",
+            List.of("A", "B", "C", "D"), 1);
+    PreguntaGenerada segunda = new PreguntaGenerada("FACIL", "¿Dos?",
+            List.of("E", "F", "G", "H"), 1);
+
+    when(preguntas.obtenerParaCasillero(any(), eq(DificultadRuleta.FACIL)))
+            .thenReturn(enPreguntasTrivia(primera, segunda));
+
+    Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.FACIL);
+
+    for (int ronda = 1; ronda <= 2; ronda++) {
+        servicio.responderPregunta(trivia, jugador1, 1);
+        servicio.responderPregunta(trivia, jugador2, 1);
+    }
+
+    assertEquals(2, trivia.getTotalRondas());
+    assertTrue(trivia.estaFinalizada());
+}
+
+@Test
+void deberiaPedirLasPreguntasConElCodigoDeLaPartida() {
+    Jugador jugador1 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setCodigoUnico("ABC123");
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    servicio.iniciarTrivia(partida, DificultadRuleta.MEDIO);
+
+    verify(preguntas).obtenerParaCasillero("ABC123", DificultadRuleta.MEDIO);
+}
+
+@Test
+void deberiaFinalizarSinGanadorSiElServicioDePreguntasNoDevuelveNada() {
+    Jugador jugador1 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+    when(preguntas.obtenerParaCasillero(any(), any())).thenReturn(null);
+
+    Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.FACIL);
+
+    assertTrue(trivia.estaFinalizada());
+}
+
+@Test
+void noDeberiaJugarMasDeCincoRondasAunqueHayaMasPreguntas() {
+    Jugador jugador1 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    PreguntaGenerada pregunta = new PreguntaGenerada("FACIL", "¿Uno?",
+            List.of("A", "B", "C", "D"), 1);
+    when(preguntas.obtenerParaCasillero(any(), any()))
+            .thenReturn(enPreguntasTrivia(pregunta, pregunta, pregunta, pregunta, pregunta, pregunta));
+
+    Trivia trivia = servicio.iniciarTrivia(partida, DificultadRuleta.FACIL);
+
+    assertEquals(5, trivia.getTotalRondas());
+}
 }

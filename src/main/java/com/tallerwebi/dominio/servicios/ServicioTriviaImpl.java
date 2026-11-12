@@ -4,9 +4,9 @@ package com.tallerwebi.dominio.servicios;
 import com.tallerwebi.dominio.entidades.Evento.Trivia;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.Partida;
+import com.tallerwebi.dominio.entidades.PreguntaTrivia;
 import com.tallerwebi.dominio.enums.DificultadRuleta;
 import com.tallerwebi.dominio.resultados.PreguntaGenerada;
-import com.tallerwebi.dominio.servicios.interfaces.ClienteIA;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioParticipacion;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,34 +27,34 @@ public class ServicioTriviaImpl {
     private static final int CANTIDAD_UNICA = 1;
 
     private final ServicioParticipacion servicioParticipacion;
-    private final ClienteIA clienteIA;
+    private final ServicioPreguntasTrivia servicioPreguntas;
     private final Clock reloj;
     private final Duration tiempoLimiteRespuesta;
 
     @Autowired
     public ServicioTriviaImpl(ServicioParticipacion servicioParticipacion,
-                              ClienteIA clienteIA) {
+                              ServicioPreguntasTrivia servicioPreguntas) {
         this(
                 servicioParticipacion,
-                clienteIA,
+                servicioPreguntas,
                 Clock.systemUTC(),
                 TIEMPO_LIMITE_PREDETERMINADO
         );
     }
 
     ServicioTriviaImpl(ServicioParticipacion servicioParticipacion,
-                       ClienteIA clienteIA,
+                       ServicioPreguntasTrivia servicioPreguntas,
                        Clock reloj) {
         this(
                 servicioParticipacion,
-                clienteIA,
+                servicioPreguntas,
                 reloj,
                 TIEMPO_LIMITE_PREDETERMINADO
         );
     }
 
     ServicioTriviaImpl(ServicioParticipacion servicioParticipacion,
-                       ClienteIA clienteIA,
+                       ServicioPreguntasTrivia servicioPreguntas,
                        Clock reloj,
                        Duration tiempoLimiteRespuesta) {
         if (tiempoLimiteRespuesta == null
@@ -65,7 +65,7 @@ public class ServicioTriviaImpl {
         }
 
         this.servicioParticipacion = servicioParticipacion;
-        this.clienteIA = clienteIA;
+        this.servicioPreguntas = servicioPreguntas;
         this.reloj = reloj;
         this.tiempoLimiteRespuesta = tiempoLimiteRespuesta;
     }
@@ -90,7 +90,15 @@ public class ServicioTriviaImpl {
             return trivia;
         }
 
-        trivia.setPreguntaActual(solicitarPregunta(dificultad));
+        List<PreguntaGenerada> preguntas = obtenerPreguntas(partida, dificultad);
+
+        // Si no hay preguntas (falló la IA y el banco está vacío), la trivia termina sin ganador.
+        if (preguntas.isEmpty()) {
+            trivia.finalizar();
+            return trivia;
+        }
+
+        trivia.prepararPreguntas(preguntas);
         trivia.setInicioRonda(reloj.instant());
 
         return trivia;
@@ -226,17 +234,14 @@ public class ServicioTriviaImpl {
             return;
         }
 
-        if (trivia.getRondaActual() >= MAXIMO_RONDAS) {
+        if (trivia.getRondaActual() >= trivia.getTotalRondas()) {
             declararGanadorPorTiempo(trivia);
             trivia.finalizar();
             return;
         }
 
-        PreguntaGenerada siguientePregunta =
-                solicitarPregunta(trivia.getDificultad());
-
         trivia.avanzarRonda();
-        trivia.setPreguntaActual(siguientePregunta);
+        trivia.pasarASiguientePregunta();
         trivia.setInicioRonda(reloj.instant());
     }
 
@@ -258,18 +263,23 @@ public class ServicioTriviaImpl {
         }
     }
 
-    private PreguntaGenerada solicitarPregunta(
-            DificultadRuleta dificultad) {
+    // ServicioPreguntasTrivia evita repetir preguntas en la partida y usa el banco si falla la IA.
+    private List<PreguntaGenerada> obtenerPreguntas(Partida partida,
+                                                    DificultadRuleta dificultad) {
+        List<PreguntaTrivia> preguntas = servicioPreguntas.obtenerParaCasillero(
+                partida.getCodigoUnico(), dificultad);
 
-        List<PreguntaGenerada> preguntas =
-                clienteIA.generarPreguntas(dificultad.name(), 1);
-
-        if (preguntas == null || preguntas.isEmpty()
-                || preguntas.get(0) == null) {
-            throw new IllegalStateException(
-                    "La IA no devolvió una pregunta válida.");
+        if (preguntas == null) {
+            return List.of();
         }
 
-        return preguntas.get(0);
+        return preguntas.stream()
+                .limit(MAXIMO_RONDAS)
+                .map(pregunta -> new PreguntaGenerada(
+                        dificultad.name(),
+                        pregunta.getEnunciado(),
+                        pregunta.getOpciones(),
+                        pregunta.getRespuestaCorrecta()))
+                .toList();
     }
 }
