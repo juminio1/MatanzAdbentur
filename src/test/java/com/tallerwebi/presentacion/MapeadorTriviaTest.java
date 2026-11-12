@@ -30,6 +30,26 @@ public class MapeadorTriviaTest {
     }
 
     @Test
+    public void deberiaDistinguirCancelacionYPublicarPremioDelServidor() {
+        Trivia trivia = new Trivia();
+        trivia.setDificultad(DificultadRuleta.DIFICIL);
+        trivia.finalizar();
+        assertFalse(MapeadorTrivia.estado("ABC", trivia).cancelada());
+        assertNull(MapeadorTrivia.estado("ABC", trivia).montoPremio());
+        trivia.declararGanador(new Jugador());
+        EstadoTriviaDTO pendiente = MapeadorTrivia.estado("ABC", trivia);
+        assertEquals(500, pendiente.montoPremio());
+        assertTrue(pendiente.puedeElegirPremio());
+        assertFalse(pendiente.premioEntregado());
+        trivia.cancelarSinPremio();
+        EstadoTriviaDTO cancelada = MapeadorTrivia.estado("ABC", trivia);
+        assertTrue(cancelada.cancelada());
+        assertFalse(cancelada.premioPendiente());
+        assertFalse(cancelada.puedeElegirPremio());
+        assertNull(cancelada.montoPremio());
+    }
+
+    @Test
     public void deberiaCopiarElEnunciadoLasOpcionesYLaDificultadDeLaPregunta() {
         PreguntaTriviaDTO dto = MapeadorTrivia.desdePregunta(pregunta(), 2, 5, VENCE_EN);
 

@@ -107,6 +107,20 @@ public class ControladorTriviaTest {
     }
 
     @Test
+    public void deberiaConsultarSoloLaRespuestaDeLaSesion() throws Exception {
+        String antes = cuerpo(mvc.perform(get(URL).session(sesionDe("Ana"))).andExpect(status().isOk()));
+        assertTrue(antes.contains("\"yaRespondio\":false"));
+        trivia.registrarRespuesta(ana);
+        String despues = cuerpo(mvc.perform(get(URL).session(sesionDe("Ana"))).andExpect(status().isOk()));
+        assertTrue(despues.contains("\"yaRespondio\":true"));
+        assertFalse(despues.contains("opcionCorrecta"));
+        assertFalse(despues.contains("opcionElegida"));
+        String otraSesion = cuerpo(mvc.perform(get(URL).session(sesionDe("Luna"))
+                .param("idJugador", "1")).andExpect(status().isOk()));
+        assertTrue(otraSesion.contains("\"yaRespondio\":false"));
+    }
+
+    @Test
     public void deberiaDevolverElEstadoDeLaTrivia() throws Exception {
         String json = cuerpo(mvc.perform(get(URL).session(sesionDe("Ana"))).andExpect(status().isOk()));
 

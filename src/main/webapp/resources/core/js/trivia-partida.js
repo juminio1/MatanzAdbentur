@@ -1,74 +1,214 @@
-import { crearModalTrivia } from "./trivia.js?v=3";
-import { crearApiTriviaPrueba } from "./trivia-api.js?v=1";
+import { crearModalTrivia } from "./trivia.js?v=4";
+import { crearApiTrivia } from "./trivia-api.js?v=2";
 
-// Cuando la ruleta frena, arranca la trivia con la dificultad que salió.
-// Provisorio: usa las preguntas de prueba y juega una sola pregunta. Cuando el back tenga
-// sus endpoints y avisos por WebSocket, las rondas y el ganador los va a mandar el servidor.
-
-const PAUSA_TRAS_RULETA = 1500;
-const PAUSA_TRAS_RESULTADO = 2500;
-
-function esperarMs(milisegundos) {
-    return new Promise(resolve => setTimeout(resolve, milisegundos));
-}
-
-// Se pueden robar las propiedades que tienen dueño y no son del jugador.
 export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
     return propiedades.filter(propiedad =>
         propiedad.propietarioId != null && String(propiedad.propietarioId) !== String(idJugador));
 }
 
-async function pedirPropiedadesParaRobar() {
-    const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
-    const codigo = new URLSearchParams(window.location.search).get("codigo") || window.codigoSala || "";
-    const respuesta = await fetch(`${basePath}/partida/${encodeURIComponent(codigo)}/propiedades`, {
-        cache: "no-store", credentials: "same-origin",
-    });
-    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-    return filtrarPropiedadesParaRobar(await respuesta.json(), window.usuarioSesionId);
-}
+// Usa el cliente STOMP existente y los datos del servidor para cada ronda.
+export function conectarTriviaPartida({ cliente, codigo, base = "", documento = document,
+    idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, 2500); }, alPremioEntregado = function () {}, estaPreso = function () { return false; },
+    modal = crearModalTrivia(), api = crearApiTrivia({ base, codigo }) } = {}) {
+    let revision = 0;
+    let preguntaActual = null;
+    let estadoActual = null;
+    let yaRespondio = false;
+    let enviando = false;
+    let cerrada = false;
+    let opcionElegida = null;
+    let entregaConfirmada = false;
+    let enviandoPremio = false;
+    let finalMostrado = false;
+    let versionTorneo = 0;
 
-export function conectarTriviaConRuleta({
-    documento = document,
-    modal = crearModalTrivia(),
-    api = crearApiTriviaPrueba(),
-    esperar = esperarMs,
-    obtenerPropiedadesParaRobar = pedirPropiedadesParaRobar,
-} = {}) {
-    let jugando = false;
+    function nombres(participantes) {
+        const lista = [];
+        for (const jugador of participantes) lista.push(jugador.apodo);
+        return lista;
+    }
 
-    async function jugar(dificultad) {
-        // Deja ver un momento dónde frenó la ruleta antes de taparla.
-        await esperar(PAUSA_TRAS_RULETA);
-        const panelRuleta = documento.getElementById("panel-ruleta");
-        if (panelRuleta) panelRuleta.hidden = true;
+    function estaEnJuego() {
+        if (!estadoActual || estaPreso()) return false;
+        for (const jugador of estadoActual.enJuego) {
+            if (String(jugador.id) === String(idJugador)) return true;
+        }
+        return false;
+    }
 
-        const pregunta = await api.pedirPregunta(dificultad);
-        const elegida = await modal.mostrarPregunta(pregunta);
-        const { opcionCorrecta } = await api.enviarRespuesta(pregunta.id, elegida);
-        const acerto = modal.mostrarResultado(elegida, opcionCorrecta);
+    function puedeResponder() {
+        return preguntaActual && !cerrada && !estadoActual.finalizada && estaEnJuego()
+            && !yaRespondio && !enviando && Date.now() < preguntaActual.venceEn;
+    }
 
-        await esperar(PAUSA_TRAS_RESULTADO);
-        // Lo elegido ({ premio, posicion }) se le va a mandar al back cuando tenga el endpoint.
-        await modal.mostrarFinal({
-            ganador: acerto ? "vos" : null, soyGanador: acerto, dificultad, obtenerPropiedadesParaRobar,
+    function actualizarParticipantes() {
+        if (!preguntaActual) return;
+        let espectador = null;
+        if (estaPreso()) espectador = "preso";
+        else if (!estaEnJuego()) espectador = "eliminado";
+        modal.actualizarParticipantes({
+            enJuego: nombres(estadoActual.enJuego), espectador,
+            permitirResponder: Boolean(puedeResponder()),
         });
     }
 
-    documento.addEventListener("ruleta:frenada", async evento => {
-        if (jugando) return;
-        jugando = true;
+    async function responder(opcion, pregunta) {
+        if (pregunta !== preguntaActual || !puedeResponder()) return;
+        enviando = true;
+        opcionElegida = opcion;
+        actualizarParticipantes();
+        const revisionEnvio = ++revision;
         try {
-            await jugar(evento.detail.dificultad);
+            await api.enviarRespuesta(pregunta.id, opcion);
+            // El resultado HTTP no revela la correcta ni cambia una ronda mas reciente.
+            if (pregunta !== preguntaActual || revisionEnvio !== revision) return;
+            yaRespondio = true;
+            enviando = false;
+            actualizarParticipantes();
         } catch (error) {
-            console.error("No se pudo jugar la trivia:", error);
-            modal.cerrar();
-        } finally {
-            jugando = false;
+            if (pregunta !== preguntaActual || revisionEnvio !== revision) return;
+            modal.mostrarMensaje("No se pudo confirmar la respuesta. Consultando al servidor...");
+            // Incluso si se corto la red, el servidor pudo haber aceptado la respuesta.
+            await recuperar();
         }
-    });
-}
+    }
 
-if (typeof document !== "undefined" && document.getElementById("trivia")) {
-    conectarTriviaConRuleta();
+    async function elegirPremio(eleccion) {
+        if (enviandoPremio || entregaConfirmada || !estadoActual?.premioPendiente
+                || !estadoActual.puedeElegirPremio || estadoActual.cancelada
+                || String(estadoActual.idGanador) !== String(idJugador)) return;
+        enviandoPremio = true;
+        const revisionEnvio = ++revision;
+        try {
+            const estado = await api.elegirPremio(eleccion);
+            if (revisionEnvio !== revision) return;
+            aplicar(estado);
+        } catch (error) {
+            if (revisionEnvio !== revision) return;
+            await recuperar();
+            if (!estadoActual?.premioPendiente || entregaConfirmada || estadoActual.cancelada) return;
+            throw error;
+        } finally {
+            enviandoPremio = false;
+        }
+    }
+
+    function mostrarFinal(estado, notificarEntrega) {
+        cerrada = true;
+        if (entregaConfirmada) return;
+        if (estado.premioEntregado && !notificarEntrega) {
+            entregaConfirmada = true;
+            modal.cerrar();
+            return;
+        }
+        if (finalMostrado && !estado.cancelada && !estado.premioEntregado) return;
+        finalMostrado = true;
+        const desempate = [];
+        for (const jugador of estado.enJuego) {
+            desempate.push({ nombre: jugador.apodo, milisegundos: jugador.milisegundos });
+        }
+        modal.mostrarFinal({
+            desempate,
+            ganador: estado.ganador, soyGanador: String(estado.idGanador) === String(idJugador),
+            cancelada: estado.cancelada, montoPremio: estado.montoPremio, tipoPremio: estado.tipoPremio,
+            puedeElegirPremio: estado.puedeElegirPremio, premioPendiente: estado.premioPendiente,
+            obtenerPropiedadesParaRobar: async function () {
+                return filtrarPropiedadesParaRobar(await api.obtenerPropiedades(), idJugador);
+            },
+            alElegirPremio: elegirPremio,
+        });
+        if (estado.premioEntregado) {
+            entregaConfirmada = true;
+            const version = versionTorneo;
+            programarCierre(function () {
+                if (version !== versionTorneo) return;
+                modal.cerrar();
+                alPremioEntregado();
+            });
+        }
+    }
+
+    function aplicar(estado, pregunta, tipo) {
+        if (!estado) return;
+        const notificarEntrega = Boolean(tipo) || Boolean(estadoActual?.premioPendiente);
+        if (estado.finalizada && (entregaConfirmada || estadoActual?.cancelada)) return;
+        estadoActual = estado;
+        if (estado.finalizada) {
+            mostrarFinal(estado, notificarEntrega);
+            return;
+        }
+        if (!pregunta) {
+            actualizarParticipantes();
+            return;
+        }
+        const esNueva = !preguntaActual || pregunta.ronda !== preguntaActual.ronda
+            || pregunta.venceEn !== preguntaActual.venceEn;
+        if (esNueva) {
+            versionTorneo++;
+            entregaConfirmada = false;
+            finalMostrado = false;
+            preguntaActual = pregunta;
+            cerrada = false;
+            yaRespondio = estado.yaRespondio === true;
+            enviando = false;
+            opcionElegida = null;
+            const panel = documento.getElementById("panel-ruleta");
+            if (panel) panel.hidden = true;
+            documento.dispatchEvent(new documento.defaultView.Event("trivia:iniciada"));
+            modal.mostrarPregunta(pregunta, {
+                numeroRonda: pregunta.ronda, totalRondas: pregunta.totalRondas,
+                segundosParaResponder: pregunta.segundosParaResponder,
+                venceEn: pregunta.venceEn,
+                enJuego: nombres(estado.enJuego),
+                permitirResponder: Boolean(puedeResponder()),
+                alResponder: function (opcion) { return responder(opcion, pregunta); },
+            });
+        } else if (typeof estado.yaRespondio === "boolean") {
+            yaRespondio = estado.yaRespondio;
+            enviando = false;
+        }
+        actualizarParticipantes();
+        if (yaRespondio && !cerrada) modal.mostrarMensaje("Respuesta registrada. Esperando el cierre de la ronda...");
+    }
+
+    async function recuperar(reintentos = 1) {
+        const revisionInicial = ++revision;
+        try {
+            const estado = await api.obtenerEstado();
+            if (revisionInicial !== revision || !estado) return;
+            if (estado.finalizada) {
+                aplicar(estado);
+                return;
+            }
+            const pregunta = await api.obtenerPregunta();
+            if (revisionInicial !== revision || !pregunta) return;
+            if (estado.ronda !== pregunta.ronda || estado.venceEn != null && estado.venceEn !== pregunta.venceEn) {
+                if (reintentos > 0) await recuperar(reintentos - 1);
+                return;
+            }
+            aplicar(estado, pregunta);
+        } catch (error) {
+            if (revisionInicial !== revision) return;
+            console.error("No se pudo recuperar la trivia:", error);
+            if (preguntaActual) modal.mostrarMensaje("No se pudo recuperar el estado. Recarga la pagina para reintentar.");
+        }
+    }
+
+    cliente.subscribe("/topic/partida/" + codigo + "/trivia", function (mensaje) {
+        const evento = JSON.parse(mensaje.body);
+        revision++;
+        if (evento.tipo === "RONDA_CERRADA") {
+            if (!preguntaActual || evento.rondaCerrada !== preguntaActual.ronda) return;
+            cerrada = true;
+            estadoActual = evento.estado;
+            modal.mostrarCierre(opcionElegida, evento.opcionCorrecta,
+                nombres(evento.eliminados), nombres(evento.estado.enJuego));
+            return;
+        }
+        aplicar(evento.estado, evento.tipo === "RONDA_NUEVA" ? evento.pregunta : null, evento.tipo);
+        // Si se ingreso durante un cambio de participantes, recuperar la pregunta perdida.
+        if (!preguntaActual && !evento.estado.finalizada) recuperar();
+    });
+    recuperar();
+    return { recuperar };
 }

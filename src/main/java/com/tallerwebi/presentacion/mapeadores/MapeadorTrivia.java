@@ -8,6 +8,8 @@ import com.tallerwebi.presentacion.DTO.EstadoTriviaDTO;
 import com.tallerwebi.presentacion.DTO.ParticipanteTriviaDTO;
 import com.tallerwebi.presentacion.DTO.PreguntaTriviaDTO;
 import java.util.List;
+import com.tallerwebi.dominio.enums.DificultadRuleta;
+import com.tallerwebi.dominio.servicios.ServicioPremioTriviaImpl;
 import java.util.ArrayList;
 import java.util.Map;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
@@ -46,7 +48,28 @@ public final class MapeadorTrivia {
                 GestorTriviaPartida.venceEnMilisegundos(trivia));
     }
 
+    private static Integer montoPremio(Trivia trivia) {
+        if (trivia.getGanador() == null || trivia.getDificultad() == null
+                || "ROBAR".equals(trivia.getTipoPremio())) return null;
+        return ServicioPremioTriviaImpl.montoPremio(trivia.getDificultad());
+    }
+
     public static EstadoTriviaDTO estado(String codigoPartida, Trivia trivia) {
+        return estado(codigoPartida, trivia, null);
+    }
+
+    // El dato personal se calcula solo para el jugador resuelto desde la sesion.
+    public static EstadoTriviaDTO estado(String codigoPartida, Trivia trivia, Long idJugador) {
+        Boolean yaRespondio = null;
+        if (idJugador != null) {
+            yaRespondio = false;
+            for (Jugador jugador : trivia.getParticipantes()) {
+                if (idJugador.equals(jugador.getId())) {
+                    yaRespondio = trivia.yaRespondioEnRonda(jugador);
+                    break;
+                }
+            }
+        }
         Jugador ganador = trivia.getGanador();
         boolean premioPendiente = ganador != null && trivia.estaFinalizada() && !trivia.estaPremioEntregado();
         List<ParticipanteTriviaDTO> enJuego = trivia.getParticipantes().stream()
@@ -57,6 +80,9 @@ public final class MapeadorTrivia {
                 trivia.getDificultad() == null ? null : trivia.getDificultad().name(), trivia.estaFinalizada(),
                 enJuego, ganador == null ? null : ganador.getId(), ganador == null ? null : ganador.getApodo(),
                 premioPendiente, GestorTriviaPartida.SEGUNDOS_POR_PREGUNTA,
-                trivia.estaFinalizada() ? null : GestorTriviaPartida.venceEnMilisegundos(trivia));
+                trivia.estaFinalizada() ? null : GestorTriviaPartida.venceEnMilisegundos(trivia), yaRespondio,
+                trivia.estaCancelada(), trivia.estaPremioEntregado(),
+                montoPremio(trivia),
+                premioPendiente && trivia.getDificultad() == DificultadRuleta.DIFICIL, trivia.getTipoPremio());
     }
 }

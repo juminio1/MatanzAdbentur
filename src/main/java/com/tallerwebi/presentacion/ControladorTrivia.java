@@ -52,8 +52,8 @@ public class ControladorTrivia {
     @GetMapping
     public ResponseEntity<EstadoTriviaDTO> obtenerEstado(@PathVariable(CODIGO) String codigo,
                                                          HttpServletRequest request) {
-        resolverJugador(codigo, request);
-        return ResponseEntity.ok(gestor.consultarEstado(codigo, trivia -> MapeadorTrivia.estado(codigo, trivia)));
+        Long idJugador = resolverJugador(codigo, request);
+        return ResponseEntity.ok(gestor.consultarEstado(codigo, trivia -> MapeadorTrivia.estado(codigo, trivia, idJugador)));
     }
 
     // Los eliminados también pueden verla, como espectadores.

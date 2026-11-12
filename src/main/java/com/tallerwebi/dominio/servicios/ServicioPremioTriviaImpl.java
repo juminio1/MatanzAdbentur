@@ -25,6 +25,14 @@ public class ServicioPremioTriviaImpl {
     private static final int PREMIO_MEDIO = 250;
     private static final int PREMIO_DIFICIL = 500;
 
+    public static int montoPremio(DificultadRuleta dificultad) {
+        return switch (dificultad) {
+            case FACIL -> PREMIO_FACIL;
+            case MEDIO -> PREMIO_MEDIO;
+            case DIFICIL -> PREMIO_DIFICIL;
+        };
+    }
+
     private final ServicioEconomia economia;
     private final ServicioPropiedad servicioPropiedad;
     private final RepositorioPropiedad repositorioPropiedad;
@@ -47,11 +55,7 @@ public class ServicioPremioTriviaImpl {
         return;
         }
 
-        int premio = switch (trivia.getDificultad()) {
-        case FACIL -> PREMIO_FACIL;
-        case MEDIO -> PREMIO_MEDIO;
-        case DIFICIL -> PREMIO_DIFICIL;
-     };
+        int premio = montoPremio(trivia.getDificultad());
 
     economia.sumarDinero(ganador, premio);
     trivia.registrarPremioEntregado();
@@ -99,7 +103,7 @@ public void entregarPremioRobandoPropiedad(
             0
     );
 
-    trivia.registrarPremioEntregado();
+    trivia.registrarPremioEntregado("ROBAR");
 }
 
 

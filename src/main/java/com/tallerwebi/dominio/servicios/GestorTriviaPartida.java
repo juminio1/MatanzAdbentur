@@ -370,36 +370,41 @@ public class GestorTriviaPartida {
 
     // Recarga al ganador dentro de la transacción para que el premio se guarde sobre datos actuales.
     private void entregarPremio(String codigoPartida, Trivia trivia, String premio, Integer posicion) {
-        transaccion.executeWithoutResult(estado -> {
-            Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-            if (partida == null) {
-                throw new AccionTriviaInvalidaException("La partida ya terminó.");
-            }
-            servicioPartida.bloquearPartida(partida);
-            if (partida.getEstado() != EstadoPartida.EN_CURSO) {
-                throw new AccionTriviaInvalidaException("La partida ya terminó.");
-            }
-            Long idGanador = trivia.getGanador().getId();
-            Jugador ganador = null;
-            for (Jugador jugador : partida.getJugadores()) {
-                if (Objects.equals(jugador.getId(), idGanador)
-                        && !Boolean.TRUE.equals(jugador.getAbandono())
-                        && !Boolean.TRUE.equals(jugador.getEnBancarrota())) {
-                    ganador = jugador;
-                    break;
+        try {
+            transaccion.executeWithoutResult(estado -> {
+                Partida partida = servicioPartida.obtenerPartida(codigoPartida);
+                if (partida == null) {
+                    throw new AccionTriviaInvalidaException("La partida ya terminó.");
                 }
-            }
-            if (ganador == null) {
-                throw new AccionTriviaInvalidaException("El ganador ya no está en la partida.");
-            }
-            trivia.declararGanador(ganador);
-            if (PREMIO_PLATA.equals(premio)) {
-                servicioPremio.entregarPremioEnDinero(trivia);
-            } else {
-                servicioPremio.entregarPremioRobandoPropiedad(trivia, partida, idPropiedad(partida, posicion));
-            }
-            servicioPartida.actualizarJugador(ganador);
-        });
+                servicioPartida.bloquearPartida(partida);
+                if (partida.getEstado() != EstadoPartida.EN_CURSO) {
+                    throw new AccionTriviaInvalidaException("La partida ya terminó.");
+                }
+                Long idGanador = trivia.getGanador().getId();
+                Jugador ganador = null;
+                for (Jugador jugador : partida.getJugadores()) {
+                    if (Objects.equals(jugador.getId(), idGanador)
+                            && !Boolean.TRUE.equals(jugador.getAbandono())
+                            && !Boolean.TRUE.equals(jugador.getEnBancarrota())) {
+                        ganador = jugador;
+                        break;
+                    }
+                }
+                if (ganador == null) {
+                    throw new AccionTriviaInvalidaException("El ganador ya no está en la partida.");
+                }
+                trivia.declararGanador(ganador);
+                if (PREMIO_PLATA.equals(premio)) {
+                    servicioPremio.entregarPremioEnDinero(trivia);
+                } else {
+                    servicioPremio.entregarPremioRobandoPropiedad(trivia, partida, idPropiedad(partida, posicion));
+                }
+                servicioPartida.actualizarJugador(ganador);
+            });
+        } catch (RuntimeException error) {
+            trivia.restaurarPremioPendiente();
+            throw error;
+        }
     }
 
     private void publicar(String codigoPartida, TipoAvisoTrivia tipo, Trivia trivia, Integer opcionCorrecta) {

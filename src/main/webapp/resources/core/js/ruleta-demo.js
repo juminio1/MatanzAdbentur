@@ -56,6 +56,8 @@ export function configurarRuleta(
     let intervaloContador = null;
     let ultimaActivacionResuelta = null;
     let revisionEstado = 0;
+    let esperandoNuevaActivacion = false;
+    const activacionesConTrivia = new Set();
 
     const nombres = {
         FACIL: "FÁCIL",
@@ -125,6 +127,7 @@ export function configurarRuleta(
 
     function abrirPanel() {
 
+        if (esperandoNuevaActivacion) return false;
         panel.hidden = false;
 
         return inicializarVisual();
@@ -248,6 +251,14 @@ export function configurarRuleta(
         if (estado.estado !== "ESPERANDO" && estado.estado !== "SORTEADA") {
             return;
         }
+
+        if (activacionesConTrivia.has(estado.activacionId)) return;
+        // Al recuperar trivia podemos conocer la pregunta antes que su ruleta.
+        if (esperandoNuevaActivacion && estado.estado === "SORTEADA") {
+            activacionesConTrivia.add(estado.activacionId);
+            return;
+        }
+        if (estado.estado === "ESPERANDO") esperandoNuevaActivacion = false;
 
         const mismaActivacion = activacionActual?.activacionId === estado.activacionId;
 
@@ -381,6 +392,19 @@ export function configurarRuleta(
         botonGirar.disabled = true;
         botonCerrar.disabled = false;
     }
+
+    documento.addEventListener("trivia:iniciada", () => {
+        if (activacionActual) activacionesConTrivia.add(activacionActual.activacionId);
+        esperandoNuevaActivacion = true;
+        revisionEstado++;
+        limpiarTemporizador();
+        panel.hidden = true;
+        contador.hidden = true;
+        botonGirar.disabled = true;
+        botonCerrar.disabled = true;
+        girando = false;
+        dificultadElegida = null;
+    });
 
     // Recibe los estados enviados por WebSocket desde partida.js.
     documento.addEventListener("ruleta:estado", evento => {

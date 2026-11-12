@@ -11,10 +11,10 @@ const AVISOS_ESPECTADOR = {
     eliminado: "Quedaste afuera: mirás cómo sigue la trivia",
 };
 const AVISO_QUEDASTE_AFUERA = "Quedaste afuera de la trivia";
-const PREMIOS = { FACIL: "$100", MEDIO: "$250", DIFICIL: "$500 o robar una propiedad" };
 
-export function textoPremio(dificultad) {
-    return PREMIOS[dificultad] ? `Premio: ${PREMIOS[dificultad]}` : "";
+export function textoPremio(monto, puedeElegir = false) {
+    if (monto == null) return "";
+    return "Premio: $" + monto + (puedeElegir ? " o robar una propiedad" : "");
 }
 
 // 12345 ms -> "12,3 s"
@@ -62,6 +62,8 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     let detenerReloj = () => {};
     let enCurso = false;
     let espectador = null;
+    let respuestasHabilitadas = false;
+    let versionModal = 0;
 
     // La trivia bloquea la pantalla hasta que termina: Escape no la cierra.
     // Chrome a veces ignora el preventDefault del "cancel", así que si igual se cierra, se reabre.
@@ -75,12 +77,12 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
         if (!dialogo.open) dialogo.showModal();
     }
 
-    function iniciarReloj(totalSegundos, alTerminar) {
-        const fin = Date.now() + totalSegundos * 1000;
+    function iniciarReloj(totalSegundos, alTerminar, venceEn) {
+        const fin = venceEn ?? Date.now() + totalSegundos * 1000;
         const actualizar = () => {
             const restante = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
             segundos.textContent = restante;
-            reloj.style.setProperty("--restante", restante / totalSegundos);
+            reloj.style.setProperty("--restante", totalSegundos > 0 ? restante / totalSegundos : 0);
             reloj.classList.toggle("trivia__reloj--urgente", restante <= SEGUNDOS_URGENTES);
             if (restante === 0) {
                 detenerReloj();
@@ -96,8 +98,13 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     // Con espectador "preso" o "eliminado" las opciones quedan apagadas y siempre devuelve null.
     // enJuego: nombres de los que responden esta ronda.
     function mostrarPregunta(pregunta, {
-        numeroRonda, totalRondas = 5, segundosParaResponder = 20, espectador: comoEspectador = null, enJuego = [],
+        numeroRonda, totalRondas = 5, segundosParaResponder = 20, espectador: comoEspectador = null, enJuego = [], permitirResponder = true,
+        venceEn, alResponder,
     } = {}) {
+        versionModal++;
+        respuestasHabilitadas = permitirResponder && !comoEspectador;
+        botonCerrar.hidden = true;
+        botonCerrar.onclick = null;
         jugadores.textContent = textoEnJuego(enJuego);
         detenerReloj();
         espectador = comoEspectador;
@@ -120,7 +127,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 letra.className = "trivia__letra";
                 letra.textContent = LETRAS[indice];
                 boton.append(letra, texto);
-                boton.disabled = Boolean(espectador);
+                boton.disabled = Boolean(espectador) || !permitirResponder;
                 boton.addEventListener("click", () => responder(indice));
                 const item = document.createElement("li");
                 item.append(boton);
@@ -129,19 +136,56 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
             opciones.replaceChildren(...botones);
 
             function responder(indice) {
-                detenerReloj();
+                if (indice !== null && !respuestasHabilitadas) return;
+                respuestasHabilitadas = false;
+                if (venceEn == null) detenerReloj();
                 opciones.querySelectorAll(".trivia__opcion").forEach((boton, i) => {
                     boton.disabled = true;
                     boton.classList.toggle("trivia__opcion--elegida", i === indice);
                 });
                 estado.textContent = indice === null ? "Se terminó el tiempo" : "Esperando a los demás…";
+                if (indice !== null && alResponder) alResponder(indice);
                 resolve(indice);
             }
 
             if (espectador) estado.textContent = "Los demás están respondiendo…";
             abrir();
-            iniciarReloj(segundosParaResponder, () => responder(null));
+            iniciarReloj(segundosParaResponder, function () {
+                if (venceEn == null) {
+                    responder(null);
+                    return;
+                }
+                respuestasHabilitadas = false;
+                for (const boton of opciones.querySelectorAll(".trivia__opcion")) boton.disabled = true;
+                estado.textContent = "Tiempo agotado. Esperando el cierre del servidor...";
+            }, venceEn);
         });
+    }
+
+    // Actualiza permisos y nombres sin recrear opciones ni reiniciar el reloj.
+    function actualizarParticipantes({ enJuego, espectador: comoEspectador, permitirResponder }) {
+        jugadores.textContent = textoEnJuego(enJuego);
+        espectador = comoEspectador;
+        respuestasHabilitadas = permitirResponder && !espectador;
+        dialogo.classList.toggle("trivia--espectador", Boolean(espectador));
+        aviso.textContent = AVISOS_ESPECTADOR[espectador] ?? "";
+        for (const boton of opciones.querySelectorAll(".trivia__opcion")) {
+            boton.disabled = !respuestasHabilitadas;
+        }
+    }
+
+    function mostrarMensaje(texto) {
+        estado.textContent = texto;
+    }
+
+    function mostrarCierre(elegida, correcta, eliminados, clasificados) {
+        respuestasHabilitadas = false;
+        mostrarResultado(elegida, correcta);
+        // Despues de recargar no conocemos la opcion elegida: no inferir un error.
+        estado.textContent = "La respuesta correcta era la " + LETRAS[correcta];
+        estado.className = "trivia__estado";
+        aviso.textContent = "Eliminados: " + (eliminados.join(", ") || "ninguno");
+        jugadores.textContent = "Clasificados: " + (clasificados.join(", ") || "ninguno");
     }
 
     // Pinta la correcta en verde y, si el jugador le erró, su opción en rojo.
@@ -215,25 +259,31 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     // Devuelve una promesa con { premio, posicion } cuando tocan "Volver al tablero"
     // (premio null si no había que elegir; posicion solo si robó).
     function mostrarFinal({
-        ganador = null, soyGanador = false, dificultad, desempate = [],
+        ganador = null, soyGanador = false, montoPremio, puedeElegirPremio = false,
+        premioPendiente = false, cancelada = false, tipoPremio, alElegirPremio = async () => {}, desempate = [],
         obtenerPropiedadesParaRobar = async () => [],
     } = {}) {
+        const version = ++versionModal;
         detenerReloj();
         dialogo.classList.remove("trivia--resuelta", "trivia--cargando", "trivia--espectador");
         dialogo.classList.add("trivia--final");
         dialogo.classList.toggle("trivia--sin-ganador", !ganador);
         dialogo.classList.toggle("trivia--ganaste", Boolean(ganador) && soyGanador);
 
-        if (!ganador) {
+        if (cancelada) {
+            finalTitulo.textContent = "Trivia cancelada";
+            finalDetalle.textContent = "El torneo termino sin entregar premios.";
+        } else if (!ganador) {
             finalTitulo.textContent = "Nadie ganó";
-            finalDetalle.textContent = "Todos le erraron a la pregunta";
+            finalDetalle.textContent = "El torneo termino sin ganador";
         } else {
             finalTitulo.textContent = soyGanador ? "¡Ganaste la trivia!" : `Ganó ${ganador}`;
             finalDetalle.textContent = desempate.length > 1
                 ? "Llegaron varios al final: gana el que respondió más rápido"
                 : "Fue el último en pie";
         }
-        premio.textContent = ganador ? textoPremio(dificultad) : "";
+        premio.textContent = ganador ? textoPremio(montoPremio, puedeElegirPremio) : "";
+        if (tipoPremio === "ROBAR") premio.textContent = "Premio: propiedad transferida";
 
         const filas = desempate.length > 1
             ? [...desempate].sort((a, b) => a.milisegundos - b.milisegundos)
@@ -247,26 +297,32 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
             return item;
         }));
 
-        const eligePremio = Boolean(ganador) && soyGanador && dificultad === "DIFICIL";
+        const eligePremio = Boolean(ganador) && soyGanador && puedeElegirPremio && premioPendiente && !cancelada;
         elegirPremio.hidden = !eligePremio;
         robar.hidden = true;
         botonRobar.disabled = false;
-        botonCerrar.hidden = eligePremio;
+        botonCerrar.hidden = premioPendiente;
+        elegirPremio.querySelector('[data-premio="PLATA"]').textContent = "Cobrar $" + montoPremio;
         if (eligePremio) premio.textContent = "Elegí tu premio";
 
         abrir();
         (eligePremio ? elegirPremio.querySelector("button") : botonCerrar).focus();
 
         return new Promise(resolve => {
-            let premioElegido = null;
-            let posicionRobada = null;
-
-            function confirmar(texto) {
-                premio.textContent = texto;
+            let enviando = false;
+            async function confirmar(eleccion) {
+                if (enviando || !eligePremio || version !== versionModal) return;
+                enviando = true;
                 elegirPremio.hidden = true;
                 robar.hidden = true;
-                botonCerrar.hidden = false;
-                botonCerrar.focus();
+                premio.textContent = "Esperando confirmacion del premio...";
+                try {
+                    await alElegirPremio(eleccion);
+                } catch (error) {
+                    if (version !== versionModal) return;
+                    enviando = false;
+                    volverAElegir("No se pudo confirmar el premio. Intenta nuevamente.");
+                }
             }
 
             function volverAElegir(texto = "Elegí tu premio") {
@@ -277,11 +333,11 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
             }
 
             elegirPremio.querySelector('[data-premio="PLATA"]').onclick = () => {
-                premioElegido = "PLATA";
-                confirmar("Premio: $500");
+                confirmar({ premio: "PLATA" });
             };
 
             botonRobar.onclick = async () => {
+                if (enviando || !eligePremio || version !== versionModal) return;
                 elegirPremio.hidden = true;
                 premio.textContent = "Cargando propiedades…";
                 let propiedades;
@@ -289,9 +345,11 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                     propiedades = await obtenerPropiedadesParaRobar();
                 } catch (error) {
                     console.error("No se pudieron cargar las propiedades para robar:", error);
+                    if (version !== versionModal) return;
                     volverAElegir("No se pudieron cargar las propiedades");
                     return;
                 }
+                if (version !== versionModal) return;
                 if (propiedades.length === 0) {
                     botonRobar.disabled = true;
                     volverAElegir("Nadie tiene propiedades para robar");
@@ -299,9 +357,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 }
                 premio.textContent = "Elegí qué propiedad robar";
                 pintarPropiedadesParaRobar(propiedades, propiedad => {
-                    premioElegido = "ROBAR";
-                    posicionRobada = propiedad.posicion;
-                    confirmar(`Premio: ${propiedad.nombre}, robada a ${propiedad.propietario}`);
+                    confirmar({ premio: "ROBAR", posicion: propiedad.posicion });
                 });
                 robar.hidden = false;
                 robarLista.querySelector("button")?.focus();
@@ -310,19 +366,19 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
             robarVolver.onclick = () => volverAElegir();
 
             botonCerrar.onclick = () => {
+                if (premioPendiente || version !== versionModal) return;
                 cerrar();
-                resolve(posicionRobada === null
-                    ? { premio: premioElegido }
-                    : { premio: premioElegido, posicion: posicionRobada });
+                resolve({ premio: null });
             };
         });
     }
 
     function cerrar() {
+        versionModal++;
         detenerReloj();
         enCurso = false;
         if (dialogo.open) dialogo.close();
     }
 
-    return { mostrarPregunta, mostrarResultado, mostrarFinal, cerrar };
+    return { mostrarPregunta, mostrarResultado, mostrarFinal, cerrar, actualizarParticipantes, mostrarCierre, mostrarMensaje };
 }

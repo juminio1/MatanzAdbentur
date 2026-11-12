@@ -60,6 +60,44 @@ describe("Modal de trivia", () => {
         globalThis.document = documentoOriginal;
     });
 
+    it("bloqueaElCierreAnteriorYLasRespuestasCuandoNoEstaHabilitado", () => {
+        modal.mostrarFinal({});
+        modal.mostrarPregunta(PREGUNTA, { permitirResponder: false });
+        expect(elemento("trivia-cerrar").hidden).toBeTrue();
+        elemento("trivia-cerrar").click();
+        expect(dialogo.open).toBeTrue();
+        expect(opciones().every(boton => boton.disabled)).toBeTrue();
+    });
+
+    it("usaVenceEnYEsperaElCierreSinEnviarUnaRespuestaPorTiempo", () => {
+        const alResponder = jasmine.createSpy("alResponder");
+        modal.mostrarPregunta(PREGUNTA, { venceEn: Date.now() + 3000, alResponder });
+        jasmine.clock().tick(3000);
+        expect(elemento("trivia-segundos").textContent).toBe("0");
+        expect(opciones().every(b => b.disabled)).toBeTrue();
+        expect(alResponder).not.toHaveBeenCalled();
+        expect(dialogo.classList.contains("trivia--resuelta")).toBeFalse();
+        expect(dialogo.open).toBeTrue();
+    });
+    it("noReiniciaElRelojAlCambiarParticipantesYBloqueaDobleClick", () => {
+        const alResponder = jasmine.createSpy("alResponder");
+        modal.mostrarPregunta(PREGUNTA, { venceEn: Date.now() + 10000, alResponder });
+        opciones()[0].click(); opciones()[1].click();
+        expect(alResponder).toHaveBeenCalledOnceWith(0);
+        jasmine.clock().tick(3000);
+        modal.actualizarParticipantes({ enJuego: ["Ana"], permitirResponder: false, espectador: "eliminado" });
+        expect(elemento("trivia-segundos").textContent).toBe("7");
+        expect(opciones().every(b => b.disabled)).toBeTrue();
+    });
+    it("muestraLaCorrectaYLasListasSinInferirLaRespuestaTrasRecargar", () => {
+        modal.mostrarPregunta(PREGUNTA);
+        modal.mostrarCierre(null, 1, ["Luna"], ["Ana"]);
+        expect(opciones()[1].classList.contains("trivia__opcion--correcta")).toBeTrue();
+        expect(elemento("trivia-aviso").textContent).toContain("Luna");
+        expect(elemento("trivia-jugadores").textContent).toContain("Ana");
+        expect(elemento("trivia-estado").textContent).toContain("B");
+    });
+
     describe("Pregunta y temporizador", () => {
 
         it("deberiaMostrarElEnunciadoLasCuatroOpcionesLaRondaYLaDificultad", () => {
@@ -230,7 +268,7 @@ describe("Modal de trivia", () => {
     describe("Pantalla final", () => {
 
         it("deberiaMostrarElGanadorYSuPremio", () => {
-            modal.mostrarFinal({ ganador: "Emi", dificultad: "MEDIO" });
+            modal.mostrarFinal({ ganador: "Emi", montoPremio: 250 });
 
             expect(dialogo.classList.contains("trivia--final")).toBeTrue();
             expect(elemento("trivia-final-titulo").textContent).toBe("Ganó Emi");
@@ -239,7 +277,7 @@ describe("Modal de trivia", () => {
         });
 
         it("deberiaFelicitarAlJugadorQueGano", () => {
-            modal.mostrarFinal({ ganador: "Rafa", soyGanador: true, dificultad: "FACIL" });
+            modal.mostrarFinal({ ganador: "Rafa", soyGanador: true, montoPremio: 100 });
 
             expect(elemento("trivia-final-titulo").textContent).toBe("¡Ganaste la trivia!");
             expect(dialogo.classList.contains("trivia--ganaste")).toBeTrue();
@@ -248,7 +286,7 @@ describe("Modal de trivia", () => {
         it("deberiaOrdenarLosTiemposDelDesempateDelMasRapidoAlMasLento", () => {
             modal.mostrarFinal({
                 ganador: "Emi",
-                dificultad: "FACIL",
+                montoPremio: 100,
                 desempate: [
                     { nombre: "Rafa", milisegundos: 41230 },
                     { nombre: "Emi", milisegundos: 38950 },
@@ -263,7 +301,7 @@ describe("Modal de trivia", () => {
         });
 
         it("deberiaAvisarQueNadieGanoSinPremio", () => {
-            modal.mostrarFinal({ ganador: null, dificultad: "DIFICIL" });
+            modal.mostrarFinal({ ganador: null, montoPremio: 500, puedeElegirPremio: true });
 
             expect(elemento("trivia-final-titulo").textContent).toBe("Nadie ganó");
             expect(elemento("trivia-premio").textContent).toBe("");
@@ -271,7 +309,7 @@ describe("Modal de trivia", () => {
         });
 
         it("deberiaCerrarseYResolverAlVolverAlTablero", async () => {
-            const final = modal.mostrarFinal({ ganador: "Emi", dificultad: "FACIL" });
+            const final = modal.mostrarFinal({ ganador: "Emi", montoPremio: 100 });
 
             elemento("trivia-cerrar").click();
 
@@ -280,10 +318,27 @@ describe("Modal de trivia", () => {
         });
     });
 
+    it("muestraUnaCancelacionSinSelectorNiPremio", () => {
+        modal.mostrarFinal({ cancelada: true, premioPendiente: false });
+        expect(elemento("trivia-final-titulo").textContent).toBe("Trivia cancelada");
+        expect(elemento("trivia-elegir-premio").hidden).toBeTrue();
+        expect(elemento("trivia-premio").textContent).toBe("");
+        elemento("trivia-cerrar").click();
+        expect(dialogo.open).toBeFalse();
+    });
+    it("noPermiteCerrarUnPremioAutomaticoPendiente", () => {
+        modal.mostrarFinal({ ganador:"Ana", montoPremio:250, premioPendiente:true });
+        elemento("trivia-cerrar").click();
+        expect(dialogo.open).toBeTrue();
+        expect(elemento("trivia-premio").textContent).toBe("Premio: $250");
+        expect(elemento("trivia-elegir-premio").hidden).toBeTrue();
+    });
+
     describe("Selector de premio", () => {
 
+        const elegir = jasmine.createSpy("elegir");
         const ganarComplicada = obtenerPropiedadesParaRobar => modal.mostrarFinal({
-            ganador: "Rafa", soyGanador: true, dificultad: "DIFICIL", obtenerPropiedadesParaRobar,
+            ganador: "Rafa", soyGanador: true, montoPremio: 500, puedeElegirPremio: true, premioPendiente: true, alElegirPremio: elegir, obtenerPropiedadesParaRobar,
         });
 
         it("deberiaPedirleElegirPremioAlGanadorDeUnaComplicada", () => {
@@ -295,20 +350,21 @@ describe("Modal de trivia", () => {
         });
 
         it("noDeberiaPedirElegirPremioSiLaComplicadaLaGanoOtro", () => {
-            modal.mostrarFinal({ ganador: "Emi", dificultad: "DIFICIL" });
+            modal.mostrarFinal({ ganador: "Emi", montoPremio: 500, puedeElegirPremio: true });
 
             expect(elemento("trivia-elegir-premio").hidden).toBeTrue();
             expect(elemento("trivia-premio").textContent).toBe("Premio: $500 o robar una propiedad");
         });
 
-        it("deberiaDevolverPlataAlElegirLosQuinientos", async () => {
-            const final = ganarComplicada();
-
+        it("enviaDineroSinCerrarMientrasSeConfirma", async () => {
+            elegir.calls.reset();
+            ganarComplicada();
             botonPremio("PLATA").click();
-            expect(elemento("trivia-premio").textContent).toBe("Premio: $500");
+            botonPremio("PLATA").click();
+            await procesarPendientes();
+            expect(elegir).toHaveBeenCalledOnceWith({premio:"PLATA"});
             elemento("trivia-cerrar").click();
-
-            expect(await final).toEqual({ premio: "PLATA" });
+            expect(dialogo.open).toBeTrue();
         });
 
         it("deberiaListarLasPropiedadesAjenasAgrupadasPorDuenoYAvisarLasMejoras", async () => {
@@ -324,17 +380,15 @@ describe("Modal de trivia", () => {
             expect(avisos[0].parentElement.textContent).toContain("Plaza San Justo");
         });
 
-        it("deberiaDevolverLaPropiedadElegidaParaRobar", async () => {
-            const final = ganarComplicada(async () => PROPIEDADES_AJENAS);
-
+        it("enviaLaPropiedadElegidaSinConfirmarlaLocalmente", async () => {
+            elegir.calls.reset();
+            ganarComplicada(async () => PROPIEDADES_AJENAS);
             botonPremio("ROBAR").click();
             await procesarPendientes();
-            [...dialogo.querySelectorAll(".trivia__robar-opcion")]
-                .find(boton => boton.textContent.startsWith("Estación Laferrere")).click();
-            expect(elemento("trivia-premio").textContent).toBe("Premio: Estación Laferrere, robada a Nahu");
-            elemento("trivia-cerrar").click();
-
-            expect(await final).toEqual({ premio: "ROBAR", posicion: 4 });
+            dialogo.querySelector(".trivia__robar-opcion").click();
+            await procesarPendientes();
+            expect(elegir).toHaveBeenCalledOnceWith({premio:"ROBAR",posicion:1});
+            expect(elemento("trivia-cerrar").hidden).toBeTrue();
         });
 
         it("deberiaVolverALosDosBotonesDesdeLaLista", async () => {
@@ -381,8 +435,8 @@ describe("Textos de la trivia", () => {
     });
 
     it("deberiaArmarElPremioSegunLaDificultad", () => {
-        expect(textoPremio("FACIL")).toBe("Premio: $100");
-        expect(textoPremio("DIFICIL")).toBe("Premio: $500 o robar una propiedad");
+        expect(textoPremio(100)).toBe("Premio: $100");
+        expect(textoPremio(500, true)).toBe("Premio: $500 o robar una propiedad");
         expect(textoPremio(undefined)).toBe("");
     });
 

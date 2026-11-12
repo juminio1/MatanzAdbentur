@@ -614,14 +614,14 @@ public class GestorTriviaPartidaTest {
 
         Trivia trivia = triviaGanadaPorAna(DificultadRuleta.FACIL);
 
-        assertTrue(trivia.estaPremioEntregado());
+        assertFalse(trivia.estaPremioEntregado());
         assertTrue(gestor.estaBloqueandoPartida(CODIGO));
         assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
         verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
     }
 
     @Test
-    public void falloDelCommitDelPremioMantieneLaPausaAunqueLaMarcaEnMemoriaSeaVerdadera() {
+    public void falloDelCommitDelPremioMantieneLaPausaSinConfirmarLaEntrega() {
         ServicioPreguntasTrivia preguntas = mock(ServicioPreguntasTrivia.class);
         when(preguntas.obtenerParaCasillero(any(), any())).thenReturn(cincoPreguntas());
         PlatformTransactionManager administrador = mock(PlatformTransactionManager.class);
@@ -636,7 +636,7 @@ public class GestorTriviaPartidaTest {
 
         Trivia trivia = triviaGanadaPorAna(DificultadRuleta.FACIL);
 
-        assertTrue(trivia.estaPremioEntregado());
+        assertFalse(trivia.estaPremioEntregado());
         assertTrue(gestor.estaBloqueandoPartida(CODIGO));
         assertFalse(tiposAvisados().contains(TipoAvisoTrivia.PREMIO_ENTREGADO));
         verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);

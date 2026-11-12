@@ -1,3 +1,4 @@
+import { conectarTriviaPartida } from "./trivia-partida.js?v=4";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
@@ -319,6 +320,11 @@ function conectarWebSocketTurnos(base, codigo) {
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
+            conectarTriviaPartida({ cliente: stompClient, codigo, base,
+                idJugador: window.usuarioSesionId,
+                alPremioEntregado: function () { window.location.reload(); },
+                estaPreso: function () { return estaPresoEnPantalla(window.usuarioSesionId); },
+            });
             consultarResultadosFinales();
 
             stompClient.subscribe(`/topic/partida/${codigo}/evento-global`, mensaje => {
