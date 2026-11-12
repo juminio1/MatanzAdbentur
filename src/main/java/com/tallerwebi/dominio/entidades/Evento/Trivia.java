@@ -35,8 +35,6 @@ public class Trivia extends Evento {
     @ManyToOne
     private Jugador ganador;
 
-    @Transient
-    private PreguntaGenerada preguntaActual;
 
     @Transient
     private Set<Jugador> respondieronRonda = new HashSet<>();
@@ -46,6 +44,10 @@ public class Trivia extends Evento {
 
     @Transient
     private Map<Jugador, Long> tiemposAcumulados = new HashMap<>();
+
+    // Preguntas de la trivia que todavía no se jugaron. La primera es la de la ronda actual.
+    @Transient
+    private List<PreguntaGenerada> preguntas = new ArrayList<>();
 
     public List<Jugador> getParticipantes() {
         return participantes;
@@ -72,11 +74,15 @@ public Jugador getGanador() {
 }
 
 public PreguntaGenerada getPreguntaActual() {
-    return preguntaActual;
+    return preguntas.isEmpty() ? null : preguntas.get(0);
 }
 
 public void setPreguntaActual(PreguntaGenerada preguntaActual) {
-    this.preguntaActual = preguntaActual;
+    if (preguntas.isEmpty()) {
+        preguntas.add(preguntaActual);
+    } else {
+        preguntas.set(0, preguntaActual);
+    }
 }
 
 public void declararGanador(Jugador jugador) {
@@ -103,6 +109,27 @@ public void registrarRespuesta(Jugador jugador) {
     respondieronRonda.add(jugador);
 }
 
+
+// Rondas ya jugadas más las preguntas que quedan (incluida la actual).
+public int getTotalRondas() {
+    return preguntas.isEmpty() ? 0 : rondaActual - 1 + preguntas.size();
+}
+
+// La cantidad de rondas es la cantidad de preguntas disponibles.
+public void prepararPreguntas(List<PreguntaGenerada> preguntasDeLaTrivia) {
+    this.preguntas = new ArrayList<>(preguntasDeLaTrivia);
+}
+
+public void pasarASiguientePregunta() {
+    if (!tieneSiguientePregunta()) {
+        throw new IllegalStateException("No quedan preguntas para la trivia.");
+    }
+    preguntas.remove(0);
+}
+
+private boolean tieneSiguientePregunta() {
+    return preguntas.size() > 1;
+}
 
 public void avanzarRonda() {
     rondaActual++;

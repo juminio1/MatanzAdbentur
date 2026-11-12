@@ -1,8 +1,8 @@
 package com.tallerwebi.presentacion.DTO;
 
 /**
- * Premio que elige el ganador de una trivia difícil.
- * posicionPropiedad solo se envía cuando el premio es robar una propiedad.
+ * Premio que elige el ganador de una trivia difícil: "PLATA" o "ROBAR".
+ * posicion es la del casillero de la propiedad y solo se envía al robar.
  */
-public record SeleccionPremioDTO(String premio, Integer posicionPropiedad) {
+public record SeleccionPremioDTO(String premio, Integer posicion) {
 }

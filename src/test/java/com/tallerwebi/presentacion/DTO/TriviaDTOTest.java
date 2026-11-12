@@ -12,25 +12,32 @@ public class TriviaDTOTest {
 
     @Test
     public void deberiaLeerLaRespuestaEnviadaPorElFrontend() throws Exception {
-        RespuestaTriviaDTO respuesta = lector.readValue("{\"ronda\":2,\"opcionElegida\":3}", RespuestaTriviaDTO.class);
+        RespuestaTriviaDTO respuesta = lector.readValue("{\"id\":2,\"opcion\":3}", RespuestaTriviaDTO.class);
 
-        assertEquals(2, respuesta.ronda());
-        assertEquals(3, respuesta.opcionElegida());
+        assertEquals(2, respuesta.id());
+        assertEquals(3, respuesta.opcion());
     }
 
     @Test
     public void deberiaLeerElPremioElegidoConLaPropiedadARobar() throws Exception {
-        SeleccionPremioDTO seleccion = lector.readValue("{\"premio\":\"ROBAR_PROPIEDAD\",\"posicionPropiedad\":9}", SeleccionPremioDTO.class);
+        SeleccionPremioDTO seleccion = lector.readValue("{\"premio\":\"ROBAR\",\"posicion\":9}", SeleccionPremioDTO.class);
 
-        assertEquals("ROBAR_PROPIEDAD", seleccion.premio());
-        assertEquals(9, seleccion.posicionPropiedad());
+        assertEquals("ROBAR", seleccion.premio());
+        assertEquals(9, seleccion.posicion());
     }
 
     @Test
-    public void deberiaPermitirElegirUnPremioSinPropiedad() throws Exception {
-        SeleccionPremioDTO seleccion = lector.readValue("{\"premio\":\"DINERO\"}", SeleccionPremioDTO.class);
+    public void deberiaPermitirElegirElPremioEnDineroSinPropiedad() throws Exception {
+        SeleccionPremioDTO seleccion = lector.readValue("{\"premio\":\"PLATA\"}", SeleccionPremioDTO.class);
 
-        assertEquals("DINERO", seleccion.premio());
-        assertNull(seleccion.posicionPropiedad());
+        assertEquals("PLATA", seleccion.premio());
+        assertNull(seleccion.posicion());
+    }
+
+    @Test
+    public void elResultadoDeLaRespuestaSoloIndicaSiFueCorrecta() throws Exception {
+        String json = lector.writeValueAsString(new ResultadoRespuestaTriviaDTO(true));
+
+        assertEquals("{\"correcta\":true}", json);
     }
 }
