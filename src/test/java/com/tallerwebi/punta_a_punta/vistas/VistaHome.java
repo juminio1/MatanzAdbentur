@@ -1,11 +1,21 @@
 package com.tallerwebi.punta_a_punta.vistas;
 
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.assertions.PlaywrightAssertions;
+import java.util.regex.Pattern;
 
 public class VistaHome extends VistaWeb {
 
     public VistaHome(Page page) {
         super(page);
+    }
+
+    public void verificarUsuarioAutenticado(String nombre) {
+        PlaywrightAssertions.assertThat(page).hasURL(Pattern.compile(".*/home(?:[;?#].*)?$"));
+        PlaywrightAssertions.assertThat(page.locator(".hero-kicker span")).hasText(nombre);
+        PlaywrightAssertions.assertThat(
+            page.locator("button[data-bs-target='#modalJugar']")
+        ).isVisible();
     }
 
     public void darClickEnJugarAhora() {

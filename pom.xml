@@ -620,12 +620,24 @@
                         </executions>
                     </plugin>
                     <!--  Ejecutar pruebas E2E  -->
+
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>3.5.3</version>
+
+                        <executions>
+                            <execution>
+                                <id>ejecutar-pruebas-e2e</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+
                         <configuration>
-                            <!-- Zona horaria para la JVM de las pruebas E2E -->
+                            <!-- Zona horaria de las pruebas E2E -->
                             <argLine>@{argLine} -Duser.timezone=America/Argentina/Buenos_Aires</argLine>
 
                             <includes>
@@ -637,6 +649,7 @@
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
+
 
                 </plugins>
             </build>

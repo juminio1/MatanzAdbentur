@@ -22,11 +22,10 @@ public class ReiniciarDB {
         url, variable("DB_USER", "user"), variable("DB_PASSWORD", "user"))) {
       connection.setAutoCommit(false);
       try (Statement statement = connection.createStatement()) {
-        statement.executeUpdate("DELETE FROM saladeespera_fichasocupadas");
-        statement.executeUpdate("DELETE FROM sala_usuario");
-        statement.executeUpdate("DELETE FROM sala_de_espera");
-        statement.executeUpdate("DELETE FROM Usuario");
-        statement.execute("ALTER TABLE Usuario ALTER COLUMN id RESTART WITH 1");
+        // Tambien limpia partidas, jugadores y sus dependencias de ejecuciones anteriores.
+        // CASCADE sigue las claves foraneas sin desactivarlas y conserva los catalogos
+        // que no dependen de Usuario. La proteccion de DB_NAME anterior sigue siendo obligatoria.
+        statement.execute("TRUNCATE TABLE Usuario RESTART IDENTITY CASCADE");
         String hashTest =
             "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
         statement.executeUpdate(
