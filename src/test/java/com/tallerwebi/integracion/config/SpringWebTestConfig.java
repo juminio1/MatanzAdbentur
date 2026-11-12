@@ -88,10 +88,8 @@ public class SpringWebTestConfig implements WebMvcConfigurer {
     return Mockito.mock(SimpMessagingTemplate.class);
   }
 
-  
   @Bean
   public ClienteIA clienteIA() {
     return Mockito.mock(ClienteIA.class);
   }
-
 }
