@@ -13,6 +13,12 @@ public class VistaHome extends VistaWeb {
         this.darClickEnElElemento("button[data-bs-target='#modalJugar']");
     }
 
+    public void darClickEnUnirseAPartida(String codigoSala) {
+        this.darClickEnElElemento("#btnIrAUnirse");
+        this.escribirEnElElemento("input[name='codigoUnico']", codigoSala);
+        this.darClickEnElElemento("#ventanaCodigo button[type='submit']");
+    }
+
     public void darClickEnCrearPartida() {
         // Apuntamos al botón dentro del formulario de crear partida
         this.darClickEnElElemento("button:has-text('Crear partida')");

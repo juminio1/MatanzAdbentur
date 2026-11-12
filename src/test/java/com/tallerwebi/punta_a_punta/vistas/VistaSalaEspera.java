@@ -14,6 +14,10 @@ public class VistaSalaEspera extends VistaWeb {
         this.darClickEnElElemento(selector);
     }
 
+    public void iniciarPartida() {
+        this.darClickEnElElemento(".salaEspera__iniciar");
+    }
+
     public String obtenerCodigoSala() {
         return this.obtenerTextoDelElemento("#datos-sala span").trim();
     }
