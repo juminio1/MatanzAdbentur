@@ -65,19 +65,19 @@
             <artifactId>jbcrypt</artifactId>
             <version>0.4</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
             <version>${spring.version}</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-orm</artifactId>
             <version>${spring.version}</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-jdbc</artifactId>
@@ -620,30 +620,37 @@
                         </executions>
                     </plugin>
                     <!--  Ejecutar pruebas E2E  -->
+
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>3.5.3</version>
-                        <configuration>
-                            <includes>
-                                <include>**/*E2EIT.java</include>
-                            </includes>
-                            <!--  Los tests E2E se conectan a la misma base que Jetty  -->
-                            <systemPropertyVariables>
-                                <DB_NAME>tallerwebi_e2e</DB_NAME>
-                            </systemPropertyVariables>
-                        </configuration>
+
                         <executions>
                             <execution>
+                                <id>ejecutar-pruebas-e2e</id>
                                 <goals>
                                     <goal>integration-test</goal>
-                                    <!--  Se ejecutan las E2E durante la fase de integración, sin
-                                    mezclarse con los test unitarios  -->
                                     <goal>verify</goal>
                                 </goals>
                             </execution>
                         </executions>
+
+                        <configuration>
+                            <!-- Zona horaria de las pruebas E2E -->
+                            <argLine>@{argLine} -Duser.timezone=America/Argentina/Buenos_Aires</argLine>
+
+                            <includes>
+                                <include>**/*E2EIT.java</include>
+                            </includes>
+
+                            <systemPropertyVariables>
+                                <DB_NAME>tallerwebi_e2e</DB_NAME>
+                            </systemPropertyVariables>
+                        </configuration>
                     </plugin>
+
+
                 </plugins>
             </build>
         </profile>

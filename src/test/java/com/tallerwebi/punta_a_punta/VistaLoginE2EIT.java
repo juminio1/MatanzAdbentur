@@ -66,7 +66,7 @@ public class VistaLoginE2EIT {
 
     @Test
     void deberiaDarUnErrorAlIntentarIniciarSesionConUnUsuarioQueNoExiste() {
-        dadoQueElUsuarioCargaSusDatosDeLoginCon("damian@unlam.edu.ar", "unlam");
+        dadoQueElUsuarioCargaSusDatosDeLoginCon("nada@unlam.edu.ar", "unlam");
         cuandoElUsuarioTocaElBotonDeLogin();
         entoncesDeberiaVerUnMensajeDeError();
     }
