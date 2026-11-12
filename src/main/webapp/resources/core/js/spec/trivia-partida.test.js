@@ -35,7 +35,10 @@ describe("Trivia real", () => {
  let recibir, modal, api, conexion, preso;
  let pausarCierres = false;
  let terminarPausa = null;
- afterEach(() => { pausarCierres = false; });
+ let diferirCierres = false;
+ let cierrePendiente = null;
+ let alPremioEntregado;
+ afterEach(() => { pausarCierres = false; diferirCierres = false; });
  const estado = { finalizada: false, ronda: 1, enJuego: [{id: 1, apodo: "Ana"}] };
  const pregunta = {...PREGUNTA, id: 1, ronda: 1, totalRondas: 5, venceEn: Date.now()+10000};
  beforeEach(() => {
@@ -50,7 +53,10 @@ describe("Trivia real", () => {
   api.obtenerEstado.and.resolveTo(null);
   api.obtenerPregunta.and.resolveTo(pregunta);
   terminarPausa = null;
-  conexion = conectarTriviaPartida({cliente, codigo: "ABC", programarCierre: function (cerrar) { cerrar(); }, idJugador: 1,
+  alPremioEntregado = jasmine.createSpy("alPremioEntregado");
+  cierrePendiente = null;
+  conexion = conectarTriviaPartida({cliente, codigo: "ABC", alPremioEntregado,
+   programarCierre: function (cerrar) { if (diferirCierres) cierrePendiente = cerrar; else cerrar(); }, idJugador: 1,
    esperarTrasCierre: function (seguir) { if (pausarCierres) terminarPausa = seguir; else seguir(); }, estaPreso: function () { return preso; }, modal, api,
    documento: new JSDOM('<section id="panel-ruleta"></section>').window.document});
  });
@@ -240,6 +246,32 @@ describe("Trivia real", () => {
   await conexion.recuperar();
   expect(modal.mostrarFinal).not.toHaveBeenCalled();
   expect(modal.cerrar).toHaveBeenCalled();
+ });
+ it("dejaLeerElFinalYVuelveAlTableroRecienAlTocarElBoton", async () => {
+  diferirCierres = true;
+  let volver;
+  modal.mostrarFinal.and.returnValue(new Promise(resolve => { volver = resolve; }));
+  recibir({tipo:"PREMIO_ENTREGADO",estado:{...finalPendiente,puedeElegirPremio:false,montoPremio:250,premioEntregado:true,premioPendiente:false}});
+
+  expect(modal.mostrarFinal).toHaveBeenCalledTimes(1);
+  expect(alPremioEntregado).withContext("se fue del final sin dejarlo leer").not.toHaveBeenCalled();
+
+  volver({premio:null});
+  await Promise.resolve();
+  expect(alPremioEntregado).toHaveBeenCalledTimes(1);
+
+  cierrePendiente();
+  expect(alPremioEntregado).withContext("actualizó dos veces").toHaveBeenCalledTimes(1);
+ });
+ it("vuelveAlTableroSoloSiNadieTocaElBoton", () => {
+  diferirCierres = true;
+  modal.mostrarFinal.and.returnValue(new Promise(() => {}));
+  recibir({tipo:"PREMIO_ENTREGADO",estado:{...finalPendiente,puedeElegirPremio:false,montoPremio:250,premioEntregado:true,premioPendiente:false}});
+
+  cierrePendiente();
+
+  expect(modal.cerrar).toHaveBeenCalled();
+  expect(alPremioEntregado).toHaveBeenCalledTimes(1);
  });
  it("esperaLaConfirmacionDelPremioAutomaticoSinPermitirElegir", () => {
   recibir({tipo:"FINALIZADA",estado:{...finalPendiente,puedeElegirPremio:false,montoPremio:250}});

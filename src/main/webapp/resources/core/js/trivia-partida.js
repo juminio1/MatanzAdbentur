@@ -1,8 +1,10 @@
-import { crearModalTrivia } from "./trivia.js?v=5";
+import { crearModalTrivia } from "./trivia.js?v=6";
 import { crearApiTrivia } from "./trivia-api.js?v=2";
 
 // Tiempo para ver la respuesta correcta antes de la ronda siguiente o del final.
 const PAUSA_TRAS_CIERRE = 2500;
+// Tiempo que queda la pantalla final (ganador, premio y tiempos) antes de volver al tablero.
+const PAUSA_FINAL = 8000;
 
 export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
     return propiedades.filter(propiedad =>
@@ -11,7 +13,7 @@ export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
 
 // Usa el cliente STOMP existente y los datos del servidor para cada ronda.
 export function conectarTriviaPartida({ cliente, codigo, base = "", documento = document,
-    idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, 2500); },
+    idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, PAUSA_FINAL); },
     esperarTrasCierre = function (seguir) { setTimeout(seguir, PAUSA_TRAS_CIERRE); }, alPremioEntregado = function () {}, estaPreso = function () { return false; },
     modal = crearModalTrivia(), api = crearApiTrivia({ base, codigo }) } = {}) {
     let revision = 0;
@@ -111,7 +113,7 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         for (const jugador of estado.enJuego) {
             desempate.push({ nombre: jugador.apodo, milisegundos: jugador.milisegundos });
         }
-        modal.mostrarFinal({
+        const alVolverAlTablero = modal.mostrarFinal({
             desempate,
             ganador: estado.ganador, soyGanador: String(estado.idGanador) === String(idJugador),
             cancelada: estado.cancelada, montoPremio: estado.montoPremio, tipoPremio: estado.tipoPremio,
@@ -124,11 +126,16 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         if (estado.premioEntregado) {
             entregaConfirmada = true;
             const version = versionTorneo;
-            programarCierre(function () {
-                if (version !== versionTorneo) return;
+            let actualizado = false;
+            // Se vuelve al tablero al tocar "Volver al tablero" o, si nadie lo toca, al rato.
+            const volverAlTablero = function () {
+                if (actualizado || version !== versionTorneo) return;
+                actualizado = true;
                 modal.cerrar();
                 alPremioEntregado();
-            });
+            };
+            if (typeof alVolverAlTablero?.then === "function") alVolverAlTablero.then(volverAlTablero);
+            programarCierre(volverAlTablero);
         }
     }
 

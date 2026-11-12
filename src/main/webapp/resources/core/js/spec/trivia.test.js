@@ -258,6 +258,23 @@ describe("Modal de trivia", () => {
             expect(elemento("trivia-aviso").textContent).toBe("Quedaste afuera: mirás cómo sigue la trivia");
         });
 
+        it("deberiaAvisarAlEspectadorQueLosDemasRespondenAunqueLoSepaDespues", () => {
+            modal.mostrarPregunta(PREGUNTA, { enJuego: ["Emi", "Rafa"] });
+
+            modal.actualizarParticipantes({ enJuego: ["Emi"], espectador: "eliminado", permitirResponder: false });
+
+            expect(elemento("trivia-estado").textContent).toBe("Los demás están respondiendo…");
+        });
+
+        it("noDeberiaTaparLaCorrectaConElAvisoDeEspectador", () => {
+            modal.mostrarPregunta(PREGUNTA, { espectador: "eliminado" });
+            modal.mostrarResultado(null, 2);
+
+            modal.actualizarParticipantes({ enJuego: [], espectador: "eliminado", permitirResponder: false });
+
+            expect(elemento("trivia-estado").textContent).toBe("La respuesta correcta era la C");
+        });
+
         it("deberiaListarLosJugadoresQueSiguenEnJuego", () => {
             modal.mostrarPregunta(PREGUNTA, { enJuego: ["Rafa", "Emi", "Nahu"] });
 
@@ -389,6 +406,24 @@ describe("Modal de trivia", () => {
             await procesarPendientes();
             expect(elegir).toHaveBeenCalledOnceWith({premio:"ROBAR",posicion:1});
             expect(elemento("trivia-cerrar").hidden).toBeTrue();
+        });
+
+        it("deberiaNombrarLaPropiedadRobadaCuandoElServidorConfirma", async () => {
+            ganarComplicada(async () => PROPIEDADES_AJENAS);
+            botonPremio("ROBAR").click();
+            await procesarPendientes();
+            dialogo.querySelector(".trivia__robar-opcion").click();
+            await procesarPendientes();
+
+            modal.mostrarFinal({ ganador: "Rafa", soyGanador: true, montoPremio: 500, tipoPremio: "ROBAR" });
+
+            expect(elemento("trivia-premio").textContent).toBe("Premio: Feria La Salada, robada a Emi");
+        });
+
+        it("deberiaDecirleALosDemasQueRoboUnaPropiedad", () => {
+            modal.mostrarFinal({ ganador: "Emi", montoPremio: 500, tipoPremio: "ROBAR" });
+
+            expect(elemento("trivia-premio").textContent).toBe("Premio: robó una propiedad");
         });
 
         it("deberiaVolverALosDosBotonesDesdeLaLista", async () => {

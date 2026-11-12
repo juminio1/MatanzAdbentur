@@ -1,4 +1,4 @@
-import { conectarTriviaPartida } from "./trivia-partida.js?v=6";
+import { conectarTriviaPartida } from "./trivia-partida.js?v=7";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";

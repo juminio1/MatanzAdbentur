@@ -62,6 +62,8 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     let detenerReloj = () => {};
     let enCurso = false;
     let espectador = null;
+    // Propiedad que eligió robar el ganador, para nombrarla cuando el servidor confirma el premio.
+    let ultimoRobo = null;
     let respuestasHabilitadas = false;
     let versionModal = 0;
 
@@ -102,6 +104,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
         venceEn, alResponder,
     } = {}) {
         versionModal++;
+        ultimoRobo = null;
         respuestasHabilitadas = permitirResponder && !comoEspectador;
         botonCerrar.hidden = true;
         botonCerrar.onclick = null;
@@ -171,6 +174,10 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
         aviso.textContent = AVISOS_ESPECTADOR[espectador] ?? "";
         for (const boton of opciones.querySelectorAll(".trivia__opcion")) {
             boton.disabled = !respuestasHabilitadas;
+        }
+        // Mientras la ronda sigue abierta, el que mira sabe que los demás todavía responden.
+        if (espectador && !dialogo.classList.contains("trivia--resuelta") && estado.textContent === "") {
+            estado.textContent = "Los demás están respondiendo…";
         }
     }
 
@@ -283,7 +290,12 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 : "Fue el último en pie";
         }
         premio.textContent = ganador ? textoPremio(montoPremio, puedeElegirPremio) : "";
-        if (tipoPremio === "ROBAR") premio.textContent = "Premio: propiedad transferida";
+        // Solo el ganador sabe cuál eligió; los demás ven el tablero actualizado al volver.
+        if (tipoPremio === "ROBAR") {
+            premio.textContent = ultimoRobo
+                ? `Premio: ${ultimoRobo.nombre}, robada a ${ultimoRobo.propietario}`
+                : "Premio: robó una propiedad";
+        }
 
         const filas = desempate.length > 1
             ? [...desempate].sort((a, b) => a.milisegundos - b.milisegundos)
@@ -357,6 +369,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 }
                 premio.textContent = "Elegí qué propiedad robar";
                 pintarPropiedadesParaRobar(propiedades, propiedad => {
+                    ultimoRobo = propiedad;
                     confirmar({ premio: "ROBAR", posicion: propiedad.posicion });
                 });
                 robar.hidden = false;
