@@ -3,7 +3,7 @@ import { Wheel } from "./vendor/spin-wheel-esm.js";
 import { solicitarSorteoPartida, consultarEstadoRuleta } from "./servicio-ruleta.js";
 import { calcularSegundosRestantes } from "./temporizador-ruleta.js";
 
-import { crearRuleta, girarRuleta } from "./ruleta.js";
+import { crearRuleta, girarRuleta } from "./ruleta.js?v=sin-texto-1";
 
 export function inicializarRuleta(contenedor) {
     return crearRuleta(contenedor, Wheel);
@@ -56,6 +56,8 @@ export function configurarRuleta(
     let intervaloContador = null;
     let ultimaActivacionResuelta = null;
     let revisionEstado = 0;
+    let esperandoNuevaActivacion = false;
+    const activacionesConTrivia = new Set();
 
     const nombres = {
         FACIL: "FÁCIL",
@@ -125,6 +127,7 @@ export function configurarRuleta(
 
     function abrirPanel() {
 
+        if (esperandoNuevaActivacion) return false;
         panel.hidden = false;
 
         return inicializarVisual();
@@ -249,6 +252,14 @@ export function configurarRuleta(
             return;
         }
 
+        if (activacionesConTrivia.has(estado.activacionId)) return;
+        // Al recuperar trivia podemos conocer la pregunta antes que su ruleta.
+        if (esperandoNuevaActivacion && estado.estado === "SORTEADA") {
+            activacionesConTrivia.add(estado.activacionId);
+            return;
+        }
+        if (estado.estado === "ESPERANDO") esperandoNuevaActivacion = false;
+
         const mismaActivacion = activacionActual?.activacionId === estado.activacionId;
 
         // No volvemos a mostrar una activación ya resuelta.
@@ -365,6 +376,13 @@ export function configurarRuleta(
 
         } else {
             mostrarResultado(segmento.value);
+
+            // Avisa a la trivia que la ruleta frenó, para que arranque con esta dificultad.
+            if (typeof documento.dispatchEvent === "function") {
+                documento.dispatchEvent(new CustomEvent("ruleta:frenada", {
+                    detail: { dificultad: segmento.value, activacionId: activacionActual?.activacionId }
+                }));
+            }
         }
 
         girando = false;
@@ -374,6 +392,19 @@ export function configurarRuleta(
         botonGirar.disabled = true;
         botonCerrar.disabled = false;
     }
+
+    documento.addEventListener("trivia:iniciada", () => {
+        if (activacionActual) activacionesConTrivia.add(activacionActual.activacionId);
+        esperandoNuevaActivacion = true;
+        revisionEstado++;
+        limpiarTemporizador();
+        panel.hidden = true;
+        contador.hidden = true;
+        botonGirar.disabled = true;
+        botonCerrar.disabled = true;
+        girando = false;
+        dificultadElegida = null;
+    });
 
     // Recibe los estados enviados por WebSocket desde partida.js.
     documento.addEventListener("ruleta:estado", evento => {
@@ -448,6 +479,13 @@ export function configurarRuleta(
             // Si recibimos un WebSocket mientras consultábamos,
             // evitamos reemplazarlo con una respuesta anterior.
             if (revisionEstado !== revisionAntesDeConsultar) {
+                return;
+            }
+
+            // Una ruleta ya sorteada no se vuelve a girar al recargar:
+            // su trivia ya empezó (o terminó) y tiene su propio modal.
+            if (estado?.estado === "SORTEADA") {
+                ultimaActivacionResuelta = estado.activacionId;
                 return;
             }
 

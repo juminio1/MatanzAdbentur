@@ -10,6 +10,7 @@ public final class CatalogoTablero {
     );
 
     public static final Set<Integer> POSICIONES_PARADA = Set.of(6, 12, 17, 24);
+    public static final Set<Integer> POSICIONES_TRIVIA = Set.of(10, 20);
     private static final String DESCRIPCION_PARADA = "Parada de bondi";
     private static final String LOCALIDAD_SAN_JUSTO = "San Justo";
     private static final String GRUPO_SAN_JUSTO = GrupoPropiedades.SAN_JUSTO.name();

@@ -25,14 +25,17 @@ public class GestorRuletaPartida {
     private final ServicioRuleta servicioRuleta;
     private final NotificadorPartida notificador;
     private final ScheduledExecutorService planificador;
+    private final GestorTriviaPartida gestorTrivia;
 
     private final Map<String, EstadoRuletaDTO> estados = new HashMap<>();
     private final Map<String, Set<String>> activacionesUsadas = new HashMap<>();
 
-    public GestorRuletaPartida(ServicioRuleta servicioRuleta, NotificadorPartida notificador, ScheduledExecutorService planificador) {
+    public GestorRuletaPartida(ServicioRuleta servicioRuleta, NotificadorPartida notificador,
+                               ScheduledExecutorService planificador, GestorTriviaPartida gestorTrivia) {
         this.servicioRuleta = servicioRuleta;
         this.notificador = notificador;
         this.planificador = planificador;
+        this.gestorTrivia = gestorTrivia;
     }
 
     // El equipo de Trivia llamará a este método cuando corresponda.
@@ -132,9 +135,27 @@ public class GestorRuletaPartida {
 
         estados.put(actual.codigoPartida(), resultado);
 
+        IllegalStateException error = null;
         // Se comunica un solo resultado a todos los jugadores.
-        notificador.notificarRuleta(actual.codigoPartida(), resultado);
+        try {
+            notificador.notificarRuleta(actual.codigoPartida(), resultado);
+        } catch (RuntimeException ex) {
+            error = new IllegalStateException("No se pudo notificar el resultado de la ruleta.", ex);
+        }
 
+        try {
+            gestorTrivia.iniciar(actual.codigoPartida(), dificultad);
+        } catch (RuntimeException ex) {
+            if (error == null) {
+                error = new IllegalStateException("No se pudo iniciar la trivia con la dificultad sorteada.", ex);
+            } else {
+                error.addSuppressed(ex);
+            }
+        }
+
+        if (error != null) {
+            throw error;
+        }
         return resultado;
     }
 

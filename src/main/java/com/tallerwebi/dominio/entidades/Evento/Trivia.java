@@ -19,6 +19,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.HashMap;
 
+// Conserva el estado del premio en la entidad existente, sin introducir otra clase.
+@SuppressWarnings("PMD.TooManyFields")
 @Entity
 public class Trivia extends Evento {
 
@@ -31,6 +33,20 @@ public class Trivia extends Evento {
     private int rondaActual;
     private boolean finalizada;
     private boolean premioEntregado;
+    @Transient
+    private String tipoPremio;
+
+    public boolean estaCancelada() { return "CANCELADA".equals(tipoPremio); }
+    public void restaurarPremioPendiente() {
+        this.premioEntregado = false;
+        this.tipoPremio = "";
+    }
+
+    public String getTipoPremio() { return tipoPremio; }
+    public void registrarPremioEntregado(String tipo) {
+        this.tipoPremio = tipo;
+        this.premioEntregado = true;
+    }
 
     @ManyToOne
     private Jugador ganador;
@@ -150,7 +166,7 @@ public boolean estaPremioEntregado() {
 }
 
 public void registrarPremioEntregado() {
-    this.premioEntregado = true;
+    registrarPremioEntregado("PLATA");
 }
 
 
@@ -164,6 +180,7 @@ public void registrarTiempoRespuesta(Jugador jugador, long milisegundos) {
 
 @SuppressWarnings("PMD.NullAssignment")
 public void cancelarSinPremio() {
+    this.tipoPremio = "CANCELADA";
     this.ganador = null;
     this.finalizada = true;
 }

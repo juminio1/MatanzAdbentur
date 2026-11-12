@@ -347,6 +347,21 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
         }
     );
 
+    it("noDeberiaReabrirUnaRuletaYaSorteadaAlRecargarLaPagina",
+        async () => {
+
+            // Simula recargar después de la trivia: el backend sigue con la activación sorteada.
+            consultarMock.and.resolveTo(estadoSorteado("ACT-1", "DIFICIL"));
+
+            configurar();
+
+            await resolverPromesas();
+
+            expect(elementos["panel-ruleta"].hidden).toBeTrue();
+            expect(crearMock).not.toHaveBeenCalled();
+        }
+    );
+
     it("noDeberiaPermitirOtroSorteoAlReabrirLaMismaActivacion",
         async () => {
 

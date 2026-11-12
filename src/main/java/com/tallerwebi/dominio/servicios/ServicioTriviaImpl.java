@@ -16,6 +16,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
 @Service
 public class ServicioTriviaImpl {
@@ -181,6 +184,32 @@ public class ServicioTriviaImpl {
         }
 
         evaluarEstadoRonda(trivia);
+    }
+
+    public boolean actualizarParticipantes(Trivia trivia, List<Jugador> jugadoresActuales) {
+        Set<Long> activos = new HashSet<>();
+        for (Jugador jugador : jugadoresActuales) {
+            if (servicioParticipacion.estaActivo(jugador)) {
+                activos.add(jugador.getId());
+            }
+        }
+        boolean cambio = false;
+        Iterator<Jugador> participantes = trivia.getParticipantes().iterator();
+        while (participantes.hasNext()) {
+            if (!activos.contains(participantes.next().getId())) {
+                participantes.remove();
+                cambio = true;
+            }
+        }
+        if (trivia.estaFinalizada()) {
+            if (trivia.getGanador() != null && !activos.contains(trivia.getGanador().getId())) {
+                trivia.cancelarSinPremio();
+                return true;
+            }
+        } else if (cambio) {
+            actualizarParticipantes(trivia);
+        }
+        return cambio;
     }
 
     public void cancelarPorAbandonoQueFinalizaPartida(Trivia trivia) {

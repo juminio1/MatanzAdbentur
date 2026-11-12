@@ -32,6 +32,8 @@ import com.tallerwebi.presentacion.ControladorGestionQuiebra;
 import com.tallerwebi.presentacion.ControladorPropiedadesPartida;
 import com.tallerwebi.presentacion.DTO.RespuestaMovimientoDTO;
 import com.tallerwebi.dominio.resultados.ResultadoTirada;
+import com.tallerwebi.dominio.resultados.ResultadoJugada;
+import org.mockito.ArgumentCaptor;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -107,12 +109,19 @@ class EfectosPartidaIntegracionTest {
         @Bean
         ServicioDado servicioDado() { return mock(ServicioDado.class); }
         @Bean
+        GestorRuletaPartida gestorRuletaPartida() { return mock(GestorRuletaPartida.class); }
+        @Bean
+        GestorTriviaPartida gestorTriviaPartida() { return mock(GestorTriviaPartida.class); }
+        @Bean
         ServicioInicioPartida servicioInicioPartida() { return mock(ServicioInicioPartida.class); }
         @Bean
         GestorTemporizadorPartida gestorTemporizadorPartida() { return mock(GestorTemporizadorPartida.class); }
 
         @Bean
-        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono() { return new PublicadorEventos<>(List.of()); }
+        PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono(GestorTriviaPartida gestorTrivia) {
+            return new PublicadorEventos<>(List.of(
+                    new com.tallerwebi.dominio.observadores.ObservadorTriviaAbandono(gestorTrivia)));
+        }
 
         @Bean
         ObservadorTurnoQuiebra observadorTurnoQuiebra(
@@ -154,6 +163,10 @@ class EfectosPartidaIntegracionTest {
     @Autowired private ServicioPropiedad servicioPropiedad;
     @Autowired private ServicioEventoCasillero servicioEvento;
     @Autowired private ServicioDado servicioDado;
+    @Autowired private GestorRuletaPartida gestorRuleta;
+    @Autowired private GestorTriviaPartida gestorTrivia;
+    @Autowired private ServicioParticipacion participacionTrivia;
+    @Autowired private ServicioFinalizacionPartida finalizacionTrivia;
     @Autowired private GestorTemporizadorPartida temporizador;
     @Autowired private ServicioGestionQuiebra servicioGestionQuiebra;
     @Autowired private PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra;
@@ -171,6 +184,8 @@ class EfectosPartidaIntegracionTest {
         org.mockito.Mockito.when(consultasMovimiento.buscarPartidaPorJugador(org.mockito.ArgumentMatchers.any())).thenReturn(partidaMovimiento);
         transaccion = new TransactionTemplate(transacciones);
         reset(notificador);
+        reset(gestorRuleta);
+        reset(gestorTrivia);
         reset(temporizador);
         when(temporizador.obtenerSegundosRestantes(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         controlador = new ControladorPartida(servicioPartida,
@@ -205,6 +220,321 @@ class EfectosPartidaIntegracionTest {
             sesiones.getCurrentSession().persist(new CasilleroEvento(null, 3, "Eventos", "Eventos", null, null));
         });
         when(servicioDado.tirarDados()).thenReturn(new ResultadoTirada(1, 1));
+    }
+
+    // Ubica al jugador antes de un casillero de trivia para probar su caída al tirar los dados.
+    @Test
+    void abandonoActualizaTriviaSoloDespuesDelCommit() {
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            verify(gestorTrivia, never()).participantesCambiaron(any());
+        });
+
+        verify(gestorTrivia, times(1)).participantesCambiaron(codigo);
+    }
+
+    @Test
+    void rollbackDeAbandonoNoModificaLaTrivia() {
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            tx.setRollbackOnly();
+        });
+
+        verify(gestorTrivia, never()).participantesCambiaron(any());
+        assertFalse(Boolean.TRUE.equals(servicioPartida.obtenerJugadorPorId(idJugador).getAbandono()));
+    }
+
+    @Test
+    void finalizacionDefinitivaSolicitaCancelarTriviaDespuesDelCommit() {
+        bloquearPorTrivia();
+        transaccion.executeWithoutResult(tx -> {
+            assertDoesNotThrow(() -> servicioPartida.abandonarPartida(codigo, idJugador));
+            assertTrue(finalizacionTrivia.finalizarSiCorresponde(servicioPartida.obtenerPartida(codigo)));
+            verify(gestorTrivia, never()).participantesCambiaron(any());
+        });
+
+        verify(gestorTrivia, org.mockito.Mockito.atLeastOnce()).participantesCambiaron(codigo);
+        assertNull(servicioPartida.obtenerPartida(codigo));
+    }
+
+    private void bloquearPorTrivia() {
+        when(gestorTrivia.estaBloqueandoPartida(codigo)).thenReturn(true);
+        clearInvocations(servicioDado, notificador, temporizador);
+    }
+
+    private Long propiedadDelRival() {
+        cargarPropiedadConDueno();
+        return servicioCasillero.buscarCasilleroPropiedad(servicioPartida.obtenerPartida(codigo), 2)
+                .getPropiedad().getId();
+    }
+
+    private ServicioOfertaPropiedadImpl ofertasParaTrivia() {
+        return new ServicioOfertaPropiedadImpl(servicioPartida, servicioCasillero,
+                servicioPropiedad, participacionTrivia);
+    }
+
+    @Test
+    void triviaBloqueaDadosSinRegistrarTiradaNiMover() {
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class, () -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        Jugador jugador = servicioPartida.obtenerJugadorPorId(idJugador);
+        assertEquals(0, jugador.getPosicionActual());
+        assertFalse(Boolean.TRUE.equals(jugador.getTiroEnTurno()));
+        verifyNoInteractions(servicioDado, notificador);
+    }
+
+    @Test
+    void triviaBloqueaCompraSinCobrarNiAsignarPropiedad() {
+        cargarPropiedadDisponible(2);
+        Long propiedad = servicioCasillero.buscarCasilleroPropiedad(servicioPartida.obtenerPartida(codigo), 2)
+                .getPropiedad().getId();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.comprarPropiedadParaJugador(propiedad, idJugador));
+
+        assertNull(servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaVentaSinModificarPropiedadNiSaldo() {
+        Long propiedad = propiedadDelRival();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> servicioPropiedad.venderPropiedadParaJugador(propiedad, idPropietario));
+
+        assertEquals(idPropietario, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaCrearOfertaSinGuardarla() {
+        propiedadDelRival();
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100));
+
+        assertTrue(ofertas.ofertasPendientes(codigo, idJugador).isEmpty());
+    }
+
+    @Test
+    void triviaBloqueaAceptarOfertaSinTransferirNiEliminarla() {
+        Long propiedad = propiedadDelRival();
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
+        ServicioOfertaPropiedad.Oferta oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class,
+                () -> ofertas.aceptar(servicioPartida.obtenerPartida(codigo), oferta.id(), idJugador));
+
+        assertEquals(1, ofertas.ofertasPendientes(codigo, idJugador).size());
+        assertEquals(idPropietario, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
+    @Test
+    void triviaBloqueaRechazarOfertaSinEliminarla() {
+        propiedadDelRival();
+        ServicioOfertaPropiedadImpl ofertas = ofertasParaTrivia();
+        ServicioOfertaPropiedad.Oferta oferta = ofertas.crearOferta(servicioPartida.obtenerPartida(codigo), 2, idPropietario, idJugador, 100);
+        bloquearPorTrivia();
+
+        assertThrows(IllegalStateException.class, () -> ofertas.rechazar(codigo, oferta.id(), idJugador));
+
+        assertEquals(1, ofertas.ofertasPendientes(codigo, idJugador).size());
+    }
+
+    @Test
+    void triviaBloqueaQuiebraVoluntariaSinEliminarDeuda() {
+        registrarDeudaVoluntaria();
+        bloquearPorTrivia();
+
+        assertThrows(ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException.class,
+                () -> servicioGestionQuiebra.declararQuiebra(codigo, idJugador));
+
+        assertFalse(Boolean.TRUE.equals(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota()));
+        assertNotNull(servicioGestionQuiebra.obtenerDeudaPendiente(codigo, idJugador));
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void triviaImpideAvanzarTurnoSinCambiarRondaNiNotificar() {
+        Partida anterior = servicioPartida.obtenerPartida(codigo);
+        int ronda = anterior.getRondaActual();
+        int turnos = anterior.getTurnosFinalizadosEnRonda();
+        bloquearPorTrivia();
+
+        servicioPartida.avanzarTurno(codigo);
+
+        Partida actual = servicioPartida.obtenerPartida(codigo);
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        assertEquals(ronda, actual.getRondaActual());
+        assertEquals(turnos, actual.getTurnosFinalizadosEnRonda());
+        verifyNoInteractions(notificador, temporizador);
+    }
+
+    @Test
+    void callbackProgramadoAntesDeTriviaNoAvanzaAlVencer() {
+        Runnable vencimiento = capturarVencimiento();
+        bloquearPorTrivia();
+        when(temporizador.obtenerSegundosRestantes(codigo)).thenReturn(0);
+
+        transaccion.executeWithoutResult(tx -> vencimiento.run());
+
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verifyNoInteractions(notificador);
+    }
+
+    @Test
+    void triviaImpideProgramarOPrepararElTemporizadorNormal() {
+        bloquearPorTrivia();
+
+        servicioPartida.iniciarTemporizadorTurnoSiNoExiste(codigo);
+        servicioPartida.prepararTiempoTurno(codigo, 5);
+
+        verifyNoInteractions(temporizador, notificador);
+    }
+
+    @Test
+    void pausaPorTriviaConservaElTurnoYReanudaSoloLosSegundosGuardados() {
+        bloquearPorTrivia();
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+        verify(temporizador).pausar(codigo);
+        verify(temporizador, never()).consumirPausa(codigo);
+        when(gestorTrivia.estaBloqueandoPartida(codigo)).thenReturn(false);
+        when(temporizador.consumirPausa(codigo)).thenReturn(17, (Integer) null);
+
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+        servicioPartida.actualizarPausaPorDeuda(codigo);
+
+        assertEquals(idJugador, servicioPartida.obtenerJugadorActual(codigo).getId());
+        verify(temporizador, times(1)).programarTemporizador(eq(codigo), eq(17), any(Runnable.class));
+    }
+
+    @Test
+    void preparacionDeTurnoDiferidaCompruebaTriviaOtraVezDespuesDelCommit() {
+        transaccion.executeWithoutResult(tx -> {
+            servicioPartida.prepararTiempoTurno(codigo, 5);
+            bloquearPorTrivia();
+        });
+
+        verifyNoInteractions(temporizador, notificador);
+    }
+
+    @Test
+    void triviaPermiteLaTransferenciaInternaNecesariaParaElPremio() {
+        Long propiedad = propiedadDelRival();
+        bloquearPorTrivia();
+
+        assertDoesNotThrow(() -> servicioPropiedad.transferirPropiedadParaJugadores(
+                propiedad, idPropietario, idJugador, 0));
+
+        assertEquals(idJugador, servicioPropiedad.obtenerPropiedadExistente(propiedad).getPropietario().getId());
+        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+    }
+
+    private void ubicarJugadorAntesDeTrivia(Long id, int posicion) {
+        //Simula una jugada que llega a trivia, pero cuya transacción se cancela.
+        transaccion.executeWithoutResult(tx ->
+                sesiones.getCurrentSession().find(Jugador.class, id).setPosicionActual(posicion));
+    }
+
+    private void verificarActivacionAlConfirmarCaida(int destino) {
+        ubicarJugadorAntesDeTrivia(idJugador, destino - 2);
+        transaccion.executeWithoutResult(tx -> {
+            ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            assertEquals(destino, resultado.nuevaPosicion());
+            verifyNoInteractions(gestorRuleta);
+        });
+
+        ArgumentCaptor<String> activacion = ArgumentCaptor.forClass(String.class);
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), activacion.capture(), eq(idJugador));
+        assertNotNull(activacion.getValue());
+        assertFalse(activacion.getValue().isBlank());
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+    }
+
+    @Test
+    void caerEnDiezActivaUnaRuletaSoloDespuesDelCommit() {
+        verificarActivacionAlConfirmarCaida(10);
+    }
+
+    @Test
+    void caerEnVeinteActivaUnaRuletaSoloDespuesDelCommit() {
+        verificarActivacionAlConfirmarCaida(20);
+    }
+
+    @Test
+    void terminarFueraDeTriviaNoActivaRuleta() {
+        ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertEquals(2, resultado.nuevaPosicion());
+        verifyNoInteractions(gestorRuleta);
+    }
+
+    //Simula una jugada que llega a trivia, pero cuya transacción se cancela
+    @Test
+    void rollbackDeCaidaEnTriviaNoActivaRuleta() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        transaccion.executeWithoutResult(tx -> {
+            ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+            assertEquals(10, resultado.nuevaPosicion());
+            verifyNoInteractions(gestorRuleta);
+            tx.setRollbackOnly();
+        });
+
+        assertEquals(8, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        verifyNoInteractions(gestorRuleta);
+    }
+
+    @Test
+    void repetirLaTiradaDelMismoTurnoNoActivaOtraRuleta() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertThrows(com.tallerwebi.dominio.excepcion.TiradaNoPermitidaException.class,
+                () -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+        assertEquals(10, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+    }
+
+    @Test
+    void dosCaidasValidasGeneranIdentificacionesDeActivacionDistintas() {
+        ubicarJugadorAntesDeTrivia(idJugador, 8);
+        ubicarJugadorAntesDeTrivia(idPropietario, 18);
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+        servicioPartida.avanzarTurno(codigo);
+        assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
+
+        assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idPropietario));
+
+        ArgumentCaptor<String> primera = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> segunda = ArgumentCaptor.forClass(String.class);
+        verify(gestorRuleta).activarRuleta(eq(codigo), primera.capture(), eq(idJugador));
+        verify(gestorRuleta).activarRuleta(eq(codigo), segunda.capture(), eq(idPropietario));
+        assertFalse(primera.getValue().isBlank());
+        assertFalse(segunda.getValue().isBlank());
+        assertNotEquals(primera.getValue(), segunda.getValue());
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
+    }
+
+    @Test
+    void unaTarjetaQueTerminaEnTriviaActivaRuletaPorLaPosicionFinalEfectiva() {
+        cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 10);
+
+        ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
+
+        assertEquals(10, resultado.nuevaPosicion());
+        verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
     @Test
