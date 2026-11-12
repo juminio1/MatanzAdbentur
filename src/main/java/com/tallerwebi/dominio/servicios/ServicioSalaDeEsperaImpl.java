@@ -130,14 +130,18 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         List<String> fichas = sala.getFichasOcupadas().stream().map(ColorFicha::name).toList();
 
         Map<String, String> asignadas = new java.util.HashMap<>();
+        Map<String, String> avatares = new java.util.HashMap<>();
         for (Usuario u : sala.getUsuarios()) {
             if (u.getFicha() != null) {
                 asignadas.put(u.getUsername(), u.getFicha().name());
             }
+            if (u.getAvatar() != null && !u.getAvatar().isBlank()) {
+                avatares.put(u.getUsername(), u.getAvatar());
+            }
         }
 
         String creador = sala.getCreador() == null ? null : sala.getCreador().getUsername();
-        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador);
+        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador, avatares);
     }
 
     private void notificarCambioDeSala(SalaDeEspera sala) {

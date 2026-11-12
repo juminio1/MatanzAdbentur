@@ -2,6 +2,7 @@
 let stompClient = null;
 let redirigiendo = false;
 let miFichaSeleccionada = null;
+const AVATAR_POR_DEFECTO = "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png";
 
 // CONEXIÓN WEBSOCKET
 
@@ -105,6 +106,7 @@ function actualizarJugadores(salaActualizada) {
     }
 
     const fichasAsignadas = salaActualizada.fichasAsignadas || {};
+    const avatares = salaActualizada.avatares || {};
     contador.textContent = usuarios.length + "/4";
     lista.replaceChildren();
 
@@ -114,14 +116,13 @@ function actualizarJugadores(salaActualizada) {
         const jugador = document.createElement("div");
         jugador.className = "salaEspera__jugador";
 
-        // Avatar: toma el color de su ficha si ya eligió, o azul por defecto
+        // Avatar: la imagen que el usuario eligió en su perfil
         const avatar = document.createElement("div");
-        if (colorFicha) {
-            avatar.className = `avatar avatar--${colorFicha.toLowerCase()}`;
-        } else {
-            avatar.className = "avatar avatar--azul";
-        }
-        avatar.textContent = username.charAt(0).toUpperCase();
+        avatar.className = "avatar";
+        const imagenAvatar = document.createElement("img");
+        imagenAvatar.src = avatares[username] || AVATAR_POR_DEFECTO;
+        imagenAvatar.alt = `Avatar de ${username}`;
+        avatar.appendChild(imagenAvatar);
 
 const info = document.createElement("div");
         info.className = "salaEspera__jugadorInfo";
@@ -163,7 +164,6 @@ const info = document.createElement("div");
         listo.appendChild(punto);
         listo.appendChild(document.createTextNode(colorFicha ? "Listo" : "Sin ficha"));
 
-        info.appendChild(nombre);
         info.appendChild(listo);
 
         // INDICADOR DE FICHA (muestra el círculo de color o el ?)

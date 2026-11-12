@@ -11,11 +11,23 @@ public record EventoSalaActualizada(
     List<String> usernames,
     List<String> fichasOcupadas,
     Map<String, String> fichasAsignadas,
-    String creador
+    String creador,
+    Map<String, String> avatares
 ) {
     public EventoSalaActualizada {
         usernames = Collections.unmodifiableList(new ArrayList<>(usernames));
         fichasOcupadas = Collections.unmodifiableList(new ArrayList<>(fichasOcupadas));
         fichasAsignadas = Collections.unmodifiableMap(new HashMap<>(fichasAsignadas));
+        avatares = Collections.unmodifiableMap(new HashMap<>(avatares));
+    }
+
+    public EventoSalaActualizada(
+        String codigo,
+        List<String> usernames,
+        List<String> fichasOcupadas,
+        Map<String, String> fichasAsignadas,
+        String creador
+    ) {
+        this(codigo, usernames, fichasOcupadas, fichasAsignadas, creador, Map.of());
     }
 }
