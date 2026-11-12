@@ -39,12 +39,6 @@ public class ObservadoresConfig {
         return new PublicadorEventos<>(observadores);
     }
 
-    @Bean
-    public PublicadorEventos<EventoTriviaActualizada> publicadorTrivia(
-        List<Observador<EventoTriviaActualizada>> observadores
-    ) {
-        return new PublicadorEventos<>(observadores);
-    }
 
     @Bean
     public PublicadorEventos<EventoJugadorAbandonado> publicadorAbandono(
@@ -71,4 +65,5 @@ public class ObservadoresConfig {
             List<Observador<EventoTriviaActualizada>> observadores) {
         return new PublicadorEventos<>(observadores);
     }
+
 }

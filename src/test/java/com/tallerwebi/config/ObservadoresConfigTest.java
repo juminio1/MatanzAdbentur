@@ -14,6 +14,11 @@ import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
+import com.tallerwebi.dominio.entidades.Evento.Trivia;
+import com.tallerwebi.dominio.enums.DificultadRuleta;
+import com.tallerwebi.dominio.enums.TipoAvisoTrivia;
+import com.tallerwebi.dominio.resultados.PreguntaGenerada;
+import com.tallerwebi.presentacion.mapeadores.MapeadorTrivia;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
@@ -38,10 +43,19 @@ class ObservadoresConfigTest {
             contexto.register(ObservadoresConfig.class, ObservadorTriviaWebSocket.class,
                     PublicadorTriviaInyectado.class);
             contexto.refresh();
-            Map<String, Object> contenido = Map.of("contenido", "notificacion de prueba");
+            Trivia trivia = new Trivia();
+            trivia.setDificultad(DificultadRuleta.FACIL);
+            trivia.setRondaActual(1);
+            trivia.prepararPreguntas(List.of(new PreguntaGenerada(
+                    "FACIL", "Pregunta de prueba", List.of("A", "B", "C", "D"), 1)));
+            trivia.setInicioRonda(java.time.Instant.parse("2026-11-12T12:00:00Z"));
+            Map<String, Object> contenido = Map.of(
+                    "tipo", TipoAvisoTrivia.RONDA_NUEVA,
+                    "estado", MapeadorTrivia.estado("ABC123", trivia),
+                    "pregunta", MapeadorTrivia.pregunta(trivia));
 
             contexto.getBean(PublicadorTriviaInyectado.class).trivia
-                    .notificar(new EventoTriviaActualizada("ABC123", contenido));
+                    .notificar(new EventoTriviaActualizada("ABC123", TipoAvisoTrivia.RONDA_NUEVA, trivia, null));
 
             verify(notificador).notificarTrivia("ABC123", contenido);
         }
