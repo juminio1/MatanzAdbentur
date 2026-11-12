@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import java.time.Clock;
 import java.time.Instant;
-
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -577,6 +577,7 @@ void noDeberiaSuperarLasCincoRondas() {
 
     verify(clienteIA, times(5))
             .generarPreguntas("FACIL", 1);
+    assertTrue(trivia.estaFinalizada());
 }
 
 
@@ -612,6 +613,157 @@ void deberiaRegistrarElTiempoDeRespuestaDeUnJugador() {
 
     // Verificación
     assertEquals(4000L, trivia.getTiempoAcumuladoMilisegundos(jugador1));
+}
+
+
+@Test
+void deberiaGanarQuienAcumulaMenorTiempoAlCompletarCincoRondas() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    AtomicReference<Instant> ahora = new AtomicReference<>(
+            Instant.parse("2026-01-01T12:00:00Z")
+    );
+
+    Clock reloj = mock(Clock.class);
+    when(reloj.instant()).thenAnswer(invocacion -> ahora.get());
+
+    ServicioTriviaImpl servicioConReloj =
+            new ServicioTriviaImpl(servicioParticipacion, clienteIA, reloj);
+
+    Trivia trivia = servicioConReloj.iniciarTrivia(
+            partida, DificultadRuleta.FACIL
+    );
+
+    for (int ronda = 1; ronda <= 5; ronda++) {
+        ahora.set(ahora.get().plusSeconds(2));
+        servicioConReloj.responderPregunta(trivia, jugador1, 1);
+
+        ahora.set(ahora.get().plusSeconds(3));
+        servicioConReloj.responderPregunta(trivia, jugador2, 1);
+    }
+
+    assertEquals(10000L,
+            trivia.getTiempoAcumuladoMilisegundos(jugador1));
+    assertEquals(25000L,
+            trivia.getTiempoAcumuladoMilisegundos(jugador2));
+
+    assertSame(jugador1, trivia.getGanador());
+    assertTrue(trivia.estaFinalizada());
+    assertEquals(5, trivia.getRondaActual());
+}
+
+
+@Test
+void deberiaEliminarAlJugadorQueNoRespondioCuandoVenceLaRonda() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    Trivia trivia = servicio.iniciarTrivia(
+            partida, DificultadRuleta.FACIL
+    );
+
+    servicio.responderPregunta(trivia, jugador1, 1);
+
+    // El jugador 2 no responde antes del vencimiento.
+    servicio.cerrarRondaPorTiempo(trivia);
+
+    assertFalse(trivia.getParticipantes().contains(jugador2));
+    assertSame(jugador1, trivia.getGanador());
+    assertTrue(trivia.estaFinalizada());
+}
+
+
+@Test
+void deberiaFinalizarSinGanadorSiNadieRespondeAntesDelVencimiento() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    Trivia trivia = servicio.iniciarTrivia(
+            partida, DificultadRuleta.MEDIO
+    );
+
+    // Nadie responde.
+    servicio.cerrarRondaPorTiempo(trivia);
+
+    assertTrue(trivia.getParticipantes().isEmpty());
+    assertNull(trivia.getGanador());
+    assertTrue(trivia.estaFinalizada());
+}
+
+
+@Test
+void deberiaExcluirAlJugadorQueAbandonaDuranteLaTrivia() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    Trivia trivia = servicio.iniciarTrivia(
+            partida, DificultadRuleta.FACIL
+    );
+
+    // El primer jugador ya respondió correctamente.
+    servicio.responderPregunta(trivia, jugador1, 1);
+
+    // El segundo abandona durante la trivia.
+    jugador2.setAbandono(true);
+
+    when(servicioParticipacion.estaActivo(jugador2))
+            .thenReturn(false);
+
+    servicio.actualizarParticipantes(trivia);
+
+    assertFalse(trivia.getParticipantes().contains(jugador2));
+    assertSame(jugador1, trivia.getGanador());
+    assertTrue(trivia.estaFinalizada());
+}
+
+
+@Test
+void deberiaManejarCuandoGeminiNoDevuelvePreguntas() {
+    Jugador jugador1 = new Jugador();
+    Jugador jugador2 = new Jugador();
+
+    Partida partida = new Partida();
+    partida.setEstado(EstadoPartida.EN_CURSO);
+    partida.setJugadores(List.of(jugador1, jugador2));
+
+    when(servicioParticipacion.estaActivo(any(Jugador.class)))
+            .thenReturn(true);
+
+    when(clienteIA.generarPreguntas("FACIL", 1))
+            .thenReturn(List.of());
+
+    assertThrows(IllegalStateException.class, () ->
+            servicio.iniciarTrivia(partida, DificultadRuleta.FACIL)
+    );
 }
 
 
