@@ -16,7 +16,7 @@
     overflow-y: auto;
 
     padding: 24px 30px;
-    background: #222222;
+    background: var(--tema-panel, #24212c);
     color: #ffffff;
 
     border: 3px solid #ffc247;
@@ -117,7 +117,7 @@
     margin: 0 auto 18px;
     padding: 14px 18px;
 
-    background: #292929;
+    background: var(--tema-elevado, #302c3a);
     border: 1px solid #766950;
     border-radius: 15px;
 
@@ -173,17 +173,13 @@
     margin: 0 auto 12px;
     padding: 13px 20px;
 
-    background: linear-gradient(
-        180deg,
-        #ffe090 0%,
-        #ffc53d 45%,
-        #eda900 100%
-    );
-
-    color: #241900;
-    border: 2px solid #ffdb7e;
-    border-radius: 15px;
-    box-shadow: 0 5px 0 #9c6900;
+    /* Mismos colores que el botón de tirar dados. */
+    background: #ffda6a;
+    color: #1b1525;
+    border: var(--p-borde-grueso, 2px solid #0b0a0e);
+    border-radius: 10px;
+    box-shadow: var(--p-sombra, 4px 4px 0 #0b0a0e), 0 0 16px rgb(255 218 106 / 60%);
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.2s ease;
 
     font-size: 23px;
     font-weight: 900;
@@ -191,7 +187,14 @@
 }
 
 .ruleta-btn-girar:hover:not(:disabled) {
-    filter: brightness(1.08);
+    background: #ffe58b;
+    transform: translate(-2px, -2px);
+    box-shadow: var(--p-sombra-hover, 6px 6px 0 #0b0a0e), 0 0 16px rgb(255 218 106 / 60%);
+}
+
+.ruleta-btn-girar:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: none;
 }
 
 .ruleta-btn-girar:disabled {
