@@ -135,6 +135,9 @@ public void registrarTiempoRespuesta(Jugador jugador, long milisegundos) {
     tiemposAcumulados.merge(jugador, milisegundos, Long::sum);
 }
 
-
+public void cancelarSinPremio() {
+    this.ganador = null;
+    this.finalizada = true;
+}
 }
 
