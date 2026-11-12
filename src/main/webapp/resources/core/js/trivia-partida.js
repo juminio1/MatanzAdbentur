@@ -1,4 +1,4 @@
-import { crearModalTrivia } from "./trivia.js?v=4";
+import { crearModalTrivia } from "./trivia.js?v=5";
 import { crearApiTrivia } from "./trivia-api.js?v=2";
 
 // Tiempo para ver la respuesta correcta antes de la ronda siguiente o del final.
@@ -194,7 +194,7 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         } catch (error) {
             if (revisionInicial !== revision) return;
             console.error("No se pudo recuperar la trivia:", error);
-            if (preguntaActual) modal.mostrarMensaje("No se pudo recuperar el estado. Recarga la pagina para reintentar.");
+            if (preguntaActual) modal.mostrarMensaje("No se pudo recuperar el estado. Recargá la página para reintentar.");
         }
     }
 

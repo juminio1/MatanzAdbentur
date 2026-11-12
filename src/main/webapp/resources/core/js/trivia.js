@@ -272,10 +272,10 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
 
         if (cancelada) {
             finalTitulo.textContent = "Trivia cancelada";
-            finalDetalle.textContent = "El torneo termino sin entregar premios.";
+            finalDetalle.textContent = "El torneo terminó sin entregar premios.";
         } else if (!ganador) {
             finalTitulo.textContent = "Nadie ganó";
-            finalDetalle.textContent = "El torneo termino sin ganador";
+            finalDetalle.textContent = "El torneo terminó sin ganador";
         } else {
             finalTitulo.textContent = soyGanador ? "¡Ganaste la trivia!" : `Ganó ${ganador}`;
             finalDetalle.textContent = desempate.length > 1
@@ -315,13 +315,13 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 enviando = true;
                 elegirPremio.hidden = true;
                 robar.hidden = true;
-                premio.textContent = "Esperando confirmacion del premio...";
+                premio.textContent = "Esperando confirmación del premio...";
                 try {
                     await alElegirPremio(eleccion);
                 } catch (error) {
                     if (version !== versionModal) return;
                     enviando = false;
-                    volverAElegir("No se pudo confirmar el premio. Intenta nuevamente.");
+                    volverAElegir("No se pudo confirmar el premio. Intentá de nuevo.");
                 }
             }
 
