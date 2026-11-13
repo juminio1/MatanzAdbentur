@@ -66,6 +66,7 @@ class EventosGlobalesIntegracionTest {
             return new DriverManagerDataSource("jdbc:hsqldb:mem:eventos_integracion", "sa", "");
         }
         @Bean ServicioDado dados() { return mock(ServicioDado.class); }
+        @Bean GestorRuletaPartida gestorRuletaPartida() { return mock(GestorRuletaPartida.class); }
         @Bean @Primary RepositorioEventoCasillero tarjetas() { return mock(RepositorioEventoCasillero.class); }
         @Bean ServicioInicioPartida inicio() { return mock(ServicioInicioPartida.class); }
         @Bean GestorTemporizadorPartida temporizador() { return mock(GestorTemporizadorPartida.class); }

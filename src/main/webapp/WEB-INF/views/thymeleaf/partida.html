@@ -17,8 +17,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=mesa-50)}"
-            href="../../../resources/core/css/partida.css?v=mesa-50"
+            th:href="@{/css/partida.css(v=mesa-53)}"
+            href="../../../resources/core/css/partida.css?v=mesa-53"
         />
         <link
             rel="stylesheet"
@@ -27,8 +27,13 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/ruleta.css}"
-            href="../../../resources/core/css/ruleta.css"
+            th:href="@{/css/ruleta.css(v=girar-3)}"
+            href="../../../resources/core/css/ruleta.css?v=girar-3"
+        />
+        <link
+            rel="stylesheet"
+            th:href="@{/css/trivia.css(v=4)}"
+            href="../../../resources/core/css/trivia.css?v=4"
         />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -330,7 +335,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 2; --fila: 5" data-casillero="10">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -498,7 +503,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 6; --fila: 1" data-casillero="20">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -715,9 +720,22 @@
                         Propiedades
                     </button>
 
-                    <!-- Botón temporal de prueba de Spin Wheel -->
-                    <button type="button" class="btn-accion" id="btn-abrir-ruleta">
-                        Probar ruleta
+                    <button
+                        type="button"
+                        class="btn-accion btn-sonido"
+                        id="btn-sonido"
+                        aria-pressed="false"
+                        aria-label="Silenciar sonido"
+                        title="Silenciar sonido"
+                    >
+                        <svg class="btn-sonido__icono btn-sonido__icono--activo" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 9h4l5-4v14l-5-4H4z" />
+                            <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
+                        </svg>
+                        <svg class="btn-sonido__icono btn-sonido__icono--silenciado" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 9h4l5-4v14l-5-4H4z" />
+                            <path d="M16.5 9.5l5 5M21.5 9.5l-5 5" />
+                        </svg>
                     </button>
                     <button
                         type="button"
@@ -1357,6 +1375,63 @@
             </button>
         </section>
 
+        <!-- Trivia: se abre con showModal() para todos y bloquea el resto de la pantalla hasta que termina.
+             Ronda, reloj, opciones y mensajes los completa trivia.js. -->
+        <dialog id="trivia" class="trivia" aria-labelledby="trivia-enunciado">
+            <header class="trivia__cabecera">
+                <span class="trivia__etiqueta">Trivia</span>
+                <span id="trivia-ronda" class="trivia__ronda"></span>
+                <span id="trivia-dificultad" class="trivia__dificultad"></span>
+            </header>
+            <div class="trivia__reloj" role="timer" aria-label="Tiempo para responder">
+                <span class="trivia__reloj-barra"></span>
+                <span id="trivia-segundos" class="trivia__reloj-segundos"></span>
+            </div>
+            <p id="trivia-aviso" class="trivia__aviso"></p>
+            <h2 id="trivia-enunciado" class="trivia__enunciado"></h2>
+            <ol id="trivia-opciones" class="trivia__opciones"></ol>
+            <p id="trivia-estado" class="trivia__estado" role="status" aria-live="polite"></p>
+            <p id="trivia-jugadores" class="trivia__jugadores"></p>
+            <!-- Pantalla final: ganador, desempate por tiempo o "nadie ganó". -->
+            <div class="trivia__final">
+                <h2 id="trivia-final-titulo" class="trivia__final-titulo"></h2>
+                <p id="trivia-final-detalle" class="trivia__final-detalle"></p>
+                <p id="trivia-premio" class="trivia__premio"></p>
+                <!-- Solo para quien gana una Complicada: elige entre la plata o robar una propiedad. -->
+                <div id="trivia-elegir-premio" class="trivia__elegir-premio" hidden>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--principal"
+                        data-premio="PLATA"
+                    >
+                        Cobrar $500
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--secundario"
+                        data-premio="ROBAR"
+                    >
+                        Robar una propiedad
+                    </button>
+                </div>
+                <!-- Lista de propiedades de los demás para elegir cuál robar. La completa trivia.js. -->
+                <div id="trivia-robar" class="trivia__robar" hidden>
+                    <div id="trivia-robar-lista" class="trivia__robar-lista"></div>
+                    <button type="button" id="trivia-robar-volver" class="btn-casillero trivia__robar-volver">
+                        Volver
+                    </button>
+                </div>
+                <ol id="trivia-tiempos" class="trivia__tiempos"></ol>
+                <button
+                    id="trivia-cerrar"
+                    type="button"
+                    class="btn-casillero btn-casillero--principal trivia__cerrar"
+                >
+                    Volver al tablero
+                </button>
+            </div>
+        </dialog>
+
         <section
             id="aviso-global"
             class="aviso-evento aviso-global"
@@ -1673,14 +1748,24 @@
 
         <script
             type="module"
-            th:src="@{/js/partida.js(v=mesa-11)}"
-            src="../../../resources/core/js/partida.js?v=mesa-11"
+            th:src="@{/js/partida.js(v=mesa-15)}"
+            src="../../../resources/core/js/partida.js?v=mesa-15"
             charset="UTF-8"
         ></script>
         <script
             type="module"
-            th:src="@{/js/ruleta-demo.js}"
-            src="../../../resources/core/js/ruleta-demo.js"
+            th:src="@{/js/ruleta-demo.js(v=trivia-3)}"
+            src="../../../resources/core/js/ruleta-demo.js?v=trivia-3"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/trivia-partida.js(v=3)}"
+            src="../../../resources/core/js/trivia-partida.js?v=3"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/sonido-partida.js(v=1)}"
+            src="../../../resources/core/js/sonido-partida.js?v=1"
         ></script>
         <script
             type="module"
