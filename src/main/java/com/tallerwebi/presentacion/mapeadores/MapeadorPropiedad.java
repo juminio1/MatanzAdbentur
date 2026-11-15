@@ -1,5 +1,6 @@
 package com.tallerwebi.presentacion.mapeadores;
 import java.util.*;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
 import com.tallerwebi.dominio.entidades.*;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroPropiedad;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioCasillero;
@@ -19,12 +20,15 @@ public final class MapeadorPropiedad {
         dto.put("posicion", posicion);
         dto.put("nombre", datos.get(0));
         dto.put("descripcion", datos.get(1));
-        dto.put("precioCompra", com.tallerwebi.dominio.catalogo.CatalogoTablero.PRECIO_COMPRA);
-        dto.put("precioVenta", servicioPropiedad.calcularPrecioVenta(com.tallerwebi.dominio.catalogo.CatalogoTablero.PRECIO_COMPRA));
+        Integer precioCompra = CatalogoTablero.precioCompra(posicion);
+        dto.put("precioCompra", precioCompra);
+        dto.put("precioVenta", servicioPropiedad.calcularPrecioVenta(precioCompra));
         Integer alquilerBase = servicioCasillero.obtenerAlquilerBaseCatalogo(posicion);
         dto.put("alquiler", alquilerBase);
         dto.put("alquilerBase", alquilerBase);
         dto.put("nivelMejora", 0);
+        dto.put("nivelMaximoMejora", CatalogoTablero.NIVEL_MAXIMO_MEJORA);
+        dto.put("costoMejora", costoProximaMejora(posicion, precioCompra, 0));
         dto.put("grupo", POSICIONES_PARADA.contains(posicion) ? null : datos.get(2));
         dto.put("propietario", null);
         dto.put("propietarioId", null);
@@ -55,9 +59,17 @@ public final class MapeadorPropiedad {
         dto.put("idPropiedad", propiedad.getId());
         dto.put(
                 "alquilerBase",
-                POSICIONES_PARADA.contains(casillero.getPosicion()) ? 20 : propiedad.getPrecioAlquiler()
+                POSICIONES_PARADA.contains(casillero.getPosicion())
+                        ? Integer.valueOf(CatalogoTablero.ALQUILER_PARADA)
+                        : propiedad.getPrecioAlquiler()
         );
-        dto.put("nivelMejora", propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora());
+        int nivelMejora = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
+        dto.put("nivelMejora", nivelMejora);
+        dto.put("nivelMaximoMejora", CatalogoTablero.NIVEL_MAXIMO_MEJORA);
+        dto.put(
+                "costoMejora",
+                costoProximaMejora(casillero.getPosicion(), propiedad.getPrecioCompra(), nivelMejora)
+        );
         dto.put(
                 "grupo",
                 POSICIONES_PARADA.contains(casillero.getPosicion()) || propiedad.getGrupo() == null
@@ -65,6 +77,15 @@ public final class MapeadorPropiedad {
                         : propiedad.getGrupo().name()
         );
         return dto;
+    }
+
+    // Las paradas no se mejoran y al llegar al nivel máximo no hay próxima mejora.
+    private static Integer costoProximaMejora(Integer posicion, Integer precioCompra, int nivelMejora) {
+        if (POSICIONES_PARADA.contains(posicion) || precioCompra == null
+                || nivelMejora >= CatalogoTablero.NIVEL_MAXIMO_MEJORA) {
+            return null;
+        }
+        return CatalogoTablero.costoMejora(precioCompra);
     }
 
     /** Devuelve todas las propiedades del tablero: las registradas en la partida y, el resto, desde el catálogo. */

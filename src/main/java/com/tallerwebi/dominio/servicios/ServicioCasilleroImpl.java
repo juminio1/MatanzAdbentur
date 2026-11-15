@@ -69,7 +69,7 @@ public class ServicioCasilleroImpl implements ServicioCasillero {
         List<String> datos = CATALOGO_PROPIEDADES.get(posicion);
         if (datos == null) return null;
         Integer alquilerBase = obtenerAlquilerBaseCatalogo(posicion);
-        Propiedad propiedad = new Propiedad(null, datos.get(0), PRECIO_COMPRA, alquilerBase, null,
+        Propiedad propiedad = new Propiedad(null, datos.get(0), precioCompra(posicion), alquilerBase, null,
                 POSICIONES_PARADA.contains(posicion) ? null : GrupoPropiedades.valueOf(datos.get(2)));
         CasilleroPropiedad casillero = new CasilleroPropiedad(null, posicion, datos.get(0), datos.get(1), propiedad);
         casillero.setPartidaId(partida.getId());

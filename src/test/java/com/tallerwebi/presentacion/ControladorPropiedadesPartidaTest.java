@@ -212,8 +212,8 @@ class ControladorPropiedadesPartidaTest {
 
         assertEquals(HttpStatus.OK, respuesta.getStatusCode());
         assertEquals("Plaza Barrio Marina", respuesta.getBody().get("nombre"));
-        assertEquals(300, respuesta.getBody().get("precioCompra"));
-        assertEquals(50, respuesta.getBody().get("alquiler"));
+        assertEquals(150, respuesta.getBody().get("precioCompra"));
+        assertEquals(20, respuesta.getBody().get("alquiler"));
         assertEquals(true, respuesta.getBody().get("disponible"));
     }
 
@@ -410,13 +410,13 @@ class ControladorPropiedadesPartidaTest {
 
     @Test
     void laCompraMaterializaUnaPropiedadComunConLosDatosDelCatalogo() {
-        comprobarCreacionEnCompra(1, "Plaza Barrio Marina", "Villa Luzuriaga", 50,
+        comprobarCreacionEnCompra(1, "Plaza Barrio Marina", "Villa Luzuriaga", 150, 20,
                 GrupoPropiedades.VILLA_LUZURIAGA);
     }
 
     @Test
     void laCompraMaterializaUnaParadaSinGrupoYConAlquilerBaseVeinte() {
-        comprobarCreacionEnCompra(6, "Colectivo 242", "Parada de bondi", 20, null);
+        comprobarCreacionEnCompra(6, "Colectivo 242", "Parada de bondi", 250, 20, null);
     }
 
     @Test
@@ -475,7 +475,7 @@ class ControladorPropiedadesPartidaTest {
     }
 
     private void comprobarCreacionEnCompra(Integer posicion, String nombre, String descripcion,
-                                           Integer alquilerBase, GrupoPropiedades grupo) {
+                                           Integer precioCompra, Integer alquilerBase, GrupoPropiedades grupo) {
         Partida partida = crearPartida();
         Jugador comprador = crearJugador(1L, "Ana", 1000, posicion);
         partida.setJugadores(List.of(comprador));
@@ -506,7 +506,7 @@ class ControladorPropiedadesPartidaTest {
         assertEquals(descripcion, creado.getDescripcion());
         Propiedad propiedad = creado.getPropiedad();
         assertEquals(nombre, propiedad.getNombre());
-        assertEquals(300, propiedad.getPrecioCompra());
+        assertEquals(precioCompra, propiedad.getPrecioCompra());
         assertEquals(alquilerBase, propiedad.getPrecioAlquiler());
         assertEquals(grupo, propiedad.getGrupo());
         assertEquals(0, propiedad.getNivelMejora());
