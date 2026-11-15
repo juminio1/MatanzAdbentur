@@ -5,18 +5,22 @@ import com.tallerwebi.dominio.entidades.Partida;
 import com.tallerwebi.dominio.enums.EstadoParticipante;
 import com.tallerwebi.dominio.enums.EstadoPartida;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
+import com.tallerwebi.dominio.eventos.EventoTiradaAutomatica;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
 import com.tallerwebi.dominio.excepcion.CantidadJugadoresInsuficienteException;
 import com.tallerwebi.dominio.excepcion.CantidadMaximaJugadoresSuperadaException;
 import com.tallerwebi.dominio.excepcion.FichaNoDisponibleException;
+import com.tallerwebi.dominio.excepcion.JugadorNoEncontradoException;
 import com.tallerwebi.dominio.excepcion.PartidaIniciadaException;
 import com.tallerwebi.dominio.excepcion.PartidaNoEncontradaException;
 import com.tallerwebi.dominio.excepcion.SalaNoEncontradaException;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.resultados.PosicionFicha;
+import com.tallerwebi.dominio.resultados.ResultadoJugada;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioGestionQuiebra;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioInicioPartida;
+import com.tallerwebi.dominio.servicios.interfaces.ServicioJugada;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioPartida;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioTurno;
 import com.tallerwebi.infraestructura.RepositorioPartida;
@@ -24,6 +28,7 @@ import com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida;
 import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,6 +60,14 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Autowired(required = false)
     private com.tallerwebi.dominio.servicios.interfaces.ServicioEvento eventosGlobales;
+
+    // Tiran los dados por el jugador cuando se le acaba el tiempo (pueden ser null en los tests).
+    @Autowired(required = false)
+    @Lazy
+    private ServicioJugada jugadasAutomaticas;
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventosAutomaticos;
 
 
     @Autowired
@@ -444,7 +457,44 @@ public class ServicioPartidaImpl implements ServicioPartida {
         // Un vencimiento anterior puede haber esperado el bloqueo mientras se pausó y reanudó.
         Integer restantesVigentes = gestorTemporizador.obtenerSegundosRestantes(codigoUnico);
         if (restantesVigentes != null && restantesVigentes > 0) return;
+        if (tirarPorElJugadorSiNoTiro(codigoUnico)) {
+            // La tirada pudo cerrar el turno sola (por ejemplo, preso sin dobles) o dejar una deuda.
+            Partida actualizada = obtenerPartida(codigoUnico);
+            if (!turnoSigueVigente(actualizada, marcaProgramada)) return;
+            if (turnoPausadoPorDeuda(codigoUnico)) {
+                actualizarPausaPorDeuda(codigoUnico);
+                return;
+            }
+        }
         avanzarTurno(codigoUnico);
+    }
+
+    /*
+     * Si el jugador del turno no tiró a tiempo, el servidor tira por él: mueve la ficha y
+     * aplica alquileres y efectos, pero no compra nada. Devuelve true si hubo tirada.
+     */
+    private boolean tirarPorElJugadorSiNoTiro(String codigoUnico) {
+        if (jugadasAutomaticas == null) return false;
+        Jugador jugador = obtenerJugadorActual(codigoUnico);
+        if (
+            jugador == null ||
+            !participacion.estaActivo(jugador) ||
+            Boolean.TRUE.equals(jugador.getTiroEnTurno()) ||
+            Boolean.TRUE.equals(jugador.getPierdeTurno())
+        ) {
+            return false;
+        }
+        try {
+            ResultadoJugada resultado = jugadasAutomaticas.tirarPorVencimiento(codigoUnico, jugador.getId());
+            if (eventosAutomaticos != null) {
+                DespuesDeConfirmar.ejecutar(() ->
+                    eventosAutomaticos.publishEvent(new EventoTiradaAutomatica(codigoUnico, resultado))
+                );
+            }
+            return true;
+        } catch (PartidaNoEncontradaException | JugadorNoEncontradoException ex) {
+            throw new IllegalStateException("No se pudo tirar los dados al vencer el turno.", ex);
+        }
     }
 
     @Override

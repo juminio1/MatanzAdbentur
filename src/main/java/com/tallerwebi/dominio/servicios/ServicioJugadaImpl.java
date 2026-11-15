@@ -63,6 +63,18 @@ public class ServicioJugadaImpl implements ServicioJugada {
     @Override
     public ResultadoJugada tirarYMover(String codigo, Long idJugador)
         throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        return tirar(codigo, idJugador, true);
+    }
+
+    // Igual que una tirada normal, pero sin exigir tiempo restante: el turno ya venció.
+    @Override
+    public ResultadoJugada tirarPorVencimiento(String codigo, Long idJugador)
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        return tirar(codigo, idJugador, false);
+    }
+
+    private ResultadoJugada tirar(String codigo, Long idJugador, boolean exigirTiempo)
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         //busca la partida y sino la encuentra lanza excepcion
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
@@ -72,7 +84,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
         Jugador jugador = obtenerJugador(partida, idJugador);
-        validarTirada(codigo, jugador);
+        validarTirada(codigo, jugador, exigirTiempo);
 
         //guarda la posicion anterior del jugador.
         Integer anterior = jugador.getPosicionActual();
@@ -221,9 +233,9 @@ public class ServicioJugadaImpl implements ServicioJugada {
         }
     }
 
-    private void validarTirada(String codigo, Jugador jugador) {
+    private void validarTirada(String codigo, Jugador jugador, boolean exigirTiempo) {
         Integer restantes = partidas.obtenerSegundosRestantesTurno(codigo);
-        if (restantes != null && restantes <= 0) {
+        if (exigirTiempo && restantes != null && restantes <= 0) {
             throw new TiradaNoPermitidaException("El tiempo del turno terminó.");
         }
         validarJugadorEnTurno(codigo, jugador);
