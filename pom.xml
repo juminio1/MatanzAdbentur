@@ -596,10 +596,12 @@
                         <configuration>
                             <stopPort>8079</stopPort>
                             <stopKey>matanza-e2e</stopKey>
+                            <useTestScope>true</useTestScope>
                             <!--  Clave utilizada para autorizar esa orden  -->
                             <!--  Base de datos exclusiva para las pruebas E2E  -->
                             <systemProperties>
                                 <DB_NAME>tallerwebi_e2e</DB_NAME>
+                                <spring.profiles.active>e2e</spring.profiles.active>
                             </systemProperties>
                         </configuration>
                         <executions>

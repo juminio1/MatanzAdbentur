@@ -8,18 +8,7 @@ import java.sql.Statement;
 public class ReiniciarDB {
 
   public static void limpiarBaseDeDatos() {
-    String dbHost = variable("DB_HOST", "localhost");
-    String dbPort = variable("DB_PORT", "5432");
-    // Solo se permite borrar datos de la base exclusiva de las pruebas E2E.
-    String dbName = System.getProperty("DB_NAME", System.getenv("DB_NAME"));
-    if (!"tallerwebi_e2e".equals(dbName)) {
-      throw new IllegalStateException(
-          "Limpieza E2E bloqueada: DB_NAME debe ser exactamente tallerwebi_e2e");
-    }
-    String url = String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, dbName);
-
-    try (Connection connection = DriverManager.getConnection(
-        url, variable("DB_USER", "user"), variable("DB_PASSWORD", "user"))) {
+    try (Connection connection = abrirConexionE2E()) {
       connection.setAutoCommit(false);
       try (Statement statement = connection.createStatement()) {
         // Tambien limpia partidas, jugadores y sus dependencias de ejecuciones anteriores.
@@ -41,6 +30,18 @@ public class ReiniciarDB {
     } catch (SQLException e) {
       throw new IllegalStateException("No se pudo reiniciar la base de datos de pruebas", e);
     }
+  }
+
+  static Connection abrirConexionE2E() throws SQLException {
+    String dbHost = variable("DB_HOST", "localhost");
+    String dbPort = variable("DB_PORT", "5432");
+    String dbName = System.getProperty("DB_NAME", System.getenv("DB_NAME"));
+    if (!"tallerwebi_e2e".equals(dbName)) {
+      throw new IllegalStateException("DB_NAME debe ser exactamente tallerwebi_e2e");
+    }
+    String url = String.format("jdbc:postgresql://%s:%s/%s", dbHost, dbPort, dbName);
+    return DriverManager.getConnection(
+        url, variable("DB_USER", "user"), variable("DB_PASSWORD", "user"));
   }
 
   private static String variable(String nombre, String valorPredeterminado) {
