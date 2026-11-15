@@ -165,7 +165,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer valorPatrimonial = servicioFinalizacionPartida.calcularValorPatrimonial(propiedad);
 
-        assertEquals(700, valorPatrimonial);
+        assertEquals(750, valorPatrimonial);
     }
 
     @Test
@@ -191,7 +191,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer valorPatrimonial = servicioFinalizacionPartida.calcularValorPatrimonial(propiedad);
 
-        assertEquals(1500, valorPatrimonial);
+        assertEquals(1250, valorPatrimonial);
     }
 
     @Test
@@ -204,7 +204,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer valorPatrimonial = servicioFinalizacionPartida.calcularValorPatrimonial(propiedad);
 
-        assertEquals(2500, valorPatrimonial);
+        assertEquals(1500, valorPatrimonial);
     }
 
     @Test
@@ -217,7 +217,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer valorPatrimonial = servicioFinalizacionPartida.calcularValorPatrimonial(propiedad);
 
-        assertEquals(4000, valorPatrimonial);
+        assertEquals(1750, valorPatrimonial);
     }
 
     @Test
@@ -230,7 +230,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer valorPatrimonial = servicioFinalizacionPartida.calcularValorPatrimonial(propiedad);
 
-        assertEquals(1300, valorPatrimonial);
+        assertEquals(1600, valorPatrimonial);
     }
 
     @Test
@@ -330,7 +330,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer patrimonio = servicio.calcularPatrimonioTotal(codigoPartida, jugador);
 
-        assertEquals(3000, patrimonio);
+        assertEquals(3350, patrimonio);
     }
 
     @Test
@@ -394,7 +394,7 @@ public class ServicioFinalizacionPartidaTest {
 
         Integer patrimonio = servicio.calcularPatrimonioTotal(codigoPartida, jugador);
 
-        assertEquals(-400, patrimonio);
+        assertEquals(-650, patrimonio);
     }
 
 
@@ -420,9 +420,9 @@ public class ServicioFinalizacionPartidaTest {
         assertEquals(1000, resultado.getDineroFinal());
         assertEquals(2, resultado.getCantidadPropiedades());
         assertEquals(3, resultado.getCantidadMejoras());
-        assertEquals(2000, resultado.getValorPropiedades());
+        assertEquals(2350, resultado.getValorPropiedades());
         assertEquals(300, resultado.getDeudaPendiente());
-        assertEquals(2700, resultado.getPatrimonioTotal());
+        assertEquals(3050, resultado.getPatrimonioTotal());
         assertEquals(false, resultado.getGanador());
         assertEquals(EstadoParticipante.QUEBRADO, resultado.getEstadoParticipante());
         verify(resultadosCaptura).buscarPorPartidaYJugador(10L, 1L);
@@ -467,9 +467,9 @@ public class ServicioFinalizacionPartidaTest {
                 partidaCaptura, jugadorCaptura, EstadoParticipante.ABANDONADO);
 
         assertEquals(100, resultado.getDineroFinal());
-        assertEquals(1500, resultado.getValorPropiedades());
+        assertEquals(1250, resultado.getValorPropiedades());
         assertEquals(2000, resultado.getDeudaPendiente());
-        assertEquals(-400, resultado.getPatrimonioTotal());
+        assertEquals(-650, resultado.getPatrimonioTotal());
         assertEquals(false, resultado.getGanador());
         assertEquals(EstadoParticipante.ABANDONADO, resultado.getEstadoParticipante());
         verify(resultadosCaptura).guardar(resultado);

@@ -1,5 +1,6 @@
 package com.tallerwebi.dominio.servicios;
 
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
 import com.tallerwebi.dominio.entidades.Propiedad;
 import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.entidades.DeudaPendiente;
@@ -233,9 +234,6 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
 
     @Override
     public Integer calcularValorPatrimonial(Propiedad propiedad) {
-        //guarda los costos de cada mejora. Cada posicion representa una mejora sucesiva.
-        final int[] costosMejoras = {200, 300, 500, 1000, 1500};
-
         int nivelMejora;
         // si el nivel de mejora es null le asigna 0
         if (propiedad.getNivelMejora() == null) {
@@ -244,15 +242,12 @@ public class ServicioFinalizacionPartidaImpl implements ServicioFinalizacionPart
             nivelMejora = propiedad.getNivelMejora();
         }
         //comprueba que el nivel de mejora este entre 0 y 5, sino lanza excepcion.
-        if (nivelMejora < 0 || nivelMejora > costosMejoras.length) {
+        if (nivelMejora < 0 || nivelMejora > CatalogoTablero.NIVEL_MAXIMO_MEJORA) {
             throw new IllegalArgumentException("El nivel de mejora debe estar entre 0 y 5.");
         }
-        Integer valorPatrimonial = propiedad.getPrecioCompra();
-       //Recorre los costos de las mejoras que tiene la propiedad y los suma al precio de compra.
-        for (int nivel = 0; nivel < nivelMejora; nivel++) {
-            valorPatrimonial += costosMejoras[nivel];
-        }
-        return valorPatrimonial;
+        Integer precioCompra = propiedad.getPrecioCompra();
+        // Suma al precio de compra lo que se pagó por cada mejora.
+        return precioCompra + nivelMejora * CatalogoTablero.costoMejora(precioCompra);
     }
 
     //obtiene los resultados finales de una partida, verifica que el jugador tenga acceso y arma el ranking con los ganadores primero

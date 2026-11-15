@@ -1227,7 +1227,6 @@ const posicionesPropiedad = new Set([
     1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29,
 ]);
 const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
-const nivelesAlquiler = [200, 300, 500, 1000, 1500];
 const posicionesLocalidades = {
     VILLA_LUZURIAGA: [1, 2],
     SAN_JUSTO: [4, 5, 7],
@@ -1418,8 +1417,7 @@ function mostrarInfoPropiedad(propiedad) {
     const acciones = document.getElementById("popup-acciones-propias");
     acciones.hidden = !esPropia;
     if (esPropia) {
-        const nivel = Number(propiedad.nivelMejora ?? 0);
-        const costo = nivelesAlquiler[nivel];
+        const costo = propiedad.costoMejora ?? null;
         const mejorar = document.getElementById("btn-info-mejorar");
         const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && costo != null;
         mejorar.textContent = puedeMejorarse ? `Mejorar por $${costo.toLocaleString("es-AR")}` : "Mejora no disponible";
@@ -1763,7 +1761,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     datos.className = "propiedad-propia__datos";
     if (propiedad.alquiler != null) agregarDatoPropiedad(datos, "Alquiler", propiedad.alquiler);
     const nivel = Number(propiedad.nivelMejora ?? 0);
-    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${nivelesAlquiler.length}`);
+    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${propiedad.nivelMaximoMejora ?? nivel}`);
     tarjeta.append(encabezado);
     if (datos.childElementCount) tarjeta.append(datos);
     if (soloResumen) return tarjeta;
@@ -1783,7 +1781,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     botonSubir.className = "btn-casillero btn-casillero--principal";
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
-    const costoMejora = nivelesAlquiler[nivel];
+    const costoMejora = propiedad.costoMejora ?? null;
     const puedeMejorarse = !esParada && costoMejora != null;
     botonSubir.disabled =
         partidaFinalizada ||

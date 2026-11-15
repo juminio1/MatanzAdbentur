@@ -3,8 +3,32 @@ import java.util.*;
 import com.tallerwebi.dominio.enums.GrupoPropiedades;
 public final class CatalogoTablero {
     public static final int TOTAL_CASILLEROS = 30;
-    public static final int PRECIO_COMPRA = 300;
+    public static final int PRECIO_PARADA = 250;
+    public static final int ALQUILER_PARADA = 20;
     private CatalogoTablero() { }
+
+    // Los barrios del principio del tablero son más baratos y los del final, más caros.
+    private static final Map<GrupoPropiedades, Integer> PRECIOS_POR_BARRIO = Map.of(
+            GrupoPropiedades.VILLA_LUZURIAGA, 150,
+            GrupoPropiedades.SAN_JUSTO, 200,
+            GrupoPropiedades.ISIDRO_CASANOVA, 250,
+            GrupoPropiedades.RAFAEL_CASTILLO, 300,
+            GrupoPropiedades.LAFERRERE, 350,
+            GrupoPropiedades.CIUDAD_EVITA, 400,
+            GrupoPropiedades.LA_TABLADA, 450,
+            GrupoPropiedades.RAMOS_MEJIA, 500
+    );
+
+    private static final Map<GrupoPropiedades, Integer> ALQUILERES_POR_BARRIO = Map.of(
+            GrupoPropiedades.VILLA_LUZURIAGA, 20,
+            GrupoPropiedades.SAN_JUSTO, 30,
+            GrupoPropiedades.ISIDRO_CASANOVA, 40,
+            GrupoPropiedades.RAFAEL_CASTILLO, 50,
+            GrupoPropiedades.LAFERRERE, 60,
+            GrupoPropiedades.CIUDAD_EVITA, 70,
+            GrupoPropiedades.LA_TABLADA, 80,
+            GrupoPropiedades.RAMOS_MEJIA, 100
+    );
     public static final Set<Integer> POSICIONES_PROPIEDAD = Set.of(
             1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29
     );
@@ -42,7 +66,39 @@ public final class CatalogoTablero {
             Map.entry(29, List.of("Pinar de Rocha", "Ramos Mejía", "RAMOS_MEJIA"))
     );
 
-    public static int alquilerBase(Integer posicion) { return POSICIONES_PARADA.contains(posicion) ? 20 : 50; }
+    public static int precioCompra(Integer posicion) {
+        if (POSICIONES_PARADA.contains(posicion)) return PRECIO_PARADA;
+        return PRECIOS_POR_BARRIO.get(barrioDe(posicion));
+    }
+
+    public static int alquilerBase(Integer posicion) {
+        if (POSICIONES_PARADA.contains(posicion)) return ALQUILER_PARADA;
+        return ALQUILERES_POR_BARRIO.get(barrioDe(posicion));
+    }
+
+    public static final int NIVEL_MAXIMO_MEJORA = 5;
+
+    // Cada nivel de mejora multiplica el alquiler base del barrio.
+    private static final List<Integer> MULTIPLICADORES_MEJORA = List.of(2, 4, 7, 11, 15);
+
+    public static int alquilerConMejora(int alquilerBase, int nivelMejora) {
+        if (nivelMejora <= 0) return alquilerBase;
+        int nivel = Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA);
+        return alquilerBase * MULTIPLICADORES_MEJORA.get(nivel - 1);
+    }
+
+    // Todas las mejoras de una propiedad cuestan la mitad de su precio de compra.
+    public static int costoMejora(int precioCompra) {
+        return precioCompra / 2;
+    }
+
+    private static GrupoPropiedades barrioDe(Integer posicion) {
+        List<String> datos = CATALOGO_PROPIEDADES.get(posicion);
+        if (datos == null) {
+            throw new IllegalArgumentException("El casillero " + posicion + " no es una propiedad.");
+        }
+        return GrupoPropiedades.valueOf(datos.get(2));
+    }
     public static Set<Integer> posicionesDelGrupo(GrupoPropiedades grupo) {
         if (grupo == null) return Set.of();
         return CATALOGO_PROPIEDADES.entrySet().stream()
