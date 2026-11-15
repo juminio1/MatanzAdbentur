@@ -17,8 +17,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=mesa-53)}"
-            href="../../../resources/core/css/partida.css?v=mesa-53"
+            th:href="@{/css/partida.css(v=mesa-54)}"
+            href="../../../resources/core/css/partida.css?v=mesa-54"
         />
         <link
             rel="stylesheet"
@@ -168,6 +168,25 @@
                     </div>
                 </article>
             </section>
+
+            <!-- Silenciar: siempre disponible, aunque no sea tu turno -->
+            <button
+                type="button"
+                class="btn-sonido"
+                id="btn-sonido"
+                aria-pressed="false"
+                aria-label="Silenciar sonido"
+                title="Silenciar sonido"
+            >
+                <svg class="btn-sonido__icono btn-sonido__icono--activo" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9h4l5-4v14l-5-4H4z" />
+                    <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
+                </svg>
+                <svg class="btn-sonido__icono btn-sonido__icono--silenciado" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9h4l5-4v14l-5-4H4z" />
+                    <path d="M16.5 9.5l5 5M21.5 9.5l-5 5" />
+                </svg>
+            </button>
         </header>
         <!-- Zona principal: tablero + acciones -->
         <main class="partida__main">
@@ -720,23 +739,6 @@
                         Propiedades
                     </button>
 
-                    <button
-                        type="button"
-                        class="btn-accion btn-sonido"
-                        id="btn-sonido"
-                        aria-pressed="false"
-                        aria-label="Silenciar sonido"
-                        title="Silenciar sonido"
-                    >
-                        <svg class="btn-sonido__icono btn-sonido__icono--activo" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 9h4l5-4v14l-5-4H4z" />
-                            <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
-                        </svg>
-                        <svg class="btn-sonido__icono btn-sonido__icono--silenciado" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 9h4l5-4v14l-5-4H4z" />
-                            <path d="M16.5 9.5l5 5M21.5 9.5l-5 5" />
-                        </svg>
-                    </button>
                     <button
                         type="button"
                         class="btn-tirar"
