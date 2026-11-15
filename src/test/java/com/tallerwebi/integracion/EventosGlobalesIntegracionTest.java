@@ -147,7 +147,7 @@ class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    void vencimientoDeLaUltimaOportunidadActivaElEventoDeLaNuevaRondaUnaSolaVez() {
+    void vencimientoDeLaUltimaOportunidadTiraPorElJugadorYActivaElEventoDeLaNuevaRondaUnaSolaVez() {
         when(aleatorio.nextInt(6)).thenReturn(TipoEventoGlobal.FIAT_600.ordinal());
         when(temporizador.programarTemporizadorSiNoExiste(eq(codigo), eq(60), any(Runnable.class)))
                 .thenReturn(true);
@@ -166,8 +166,8 @@ class EventosGlobalesIntegracionTest {
         assertEquals(TipoEventoGlobal.FIAT_600, partida.getEventoGlobal().getEvento().getTipoEventoGlobal());
         assertEquals(2400, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
         assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(2)).getDinero());
-        assertEquals(13, partidas.obtenerJugadorPorId(jugadores.get(2)).getPosicionActual());
-        verify(dados, never()).tirarDados();
+        assertEquals(25, partidas.obtenerJugadorPorId(jugadores.get(2)).getPosicionActual());
+        verify(dados, times(1)).tirarDados();
     }
 
     @Test
