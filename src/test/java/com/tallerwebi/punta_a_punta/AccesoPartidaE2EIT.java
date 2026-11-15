@@ -2,166 +2,40 @@ package com.tallerwebi.punta_a_punta;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.microsoft.playwright.Browser;
-import com.microsoft.playwright.BrowserContext;
-import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.tallerwebi.punta_a_punta.vistas.VistaHome;
-import com.tallerwebi.punta_a_punta.vistas.VistaLogin;
-import com.tallerwebi.punta_a_punta.vistas.VistaNuevoUsuario;
 import com.tallerwebi.punta_a_punta.vistas.VistaSalaEspera;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 
-public class AccesoPartidaE2EIT {
+public class AccesoPartidaE2EIT extends EscenarioPartidaE2E {
 
-    private static final String CLAVE = "Clave123!";
-    private static final String ANFITRION = "anfitrionE2E";
-    private static final String INVITADO_UNO = "invitadoUnoE2E";
-    private static final String INVITADO_DOS = "invitadoDosE2E";
-    private static final String PAUSA = System.getProperty("e2e.pause", "ninguna");
-    private static final boolean DEBUG =
-        Boolean.getBoolean("e2e.debug") ||
-        "1".equals(System.getenv("PWDEBUG")) ||
-        "console".equals(System.getenv("PWDEBUG"));
-    private static final boolean DIAGNOSTICO = DEBUG || Boolean.getBoolean("e2e.diagnostico");
-
-    static Playwright playwright;
-    static Browser browser;
-
-    BrowserContext contextoAnfitrion;
-    BrowserContext contextoInvitadoUno;
-    BrowserContext contextoInvitadoDos;
-
-    Page paginaAnfitrion;
-    Page paginaInvitadoUno;
-    Page paginaInvitadoDos;
     final Set<Page> paginasConMensajesDeSala = new HashSet<>();
     final String marcaDocumentoSala = UUID.randomUUID().toString();
 
-    @BeforeAll
-    static void abrirNavegador() {
-        if (!List.of("ninguna", "inicio", "sala", "fin").contains(PAUSA)) {
-            throw new IllegalArgumentException("e2e.pause debe ser ninguna, inicio, sala o fin");
-        }
-        Boolean headless = !DEBUG && "ninguna".equals(PAUSA);
-        Double slowMo = Double.parseDouble(System.getProperty("e2e.slowMo", DEBUG ? "250" : "0"));
-        if (!Double.isFinite(slowMo) || slowMo < 0) {
-            throw new IllegalArgumentException(
-                "e2e.slowMo debe ser un numero finito mayor o igual a cero"
-            );
-        }
-        diagnostico(
-            "Inicializando Playwright; clase cargada desde " +
-                AccesoPartidaE2EIT.class.getResource("AccesoPartidaE2EIT.class")
-        );
-        playwright = Playwright.create();
-
-        browser = playwright
-            .chromium()
-            .launch(new BrowserType.LaunchOptions().setHeadless(headless).setSlowMo(slowMo));
-        diagnostico(
-            "Chromium " +
-                browser.version() +
-                " conectado=" +
-                browser.isConnected() +
-                ", headless=" +
-                headless +
-                ", slowMo=" +
-                slowMo +
-                ", pausa=" +
-                PAUSA
-        );
-    }
-
-    @AfterAll
-    static void cerrarNavegador() {
-        diagnostico("Cerrando Chromium y Playwright");
-        try {
-            if (browser != null) {
-                browser.close();
-            }
-        } finally {
-            if (playwright != null) {
-                playwright.close();
-            }
-        }
-    }
-
-    @BeforeEach
-    public void prepararEscenario(TestInfo testInfo) {
-        diagnostico(
-            "Preparando " +
-                testInfo.getTestMethod().orElseThrow().getName() +
-                "; limpieza protegida de DB_NAME=" +
-                System.getProperty("DB_NAME")
-        );
-        ReiniciarDB.limpiarBaseDeDatos();
-
-        contextoAnfitrion = browser.newContext();
-        contextoInvitadoUno = browser.newContext();
-        contextoInvitadoDos = browser.newContext();
-
-        paginaAnfitrion = contextoAnfitrion.newPage();
-        paginaInvitadoUno = contextoInvitadoUno.newPage();
-        paginaInvitadoDos = contextoInvitadoDos.newPage();
-
-        assertEquals(3, browser.contexts().size());
-        for (Page pagina : paginas()) {
-            assertEquals(List.of(pagina), pagina.context().pages());
-            assertTrue(
-                pagina.context().cookies().isEmpty(),
-                "Cada contexto debe comenzar sin cookies"
-            );
-            assertFalse(pagina.isClosed());
-            observarMensajesDeSala(pagina);
-        }
-        assertSame(contextoAnfitrion, paginaAnfitrion.context());
-        assertSame(contextoInvitadoUno, paginaInvitadoUno.context());
-        assertSame(contextoInvitadoDos, paginaInvitadoDos.context());
-        diagnostico("Creados tres BrowserContext independientes, cada uno con una pagina abierta");
-        pausarSiCorresponde("inicio");
-    }
-
-    @AfterEach
-    void limpiarEscenario() {
-        diagnostico("Cerrando los tres contextos");
-        // Intentar cerrar todos los contextos incluso si uno ya se cerro durante la depuracion.
-        try {
-            if (contextoAnfitrion != null) {
-                contextoAnfitrion.close();
-            }
-        } finally {
-            try {
-                if (contextoInvitadoUno != null) {
-                    contextoInvitadoUno.close();
-                }
-            } finally {
-                if (contextoInvitadoDos != null) {
-                    contextoInvitadoDos.close();
-                }
-            }
-        }
-    }
-
     @Test
     void dadoQueTresUsuariosSeRegistranYSeUnenAUnaSalaCuandoInicianUnaPartidaEntoncesTodosIngresanAlTablero() {
+        for (Page pagina : paginas()) {
+            observarMensajesDeSala(pagina);
+        }
+        iniciarPartidaConTresJugadores();
+
+        diagnostico("Etapa 7: primer turno y permiso para tirar segun la identidad de cada sesion");
+        entoncesTodosIdentificanElMismoPrimerTurno();
+
+        diagnostico("Escenarios completos");
+        pausarSiCorresponde("fin");
+    }
+
+    private void iniciarPartidaConTresJugadores() {
         diagnostico("Etapa 1: registro e inicio de sesion");
         dadoQueUnUsuarioSeRegistraEIniciaSesion(paginaAnfitrion, ANFITRION, "juli@unlam.edu.ar");
         assertTrue(
@@ -254,73 +128,11 @@ public class AccesoPartidaE2EIT {
         pausarSiCorresponde("sala");
 
         diagnostico("Etapa 6: inicio de la misma partida en las tres sesiones");
-        new VistaSalaEspera(paginaAnfitrion).iniciarPartida();
-
-        //Todos ingresan al tablero
+        iniciarPartidaYEsperarTableros(codigoSala);
         for (Page pagina : paginas()) {
-            pagina.waitForURL(Pattern.compile(".*/partida\\?codigo=" + codigoSala + "(?:&.*)?$"));
-
             entoncesSeVisualizaElTableroInicial(pagina);
             assertEquals(codigoSala, pagina.evaluate("() => window.codigoSala"));
         }
-
-        diagnostico("Etapa 7: primer turno y permiso para tirar segun la identidad de cada sesion");
-        entoncesTodosIdentificanElMismoPrimerTurno();
-
-        diagnostico("Escenarios completos");
-        pausarSiCorresponde("fin");
-    }
-
-    private void dadoQueUnUsuarioSeRegistraEIniciaSesion(Page pagina, String nombre, String email) {
-        VistaLogin vistaLogin = new VistaLogin(pagina);
-
-        vistaLogin.darClickEnRegistrarse();
-        pagina.waitForURL("**/nuevo-usuario*");
-
-        VistaNuevoUsuario vistaRegistro = new VistaNuevoUsuario(pagina);
-
-        vistaRegistro.escribirUsername(nombre);
-        vistaRegistro.escribirEMAIL(email);
-        vistaRegistro.escribirClave(CLAVE);
-        vistaRegistro.escribirRepetirClave(CLAVE);
-        vistaRegistro.darClickEnRegistrarme();
-
-        pagina.waitForURL("**/login*");
-
-        vistaLogin = new VistaLogin(pagina);
-
-        vistaLogin.escribirEMAIL(email);
-        vistaLogin.escribirClave(CLAVE);
-        vistaLogin.darClickEnIniciarSesion();
-
-        pagina.waitForURL("**/home*");
-        new VistaHome(pagina).verificarUsuarioAutenticado(nombre);
-    }
-
-    private String cuandoElAnfitrionCreaUnaSala() {
-        VistaHome vistaHome = new VistaHome(paginaAnfitrion);
-
-        vistaHome.darClickEnJugarAhora();
-        vistaHome.darClickEnCrearPartida();
-
-        paginaAnfitrion.waitForURL("**/sala-de-espera*");
-
-        String codigo = new VistaSalaEspera(paginaAnfitrion).obtenerCodigoSala();
-
-        assertFalse(codigo.isBlank(), "El anfitrion deberia obtener un codigo de sala");
-
-        return codigo;
-    }
-
-    private void cuandoElInvitadoSeUneALaSala(Page pagina, String codigo) {
-        VistaHome vistaHome = new VistaHome(pagina);
-
-        vistaHome.darClickEnJugarAhora();
-        vistaHome.darClickEnUnirseAPartida(codigo);
-
-        pagina.waitForURL("**/sala-de-espera*");
-
-        assertEquals(codigo, new VistaSalaEspera(pagina).obtenerCodigoSala());
     }
 
     private void esperarConexionWebSocket(Page pagina) {
@@ -373,14 +185,8 @@ public class AccesoPartidaE2EIT {
     private void entoncesTodosIdentificanElMismoPrimerTurno() {
         String jugadorEnTurno = obtenerJugadorEnTurno(paginaAnfitrion);
 
-        assertTrue(
-            nombres().contains(jugadorEnTurno),
-            "El primer turno debe pertenecer a uno de los tres jugadores"
-        );
-        Integer botonesHabilitados = 0;
         for (Integer i = 0; i < paginas().size(); i++) {
             Page pagina = paginas().get(i);
-            PlaywrightAssertions.assertThat(nombreJugadorEnTurno(pagina)).hasText(jugadorEnTurno);
             Locator tarjetaPropia = pagina
                 .locator(".jugadores .jugador")
                 .filter(
@@ -396,23 +202,8 @@ public class AccesoPartidaE2EIT {
                 pagina.evaluate("() => String(window.usuarioSesionId)"),
                 "El tablero debe conservar la identidad de la sesion"
             );
-            if (nombres().get(i).equals(jugadorEnTurno)) {
-                PlaywrightAssertions.assertThat(pagina.locator("#btn-tirar")).isEnabled();
-                botonesHabilitados++;
-            } else {
-                PlaywrightAssertions.assertThat(pagina.locator("#btn-tirar")).isDisabled();
-            }
         }
-        assertEquals(1, botonesHabilitados, "Solo la sesion del jugador en turno puede tirar");
-    }
-
-    private String obtenerJugadorEnTurno(Page pagina) {
-        PlaywrightAssertions.assertThat(nombreJugadorEnTurno(pagina)).hasCount(1);
-        return nombreJugadorEnTurno(pagina).innerText().trim();
-    }
-
-    private Locator nombreJugadorEnTurno(Page pagina) {
-        return pagina.locator(".jugadores .jugador:has(.indicador-turno) " + ".nombre-jugador");
+        verificarPermisoDeTirada(jugadorEnTurno);
     }
 
     private void entoncesLasSesionesSonIndependientes() {
@@ -455,31 +246,5 @@ public class AccesoPartidaE2EIT {
                 }
             })
         );
-    }
-
-    private void pausarSiCorresponde(String etapa) {
-        if (etapa.equals(PAUSA)) {
-            System.out.println(
-                "[AccesoPartidaE2EIT] Pausa en " +
-                    etapa +
-                    "; inspeccionar las tres ventanas y pulsar Resume en Playwright Inspector."
-            );
-            paginaAnfitrion.bringToFront();
-            paginaAnfitrion.pause();
-        }
-    }
-
-    private static void diagnostico(String mensaje) {
-        if (DIAGNOSTICO) {
-            System.out.println("[AccesoPartidaE2EIT] " + mensaje);
-        }
-    }
-
-    private List<String> nombres() {
-        return List.of(ANFITRION, INVITADO_UNO, INVITADO_DOS);
-    }
-
-    private List<Page> paginas() {
-        return List.of(paginaAnfitrion, paginaInvitadoUno, paginaInvitadoDos);
     }
 }
