@@ -247,7 +247,8 @@ public class ServicioPartidaImpl implements ServicioPartida {
         }
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        if (turnoPausado(partida)) return;
+        if (partida.getEventoGlobal().estaActivo() || turnoPausadoPorDeuda(codigoUnico)) return;
+        if (!triviaPermiteAvanzar(partida)) return;
         DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.cancelarTemporizador(codigoUnico));
         Integer indiceActual = servicioTurno.obtenerIndiceTurnoActual(partida);
         incrementarRondas(partida);
@@ -269,8 +270,22 @@ public class ServicioPartidaImpl implements ServicioPartida {
         candidato.setTiroEnTurno(false);
         partida.setIndiceTurnoActual(candidato.getOrden());
         repositorioPartida.guardarPartida(partida);
+        if (participacion.estaBloqueadaPorTrivia(partida)) {
+            // El turno pasa, pero el siguiente jugador todavía no puede tirar: primero se juega la
+            // trivia. Su turno queda en pausa y, al terminar la trivia, actualizarPausaPorDeuda
+            // activa el evento global si toca esta ronda o, si no, le habilita el turno completo.
+            DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.pausar(codigoUnico));
+            return;
+        }
         if (eventosGlobales != null && eventosGlobales.activarSiCorresponde(partida)) return;
         notificarTurnoActual(partida, true);
+    }
+
+    // Con una trivia pendiente solo puede cerrar su turno quien ya tiró (el que cayó en Trivia).
+    private boolean triviaPermiteAvanzar(Partida partida) {
+        if (!participacion.estaBloqueadaPorTrivia(partida)) return true;
+        Jugador actual = servicioTurno.obtenerJugadorActual(partida);
+        return actual != null && Boolean.TRUE.equals(actual.getTiroEnTurno());
     }
 
     @Override
@@ -449,7 +464,7 @@ public class ServicioPartidaImpl implements ServicioPartida {
         if (!turnoSigueVigente(partida, marcaProgramada)) {
             return;
         }
-        if (participacion.estaBloqueadaPorTrivia(partida)) return;
+        if (!triviaPermiteAvanzar(partida)) return;
         if (turnoPausadoPorDeuda(codigoUnico)) {
             actualizarPausaPorDeuda(codigoUnico);
             return;
@@ -520,10 +535,46 @@ public class ServicioPartidaImpl implements ServicioPartida {
                 Integer restantes = gestorTemporizador.consumirPausa(codigo);
                 if (restantes != null && partida.getEstado() == EstadoPartida.EN_CURSO
                         && !partida.getEventoGlobal().estaActivo()) {
-                    notificarTurnoActual(partida, true, restantes);
+                    if (eventoGlobalPendiente(partida)) {
+                        programarEventoPendiente(partida, restantes);
+                    } else {
+                        notificarTurnoActual(partida, true, restantes);
+                    }
                 }
             }
         }));
+    }
+
+    /*
+     * El evento global de esta ronda quedó postergado (por ejemplo, por una trivia) y el
+     * jugador del turno todavía no tiró: tiene que aparecer antes de que pueda hacerlo.
+     */
+    private boolean eventoGlobalPendiente(Partida partida) {
+        if (eventosGlobales == null || !eventosGlobales.tieneActivacionPendiente(partida)) return false;
+        Jugador actual = servicioTurno.obtenerJugadorActual(partida);
+        return actual != null && !Boolean.TRUE.equals(actual.getTiroEnTurno());
+    }
+
+    // Se activa en una transacción propia del temporizador: esta lectura es de solo lectura.
+    private void programarEventoPendiente(Partida partida, Integer restantes) {
+        String codigo = partida.getCodigoUnico();
+        MarcaTurno marca = MarcaTurno.de(partida);
+        gestorTemporizador.programarTemporizador(codigo, 0,
+            () -> activarEventoPendiente(codigo, marca, restantes));
+    }
+
+    private void activarEventoPendiente(String codigo, MarcaTurno marca, Integer restantes) {
+        Partida partida = obtenerPartida(codigo);
+        if (partida == null) return;
+        repositorioPartida.bloquearPartida(partida);
+        if (!turnoSigueVigente(partida, marca)) return;
+        if (turnoPausado(partida)) {
+            // Otra pausa llegó primero: se conserva el tiempo del jugador para cuando termine.
+            DespuesDeConfirmar.ejecutar(() -> gestorTemporizador.pausar(codigo, restantes));
+            return;
+        }
+        if (eventosGlobales.activarSiCorresponde(partida)) return;
+        notificarTurnoActual(partida, true, restantes);
     }
 
     // Identifica un turno concreto: cambia cada vez que se avanza el turno.

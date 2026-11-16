@@ -1125,4 +1125,41 @@ public class GestorTriviaPartidaTest {
 
         assertTrue(conAvisoRoto.responder(CODIGO, 1L, 1, CORRECTA));
     }
+
+    @Test
+    public void caerEnTriviaBloqueaLaPartidaMientrasGiraLaRuleta() {
+        gestor.reservar(CODIGO);
+
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void laReservaNoImpideQueLaRuletaInicieLaTrivia() {
+        gestor.reservar(CODIGO);
+
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+
+        assertFalse(trivia.estaFinalizada());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void liberarUnaReservaSinTriviaReanudaLaPartida() {
+        gestor.reservar(CODIGO);
+
+        gestor.liberarReserva(CODIGO);
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        verify(servicioPartida).actualizarPausaPorDeuda(CODIGO);
+    }
+
+    @Test
+    public void unInicioRechazadoLiberaLaReserva() {
+        gestor.reservar(CODIGO);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(null);
+
+        assertThrows(AccionTriviaInvalidaException.class, () -> gestor.iniciar(CODIGO, DificultadRuleta.FACIL));
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
 }

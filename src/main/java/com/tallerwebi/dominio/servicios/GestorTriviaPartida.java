@@ -68,6 +68,9 @@ public class GestorTriviaPartida {
     private final Map<String, Trivia> trivias = new HashMap<>();
     // Permite consultar el bloqueo sin esperar al gestor, evitando bloqueos cruzados con la base de datos.
     private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
+    // Partidas en las que alguien cayó en Trivia y la ruleta todavía no sorteó la dificultad.
+    // Ya cuentan como bloqueadas: así un evento global no puede activarse en el medio.
+    private final Set<String> partidasReservadas = ConcurrentHashMap.newKeySet();
     private final Map<String, List<Jugador>> participantesAlInicioDeRonda = new HashMap<>();
     // Guarda las tareas de cierre para cancelarlas cuando termina la ronda o se cancela la trivia.
     private final Map<String, ScheduledFuture<?>> cierresProgramados = new HashMap<>();
@@ -111,12 +114,19 @@ public class GestorTriviaPartida {
 
     // Lo llama la integración con la ruleta cuando se sortea la dificultad.
     public synchronized Trivia iniciar(String codigoPartida, DificultadRuleta dificultad) {
-        validarInicio(codigoPartida, dificultad);
-        Partida partida = servicioPartida.obtenerPartida(codigoPartida);
-        if (partida == null) {
-            throw new AccionTriviaInvalidaException("La partida no existe o ya terminó.");
+        Partida partida;
+        try {
+            validarInicio(codigoPartida, dificultad);
+            partida = servicioPartida.obtenerPartida(codigoPartida);
+            if (partida == null) {
+                throw new AccionTriviaInvalidaException("La partida no existe o ya terminó.");
+            }
+        } catch (RuntimeException ex) {
+            liberarReserva(codigoPartida);
+            throw ex;
         }
         partidasBloqueadas.add(codigoPartida);
+        partidasReservadas.remove(codigoPartida);
         try {
             servicioPartida.actualizarPausaPorDeuda(codigoPartida);
             Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
@@ -137,13 +147,35 @@ public class GestorTriviaPartida {
     }
 
     public boolean estaBloqueandoPartida(String codigoPartida) {
+        return codigoPartida != null
+                && (partidasBloqueadas.contains(codigoPartida) || partidasReservadas.contains(codigoPartida));
+    }
+
+    /**
+     * Bloquea la partida desde que un jugador cae en Trivia, antes de que gire la ruleta.
+     * No usa el monitor del gestor: se llama con la partida bloqueada en la base de datos.
+     */
+    public void reservar(String codigoPartida) {
+        if (codigoPartida != null) partidasReservadas.add(codigoPartida);
+    }
+
+    /** Quita una reserva que no llegó a convertirse en trivia (ruleta fallida o jugada revertida). */
+    public void liberarReserva(String codigoPartida) {
+        if (codigoPartida == null || !partidasReservadas.remove(codigoPartida)) return;
+        if (!estaBloqueandoPartida(codigoPartida)) {
+            servicioPartida.actualizarPausaPorDeuda(codigoPartida);
+        }
+    }
+
+    // Trivia en juego o premio pendiente; no incluye la espera de la ruleta.
+    private boolean tieneTriviaEnCurso(String codigoPartida) {
         return codigoPartida != null && partidasBloqueadas.contains(codigoPartida);
     }
 
     //actuliza los participantes de la trivia
     @Transactional(propagation = Propagation.NOT_SUPPORTED)//significa q este metodo se ejecuta sin una transaccion.
     public synchronized void participantesCambiaron(String codigoPartida) {
-        if (!estaBloqueandoPartida(codigoPartida)) return;
+        if (!tieneTriviaEnCurso(codigoPartida)) return;
         Trivia trivia = trivias.get(codigoPartida);
         if (trivia == null) return;
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
@@ -179,7 +211,7 @@ public class GestorTriviaPartida {
     private void actualizarBloqueo(String codigoPartida) {
         Trivia trivia = trivias.get(codigoPartida);
         boolean bloqueada = trivia != null && (!trivia.estaFinalizada()
-                || (trivia.getGanador() != null && (estaBloqueandoPartida(codigoPartida)
+                || (trivia.getGanador() != null && (tieneTriviaEnCurso(codigoPartida)
                         || !trivia.estaPremioEntregado())));
         if (bloqueada) {
             partidasBloqueadas.add(codigoPartida);
@@ -249,7 +281,7 @@ public class GestorTriviaPartida {
         if (codigoPartida == null || codigoPartida.isBlank() || dificultad == null) {
             throw new IllegalArgumentException("Los datos para iniciar la trivia son obligatorios.");
         }
-        if (estaBloqueandoPartida(codigoPartida)) {
+        if (tieneTriviaEnCurso(codigoPartida)) {
             throw new AccionTriviaInvalidaException("Ya hay una trivia en juego o un premio pendiente en esta partida.");
         }
     }

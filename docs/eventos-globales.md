@@ -88,6 +88,26 @@ estado al recargar. WebSocket solicita una nueva lectura; una consulta periódic
 sirve también para recuperar mensajes perdidos y reprogramar vencimientos tras
 una reconexión.
 
+## Convivencia con la trivia
+
+El evento global y la trivia nunca se muestran juntos. Antes, al caer en Trivia la
+ruleta esperaba 10 segundos sin bloquear la partida; si en ese lapso el turno pasaba
+a una ronda múltiplo de cinco, se activaba el evento y, al girar la ruleta, empezaba
+también la trivia.
+
+- `ServicioJugadaImpl` reserva la trivia (`GestorRuletaPartida.reservarTrivia`) dentro
+  de la misma transacción de la jugada. Desde ese momento `estaBloqueadaPorTrivia`
+  devuelve verdadero, también para la tirada automática por vencimiento. Si la
+  transacción se revierte, la reserva se deshace (`DespuesDeConfirmar.siSeRevierte`);
+  si la ruleta no se puede activar o la trivia no inicia, la reserva se libera.
+- Con la trivia pendiente, solo quien ya tiró puede cerrar su turno. El turno pasa al
+  siguiente jugador, pero queda en pausa: no se activa el evento ni se habilita la tirada.
+- `ServicioEventoImpl.activarSiCorresponde` no activa nada mientras haya una trivia;
+  el evento queda pendiente (`tieneActivacionPendiente`).
+- Cuando la trivia termina y se levanta la pausa, si a la ronda le toca un evento
+  pendiente y el jugador del turno todavía no tiró, el evento aparece primero. Al
+  cerrarse, el turno se reanuda como en cualquier otro evento.
+
 ## Verificación
 
 Las pruebas cubren los 18 escenarios base (seis eventos con 2, 3 y 4 jugadores),

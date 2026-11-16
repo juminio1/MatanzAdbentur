@@ -29,6 +29,13 @@ public class GestorTemporizadorPartida implements org.springframework.beans.fact
         pausados.put(codigo, restantes == null ? 60 : restantes);
     }
 
+    // Pausa con un tiempo conocido, cuando el temporizador ya no existe para medirlo.
+    public synchronized void pausar(String codigo, Integer segundos) {
+        if (pausados.containsKey(codigo)) return;
+        cancelarTemporizador(codigo);
+        pausados.put(codigo, segundos == null ? 60 : segundos);
+    }
+
     public synchronized Integer consumirPausa(String codigo) {
         return pausados.remove(codigo);
     }
