@@ -207,24 +207,9 @@
     line-height: 1;
 }
 
-.ruleta-btn-cerrar {
-    display: block;
-    margin: 12px auto 0;
-    padding: 8px 20px;
 
-    background: #393939;
-    color: #ffffff;
-    border: 1px solid #777777;
-    border-radius: 9px;
 
-    font-size: 14px;
-    cursor: pointer;
-}
 
-.ruleta-btn-cerrar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
 
 @media (max-height: 740px) {
     .panel-ruleta {

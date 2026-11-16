@@ -46,12 +46,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class GestorTriviaPartida {
 
     // Debe coincidir con el límite de respuesta de ServicioTriviaImpl.
-    public static final int SEGUNDOS_POR_PREGUNTA = 30;
+    public static final int SEGUNDOS_POR_PREGUNTA = 20;
     public static final String PREMIO_PLATA = "PLATA";
     public static final String PREMIO_ROBAR = "ROBAR";
 
     // Margen para que el cierre programado ocurra después del vencimiento.
     private static final long MARGEN_CIERRE_MILISEGUNDOS = 250;
+    private static final long PAUSA_TRAS_CIERRE_MILISEGUNDOS = 2500;
     // Registra fallos de avisos o premios automáticos sin interrumpir los pasos restantes del torneo.
     private static final Logger LOG = LoggerFactory.getLogger(GestorTriviaPartida.class);
 
@@ -66,6 +67,8 @@ public class GestorTriviaPartida {
     // Controla el tiempo de las preguntas y permite adelantarlo en los tests sin esperar.
     private final Clock reloj;
     private final Map<String, Trivia> trivias = new HashMap<>();
+    // Conserva los torneos de la partida para reconstruir el mismo historial al recargar.
+    private final Map<String, List<Trivia>> torneosPorPartida = new HashMap<>();
     // Permite consultar el bloqueo sin esperar al gestor, evitando bloqueos cruzados con la base de datos.
     private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
     // Partidas en las que alguien cayó en Trivia y la ruleta todavía no sorteó la dificultad.
@@ -130,7 +133,9 @@ public class GestorTriviaPartida {
         try {
             servicioPartida.actualizarPausaPorDeuda(codigoPartida);
             Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
+            trivia.setInicioCoordinado(true);
             trivias.put(codigoPartida, trivia);
+            torneosPorPartida.computeIfAbsent(codigoPartida, codigo -> new ArrayList<>()).add(trivia);
             if (trivia.estaFinalizada()) {
                 publicar(codigoPartida, TipoAvisoTrivia.FINALIZADA, trivia, null);
             } else {
@@ -222,6 +227,11 @@ public class GestorTriviaPartida {
     /** Lee la trivia de la partida (en juego o terminada) sin que cambie mientras se arma la respuesta. */
     public synchronized <T> T consultarEstado(String codigoPartida, Function<Trivia, T> lectura) {
         return lectura.apply(buscar(codigoPartida));
+    }
+
+    public synchronized <T> List<T> consultarHistorial(String codigoPartida, Function<Trivia, T> lectura) {
+        return torneosPorPartida.getOrDefault(codigoPartida, List.of()).stream()
+                .filter(Trivia::estaFinalizada).map(lectura).toList();
     }
 
     /** Lee la pregunta en juego. Falla si la trivia ya terminó. */
@@ -377,11 +387,13 @@ public class GestorTriviaPartida {
                 eliminados.add(jugador);
             }
         }
+        // El cierre informa el resultado anterior antes de comunicar la pregunta siguiente.
         publicar(new EventoTriviaActualizada(codigoPartida, TipoAvisoTrivia.RONDA_CERRADA, trivia,
                 preguntaAnterior.getRespuestaCorrecta(), rondaAnterior, eliminados));
         if (trivia.estaFinalizada()) {
             finalizar(codigoPartida, trivia);
         } else {
+            trivia.setInicioRonda(reloj.instant().plusMillis(PAUSA_TRAS_CIERRE_MILISEGUNDOS));
             comenzarRonda(codigoPartida, trivia);
         }
     }

@@ -415,7 +415,8 @@ describe("Modal de trivia", () => {
             dialogo.querySelector(".trivia__robar-opcion").click();
             await procesarPendientes();
 
-            modal.mostrarFinal({ ganador: "Rafa", soyGanador: true, montoPremio: 500, tipoPremio: "ROBAR" });
+            modal.mostrarFinal({ ganador: "Rafa", soyGanador: true, montoPremio: 500, tipoPremio: "ROBAR",
+                propiedadRobada: "Feria La Salada", propietarioAnterior: "Emi" });
 
             expect(elemento("trivia-premio").textContent).toBe("Premio: Feria La Salada, robada a Emi");
         });
@@ -424,6 +425,11 @@ describe("Modal de trivia", () => {
             modal.mostrarFinal({ ganador: "Emi", montoPremio: 500, tipoPremio: "ROBAR" });
 
             expect(elemento("trivia-premio").textContent).toBe("Premio: robó una propiedad");
+        });
+
+        it("muestraALosEspectadoresLaPropiedadYVictimaConfirmadas", () => {
+            modal.mostrarFinal({ ganador:"Ana",tipoPremio:"ROBAR",propiedadRobada:"Terminal",propietarioAnterior:"Luna" });
+            expect(elemento("trivia-premio").textContent).toBe("Premio: Terminal, robada a Luna");
         });
 
         it("deberiaVolverALosDosBotonesDesdeLaLista", async () => {

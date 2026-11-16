@@ -55,6 +55,45 @@ public class GestorRuletaPartidaTest {
     }
 
     @Test
+    public void sortearNoDebeConsumirElTiempoDeLaPreguntaDuranteLaPresentacion() {
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
+        gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
+        gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
+        verify(gestorTriviaMock, never()).iniciar(any(), any());
+    }
+
+    @Test
+    public void unaConsultaDeParticipantesFallidaLiberaLaReservaSinRepetirElSorteo() {
+        var partidas = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioPartida.class);
+        when(partidas.obtenerPartida("ABC123")).thenThrow(new IllegalStateException("Sin base de datos"));
+        gestorRuleta = new GestorRuletaPartida(servicioRuletaMock, notificadorMock, planificadorMock,
+                gestorTriviaMock, partidas, mock(ServicioTriviaImpl.class));
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
+        gestorRuleta.reservarTrivia("ABC123");
+        gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
+        Runnable automatico = capturarSorteoAutomatico();
+
+        assertThrows(IllegalStateException.class, () -> gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L));
+
+        verify(gestorTriviaMock).liberarReserva("ABC123");
+        EstadoRuletaDTO resultado = gestorRuleta.obtenerEstado("ABC123");
+        assertEquals("CANCELADA", resultado.estado().name());
+        verify(notificadorMock).notificarRuleta("ABC123", resultado);
+        assertEquals(resultado, gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L));
+        automatico.run();
+        gestorRuleta.confirmarPresentacion("ABC123", "ACT-1", 10L);
+        verify(servicioRuletaMock, times(1)).sortearDificultad();
+        verify(gestorTriviaMock, never()).iniciar(any(), any());
+        verify(gestorTriviaMock, times(1)).liberarReserva("ABC123");
+        gestorRuleta.reservarTrivia("ABC123");
+        assertDoesNotThrow(() -> gestorRuleta.activarRuleta("ABC123", "ACT-2", 10L));
+        automatico.run();
+        assertThrows(IllegalStateException.class,
+                () -> gestorRuleta.confirmarPresentacion("ABC123", "ACT-1", 10L));
+        verify(gestorTriviaMock, times(1)).liberarReserva("ABC123");
+    }
+
+    @Test
     public void deberiaSortearUnaSolaVezAnteSolicitudesDuplicadas() {
 
         when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
@@ -71,6 +110,7 @@ public class GestorRuletaPartidaTest {
                         "ABC123", "ACT-1", 10L
                 );
 
+        completarPresentacion(0);
         assertEquals(DificultadRuleta.FACIL, primero.dificultad());
         assertEquals(EstadoRuleta.SORTEADA, primero.estado());
         assertEquals(primero, segundo);
@@ -167,6 +207,7 @@ public class GestorRuletaPartidaTest {
 
         // Simula el vencimiento del temporizador del servidor.
         tarea.getValue().run();
+        completarPresentacion(0);
         verify(gestorTriviaMock, times(1)).iniciar("ABC123", DificultadRuleta.MEDIO);
         verifyNoMoreInteractions(gestorTriviaMock);
 
@@ -210,6 +251,7 @@ public class GestorRuletaPartidaTest {
 
         EstadoRuletaDTO resultado = gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
 
+        completarPresentacion(0);
         InOrder orden = inOrder(notificadorMock, gestorTriviaMock);
         orden.verify(notificadorMock).notificarRuleta("ABC123", resultado);
         orden.verify(gestorTriviaMock).iniciar("ABC123", DificultadRuleta.DIFICIL);
@@ -227,6 +269,7 @@ public class GestorRuletaPartidaTest {
         gestorRuleta.obtenerEstado("ABC123");
         gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
 
+        completarPresentacion(0);
         verify(gestorTriviaMock, times(1)).iniciar("ABC123", DificultadRuleta.FACIL);
         verifyNoMoreInteractions(gestorTriviaMock);
     }
@@ -238,8 +281,10 @@ public class GestorRuletaPartidaTest {
         gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
         gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
 
+        completarPresentacion(0);
         gestorRuleta.activarRuleta("ABC123", "ACT-2", 20L);
         gestorRuleta.sortearDificultad("ABC123", "ACT-2", 20L);
+        completarPresentacion(1);
 
         verify(gestorTriviaMock).iniciar("ABC123", DificultadRuleta.FACIL);
         verify(gestorTriviaMock).iniciar("ABC123", DificultadRuleta.MEDIO);
@@ -254,8 +299,8 @@ public class GestorRuletaPartidaTest {
         gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
         Runnable sorteo = capturarSorteoAutomatico();
 
-        assertThrows(IllegalStateException.class,
-                () -> gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L));
+        gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L);
+        assertThrows(IllegalStateException.class, () -> completarPresentacion(0));
         EstadoRuletaDTO resultado = gestorRuleta.obtenerEstado("ABC123");
         assertEquals(EstadoRuleta.SORTEADA, resultado.estado());
         assertEquals(DificultadRuleta.MEDIO, resultado.dificultad());
@@ -277,6 +322,7 @@ public class GestorRuletaPartidaTest {
         assertThrows(IllegalStateException.class,
                 () -> gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L));
 
+        completarPresentacion(0);
         verify(gestorTriviaMock, times(1)).iniciar("ABC123", DificultadRuleta.DIFICIL);
         verifyNoMoreInteractions(gestorTriviaMock);
         assertEquals(EstadoRuleta.SORTEADA, gestorRuleta.obtenerEstado("ABC123").estado());
@@ -304,4 +350,109 @@ public class GestorRuletaPartidaTest {
 
         verify(gestorTriviaMock, never()).liberarReserva(any());
     }
+    private Runnable tareaPresentacion(long segundos, int indice) {
+        ArgumentCaptor<Runnable> tarea = ArgumentCaptor.forClass(Runnable.class);
+        verify(planificadorMock, org.mockito.Mockito.atLeastOnce()).schedule(tarea.capture(), eq(segundos), eq(TimeUnit.SECONDS));
+        return tarea.getAllValues().get(indice);
+    }
+
+    @Test
+    public void unaProgramacionFallidaCancelaLaTareaParcialYLiberaLaReserva() {
+        var minimo = mock(java.util.concurrent.ScheduledFuture.class);
+        org.mockito.Mockito.doReturn(minimo).when(planificadorMock)
+                .schedule(any(Runnable.class), eq(7L), eq(TimeUnit.SECONDS));
+        when(planificadorMock.schedule(any(Runnable.class), eq(45L), eq(TimeUnit.SECONDS)))
+                .thenThrow(new java.util.concurrent.RejectedExecutionException("Planificador cerrado"));
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.MEDIO);
+        gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
+
+        assertThrows(java.util.concurrent.RejectedExecutionException.class,
+                () -> gestorRuleta.sortearDificultad("ABC123", "ACT-1", 10L));
+        completarPresentacion(0);
+        gestorRuleta.confirmarPresentacion("ABC123", "ACT-1", 10L);
+
+        verify(minimo).cancel(false);
+        verify(gestorTriviaMock).liberarReserva("ABC123");
+        verify(gestorTriviaMock, never()).iniciar(any(), any());
+    }
+
+    private void completarPresentacion(int indice) {
+        tareaPresentacion(7L, indice).run();
+    }
+
+    private void esperarJugadores(Long... ids) {
+        var partidas = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioPartida.class);
+        var reglas = mock(ServicioTriviaImpl.class);
+        var partida = new com.tallerwebi.dominio.entidades.Partida();
+        var jugadores = java.util.Arrays.stream(ids).map(id -> {
+            var jugador = new com.tallerwebi.dominio.entidades.Jugador(); jugador.setId(id); return jugador;
+        }).toList();
+        when(partidas.obtenerPartida("ABC123")).thenReturn(partida);
+        when(reglas.participantesHabilitados(partida)).thenReturn(jugadores);
+        gestorRuleta = new GestorRuletaPartida(servicioRuletaMock, notificadorMock, planificadorMock,
+                gestorTriviaMock, partidas, reglas);
+    }
+
+    @Test
+    public void esperaElMinimoYLasConfirmacionesDeTodosLosHabilitadosPeroNoDeEspectadores() {
+        esperarJugadores(10L,20L);
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
+        gestorRuleta.activarRuleta("ABC123","ACT-1",10L);
+        gestorRuleta.sortearDificultad("ABC123","ACT-1",10L);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",99L);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L);
+        completarPresentacion(0);
+        verify(gestorTriviaMock,never()).iniciar(any(),any());
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",20L);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",20L);
+        tareaPresentacion(45L,0).run();
+        verify(gestorTriviaMock,times(1)).iniciar("ABC123",DificultadRuleta.FACIL);
+    }
+
+    @Test
+    public void confirmacionesAnticipadasNoPermitenEmpezarAntesDelMinimo() {
+        esperarJugadores(10L);
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.MEDIO);
+        gestorRuleta.activarRuleta("ABC123","ACT-1",10L);
+        gestorRuleta.sortearDificultad("ABC123","ACT-1",10L);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L);
+        verify(gestorTriviaMock,never()).iniciar(any(),any());
+        completarPresentacion(0);
+        verify(gestorTriviaMock).iniciar("ABC123",DificultadRuleta.MEDIO);
+    }
+
+    @Test
+    public void laDesconexionNoBloqueaIndefinidamenteYElLimiteNoIniciaDosVeces() {
+        esperarJugadores(10L,20L);
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.DIFICIL);
+        gestorRuleta.activarRuleta("ABC123","ACT-1",10L);
+        gestorRuleta.sortearDificultad("ABC123","ACT-1",10L);
+        completarPresentacion(0);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L);
+        verify(gestorTriviaMock,never()).iniciar(any(),any());
+        Runnable limite = tareaPresentacion(45L,0);
+        limite.run(); limite.run(); completarPresentacion(0);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",20L);
+        verify(gestorTriviaMock,times(1)).iniciar("ABC123",DificultadRuleta.DIFICIL);
+    }
+
+    @Test
+    public void unTemporizadorAnteriorNoIniciaElTorneoSiguiente() {
+        esperarJugadores(10L);
+        when(servicioRuletaMock.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
+        gestorRuleta.activarRuleta("ABC123","ACT-1",10L);
+        gestorRuleta.sortearDificultad("ABC123","ACT-1",10L);
+        completarPresentacion(0);
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L);
+        gestorRuleta.activarRuleta("ABC123","ACT-2",10L);
+        gestorRuleta.sortearDificultad("ABC123","ACT-2",10L);
+        tareaPresentacion(45L,0).run();
+        completarPresentacion(1);
+        verify(gestorTriviaMock,times(1)).iniciar(any(),any());
+        assertThrows(IllegalStateException.class,() -> gestorRuleta.confirmarPresentacion("ABC123","ACT-1",10L));
+        gestorRuleta.confirmarPresentacion("ABC123","ACT-2",10L);
+        verify(gestorTriviaMock,times(2)).iniciar(any(),any());
+    }
+
 }

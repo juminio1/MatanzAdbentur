@@ -21,21 +21,50 @@ import org.springframework.stereotype.Service;
 public class GestorRuletaPartida {
 
     private static final int SEGUNDOS_ESPERA = 10;
+    private static final int PRESENTACION_MINIMA_SEGUNDOS = 7;
+    private static final int LIMITE_PRESENTACION_SEGUNDOS = 45;
 
     private final ServicioRuleta servicioRuleta;
     private final NotificadorPartida notificador;
     private final ScheduledExecutorService planificador;
     private final GestorTriviaPartida gestorTrivia;
+    private final com.tallerwebi.dominio.servicios.interfaces.ServicioPartida servicioPartida;
+    private final ServicioTriviaImpl servicioTrivia;
 
     private final Map<String, EstadoRuletaDTO> estados = new HashMap<>();
     private final Map<String, Set<String>> activacionesUsadas = new HashMap<>();
+    private final Map<String, Presentacion> presentaciones = new HashMap<>();
+
+    private static final class Presentacion {
+        private final EstadoRuletaDTO estado;
+        private final Set<Long> pendientes;
+        private boolean minimoCumplido;
+        private java.util.concurrent.ScheduledFuture<?> limite;
+        private java.util.concurrent.ScheduledFuture<?> minimo;
+
+        private Presentacion(EstadoRuletaDTO estado, Set<Long> jugadores) {
+            this.estado = estado;
+            this.pendientes = new HashSet<>(jugadores);
+        }
+    }
 
     public GestorRuletaPartida(ServicioRuleta servicioRuleta, NotificadorPartida notificador,
                                ScheduledExecutorService planificador, GestorTriviaPartida gestorTrivia) {
+        // Las pruebas aisladas no consultan participantes; Spring usa el constructor completo.
+        this(servicioRuleta, notificador, planificador, gestorTrivia, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public GestorRuletaPartida(ServicioRuleta servicioRuleta, NotificadorPartida notificador,
+                               ScheduledExecutorService planificador, GestorTriviaPartida gestorTrivia,
+                               com.tallerwebi.dominio.servicios.interfaces.ServicioPartida servicioPartida,
+                               ServicioTriviaImpl servicioTrivia) {
         this.servicioRuleta = servicioRuleta;
         this.notificador = notificador;
         this.planificador = planificador;
         this.gestorTrivia = gestorTrivia;
+        this.servicioPartida = servicioPartida;
+        this.servicioTrivia = servicioTrivia;
     }
 
     /**
@@ -115,6 +144,9 @@ public class GestorRuletaPartida {
         if (actual != null && actual.estado() == EstadoRuleta.ESPERANDO) {
             throw new IllegalStateException("Ya existe una ruleta activa en esta partida.");
         }
+        if (actual != null && presentaciones.containsKey(actual.codigoPartida())) {
+            throw new IllegalStateException("La presentación anterior todavía no terminó.");
+        }
     }
 
     public synchronized EstadoRuletaDTO sortearDificultad(String codigoPartida, String activacionId, Long idJugador) {
@@ -151,7 +183,7 @@ public class GestorRuletaPartida {
     private EstadoRuletaDTO resolverSorteo(EstadoRuletaDTO actual) {
 
         // Una solicitud repetida devuelve el resultado existente.
-        if (actual.estado() == EstadoRuleta.SORTEADA) {
+        if (actual.estado() != EstadoRuleta.ESPERANDO) {
             return actual;
         }
 
@@ -160,6 +192,7 @@ public class GestorRuletaPartida {
         EstadoRuletaDTO resultado = new EstadoRuletaDTO(actual.codigoPartida(), actual.activacionId(), actual.idJugador(), EstadoRuleta.SORTEADA, dificultad, actual.venceEn());
 
         estados.put(actual.codigoPartida(), resultado);
+        prepararPresentacion(resultado);
 
         IllegalStateException error = null;
         // Se comunica un solo resultado a todos los jugadores.
@@ -169,20 +202,70 @@ public class GestorRuletaPartida {
             error = new IllegalStateException("No se pudo notificar el resultado de la ruleta.", ex);
         }
 
-        try {
-            gestorTrivia.iniciar(actual.codigoPartida(), dificultad);
-        } catch (RuntimeException ex) {
-            if (error == null) {
-                error = new IllegalStateException("No se pudo iniciar la trivia con la dificultad sorteada.", ex);
-            } else {
-                error.addSuppressed(ex);
-            }
-        }
-
         if (error != null) {
             throw error;
         }
         return resultado;
+    }
+
+    private void prepararPresentacion(EstadoRuletaDTO resultado) {
+        try {
+            Presentacion presentacion = new Presentacion(resultado, jugadoresEsperados(resultado.codigoPartida()));
+            presentaciones.put(resultado.codigoPartida(), presentacion);
+            presentacion.minimo = planificador.schedule(() -> cumplirMinimo(presentacion), PRESENTACION_MINIMA_SEGUNDOS, TimeUnit.SECONDS);
+            presentacion.limite = planificador.schedule(() -> iniciarTrasPresentacion(presentacion),
+                    LIMITE_PRESENTACION_SEGUNDOS, TimeUnit.SECONDS);
+        } catch (RuntimeException ex) {
+            Presentacion fallida = presentaciones.remove(resultado.codigoPartida());
+            if (fallida != null && fallida.minimo != null) fallida.minimo.cancel(false);
+            if (fallida != null && fallida.limite != null) fallida.limite.cancel(false);
+            // Conserva el sorteo, pero libera una reserva que ya no puede llegar a trivia.
+            EstadoRuletaDTO cancelada = new EstadoRuletaDTO(resultado.codigoPartida(), resultado.activacionId(),
+                    resultado.idJugador(), EstadoRuleta.CANCELADA, resultado.dificultad(), resultado.venceEn());
+            estados.put(resultado.codigoPartida(), cancelada);
+            gestorTrivia.liberarReserva(resultado.codigoPartida());
+            try {
+                notificador.notificarRuleta(resultado.codigoPartida(), cancelada);
+            } catch (RuntimeException avisoFallido) {
+                ex.addSuppressed(avisoFallido);
+            }
+            throw ex;
+        }
+    }
+
+    public synchronized void confirmarPresentacion(String codigo, String activacionId, Long jugador) {
+        EstadoRuletaDTO estado = validarActivacion(codigo, activacionId);
+        if (estado.estado() == EstadoRuleta.CANCELADA) return;
+        if (estado.estado() != EstadoRuleta.SORTEADA) throw new IllegalStateException("La ruleta no terminó.");
+        Presentacion presentacion = presentaciones.get(codigo);
+        if (presentacion == null) return;
+        presentacion.pendientes.remove(jugador);
+        intentarInicio(presentacion);
+    }
+
+    private Set<Long> jugadoresEsperados(String codigo) {
+        if (servicioPartida == null || servicioTrivia == null) return Set.of();
+        var partida = servicioPartida.obtenerPartida(codigo);
+        if (partida == null) return Set.of();
+        return new HashSet<>(servicioTrivia.participantesHabilitados(partida).stream()
+                .map(com.tallerwebi.dominio.entidades.Jugador::getId).toList());
+    }
+
+    private synchronized void cumplirMinimo(Presentacion presentacion) {
+        presentacion.minimoCumplido = true;
+        intentarInicio(presentacion);
+    }
+
+    private void intentarInicio(Presentacion presentacion) {
+        if (presentacion.minimoCumplido && presentacion.pendientes.isEmpty()) iniciarTrasPresentacion(presentacion);
+    }
+
+    private synchronized void iniciarTrasPresentacion(Presentacion presentacion) {
+        String codigo = presentacion.estado.codigoPartida();
+        if (!presentaciones.remove(codigo, presentacion)) return;
+        if (presentacion.limite != null) presentacion.limite.cancel(false);
+        if (presentacion.minimo != null) presentacion.minimo.cancel(false);
+        gestorTrivia.iniciar(codigo, presentacion.estado.dificultad());
     }
 
     public synchronized EstadoRuletaDTO obtenerEstado(String codigoPartida) {

@@ -170,4 +170,22 @@ public class MapeadorTriviaTest {
         assertNull(estado.dificultad());
         assertNull(estado.venceEn());
     }
+
+    @Test
+    public void soloComunicaSaldoCuandoSeConfirmoUnPremioEnDinero() {
+        Trivia trivia = trivia();
+        Jugador ana = jugador(1L, "Ana");
+        ana.setDinero(1500);
+        trivia.declararGanador(ana);
+        trivia.finalizar();
+        assertNull(MapeadorTrivia.estado("ABC", trivia).saldoGanador());
+
+        trivia.registrarPremioEntregado();
+        assertEquals(1500, MapeadorTrivia.estado("ABC", trivia).saldoGanador());
+
+        trivia.registrarPremioEntregado("ROBAR");
+        assertNull(MapeadorTrivia.estado("ABC", trivia).saldoGanador());
+        trivia.cancelarSinPremio();
+        assertNull(MapeadorTrivia.estado("ABC", trivia).saldoGanador());
+    }
 }

@@ -114,6 +114,7 @@ class ServicioPremioTriviaTest {
     void deberiaTransferirPropiedadSinCobrarAlGanadorDificil() {
         Jugador ganador = crearJugador(1L);
         Jugador rival = crearJugador(2L);
+        rival.setApodo("Luna");
 
         Partida partida = new Partida();
         partida.setJugadores(List.of(ganador, rival));
@@ -125,6 +126,9 @@ class ServicioPremioTriviaTest {
         propiedad.setId(10L);
         propiedad.setPropietario(rival);
         propiedad.setNivelMejora(2);
+        propiedad.setNombre("Feria La Salada");
+        doAnswer(invocacion -> { propiedad.setPropietario(ganador); return null; })
+                .when(servicioPropiedad).transferirPropiedadParaJugadores(10L, 2L, 1L, 0);
 
         when(repositorioPropiedad
                 .buscarPropiedadesPorPropietario(rival))
@@ -139,6 +143,10 @@ class ServicioPremioTriviaTest {
 
         verify(economia, never())
                 .sumarDinero(ganador, 500);
+        var estado = new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(
+                com.tallerwebi.presentacion.mapeadores.MapeadorTrivia.estado("ABC", trivia));
+        org.junit.jupiter.api.Assertions.assertEquals("Feria La Salada", estado.path("propiedadRobada").asText());
+        org.junit.jupiter.api.Assertions.assertEquals("Luna", estado.path("propietarioAnterior").asText());
     }
 
     
