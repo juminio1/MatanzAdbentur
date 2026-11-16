@@ -6,6 +6,8 @@ import java.util.Map;
 /** Coordina los eventos globales y su pausa de la partida. */
 public interface ServicioEvento {
     Boolean activarSiCorresponde(Partida partida);
+
+    /** Indica si a la ronda actual le toca un evento global que todavía no se activó. */
     Map<String, Object> consultar(String codigo, Long jugador);
     Map<String, Object> tirar(String codigo, Long jugador, Integer ronda, Integer etapa);
     Map<String, Object> confirmar(String codigo, Long jugador, Integer ronda);

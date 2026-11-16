@@ -38,8 +38,34 @@ public class GestorRuletaPartida {
         this.gestorTrivia = gestorTrivia;
     }
 
+    /**
+     * Marca la partida como ocupada por la trivia en cuanto alguien cae en el casillero,
+     * dentro de la misma transacción de la jugada. Sin esto, durante los segundos de la
+     * ruleta el turno podía avanzar y activar un evento global al mismo tiempo que la trivia.
+     */
+    public void reservarTrivia(String codigoPartida) {
+        gestorTrivia.reservar(codigoPartida);
+    }
+
+    public void cancelarReservaTrivia(String codigoPartida) {
+        gestorTrivia.liberarReserva(codigoPartida);
+    }
+
     // El equipo de Trivia llamará a este método cuando corresponda.
     public synchronized EstadoRuletaDTO activarRuleta(String codigoPartida, String activacionId, Long idJugador) {
+        try {
+            return registrarActivacion(codigoPartida, activacionId, idJugador);
+        } catch (RuntimeException ex) {
+            // Si no quedó ninguna ruleta esperando, nadie va a iniciar la trivia reservada.
+            EstadoRuletaDTO vigente = codigoPartida == null ? null : estados.get(codigoPartida);
+            if (vigente == null || vigente.estado() != EstadoRuleta.ESPERANDO) {
+                gestorTrivia.liberarReserva(codigoPartida);
+            }
+            throw ex;
+        }
+    }
+
+    private EstadoRuletaDTO registrarActivacion(String codigoPartida, String activacionId, Long idJugador) {
 
         validarDatosActivacion(codigoPartida, activacionId, idJugador);
 

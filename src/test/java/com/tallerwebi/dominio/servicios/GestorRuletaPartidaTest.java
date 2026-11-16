@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -279,5 +280,28 @@ public class GestorRuletaPartidaTest {
         verify(gestorTriviaMock, times(1)).iniciar("ABC123", DificultadRuleta.DIFICIL);
         verifyNoMoreInteractions(gestorTriviaMock);
         assertEquals(EstadoRuleta.SORTEADA, gestorRuleta.obtenerEstado("ABC123").estado());
+    }
+
+    @Test
+    public void reservarLaTriviaBloqueaLaPartidaAntesDeActivarLaRuleta() {
+        gestorRuleta.reservarTrivia("ABC123");
+
+        verify(gestorTriviaMock).reservar("ABC123");
+    }
+
+    @Test
+    public void unaActivacionInvalidaSinRuletaEnEsperaLiberaLaReserva() {
+        assertThrows(IllegalArgumentException.class, () -> gestorRuleta.activarRuleta("ABC123", "", 10L));
+
+        verify(gestorTriviaMock).liberarReserva("ABC123");
+    }
+
+    @Test
+    public void unaActivacionRechazadaConOtraRuletaEnEsperaConservaLaReserva() {
+        gestorRuleta.activarRuleta("ABC123", "ACT-1", 10L);
+
+        assertThrows(IllegalStateException.class, () -> gestorRuleta.activarRuleta("ABC123", "ACT-2", 20L));
+
+        verify(gestorTriviaMock, never()).liberarReserva(any());
     }
 }

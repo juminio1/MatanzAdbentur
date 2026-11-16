@@ -650,7 +650,8 @@ public class GestorTriviaPartidaTest {
         gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
         gestor.cerrarPorTiempo(CODIGO, trivia, 1);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -662,7 +663,8 @@ public class GestorTriviaPartidaTest {
 
         gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -1124,5 +1126,42 @@ public class GestorTriviaPartidaTest {
         conAvisoRoto.iniciar(CODIGO, DificultadRuleta.FACIL);
 
         assertTrue(conAvisoRoto.responder(CODIGO, 1L, 1, CORRECTA));
+    }
+
+    @Test
+    public void caerEnTriviaBloqueaLaPartidaMientrasGiraLaRuleta() {
+        gestor.reservar(CODIGO);
+
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void laReservaNoImpideQueLaRuletaInicieLaTrivia() {
+        gestor.reservar(CODIGO);
+
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+
+        assertFalse(trivia.estaFinalizada());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void liberarUnaReservaSinTriviaReanudaLaPartida() {
+        gestor.reservar(CODIGO);
+
+        gestor.liberarReserva(CODIGO);
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        verify(servicioPartida).reanudarDespuesDeTrivia(CODIGO);
+    }
+
+    @Test
+    public void unInicioRechazadoLiberaLaReserva() {
+        gestor.reservar(CODIGO);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(null);
+
+        assertThrows(AccionTriviaInvalidaException.class, () -> gestor.iniciar(CODIGO, DificultadRuleta.FACIL));
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 }
