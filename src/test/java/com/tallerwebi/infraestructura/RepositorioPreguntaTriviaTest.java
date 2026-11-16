@@ -2,6 +2,7 @@ package com.tallerwebi.infraestructura;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,7 @@ import jakarta.transaction.Transactional;
 import java.net.http.HttpTimeoutException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,7 +100,7 @@ class RepositorioPreguntaTriviaTest {
     }
 
     @Test
-    void devuelveLasDisponiblesYUnaListaVaciaCuandoSeAgotaLaDificultad() {
+    void cuandoSeAgotaLaDificultadRepiteLasPreguntasYaUsadasSinMezclarDificultades() {
         crearPartida(CODIGO_PARTIDA);
         guardar("Primera", DificultadTrivia.MEDIA);
         guardar("Segunda", DificultadTrivia.MEDIA);
@@ -107,7 +109,30 @@ class RepositorioPreguntaTriviaTest {
 
         assertEquals(2, servicio.obtenerParaCasillero(CODIGO_PARTIDA, DificultadRuleta.MEDIO).size());
         limpiarSesion();
-        assertTrue(servicio.obtenerParaCasillero(CODIGO_PARTIDA, DificultadRuleta.MEDIO).isEmpty());
+        List<PreguntaTrivia> repetidas = servicio.obtenerParaCasillero(CODIGO_PARTIDA, DificultadRuleta.MEDIO);
+
+        assertEquals(Set.of("Primera", "Segunda"), new HashSet<>(enunciados(repetidas)));
+        assertEquals(2, repetidas.size());
+    }
+
+    @Test
+    void prefierePreguntasNuevasYRepiteRecienCuandoSeUsaronTodas() {
+        crearPartida(CODIGO_PARTIDA);
+        guardar("Primera complicada", DificultadTrivia.COMPLICADA);
+        guardar("Segunda complicada", DificultadTrivia.COMPLICADA);
+        ServicioPreguntasTrivia servicio = servicioConTimeout();
+
+        String primera = enunciados(servicio.obtenerParaCarcel(CODIGO_PARTIDA)).getFirst();
+        limpiarSesion();
+        String segunda = enunciados(servicio.obtenerParaCarcel(CODIGO_PARTIDA)).getFirst();
+        limpiarSesion();
+        List<String> repetida = enunciados(servicio.obtenerParaCarcel(CODIGO_PARTIDA));
+        limpiarSesion();
+
+        assertNotEquals(primera, segunda);
+        assertEquals(1, repetida.size());
+        assertTrue(Set.of(primera, segunda).contains(repetida.getFirst()));
+        assertEquals(1, servicio.obtenerParaCarcel(CODIGO_PARTIDA).size());
     }
 
     @Test
@@ -121,9 +146,12 @@ class RepositorioPreguntaTriviaTest {
         assertEquals(List.of("CUAL es el rio"), enunciados(conGemini.obtenerParaCarcel(CODIGO_PARTIDA)));
         limpiarSesion();
 
-        assertTrue(conGemini.obtenerParaCarcel(CODIGO_PARTIDA).isEmpty());
+        // Ya salió en la partida: solo vuelve como repetida porque no quedan preguntas nuevas.
+        assertEquals(List.of("CUAL es el rio"), enunciados(conGemini.obtenerParaCarcel(CODIGO_PARTIDA)));
+        limpiarSesion();
         ServicioPreguntasTrivia respaldo = servicioConTimeout();
-        assertTrue(respaldo.obtenerParaCarcel(CODIGO_PARTIDA).isEmpty());
+        assertEquals(List.of("¿Cuál es el río?"), enunciados(respaldo.obtenerParaCarcel(CODIGO_PARTIDA)));
+        limpiarSesion();
         assertEquals(List.of("¿Cuál es el río?"), enunciados(respaldo.obtenerParaCarcel("OTRA-TRIVIA")));
     }
 
@@ -139,8 +167,10 @@ class RepositorioPreguntaTriviaTest {
         List<String> usadasEnCasillero = enunciados(
             servicio.obtenerParaCasillero(CODIGO_PARTIDA, DificultadRuleta.DIFICIL));
 
-        assertEquals(1, usadasEnCasillero.size());
-        assertFalse(usadasEnCasillero.contains(usadaEnCarcel));
+        // Primero sale la que no se usó en la cárcel; la de la cárcel recién vuelve como repetida.
+        assertEquals(2, usadasEnCasillero.size());
+        assertNotEquals(usadaEnCarcel, usadasEnCasillero.getFirst());
+        assertEquals(usadaEnCarcel, usadasEnCasillero.get(1));
     }
 
     @Test
