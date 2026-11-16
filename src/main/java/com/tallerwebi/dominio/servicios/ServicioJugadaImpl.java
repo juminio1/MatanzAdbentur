@@ -211,6 +211,10 @@ public class ServicioJugadaImpl implements ServicioJugada {
             return;
         }
         String activacionId = UUID.randomUUID().toString();
+        // La reserva rige desde ya, dentro de la transacción: si el turno avanza antes de que gire
+        // la ruleta (o si la tirada fue automática), el evento global espera a que termine la trivia.
+        gestorRuleta.reservarTrivia(codigo);
+        DespuesDeConfirmar.siSeRevierte(() -> gestorRuleta.cancelarReservaTrivia(codigo));
         DespuesDeConfirmar.ejecutar(() -> gestorRuleta.activarRuleta(codigo, activacionId, idJugador));
     }
 

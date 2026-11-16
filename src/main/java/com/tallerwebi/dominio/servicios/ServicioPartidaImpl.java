@@ -511,19 +511,44 @@ public class ServicioPartidaImpl implements ServicioPartida {
 
     @Override
     public void actualizarPausaPorDeuda(String codigo) {
-        DespuesDeConfirmar.ejecutar(() -> lecturaTurno.executeWithoutResult(tx -> {
-            Partida partida = obtenerPartida(codigo);
-            if (partida == null) return;
-            if (turnoPausado(partida)) {
-                gestorTemporizador.pausar(codigo);
-            } else {
-                Integer restantes = gestorTemporizador.consumirPausa(codigo);
-                if (restantes != null && partida.getEstado() == EstadoPartida.EN_CURSO
-                        && !partida.getEventoGlobal().estaActivo()) {
-                    notificarTurnoActual(partida, true, restantes);
-                }
+        DespuesDeConfirmar.ejecutar(() -> lecturaTurno.executeWithoutResult(tx -> revisarPausa(codigo)));
+    }
+
+    /*
+     * La trivia terminó. Si el jugador del turno ya tiró (es quien cayó en Trivia), el turno
+     * pasa solo: así la ronda avanza recién ahora y, si toca, el evento global aparece después
+     * de la trivia y antes de que tire el siguiente. Si no, se reanuda el tiempo que le quedaba.
+     */
+    @Override
+    public void reanudarDespuesDeTrivia(String codigo) {
+        DespuesDeConfirmar.ejecutar(() -> lecturaTurno.executeWithoutResult(tx -> pasarTurnoTrasTrivia(codigo)));
+    }
+
+    private void pasarTurnoTrasTrivia(String codigo) {
+        Partida partida = obtenerPartida(codigo);
+        Jugador actual = partida == null ? null : servicioTurno.obtenerJugadorActual(partida);
+        if (actual == null || !Boolean.TRUE.equals(actual.getTiroEnTurno()) || turnoPausado(partida)) {
+            revisarPausa(codigo);
+            return;
+        }
+        gestorTemporizador.consumirPausa(codigo);
+        // Se avanza en la transacción propia del temporizador; esta lectura es de solo lectura.
+        MarcaTurno marca = MarcaTurno.de(partida);
+        gestorTemporizador.programarTemporizador(codigo, 0, () -> avanzarTurnoSiSigueVigente(codigo, marca));
+    }
+
+    private void revisarPausa(String codigo) {
+        Partida partida = obtenerPartida(codigo);
+        if (partida == null) return;
+        if (turnoPausado(partida)) {
+            gestorTemporizador.pausar(codigo);
+        } else {
+            Integer restantes = gestorTemporizador.consumirPausa(codigo);
+            if (restantes != null && partida.getEstado() == EstadoPartida.EN_CURSO
+                    && !partida.getEventoGlobal().estaActivo()) {
+                notificarTurnoActual(partida, true, restantes);
             }
-        }));
+        }
     }
 
     // Identifica un turno concreto: cambia cada vez que se avanza el turno.

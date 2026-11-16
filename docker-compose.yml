@@ -40,6 +40,10 @@ services:
       DB_NAME: ${DB_NAME:-tallerwebi}
       DB_USER: ${DB_USER:-user}
       DB_PASSWORD: ${DB_PASSWORD:-user}
+      # Clave de Gemini para generar las preguntas de la trivia (se lee de .env).
+      # Sin clave, la trivia usa solo el banco de respaldo de data.sql.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELO: ${GEMINI_MODELO:-gemini-3.5-flash-lite}
 
 volumes:
   postgres_data:

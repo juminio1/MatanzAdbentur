@@ -2234,9 +2234,11 @@ async function sincronizarEventoGlobal() {
     }
 }
 
+// El evento global también espera a que se cierre el cartel de la trivia.
 function debeEsperarPresentacionGlobal() {
     return movimientosDeJugadoresEnCurso.size > 0
-        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible");
+        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")
+        || document.getElementById("trivia")?.open === true;
 }
 
 function aplicarEventoGlobal(estado) {
@@ -2588,12 +2590,17 @@ document.addEventListener("click", evento => {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
-    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    // El cartel final de la trivia puede seguir abierto cuando empieza el evento: tiene que poder cerrarse.
+    if (evento.target.closest("#trivia, #aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
     if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat], #btn-sonido")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
 window.addEventListener("DOMContentLoaded", () => {
+    // Al cerrar la trivia se muestra enseguida el evento global que estaba esperando.
+    document.getElementById("trivia")?.addEventListener("close", () => {
+        if (estadoEventoGlobalCliente?.activo) mostrarEstadoGlobal(estadoEventoGlobalCliente);
+    });
     sincronizarEventoGlobal();
     consultarDeudaPendiente();
     window.setInterval(sincronizarEventoGlobal, 3000);

@@ -20,4 +20,19 @@ public final class DespuesDeConfirmar {
             }
         });
     }
+
+    // Deshace un cambio en memoria hecho dentro de una transacción que terminó revertida.
+    // Sin transacción no hay nada que revertir y la acción no se ejecuta.
+    public static void siSeRevierte(Runnable accion) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int estado) {
+                if (estado != STATUS_COMMITTED) accion.run();
+            }
+        });
+    }
 }

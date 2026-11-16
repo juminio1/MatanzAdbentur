@@ -450,13 +450,15 @@ class EfectosPartidaIntegracionTest {
         transaccion.executeWithoutResult(tx -> {
             ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(destino, resultado.nuevaPosicion());
-            verifyNoInteractions(gestorRuleta);
+            // Dentro de la transacción solo se reserva la trivia; la ruleta espera al commit.
+            verify(gestorRuleta, never()).activarRuleta(any(), any(), any());
         });
 
         ArgumentCaptor<String> activacion = ArgumentCaptor.forClass(String.class);
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), activacion.capture(), eq(idJugador));
         assertNotNull(activacion.getValue());
         assertFalse(activacion.getValue().isBlank());
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
@@ -485,12 +487,15 @@ class EfectosPartidaIntegracionTest {
         transaccion.executeWithoutResult(tx -> {
             ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(10, resultado.nuevaPosicion());
-            verifyNoInteractions(gestorRuleta);
+            verify(gestorRuleta, never()).activarRuleta(any(), any(), any());
             tx.setRollbackOnly();
         });
 
         assertEquals(8, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verifyNoInteractions(gestorRuleta);
+        // La reserva hecha dentro de la transacción se deshace y la ruleta nunca se activa.
+        verify(gestorRuleta).reservarTrivia(codigo);
+        verify(gestorRuleta).cancelarReservaTrivia(codigo);
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
     @Test
@@ -502,6 +507,7 @@ class EfectosPartidaIntegracionTest {
                 () -> servicioJugada.tirarYMover(codigo, idJugador));
 
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
         assertEquals(10, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
     }
@@ -523,6 +529,7 @@ class EfectosPartidaIntegracionTest {
         assertFalse(primera.getValue().isBlank());
         assertFalse(segunda.getValue().isBlank());
         assertNotEquals(primera.getValue(), segunda.getValue());
+        verify(gestorRuleta, times(2)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
@@ -534,6 +541,7 @@ class EfectosPartidaIntegracionTest {
 
         assertEquals(10, resultado.nuevaPosicion());
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
