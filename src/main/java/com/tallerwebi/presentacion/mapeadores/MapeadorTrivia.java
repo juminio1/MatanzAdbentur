@@ -54,6 +54,11 @@ public final class MapeadorTrivia {
         return ServicioPremioTriviaImpl.montoPremio(trivia.getDificultad());
     }
 
+    private static Integer saldoGanador(Trivia trivia) {
+        return trivia.getGanador() != null && trivia.estaPremioEntregado() && "PLATA".equals(trivia.getTipoPremio())
+                ? trivia.getGanador().getDinero() : null;
+    }
+
     public static EstadoTriviaDTO estado(String codigoPartida, Trivia trivia) {
         return estado(codigoPartida, trivia, null);
     }
@@ -83,6 +88,7 @@ public final class MapeadorTrivia {
                 trivia.estaFinalizada() ? null : GestorTriviaPartida.venceEnMilisegundos(trivia), yaRespondio,
                 trivia.estaCancelada(), trivia.estaPremioEntregado(),
                 montoPremio(trivia),
-                premioPendiente && trivia.getDificultad() == DificultadRuleta.DIFICIL, trivia.getTipoPremio());
+                premioPendiente && trivia.getDificultad() == DificultadRuleta.DIFICIL, trivia.getTipoPremio(),
+                saldoGanador(trivia), trivia.getIdTorneo(), trivia.getPropiedadRobada(), trivia.getPropietarioAnterior());
     }
 }

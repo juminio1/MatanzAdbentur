@@ -1,11 +1,11 @@
-import { conectarTriviaPartida } from "./trivia-partida.js?v=7";
+import { conectarTriviaPartida } from "./trivia-partida.js?v=9";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio } from "./efectos-compra.js?v=partida-18";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante } from "./efectos-compra.js?v=partida-19";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -322,7 +322,15 @@ function conectarWebSocketTurnos(base, codigo) {
             clienteWebSocketPartida = stompClient;
             conectarTriviaPartida({ cliente: stompClient, codigo, base,
                 idJugador: window.usuarioSesionId,
-                alPremioEntregado: function () { window.location.reload(); },
+                actualizarSaldo: actualizarDineroJugador,
+                registrarEnHistorial: agregarAlHistorial,
+                animarGanancia: function (idJugador, monto) {
+                    const tarjeta = document.getElementById(String(idJugador));
+                    if (tarjeta) mostrarMontoFlotante(tarjeta, `+$${Number(monto).toLocaleString("es-AR")}`, "gana");
+                },
+                alPremioEntregado: function (estado) {
+                    if (estado.tipoPremio !== "PLATA") window.location.reload();
+                },
                 estaPreso: function () { return estaPresoEnPantalla(window.usuarioSesionId); },
             });
             consultarResultadosFinales();
@@ -1567,15 +1575,17 @@ async function comprarPropiedadActual() {
     }
 }
 
-function agregarAlHistorial(texto, idJugador) {
-    const item = document.createElement("li");
+function agregarAlHistorial(texto, idJugador, idEntrada) {
+    const lista = document.querySelector(".historial__lista");
+    if (!lista) return;
+    const existente = idEntrada && [...lista.children].find(item => item.dataset.idEntrada === idEntrada);
+    const item = existente || document.createElement("li");
+    if (idEntrada) item.dataset.idEntrada = idEntrada;
     item.textContent = texto;
     const color = obtenerColorFichaJugador(idJugador);
     if (color) item.dataset.color = color;
-    const lista = document.querySelector(".historial__lista");
-    if (!lista) return;
     lista.querySelector(".historial__vacio")?.remove();
-    lista.prepend(item);
+    if (!existente) lista.prepend(item);
 }
 
 function pintarDatosCompra(propiedad) {

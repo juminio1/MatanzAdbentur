@@ -66,6 +66,8 @@ public class GestorTriviaPartida {
     // Controla el tiempo de las preguntas y permite adelantarlo en los tests sin esperar.
     private final Clock reloj;
     private final Map<String, Trivia> trivias = new HashMap<>();
+    // Conserva los torneos de la partida para reconstruir el mismo historial al recargar.
+    private final Map<String, List<Trivia>> torneosPorPartida = new HashMap<>();
     // Permite consultar el bloqueo sin esperar al gestor, evitando bloqueos cruzados con la base de datos.
     private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
     // Partidas en las que alguien cayó en Trivia y la ruleta todavía no sorteó la dificultad.
@@ -131,6 +133,7 @@ public class GestorTriviaPartida {
             servicioPartida.actualizarPausaPorDeuda(codigoPartida);
             Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
             trivias.put(codigoPartida, trivia);
+            torneosPorPartida.computeIfAbsent(codigoPartida, codigo -> new ArrayList<>()).add(trivia);
             if (trivia.estaFinalizada()) {
                 publicar(codigoPartida, TipoAvisoTrivia.FINALIZADA, trivia, null);
             } else {
@@ -222,6 +225,11 @@ public class GestorTriviaPartida {
     /** Lee la trivia de la partida (en juego o terminada) sin que cambie mientras se arma la respuesta. */
     public synchronized <T> T consultarEstado(String codigoPartida, Function<Trivia, T> lectura) {
         return lectura.apply(buscar(codigoPartida));
+    }
+
+    public synchronized <T> List<T> consultarHistorial(String codigoPartida, Function<Trivia, T> lectura) {
+        return torneosPorPartida.getOrDefault(codigoPartida, List.of()).stream()
+                .filter(Trivia::estaFinalizada).map(lectura).toList();
     }
 
     /** Lee la pregunta en juego. Falla si la trivia ya terminó. */

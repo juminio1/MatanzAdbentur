@@ -107,6 +107,31 @@ public class ControladorTriviaTest {
     }
 
     @Test
+    public void historialRequiereSesionYPertenenciaALaPartida() throws Exception {
+        mvc.perform(get(URL + "/historial").session(sesionDe("Ana"))).andExpect(status().isOk());
+        mvc.perform(get(URL + "/historial")).andExpect(status().isUnauthorized());
+        mvc.perform(get(URL + "/historial").session(sesionDe("Ajeno"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void historialDevuelveElResultadoConfirmadoSinExponerRespuestas() throws Exception {
+        trivia.declararGanador(ana);
+        trivia.finalizar();
+        trivia.registrarPremioRobado("Terminal", "Luna");
+        when(gestor.consultarHistorial(eq(CODIGO), any())).thenAnswer(invocacion ->
+                List.of(invocacion.<Function<Trivia, Object>>getArgument(1).apply(trivia)));
+
+        String json = cuerpo(mvc.perform(get(URL + "/historial").session(sesionDe("Ana")))
+                .andExpect(status().isOk()));
+        assertTrue(json.contains(trivia.getIdTorneo()));
+        assertTrue(json.contains("Terminal"));
+        assertTrue(json.contains("Luna"));
+        assertFalse(json.contains("respuestaCorrecta"));
+        assertFalse(json.contains("San Justo"));
+        verify(gestor, never()).elegirPremio(anyString(), anyLong(), anyString(), any());
+    }
+
+    @Test
     public void deberiaConsultarSoloLaRespuestaDeLaSesion() throws Exception {
         String antes = cuerpo(mvc.perform(get(URL).session(sesionDe("Ana"))).andExpect(status().isOk()));
         assertTrue(antes.contains("\"yaRespondio\":false"));

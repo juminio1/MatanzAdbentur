@@ -105,6 +105,44 @@ public class ObservadorTriviaWebSocketTest {
     }
 
     @Test
+    public void premioEntregadoComunicaElSaldoConfirmadoDelGanador() {
+        Trivia trivia = triviaFinalizadaConGanador();
+        trivia.getGanador().setDinero(1500);
+        trivia.registrarPremioEntregado();
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+
+        new ObservadorTriviaWebSocket(notificador).actualizar(new EventoTriviaActualizada(
+                "ABC123", TipoAvisoTrivia.PREMIO_ENTREGADO, trivia, null));
+
+        ArgumentCaptor<Map<String, Object>> contenido = ArgumentCaptor.forClass(Map.class);
+        verify(notificador).notificarTrivia(eq("ABC123"), contenido.capture());
+        JsonNode estado = new ObjectMapper().valueToTree(contenido.getValue()).path("estado");
+        assertTrue(estado.path("saldoGanador").isNumber(), "Falta el saldo confirmado en el WebSocket");
+        assertEquals(1500, estado.path("saldoGanador").asInt());
+        assertEquals("PLATA", estado.path("tipoPremio").asText());
+    }
+
+    @Test
+    public void roboConfirmadoSePublicaEnElCanalCompartidoConLaIdentidadDelTorneo() {
+        Trivia trivia = triviaFinalizadaConGanador();
+        trivia.registrarPremioRobado("Terminal", "Luna");
+        var mensajes = mock(org.springframework.messaging.simp.SimpMessagingTemplate.class);
+        var notificador = new NotificadorPartida(mensajes);
+        var observador = new ObservadorTriviaWebSocket(notificador);
+
+        observador.actualizar(new EventoTriviaActualizada("ABC123", TipoAvisoTrivia.PREMIO_ENTREGADO, trivia, null));
+
+        ArgumentCaptor<Map<String, Object>> contenido = ArgumentCaptor.forClass(Map.class);
+        verify(mensajes).convertAndSend(eq("/topic/partida/ABC123/trivia"), contenido.capture());
+        JsonNode estado = new ObjectMapper().valueToTree(contenido.getValue()).path("estado");
+        assertEquals(trivia.getIdTorneo(), estado.path("idTorneo").asText());
+        assertEquals("Ana", estado.path("ganador").asText());
+        assertEquals("Terminal", estado.path("propiedadRobada").asText());
+        assertEquals("Luna", estado.path("propietarioAnterior").asText());
+        assertTrue(estado.path("premioEntregado").asBoolean());
+    }
+
+    @Test
     public void finalizadaConGanadorNotificaSuIdentidadYElPremioPendiente() {
         EstadoTriviaDTO estado = notificarFinalizada(triviaFinalizadaConGanador());
 

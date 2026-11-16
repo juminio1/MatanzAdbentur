@@ -1,5 +1,5 @@
-import { crearModalTrivia } from "./trivia.js?v=6";
-import { crearApiTrivia } from "./trivia-api.js?v=2";
+import { crearModalTrivia } from "./trivia.js?v=7";
+import { crearApiTrivia } from "./trivia-api.js?v=3";
 
 // Tiempo para ver la respuesta correcta antes de la ronda siguiente o del final.
 const PAUSA_TRAS_CIERRE = 2500;
@@ -15,6 +15,8 @@ export function filtrarPropiedadesParaRobar(propiedades, idJugador) {
 export function conectarTriviaPartida({ cliente, codigo, base = "", documento = document,
     idJugador, programarCierre = function (cerrar) { setTimeout(cerrar, PAUSA_FINAL); },
     esperarTrasCierre = function (seguir) { setTimeout(seguir, PAUSA_TRAS_CIERRE); }, alPremioEntregado = function () {}, estaPreso = function () { return false; },
+    actualizarSaldo = function () {}, animarGanancia = function () {},
+    registrarEnHistorial = function () {},
     modal = crearModalTrivia(), api = crearApiTrivia({ base, codigo }) } = {}) {
     let revision = 0;
     let preguntaActual = null;
@@ -27,6 +29,35 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
     let enviandoPremio = false;
     let finalMostrado = false;
     let versionTorneo = 0;
+    const resultadosRegistrados = new Map();
+
+    function registrarResultado(estado) {
+        if (!estado?.finalizada || !estado.idTorneo) return;
+        const anterior = resultadosRegistrados.get(estado.idTorneo);
+        const pendiente = !estado.cancelada && estado.idGanador != null && !estado.premioEntregado;
+        if (anterior?.definitivo) return;
+        let texto;
+        if (estado.cancelada) texto = "La trivia fue cancelada.";
+        else if (estado.idGanador == null) texto = "La trivia terminó sin ganador.";
+        else if (pendiente) texto = `${estado.ganador} ganó la trivia. Premio pendiente.`;
+        else if (estado.tipoPremio === "ROBAR") {
+            texto = `${estado.ganador} ganó la trivia y recibió ${estado.propiedadRobada}, robada a ${estado.propietarioAnterior}.`;
+        } else {
+            texto = `${estado.ganador} ganó la trivia y recibió $${Number(estado.montoPremio).toLocaleString("es-AR")}.`;
+        }
+        if (anterior?.texto === texto) return;
+        resultadosRegistrados.set(estado.idTorneo, { texto, definitivo: !pendiente });
+        registrarEnHistorial(texto, estado.idGanador ?? null, "trivia:" + estado.idTorneo);
+    }
+
+    async function recuperarHistorial() {
+        if (typeof api.obtenerHistorial !== "function") return;
+        try {
+            for (const estado of await api.obtenerHistorial() ?? []) registrarResultado(estado);
+        } catch (error) {
+            console.error("No se pudo recuperar el historial de trivia:", error);
+        }
+    }
 
     function nombres(participantes) {
         const lista = [];
@@ -117,6 +148,7 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
             desempate,
             ganador: estado.ganador, soyGanador: String(estado.idGanador) === String(idJugador),
             cancelada: estado.cancelada, montoPremio: estado.montoPremio, tipoPremio: estado.tipoPremio,
+            propiedadRobada: estado.propiedadRobada, propietarioAnterior: estado.propietarioAnterior,
             puedeElegirPremio: estado.puedeElegirPremio, premioPendiente: estado.premioPendiente,
             obtenerPropiedadesParaRobar: async function () {
                 return filtrarPropiedadesParaRobar(await api.obtenerPropiedades(), idJugador);
@@ -125,6 +157,9 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         });
         if (estado.premioEntregado) {
             entregaConfirmada = true;
+            const premioEnDinero = estado.tipoPremio === "PLATA" && estado.idGanador != null
+                && Number.isFinite(estado.saldoGanador) && Number.isFinite(estado.montoPremio);
+            if (premioEnDinero) actualizarSaldo(estado.idGanador, estado.saldoGanador);
             const version = versionTorneo;
             let actualizado = false;
             // Se vuelve al tablero al tocar "Volver al tablero" o, si nadie lo toca, al rato.
@@ -132,7 +167,8 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
                 if (actualizado || version !== versionTorneo) return;
                 actualizado = true;
                 modal.cerrar();
-                alPremioEntregado();
+                if (premioEnDinero) animarGanancia(estado.idGanador, estado.montoPremio);
+                alPremioEntregado(estado);
             };
             if (typeof alVolverAlTablero?.then === "function") alVolverAlTablero.then(volverAlTablero);
             programarCierre(volverAlTablero);
@@ -141,6 +177,7 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
 
     function aplicar(estado, pregunta, tipo) {
         if (!estado) return;
+        registrarResultado(estado);
         const notificarEntrega = Boolean(tipo) || Boolean(estadoActual?.premioPendiente);
         if (estado.finalizada && (entregaConfirmada || estadoActual?.cancelada)) return;
         estadoActual = estado;
@@ -239,5 +276,6 @@ export function conectarTriviaPartida({ cliente, codigo, base = "", documento = 
         procesar(evento);
     });
     recuperar();
-    return { recuperar };
+    recuperarHistorial();
+    return { recuperar, recuperarHistorial };
 }

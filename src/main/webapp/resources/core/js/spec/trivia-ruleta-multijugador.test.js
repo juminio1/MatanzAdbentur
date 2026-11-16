@@ -70,6 +70,7 @@ describe("Sincronizacion multijugador de ruleta y trivia", () => {
         consultarRuleta = async () => null,
         solicitarSorteo = jasmine.createSpy("sortear").and.resolveTo(sorteada),
         estadoRecuperado = null,
+        historialRecuperado = [],
     } = {}) {
         const ventana = new JSDOM(HTML_TRIVIA + HTML_RULETA, {
             url: `http://localhost/spring/partida?codigo=${CODIGO}`,
@@ -91,10 +92,12 @@ describe("Sincronizacion multijugador de ruleta y trivia", () => {
             };
         }
         const api = {
+            obtenerHistorial: jasmine.createSpy("obtenerHistorial").and.resolveTo(historialRecuperado),
             obtenerEstado: jasmine.createSpy("obtenerEstado").and.resolveTo(estadoRecuperado),
             obtenerPregunta: jasmine.createSpy("obtenerPregunta").and.resolveTo(pregunta),
         };
         const recibido = jasmine.createSpy("mensajeTrivia");
+        const registrarEnHistorial = jasmine.createSpy("registrarEnHistorial");
         const stomp = {
             subscribe: jasmine.createSpy("subscribe").and.callFake(function (topic, recibir) {
                 suscripciones.push({ topic, recibir: function (body) {
@@ -107,9 +110,9 @@ describe("Sincronizacion multijugador de ruleta y trivia", () => {
         const rueda = { items: [{ value: "FACIL" }], onRest: null };
         enVentana(ventana, function () {
             configurarRuleta(documento, solicitarSorteo, () => rueda, () => {}, consultarRuleta);
-            conectarTriviaPartida({ cliente: stomp, codigo: CODIGO, idJugador: id, documento, modal, api });
+            conectarTriviaPartida({ cliente: stomp, codigo: CODIGO, idJugador: id, documento, modal, api, registrarEnHistorial });
         });
-        const cliente = { ventana, documento, dialogo, api, stomp, recibido,
+        const cliente = { ventana, documento, dialogo, api, stomp, recibido, registrarEnHistorial,
             panel: documento.getElementById("panel-ruleta") };
         clientes.push(cliente);
         return cliente;
@@ -139,6 +142,26 @@ describe("Sincronizacion multijugador de ruleta y trivia", () => {
     async function procesarPendientes() {
         await new Promise(resolve => setImmediate(resolve));
     }
+
+    it("todosRegistranElRoboConfirmadoYUnClienteRecargadoRecuperaElMismoResultado", async () => {
+        const ana = crearCliente(1);
+        const pepe = crearCliente(2);
+        const resultado = {...estado,idTorneo:"TORNEO-1",finalizada:true,idGanador:1,ganador:"Ana",
+            premioEntregado:true,premioPendiente:false,tipoPremio:"ROBAR",propiedadRobada:"Terminal",propietarioAnterior:"Pepe"};
+        for (const tipo of ["PREMIO_ENTREGADO","FINALIZADA","PREMIO_ENTREGADO"]) {
+            for (const suscripcion of suscripciones) suscripcion.recibir(JSON.stringify({tipo,estado:resultado}));
+        }
+        for (const cliente of [ana,pepe]) {
+            expect(cliente.registrarEnHistorial).toHaveBeenCalledOnceWith(
+                "Ana ganó la trivia y recibió Terminal, robada a Pepe.",1,"trivia:TORNEO-1");
+            expect(cliente.documento.getElementById("trivia-premio").textContent).toBe("Premio: Terminal, robada a Pepe");
+        }
+        const recargado = crearCliente(2,{historialRecuperado:[resultado]});
+        await procesarPendientes();
+        expect(recargado.registrarEnHistorial).toHaveBeenCalledOnceWith(
+            "Ana ganó la trivia y recibió Terminal, robada a Pepe.",1,"trivia:TORNEO-1");
+        expect(recargado.dialogo.open).toBeFalse();
+    });
 
     it("dosClientesMuestranLaMismaPreguntaYOcultanSusRuletas", () => {
         const ana = crearCliente(1);

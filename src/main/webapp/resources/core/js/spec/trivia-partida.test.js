@@ -37,7 +37,7 @@ describe("Trivia real", () => {
  let terminarPausa = null;
  let diferirCierres = false;
  let cierrePendiente = null;
- let alPremioEntregado;
+ let alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial;
  afterEach(() => { pausarCierres = false; diferirCierres = false; });
  const estado = { finalizada: false, ronda: 1, enJuego: [{id: 1, apodo: "Ana"}] };
  const pregunta = {...PREGUNTA, id: 1, ronda: 1, totalRondas: 5, venceEn: Date.now()+10000};
@@ -54,8 +54,11 @@ describe("Trivia real", () => {
   api.obtenerPregunta.and.resolveTo(pregunta);
   terminarPausa = null;
   alPremioEntregado = jasmine.createSpy("alPremioEntregado");
+  actualizarSaldo = jasmine.createSpy("actualizarSaldo");
+  animarGanancia = jasmine.createSpy("animarGanancia");
+  registrarEnHistorial = jasmine.createSpy("registrarEnHistorial");
   cierrePendiente = null;
-  conexion = conectarTriviaPartida({cliente, codigo: "ABC", alPremioEntregado,
+  conexion = conectarTriviaPartida({cliente, codigo: "ABC", alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial,
    programarCierre: function (cerrar) { if (diferirCierres) cierrePendiente = cerrar; else cerrar(); }, idJugador: 1,
    esperarTrasCierre: function (seguir) { if (pausarCierres) terminarPausa = seguir; else seguir(); }, estaPreso: function () { return preso; }, modal, api,
    documento: new JSDOM('<section id="panel-ruleta"></section>').window.document});
@@ -192,6 +195,78 @@ describe("Trivia real", () => {
  });
  const finalPendiente = {...estado, finalizada:true, idGanador:1, ganador:"Ana",
   premioPendiente:true, puedeElegirPremio:true, montoPremio:500, cancelada:false, premioEntregado:false};
+ it("registraDineroConfirmadoSinDuplicarFinalizadaYPremio", () => {
+  const resultado = {...finalPendiente, idTorneo:"T1", tipoPremio:"PLATA", montoPremio:100,
+   premioEntregado:true, premioPendiente:false};
+  recibir({tipo:"PREMIO_ENTREGADO", estado:resultado});
+  recibir({tipo:"FINALIZADA", estado:resultado});
+  recibir({tipo:"PREMIO_ENTREGADO", estado:resultado});
+  expect(registrarEnHistorial).toHaveBeenCalledOnceWith("Ana ganó la trivia y recibió $100.", 1, "trivia:T1");
+ });
+ it("actualizaElResultadoPendienteConElRoboConfirmadoPorElServidor", () => {
+  recibir({tipo:"FINALIZADA", estado:{...finalPendiente,idTorneo:"T2"}});
+  expect(registrarEnHistorial).toHaveBeenCalledWith("Ana ganó la trivia. Premio pendiente.",1,"trivia:T2");
+  const robo = {...finalPendiente,idTorneo:"T2",tipoPremio:"ROBAR",premioEntregado:true,premioPendiente:false,
+   propiedadRobada:"Feria La Salada",propietarioAnterior:"Luna"};
+  recibir({tipo:"PREMIO_ENTREGADO",estado:robo});
+  recibir({tipo:"FINALIZADA",estado:robo});
+  expect(registrarEnHistorial).toHaveBeenCalledTimes(2);
+  expect(registrarEnHistorial.calls.mostRecent().args).toEqual([
+   "Ana ganó la trivia y recibió Feria La Salada, robada a Luna.",1,"trivia:T2"]);
+  expect(modal.mostrarFinal).toHaveBeenCalledWith(jasmine.objectContaining({propiedadRobada:"Feria La Salada",propietarioAnterior:"Luna"}));
+ });
+ it("distingueTriviaSinGanadorDeCancelacion", () => {
+  recibir({tipo:"FINALIZADA",estado:{...estado,idTorneo:"T3",finalizada:true,idGanador:null}});
+  recibir({tipo:"FINALIZADA",estado:{...estado,idTorneo:"T4",finalizada:true,idGanador:null,cancelada:true}});
+  expect(registrarEnHistorial).toHaveBeenCalledWith("La trivia terminó sin ganador.",null,"trivia:T3");
+  expect(registrarEnHistorial).toHaveBeenCalledWith("La trivia fue cancelada.",null,"trivia:T4");
+ });
+ it("recuperaElHistorialSinRepetirPremiosNiAnimacionesYDescartaUnaLecturaVieja", async () => {
+  const confirmado = {...finalPendiente,idTorneo:"T5",tipoPremio:"PLATA",montoPremio:500,
+   premioEntregado:true,premioPendiente:false};
+  api.obtenerHistorial = jasmine.createSpy("obtenerHistorial").and.resolveTo([confirmado]);
+  await conexion.recuperarHistorial();
+  await conexion.recuperarHistorial();
+  expect(registrarEnHistorial).toHaveBeenCalledOnceWith("Ana ganó la trivia y recibió $500.",1,"trivia:T5");
+  expect(api.elegirPremio).not.toHaveBeenCalled();
+  expect(actualizarSaldo).not.toHaveBeenCalled();
+  expect(animarGanancia).not.toHaveBeenCalled();
+  api.obtenerHistorial.and.resolveTo([{...finalPendiente,idTorneo:"T5"}]);
+  await conexion.recuperarHistorial();
+  expect(registrarEnHistorial).toHaveBeenCalledTimes(1);
+ });
+ it("actualizaElSaldoConfirmadoYAnimaUnaSolaVezAlVolverAlTablero", async () => {
+  diferirCierres = true;
+  let volver;
+  modal.mostrarFinal.and.returnValue(new Promise(resolve => { volver = resolve; }));
+  const premio = {...finalPendiente, tipoPremio:"PLATA", montoPremio:100,
+   saldoGanador:1100, premioEntregado:true, premioPendiente:false, puedeElegirPremio:false};
+  recibir({tipo:"PREMIO_ENTREGADO", estado:premio});
+  recibir({tipo:"PREMIO_ENTREGADO", estado:premio});
+  recibir({tipo:"FINALIZADA", estado:premio});
+  expect(actualizarSaldo).toHaveBeenCalledOnceWith(1, 1100);
+  expect(animarGanancia).not.toHaveBeenCalled();
+  volver();
+  await Promise.resolve();
+  cierrePendiente();
+  expect(animarGanancia).toHaveBeenCalledOnceWith(1, 100);
+  expect(alPremioEntregado).toHaveBeenCalledOnceWith(premio);
+  expect(api.elegirPremio).not.toHaveBeenCalled();
+ });
+ it("actualizaTambienElSaldoDeOtroGanadorAlCerrarAutomaticamente", () => {
+  const premio = {...finalPendiente, idGanador:2, tipoPremio:"PLATA", montoPremio:250,
+   saldoGanador:1750, premioEntregado:true, premioPendiente:false};
+  recibir({tipo:"PREMIO_ENTREGADO", estado:premio});
+  expect(actualizarSaldo).toHaveBeenCalledOnceWith(2, 1750);
+  expect(animarGanancia).toHaveBeenCalledOnceWith(2, 250);
+ });
+ it("noActualizaNiAnimaUnPremioPendienteOUnRobo", () => {
+  recibir({tipo:"FINALIZADA", estado:finalPendiente});
+  recibir({tipo:"PREMIO_ENTREGADO", estado:{...finalPendiente, tipoPremio:"ROBAR",
+   premioEntregado:true, premioPendiente:false, montoPremio:null}});
+  expect(actualizarSaldo).not.toHaveBeenCalled();
+  expect(animarGanancia).not.toHaveBeenCalled();
+ });
  it("muestraElPremioRealYEnviaUnaSolaEleccion", async () => {
   api.elegirPremio.and.returnValue(new Promise(()=>{}));
   recibir({tipo:"FINALIZADA",estado:finalPendiente});
@@ -288,6 +363,11 @@ describe("Trivia real", () => {
  });
 });
 describe("API real de trivia", () => {
+ it("recuperaLosResultadosDelServidorAlRecargar", async () => {
+  const solicitar=jasmine.createSpy("fetch").and.resolveTo({ok:true,json:async()=>[]});
+  await crearApiTrivia({base:"/spring",codigo:"ABC",solicitar}).obtenerHistorial();
+  expect(solicitar).toHaveBeenCalledOnceWith("/spring/partida/ABC/trivia/historial",{cache:"no-store",credentials:"same-origin"});
+ });
  it("usaLosEndpointsExistentesDePropiedadesYPremio", async () => {
   const solicitar=jasmine.createSpy("fetch").and.resolveTo({ok:true,json:async()=>[]});
   const api=crearApiTrivia({base:"/spring",codigo:"ABC",solicitar});

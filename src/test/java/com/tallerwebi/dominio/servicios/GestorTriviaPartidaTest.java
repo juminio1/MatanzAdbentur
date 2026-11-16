@@ -1164,4 +1164,23 @@ public class GestorTriviaPartidaTest {
 
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
+
+    @Test
+    public void historialConservaTorneosAnterioresYActualizaElPremioSinDuplicar() {
+        simularEntregaExitosa();
+        Trivia primera = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        String identidad = primera.getIdTorneo();
+        assertEquals(List.of(primera), gestor.consultarHistorial(CODIGO, trivia -> trivia));
+        gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+        assertEquals(identidad, primera.getIdTorneo());
+        assertTrue(gestor.consultarHistorial(CODIGO, Trivia::estaPremioEntregado).get(0));
+
+        Trivia segunda = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        assertEquals(1, gestor.consultarHistorial(CODIGO, trivia -> trivia).size());
+        gestor.responder(CODIGO, ana.getId(), 1, INCORRECTA);
+        gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
+        assertEquals(List.of(primera, segunda), gestor.consultarHistorial(CODIGO, trivia -> trivia));
+        assertFalse(identidad.equals(segunda.getIdTorneo()));
+        assertTrue(gestor.consultarHistorial("OTRA", trivia -> trivia).isEmpty());
+    }
 }

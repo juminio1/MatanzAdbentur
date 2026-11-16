@@ -35,11 +35,29 @@ public class Trivia extends Evento {
     private boolean premioEntregado;
     @Transient
     private String tipoPremio;
+    @Transient
+    private String idTorneo = java.util.UUID.randomUUID().toString();
+    @Transient
+    private String propiedadRobada;
+    @Transient
+    private String propietarioAnterior;
+
+    public String getIdTorneo() { return idTorneo; }
+    public String getPropiedadRobada() { return propiedadRobada; }
+    public String getPropietarioAnterior() { return propietarioAnterior; }
+    public void registrarPremioRobado(String propiedad, String propietario) {
+        this.propiedadRobada = propiedad;
+        this.propietarioAnterior = propietario;
+        registrarPremioEntregado("ROBAR");
+    }
 
     public boolean estaCancelada() { return "CANCELADA".equals(tipoPremio); }
+    @SuppressWarnings("PMD.NullAssignment")
     public void restaurarPremioPendiente() {
         this.premioEntregado = false;
         this.tipoPremio = "";
+        this.propiedadRobada = null;
+        this.propietarioAnterior = null;
     }
 
     public String getTipoPremio() { return tipoPremio; }

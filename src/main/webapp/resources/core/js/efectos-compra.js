@@ -191,7 +191,7 @@ function lanzarConfeti(origen) {
     }
 }
 
-function mostrarMontoFlotante(tarjeta, texto, tipo) {
+export function mostrarMontoFlotante(tarjeta, texto, tipo) {
     const caja = (tarjeta.querySelector(".dinero") ?? tarjeta).getBoundingClientRect();
     const etiqueta = document.createElement("span");
     etiqueta.className = `monto-flotante monto-flotante--${tipo}`;
