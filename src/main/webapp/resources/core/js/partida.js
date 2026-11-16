@@ -5,7 +5,7 @@ import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio } from "./efectos-compra.js?v=partida-18";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, reproducirEventoGlobal, detenerSonidoEventoGlobal } from "./efectos-compra.js?v=partida-20";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -13,7 +13,7 @@ document.addEventListener("click", evento => {
     const boton = evento.target.closest(`#btn-continuar-evento, #global-continuar, #btn-aceptar-oferta, ${omitir}`);
     if (boton && !boton.disabled) reproducirAccionPartida(boton.matches(omitir));
 }, { capture: true });
-import { aceptarEstadoEvento, puedeTirarEnEvento, seleccionarTurnoMasReciente } from "./eventos-globales.js?v=turno-7";
+import { aceptarEstadoEvento, puedeTirarEnEvento, seleccionarTurnoMasReciente, crearPresentadorSonidoEventoGlobal } from "./eventos-globales.js?v=turno-8";
 
 const registrarEventoGlobalEnHistorial = crearHistorialEventosGlobales(agregarAlHistorial);
 let estadoEventoGlobalCliente = null;
@@ -30,6 +30,9 @@ let compraEventoActual = null;
 const basePath = window.location.pathname.startsWith("/spring") ? "/spring" : "";
 const urlParams = new URLSearchParams(window.location.search);
 const codigoPartida = urlParams.get("codigo") || window.codigoSala || "";
+const reproducirPresentacionEventoGlobal = crearPresentadorSonidoEventoGlobal(
+    codigoPartida, reproducirEventoGlobal, () => window.sessionStorage,
+);
 
 const botonTirar = document.getElementById("btn-tirar");
 if (botonTirar) botonTirar.disabled = true;
@@ -2275,6 +2278,8 @@ function mostrarEstadoGlobal(estado, estabaActivo = estado.activo) {
     }
     panel.classList.toggle("aviso-evento--visible", mostrar);
     panel.setAttribute("aria-hidden", String(!mostrar));
+    if (mostrar) reproducirPresentacionEventoGlobal(estado);
+    else detenerSonidoEventoGlobal();
     if (estado.activo) {
         clearInterval(intervaloReloj);
         pausarRelojVisual();
