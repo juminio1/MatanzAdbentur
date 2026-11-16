@@ -1,7 +1,13 @@
 
-import { solicitarDificultad } from "../servicio-ruleta.js";
+import { solicitarDificultad, confirmarPresentacionRuleta } from "../servicio-ruleta.js";
 
 describe("Servicio REST de ruleta", () => {
+    it("confirmaLaPresentacionConLaSesionSinEnviarUnIdDeJugador", async () => {
+        const solicitar = jasmine.createSpy("fetch").and.resolveTo({ok:true,status:204});
+        await confirmarPresentacionRuleta("/spring","ABC","ACT-1",solicitar);
+        expect(solicitar).toHaveBeenCalledOnceWith("/spring/ruleta/ABC/ACT-1/presentacion-finalizada",
+            {method:"POST",credentials:"same-origin"});
+    });
 
     let fetchMock;
 

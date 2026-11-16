@@ -89,6 +89,7 @@ public final class MapeadorTrivia {
                 trivia.estaCancelada(), trivia.estaPremioEntregado(),
                 montoPremio(trivia),
                 premioPendiente && trivia.getDificultad() == DificultadRuleta.DIFICIL, trivia.getTipoPremio(),
-                saldoGanador(trivia), trivia.getIdTorneo(), trivia.getPropiedadRobada(), trivia.getPropietarioAnterior());
+                saldoGanador(trivia), trivia.getIdTorneo(), trivia.getPropiedadRobada(), trivia.getPropietarioAnterior(),
+                trivia.isInicioCoordinado());
     }
 }

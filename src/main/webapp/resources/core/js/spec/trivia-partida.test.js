@@ -37,7 +37,7 @@ describe("Trivia real", () => {
  let terminarPausa = null;
  let diferirCierres = false;
  let cierrePendiente = null;
- let alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial;
+ let alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial, esperarTableroVisible, opcionesConexion;
  afterEach(() => { pausarCierres = false; diferirCierres = false; });
  const estado = { finalizada: false, ronda: 1, enJuego: [{id: 1, apodo: "Ana"}] };
  const pregunta = {...PREGUNTA, id: 1, ronda: 1, totalRondas: 5, venceEn: Date.now()+10000};
@@ -57,15 +57,29 @@ describe("Trivia real", () => {
   actualizarSaldo = jasmine.createSpy("actualizarSaldo");
   animarGanancia = jasmine.createSpy("animarGanancia");
   registrarEnHistorial = jasmine.createSpy("registrarEnHistorial");
+  esperarTableroVisible = jasmine.createSpy("esperarTableroVisible").and.resolveTo();
   cierrePendiente = null;
-  conexion = conectarTriviaPartida({cliente, codigo: "ABC", alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial,
+  opcionesConexion = {cliente, codigo: "ABC", alPremioEntregado, actualizarSaldo, animarGanancia, registrarEnHistorial, esperarTableroVisible,
    programarCierre: function (cerrar) { if (diferirCierres) cierrePendiente = cerrar; else cerrar(); }, idJugador: 1,
    esperarTrasCierre: function (seguir) { if (pausarCierres) terminarPausa = seguir; else seguir(); }, estaPreso: function () { return preso; }, modal, api,
-   documento: new JSDOM('<section id="panel-ruleta"></section>').window.document});
+   documento: new JSDOM('<section id="panel-ruleta"></section>',{url:"http://localhost/partida"}).window.document};
+  conexion = conectarTriviaPartida(opcionesConexion);
  });
  it("muestraLaPreguntaComunDelServidorSinEsperarLaRuleta", () => {
   recibir({tipo: "RONDA_NUEVA", estado, pregunta});
   expect(modal.mostrarPregunta).toHaveBeenCalledWith(pregunta, jasmine.objectContaining({numeroRonda: 1, totalRondas: 5, enJuego: ["Ana"]}));
+ });
+ it("conservaLaPausaDeRafaelAunqueLaSiguienteRondaSeaCoordinada", () => {
+  pausarCierres = true;
+  const coordinado = {...estado, inicioCoordinado:true};
+  recibir({tipo:"RONDA_NUEVA",estado:coordinado,pregunta});
+  recibir({tipo:"RONDA_CERRADA",estado:coordinado,rondaCerrada:1,opcionCorrecta:1,eliminados:[]});
+  recibir({tipo:"RONDA_NUEVA",estado:{...coordinado,ronda:2},pregunta:{...pregunta,id:2,ronda:2}});
+  expect(modal.mostrarCierre).toHaveBeenCalledTimes(1);
+  expect(modal.mostrarPregunta).toHaveBeenCalledTimes(1);
+  expect(terminarPausa).toEqual(jasmine.any(Function));
+  terminarPausa?.();
+  expect(modal.mostrarPregunta).toHaveBeenCalledTimes(2);
  });
  it("recuperaLaPreguntaAlRecargar", async () => {
   api.obtenerEstado.and.resolveTo(estado);
@@ -193,7 +207,7 @@ describe("Trivia real", () => {
   await elegir(3);
   expect(api.enviarRespuesta).toHaveBeenCalledTimes(1);
  });
- const finalPendiente = {...estado, finalizada:true, idGanador:1, ganador:"Ana",
+ const finalPendiente = {...estado, idTorneo:"PREMIO-1", finalizada:true, idGanador:1, ganador:"Ana",
   premioPendiente:true, puedeElegirPremio:true, montoPremio:500, cancelada:false, premioEntregado:false};
  it("registraDineroConfirmadoSinDuplicarFinalizadaYPremio", () => {
   const resultado = {...finalPendiente, idTorneo:"T1", tipoPremio:"PLATA", montoPremio:100,
@@ -248,17 +262,89 @@ describe("Trivia real", () => {
   expect(animarGanancia).not.toHaveBeenCalled();
   volver();
   await Promise.resolve();
-  cierrePendiente();
+  await Promise.resolve();
+  expect(cierrePendiente).toBeNull();
   expect(animarGanancia).toHaveBeenCalledOnceWith(1, 100);
   expect(alPremioEntregado).toHaveBeenCalledOnceWith(premio);
   expect(api.elegirPremio).not.toHaveBeenCalled();
  });
- it("actualizaTambienElSaldoDeOtroGanadorAlCerrarAutomaticamente", () => {
+ it("actualizaElSaldoDelGanadorYLoAnimaTambienEnElClienteEspectadorDespuesDeSuClic", async () => {
+  let volver;
+  modal.mostrarFinal.and.returnValue(new Promise(resolve => { volver = resolve; }));
   const premio = {...finalPendiente, idGanador:2, tipoPremio:"PLATA", montoPremio:250,
    saldoGanador:1750, premioEntregado:true, premioPendiente:false};
   recibir({tipo:"PREMIO_ENTREGADO", estado:premio});
   expect(actualizarSaldo).toHaveBeenCalledOnceWith(2, 1750);
-  expect(animarGanancia).toHaveBeenCalledOnceWith(2, 250);
+  expect(animarGanancia).not.toHaveBeenCalled();
+  volver(); await Promise.resolve(); await Promise.resolve();
+  expect(animarGanancia).toHaveBeenCalledOnceWith(2,250);
+ });
+ it("ordenaSaldoBotonCierreTableroVisibleYUnaSolaAnimacionSinCierreAutomatico", async () => {
+  const orden = [];
+  let volver, tableroVisible;
+  modal.mostrarFinal.and.returnValue(new Promise(resolve => { volver = resolve; }));
+  actualizarSaldo.and.callFake(() => orden.push("saldo"));
+  modal.cerrar.and.callFake(() => orden.push("cierre"));
+  esperarTableroVisible.and.callFake(() => new Promise(resolve => { tableroVisible = () => { orden.push("tablero"); resolve(); }; }));
+  animarGanancia.and.callFake(() => orden.push("animacion"));
+  const premio = {...finalPendiente,tipoPremio:"PLATA",montoPremio:100,saldoGanador:1100,premioEntregado:true,premioPendiente:false};
+  recibir({tipo:"PREMIO_ENTREGADO",estado:premio});
+  recibir({tipo:"FINALIZADA",estado:premio});
+  expect(orden).toEqual(["saldo"]);
+  volver();
+  await Promise.resolve();
+  expect(orden).toEqual(["saldo","cierre"]);
+  expect(esperarTableroVisible).toHaveBeenCalledTimes(1);
+  if (tableroVisible) tableroVisible();
+  await Promise.resolve();
+  await Promise.resolve();
+  recibir({tipo:"PREMIO_ENTREGADO",estado:premio});
+  expect(orden).toEqual(["saldo","cierre","tablero","animacion"]);
+ });
+ it("noRepiteLaAnimacionTrasReconectarNiRecargarAunqueSeRepitaElPremio", async () => {
+  let volver;
+  modal.mostrarFinal.and.callFake(() => new Promise(resolve => { volver = resolve; }));
+  const premio = {...finalPendiente,tipoPremio:"PLATA",montoPremio:100,saldoGanador:1100,premioEntregado:true,premioPendiente:false};
+  const cerrarResultado = async () => {
+   recibir({tipo:"PREMIO_ENTREGADO",estado:premio});
+   volver();
+   await Promise.resolve();
+   await Promise.resolve();
+  };
+  await cerrarResultado();
+  expect(animarGanancia).toHaveBeenCalledTimes(1);
+  conectarTriviaPartida(opcionesConexion);
+  await cerrarResultado();
+  expect(animarGanancia).toHaveBeenCalledTimes(1);
+  const documentoNuevo = new JSDOM('<section id="panel-ruleta"></section>',{url:"http://localhost/partida"}).window.document;
+  const almacen = opcionesConexion.documento.defaultView.sessionStorage;
+  for (let i=0;i<almacen.length;i++) {
+   const clave = almacen.key(i);
+   documentoNuevo.defaultView.sessionStorage.setItem(clave,almacen.getItem(clave));
+  }
+  conectarTriviaPartida({...opcionesConexion,documento:documentoNuevo});
+  await cerrarResultado();
+  expect(animarGanancia).toHaveBeenCalledTimes(1);
+  expect(api.elegirPremio).not.toHaveBeenCalled();
+ });
+ it("noMarcaComoAnimadoUnEfectoQueNoPudoCrearse", async () => {
+  let volver;
+  modal.mostrarFinal.and.callFake(() => new Promise(resolve => { volver = resolve; }));
+  const premio = {...finalPendiente,idTorneo:"SIN-TARJETA",tipoPremio:"PLATA",montoPremio:100,
+   saldoGanador:1100,premioEntregado:true,premioPendiente:false};
+  const cerrar = async () => {
+   recibir({tipo:"PREMIO_ENTREGADO",estado:premio});
+   volver();
+   await Promise.resolve(); await Promise.resolve();
+  };
+  animarGanancia.and.returnValue(false);
+  await cerrar();
+  const almacen = opcionesConexion.documento.defaultView.sessionStorage;
+  expect(almacen.getItem("trivia:premio-animado:ABC:1:SIN-TARJETA")).toBeNull();
+  conectarTriviaPartida(opcionesConexion);
+  animarGanancia.and.returnValue(true);
+  await cerrar();
+  expect(almacen.getItem("trivia:premio-animado:ABC:1:SIN-TARJETA")).toBe("si");
  });
  it("noActualizaNiAnimaUnPremioPendienteOUnRobo", () => {
   recibir({tipo:"FINALIZADA", estado:finalPendiente});

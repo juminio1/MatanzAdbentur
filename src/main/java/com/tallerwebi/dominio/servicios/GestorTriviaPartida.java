@@ -46,12 +46,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class GestorTriviaPartida {
 
     // Debe coincidir con el límite de respuesta de ServicioTriviaImpl.
-    public static final int SEGUNDOS_POR_PREGUNTA = 30;
+    public static final int SEGUNDOS_POR_PREGUNTA = 20;
     public static final String PREMIO_PLATA = "PLATA";
     public static final String PREMIO_ROBAR = "ROBAR";
 
     // Margen para que el cierre programado ocurra después del vencimiento.
     private static final long MARGEN_CIERRE_MILISEGUNDOS = 250;
+    private static final long PAUSA_TRAS_CIERRE_MILISEGUNDOS = 2500;
     // Registra fallos de avisos o premios automáticos sin interrumpir los pasos restantes del torneo.
     private static final Logger LOG = LoggerFactory.getLogger(GestorTriviaPartida.class);
 
@@ -132,6 +133,7 @@ public class GestorTriviaPartida {
         try {
             servicioPartida.actualizarPausaPorDeuda(codigoPartida);
             Trivia trivia = servicioTrivia.iniciarTrivia(partida, dificultad);
+            trivia.setInicioCoordinado(true);
             trivias.put(codigoPartida, trivia);
             torneosPorPartida.computeIfAbsent(codigoPartida, codigo -> new ArrayList<>()).add(trivia);
             if (trivia.estaFinalizada()) {
@@ -385,11 +387,13 @@ public class GestorTriviaPartida {
                 eliminados.add(jugador);
             }
         }
+        // El cierre informa el resultado anterior antes de comunicar la pregunta siguiente.
         publicar(new EventoTriviaActualizada(codigoPartida, TipoAvisoTrivia.RONDA_CERRADA, trivia,
                 preguntaAnterior.getRespuestaCorrecta(), rondaAnterior, eliminados));
         if (trivia.estaFinalizada()) {
             finalizar(codigoPartida, trivia);
         } else {
+            trivia.setInicioRonda(reloj.instant().plusMillis(PAUSA_TRAS_CIERRE_MILISEGUNDOS));
             comenzarRonda(codigoPartida, trivia);
         }
     }

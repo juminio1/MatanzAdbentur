@@ -41,6 +41,11 @@ public class Trivia extends Evento {
     private String propiedadRobada;
     @Transient
     private String propietarioAnterior;
+    @Transient
+    private boolean inicioCoordinado;
+
+    public boolean isInicioCoordinado() { return inicioCoordinado; }
+    public void setInicioCoordinado(boolean coordinado) { this.inicioCoordinado = coordinado; }
 
     public String getIdTorneo() { return idTorneo; }
     public String getPropiedadRobada() { return propiedadRobada; }

@@ -252,8 +252,8 @@ public class ObservadorTriviaWebSocketTest {
         assertEquals("¿Cuál es la cabecera de La Matanza?", pregunta.enunciado());
         assertEquals(opciones, pregunta.opciones());
         assertEquals("FACIL", pregunta.dificultad());
-        assertEquals(30, pregunta.segundosParaResponder());
-        assertEquals(Instant.parse("2026-11-12T12:00:30Z").toEpochMilli(), pregunta.venceEn());
+        assertEquals(20, pregunta.segundosParaResponder());
+        assertEquals(Instant.parse("2026-11-12T12:00:20Z").toEpochMilli(), pregunta.venceEn());
 
         JsonNode json = new ObjectMapper().valueToTree(mensaje);
         assertEquals("RONDA_NUEVA", json.path("tipo").asText());
