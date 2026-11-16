@@ -70,7 +70,7 @@ public class GestorTriviaPartida {
     private final Set<String> partidasBloqueadas = ConcurrentHashMap.newKeySet();
     // Partidas en las que alguien cayó en Trivia y la ruleta todavía no sorteó la dificultad.
     // Ya cuentan como bloqueadas: así un evento global no puede activarse en el medio.
-    private final Set<String> partidasReservadas = ConcurrentHashMap.newKeySet();
+    private final Set<String> partidasReservadas = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     private final Map<String, List<Jugador>> participantesAlInicioDeRonda = new HashMap<>();
     // Guarda las tareas de cierre para cancelarlas cuando termina la ronda o se cancela la trivia.
     private final Map<String, ScheduledFuture<?>> cierresProgramados = new HashMap<>();
@@ -140,15 +140,14 @@ public class GestorTriviaPartida {
         } catch (RuntimeException ex) {
             actualizarBloqueo(codigoPartida);
             if (!estaBloqueandoPartida(codigoPartida)) {
-                servicioPartida.actualizarPausaPorDeuda(codigoPartida);
+                servicioPartida.reanudarDespuesDeTrivia(codigoPartida);
             }
             throw ex;
         }
     }
 
     public boolean estaBloqueandoPartida(String codigoPartida) {
-        return codigoPartida != null
-                && (partidasBloqueadas.contains(codigoPartida) || partidasReservadas.contains(codigoPartida));
+        return tieneTriviaEnCurso(codigoPartida) || partidasReservadas.contains(codigoPartida);
     }
 
     /**
@@ -156,14 +155,14 @@ public class GestorTriviaPartida {
      * No usa el monitor del gestor: se llama con la partida bloqueada en la base de datos.
      */
     public void reservar(String codigoPartida) {
-        if (codigoPartida != null) partidasReservadas.add(codigoPartida);
+        partidasReservadas.add(codigoPartida);
     }
 
     /** Quita una reserva que no llegó a convertirse en trivia (ruleta fallida o jugada revertida). */
     public void liberarReserva(String codigoPartida) {
-        if (codigoPartida == null || !partidasReservadas.remove(codigoPartida)) return;
+        if (!partidasReservadas.remove(codigoPartida)) return;
         if (!estaBloqueandoPartida(codigoPartida)) {
-            servicioPartida.actualizarPausaPorDeuda(codigoPartida);
+            servicioPartida.reanudarDespuesDeTrivia(codigoPartida);
         }
     }
 
@@ -458,7 +457,7 @@ public class GestorTriviaPartida {
             }
         }
         if (estabaBloqueada && !estaBloqueandoPartida(evento.codigoPartida())) {
-            servicioPartida.actualizarPausaPorDeuda(evento.codigoPartida());
+            servicioPartida.reanudarDespuesDeTrivia(evento.codigoPartida());
         }
     }
 }

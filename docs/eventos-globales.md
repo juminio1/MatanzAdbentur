@@ -100,13 +100,12 @@ también la trivia.
   devuelve verdadero, también para la tirada automática por vencimiento. Si la
   transacción se revierte, la reserva se deshace (`DespuesDeConfirmar.siSeRevierte`);
   si la ruleta no se puede activar o la trivia no inicia, la reserva se libera.
-- Con la trivia pendiente, solo quien ya tiró puede cerrar su turno. El turno pasa al
-  siguiente jugador, pero queda en pausa: no se activa el evento ni se habilita la tirada.
-- `ServicioEventoImpl.activarSiCorresponde` no activa nada mientras haya una trivia;
-  el evento queda pendiente (`tieneActivacionPendiente`).
-- Cuando la trivia termina y se levanta la pausa, si a la ronda le toca un evento
-  pendiente y el jugador del turno todavía no tiró, el evento aparece primero. Al
-  cerrarse, el turno se reanuda como en cualquier otro evento.
+- Mientras haya una trivia (o su ruleta) nadie puede cerrar el turno, así que la ronda
+  no avanza y `ServicioEventoImpl.activarSiCorresponde` tampoco activa nada.
+- Cuando la trivia termina, `GestorTriviaPartida` llama a `reanudarDespuesDeTrivia`. Si el
+  jugador del turno ya tiró (el que cayó en Trivia), el turno pasa solo: la ronda avanza
+  en ese momento y, si es múltiplo de cinco, aparece el evento global antes de que tire
+  el siguiente. Si no tiró, recupera el tiempo que le quedaba.
 
 ## Verificación
 

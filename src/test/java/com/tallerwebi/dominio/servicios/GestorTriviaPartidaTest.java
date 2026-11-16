@@ -650,7 +650,8 @@ public class GestorTriviaPartidaTest {
         gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
         gestor.cerrarPorTiempo(CODIGO, trivia, 1);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -662,7 +663,8 @@ public class GestorTriviaPartidaTest {
 
         gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -1150,7 +1152,7 @@ public class GestorTriviaPartidaTest {
         gestor.liberarReserva(CODIGO);
 
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
-        verify(servicioPartida).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida).reanudarDespuesDeTrivia(CODIGO);
     }
 
     @Test

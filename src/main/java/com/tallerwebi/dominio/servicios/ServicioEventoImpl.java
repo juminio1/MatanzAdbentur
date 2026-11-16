@@ -81,12 +81,10 @@ public class ServicioEventoImpl implements ServicioEvento {
         repositorio.bloquearPartida(partida);
         EstadoEventoGlobal estado = partida.getEventoGlobal();
         int ronda = partida.getRondaActual();
-        // Nunca se superpone con una trivia (ni con su ruleta): queda pendiente y se activa
-        // cuando la trivia termina, antes de que el jugador del turno pueda tirar.
-        if (
-            !tieneActivacionPendiente(partida) ||
-            participacion.estaBloqueadaPorTrivia(partida)
-        ) return estado.estaActivo();
+        // Nunca se superpone con una trivia (ni con la espera de su ruleta).
+        if (!esRondaDeEvento(partida) || participacion.estaBloqueadaPorTrivia(partida)) {
+            return estado.estaActivo();
+        }
         List<com.tallerwebi.dominio.entidades.Evento.EventoGlobal> eventos = catalogo.obtenerTodos();
         if (eventos.size() != TipoEventoGlobal.values().length) {
             throw new IllegalStateException("El catálogo debe contener los seis eventos globales.");
@@ -110,8 +108,8 @@ public class ServicioEventoImpl implements ServicioEvento {
         return true;
     }
 
-    @Override
-    public boolean tieneActivacionPendiente(Partida partida) {
+    // La partida está en curso, la ronda es múltiplo de cinco y su evento todavía no salió.
+    private boolean esRondaDeEvento(Partida partida) {
         EstadoEventoGlobal estado = partida.getEventoGlobal();
         int ronda = partida.getRondaActual();
         return partida.getEstado() == EstadoPartida.EN_CURSO

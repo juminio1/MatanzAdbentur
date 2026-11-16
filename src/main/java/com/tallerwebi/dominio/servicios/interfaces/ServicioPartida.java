@@ -31,5 +31,6 @@ public interface ServicioPartida {
     void actualizarPausaPorDeuda(String codigoUnico);
     boolean turnoPausadoPorDeuda(String codigoUnico);
     void reanudarDespuesDeEvento(String codigoUnico);
+    void reanudarDespuesDeTrivia(String codigoUnico);
     List<PosicionFicha> obtenerPosicionesFichas(String codigo);
 }

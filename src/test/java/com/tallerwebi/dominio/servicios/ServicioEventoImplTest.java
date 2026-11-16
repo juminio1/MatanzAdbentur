@@ -644,39 +644,52 @@ class ServicioEventoImplTest {
     }
 
     @Test
-    void dadoQueElUltimoDeLaRondaCayoEnTriviaCuandoPasaElTurnoDaComoResultadoQueElEventoEsperaALaTrivia() {
+    void dadoQueElUltimoDeLaRondaCayoEnTriviaCuandoQuiereCerrarElTurnoDaComoResultadoQueLaRondaNoAvanza() {
         EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
         simularTrivia(caso);
         caso.jugador(1).setTiroEnTurno(true);
 
         caso.iniciar();
 
-        assertEquals(5, caso.partida.getRondaActual());
-        assertEquals(0, caso.partida.getIndiceTurnoActual());
+        assertEquals(4, caso.partida.getRondaActual());
+        assertEquals(1, caso.partida.getIndiceTurnoActual());
         assertFalse(caso.partida.getEventoGlobal().estaActivo());
         verify(caso.catalogo, never()).obtenerTodos();
-        verify(caso.temporizador).pausar("GLOBAL");
     }
 
     @Test
-    void dadoQueTerminaLaTriviaCuandoLaRondaTieneEventoPendienteDaComoResultadoElEventoAntesDeTirar() {
+    void dadoQueTerminaLaTriviaDeQuienYaTiroCuandoPasaElTurnoDaComoResultadoLaRondaYElEventoAntesDeTirar() {
         EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
         GestorTriviaPartida trivia = simularTrivia(caso);
         caso.jugador(1).setTiroEnTurno(true);
         caso.iniciar();
 
         when(trivia.estaBloqueandoPartida("GLOBAL")).thenReturn(false);
-        when(caso.temporizador.consumirPausa("GLOBAL")).thenReturn(60);
-        caso.partidas.actualizarPausaPorDeuda("GLOBAL");
-        ArgumentCaptor<Runnable> activacion = ArgumentCaptor.forClass(Runnable.class);
-        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), eq(0), activacion.capture());
-        activacion.getValue().run();
+        caso.partidas.reanudarDespuesDeTrivia("GLOBAL");
+        ArgumentCaptor<Runnable> pase = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), eq(0), pase.capture());
+        pase.getValue().run();
 
+        assertEquals(5, caso.partida.getRondaActual());
+        assertEquals(0, caso.partida.getIndiceTurnoActual());
         assertTrue(caso.partida.getEventoGlobal().estaActivo());
         assertEquals(5, caso.partida.getEventoGlobal().getUltimaRonda());
         assertFalse(caso.jugador(0).getTiroEnTurno());
         assertThrows(IllegalStateException.class,
                 () -> caso.participacion.validarAccionOrdinaria(caso.partida));
+    }
+
+    @Test
+    void dadoQueTerminaLaTriviaYElJugadorNoTiroCuandoSeReanudaDaComoResultadoQueConservaSuTiempo() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        when(caso.temporizador.consumirPausa("GLOBAL")).thenReturn(40);
+
+        caso.partidas.reanudarDespuesDeTrivia("GLOBAL");
+
+        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), eq(40), any(Runnable.class));
+        verify(caso.temporizador, never()).programarTemporizador(eq("GLOBAL"), eq(0), any(Runnable.class));
+        assertEquals(4, caso.partida.getRondaActual());
+        assertEquals(1, caso.partida.getIndiceTurnoActual());
     }
 
     @Test
@@ -686,19 +699,6 @@ class ServicioEventoImplTest {
         caso.partida.setRondaActual(5);
 
         assertFalse(caso.eventos.activarSiCorresponde(caso.partida));
-        assertFalse(caso.partida.getEventoGlobal().estaActivo());
-        assertTrue(caso.eventos.tieneActivacionPendiente(caso.partida));
-    }
-
-    @Test
-    void dadoQueHayUnaTriviaPendienteCuandoQuienNoTiroQuiereCerrarElTurnoDaComoResultadoQueNoAvanza() {
-        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
-        simularTrivia(caso);
-
-        caso.iniciar();
-
-        assertEquals(4, caso.partida.getRondaActual());
-        assertEquals(1, caso.partida.getIndiceTurnoActual());
         assertFalse(caso.partida.getEventoGlobal().estaActivo());
     }
 }
