@@ -102,6 +102,12 @@ public final class CatalogoTablero {
         return precioCompra / 2;
     }
 
+    // Al vender al banco se recupera la mitad de lo invertido: la compra más lo pagado en mejoras.
+    public static int precioVenta(int precioCompra, int nivelMejora) {
+        int nivel = Math.max(0, Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA));
+        return (precioCompra + nivel * costoMejora(precioCompra)) / 2;
+    }
+
     private static GrupoPropiedades barrioDe(Integer posicion) {
         List<String> datos = CATALOGO_PROPIEDADES.get(posicion);
         if (datos == null) {

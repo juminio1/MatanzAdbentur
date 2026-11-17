@@ -169,7 +169,14 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         if (precioCompra == null || precioCompra < 0) {
             throw new PropiedadInvalidaException("El precio de compra de la propiedad no es válido.");
         }
-        return precioCompra / 2;
+        return precioVenta(precioCompra, 0);
+    }
+
+    // Incluye lo invertido en mejoras.
+    @Override
+    public Integer calcularPrecioVenta(Propiedad propiedad) {
+        calcularPrecioVenta(propiedad.getPrecioCompra()); // valida el precio de compra
+        return precioVenta(propiedad.getPrecioCompra(), Objects.requireNonNullElse(propiedad.getNivelMejora(), 0));
     }
 
     @Override
@@ -181,7 +188,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         participacion.validarSinTrivia(partida);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
-        Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
+        Integer precioVenta = calcularPrecioVenta(propiedad);
         propiedad.setPropietario(null);
         propiedad.setNivelMejora(0);
         economia.sumarDinero(vendedor, precioVenta);

@@ -67,14 +67,15 @@ class ServicioPropiedadOperacionesTest {
     }
 
     @Test
-    void venderAlBancoDevuelveLaMitadYEliminaDuenioYMejoras() {
+    void venderAlBancoDevuelveLaMitadDeLoInvertidoYEliminaDuenioYMejoras() {
         propiedad.setNivelMejora(3);
 
-        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        // (300 de compra + 3 mejoras de 150) / 2
+        assertEquals(375, servicio.venderPropiedadParaJugador(10L, 1L));
 
         assertNull(propiedad.getPropietario());
         assertEquals(0, propiedad.getNivelMejora());
-        verify(economia).sumarDinero(vendedor, 150);
+        verify(economia).sumarDinero(vendedor, 375);
         verify(partidas).actualizarJugador(vendedor);
         verify(repositorio).guardarPropiedad(propiedad);
     }
@@ -108,6 +109,19 @@ class ServicioPropiedadOperacionesTest {
         }
         verify(economia, never()).sumarDinero(any(), any());
         verify(repositorio, never()).guardarPropiedad(any());
+    }
+
+    @Test
+    void venderAlBancoSinMejorasDevuelveLaMitadDelPrecio() {
+        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        verify(economia).sumarDinero(vendedor, 150);
+    }
+
+    @Test
+    void elPrecioDeVentaDeUnaPropiedadIncluyeSusMejoras() {
+        propiedad.setNivelMejora(5);
+        // (300 + 5 * 150) / 2
+        assertEquals(525, servicio.calcularPrecioVenta(propiedad));
     }
 
     @Test

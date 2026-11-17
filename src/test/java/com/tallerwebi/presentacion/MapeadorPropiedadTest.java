@@ -19,11 +19,11 @@ class MapeadorPropiedadTest {
         when(casilleros.obtenerDatosCatalogoPropiedad(1))
                 .thenReturn(List.of("Plaza", "Barrio", "VILLA_LUZURIAGA"));
         when(propiedades.calcularPrecioVenta(150)).thenReturn(123);
-        when(propiedades.calcularPrecioVenta(900)).thenReturn(321);
         MapeadorPropiedad mapeador = new MapeadorPropiedad(casilleros, propiedades);
         Propiedad propiedad = new Propiedad();
         propiedad.setPrecioCompra(900);
         propiedad.setPrecioAlquiler(50);
+        when(propiedades.calcularPrecioVenta(propiedad)).thenReturn(321);
         CasilleroPropiedad casillero = new CasilleroPropiedad();
         casillero.setPosicion(1);
 

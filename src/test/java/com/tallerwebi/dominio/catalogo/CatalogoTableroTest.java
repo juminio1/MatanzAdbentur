@@ -61,6 +61,23 @@ class CatalogoTableroTest {
     }
 
     @Test
+    void dadaUnaPropiedadSinMejorasCuandoCalculoElPrecioDeVentaDaComoResultadoLaMitadDelPrecio() {
+        assertEquals(250, CatalogoTablero.precioVenta(500, 0));
+    }
+
+    @Test
+    void dadaUnaPropiedadMejoradaCuandoCalculoElPrecioDeVentaDaComoResultadoLaMitadDeLoInvertido() {
+        // Ramos Mejía con 3 mejoras: (500 + 3 * 250) / 2
+        assertEquals(625, CatalogoTablero.precioVenta(500, 3));
+    }
+
+    @Test
+    void dadoUnNivelFueraDeRangoCuandoCalculoElPrecioDeVentaLoLimitaEntreCeroYElMaximo() {
+        assertEquals(250, CatalogoTablero.precioVenta(500, -2));
+        assertEquals(875, CatalogoTablero.precioVenta(500, 9));
+    }
+
+    @Test
     void dadoElBarrioCompletoSinMejorasCuandoCalculoElAlquilerDaComoResultadoElDoble() {
         assertEquals(40, CatalogoTablero.alquilerDeBarrio(20, 0, true));
     }
