@@ -1,0 +1,92 @@
+package com.tallerwebi.punta_a_punta.vistas;
+
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Response;
+import java.text.NumberFormat;
+import java.util.Locale;
+
+public class VistaPartida extends VistaWeb {
+
+    public VistaPartida(Page page) {
+        super(page);
+    }
+
+    public void verificarInicio() {
+        assertThat(page.locator(".tablero")).isVisible();
+        assertThat(page.locator(".jugadores .jugador")).hasCount(3);
+        assertThat(page.locator("[data-casillero='0'] .ficha")).hasCount(3);
+    }
+
+    public long obtenerIdDeSesion() {
+        return ((Number) page.evaluate("() => Number(window.usuarioSesionId)")).longValue();
+    }
+
+    public void verificarSaldo(String nombre, int saldo) {
+        Locator tarjeta = page.locator(".jugadores .jugador").filter(
+            new Locator.FilterOptions().setHas(page.getByText(
+                nombre, new Page.GetByTextOptions().setExact(true))));
+        assertThat(tarjeta).hasCount(1);
+        assertThat(tarjeta.locator(".dinero")).hasText(
+            "$" + NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-AR")).format(saldo));
+    }
+
+    public void verificarPosicion(long idJugador, int posicion) {
+        assertThat(page.locator("[data-casillero='" + posicion
+            + "'] .ficha[data-jugador-id='" + idJugador + "']")).hasCount(1);
+    }
+
+    public void verificarDisponible(int posicion, int precio) {
+        Locator etiqueta = etiqueta(posicion);
+        assertThat(etiqueta).hasAttribute("aria-label", "Precio de compra: $" + precio);
+        assertThat(page.locator("[data-casillero='" + posicion
+            + "'] .casillero__precio[data-color]")).hasCount(0);
+    }
+
+    public Response tirarDados() {
+        return esperarPost("/partida/tirar-dados?", "#btn-tirar");
+    }
+
+    public void verificarOportunidadDeCompra(String nombre, int precio) {
+        assertThat(page.locator("#modal-compra-propiedad")).isVisible();
+        assertThat(page.locator("#modal-propiedad-titulo")).hasText(nombre);
+        assertThat(page.locator("#compra-precio")).hasText("$" + precio);
+        assertThat(page.locator("#btn-modal-comprar")).isEnabled();
+    }
+
+    public Response comprar(int posicion) {
+        Response respuesta = esperarPost("/propiedades/" + posicion + "/comprar", "#btn-modal-comprar");
+        assertThat(page.locator("#modal-compra-propiedad")).not().isVisible();
+        return respuesta;
+    }
+
+    public void verificarPropietario(int posicion, String nombre, String color) {
+        Locator etiqueta = etiqueta(posicion);
+        assertThat(etiqueta).isVisible();
+        assertThat(etiqueta).hasAttribute("aria-label", "Alquiler: $30 · Propietario: " + nombre);
+        assertThat(etiqueta).hasAttribute("data-color", color);
+        String fondo = switch (color) {
+            case "rojo" -> "rgb(118, 45, 48)";
+            case "azul" -> "rgb(23, 76, 104)";
+            case "verde" -> "rgb(18, 89, 65)";
+            default -> throw new IllegalArgumentException("Color inesperado: " + color);
+        };
+        assertThat(etiqueta).hasCSS("background-color", fondo);
+    }
+
+    private Locator etiqueta(int posicion) {
+        return page.locator("[data-casillero='" + posicion + "'] .casillero__precio");
+    }
+
+    private Response esperarPost(String ruta, String boton) {
+        Response respuesta = page.waitForResponse(
+            recibida -> recibida.url().contains(ruta)
+                && "POST".equals(recibida.request().method()),
+            () -> page.locator(boton).click());
+        assertTrue(respuesta.ok(), "La accion de interfaz debe ser aceptada: HTTP " + respuesta.status());
+        return respuesta;
+    }
+}
