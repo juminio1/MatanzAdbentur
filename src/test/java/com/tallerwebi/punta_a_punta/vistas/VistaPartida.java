@@ -73,6 +73,33 @@ public class VistaPartida extends VistaWeb {
         assertThat(page.locator("#modal-compra-propiedad")).not().isVisible();
     }
 
+    public void abrirInformacionPropiedad(int posicion, String nombre) {
+        // El tablero admite Enter; evita que una ficha tape el punto de clic del texto.
+        page.locator("[data-casillero='" + posicion + "']").press("Enter");
+        assertThat(page.locator("#modal-info-propiedad")).isVisible();
+        assertThat(page.locator("#popup-info-titulo")).hasText(nombre);
+    }
+
+    public void verificarPermisoDeMejora(boolean permitido, int costo) {
+        Locator boton = page.locator("#btn-info-mejorar");
+        assertThat(boton).hasText("Mejorar por $" + costo);
+        if (permitido) assertThat(boton).isEnabled();
+        else assertThat(boton).isDisabled();
+    }
+
+    public Response mejorar(int posicion) {
+        return esperarPost("/propiedades/" + posicion + "/subir-alquiler", "#btn-info-mejorar");
+    }
+
+    public void verificarAlquilerEnInformacion(int alquiler) {
+        assertThat(page.locator("#popup-info-alquiler")).hasText("$" + alquiler);
+    }
+
+    public void cerrarInformacionPropiedad() {
+        page.locator("#btn-cerrar-info-propiedad").click();
+        assertThat(page.locator("#modal-info-propiedad")).not().isVisible();
+    }
+
     public void verificarPropietario(int posicion, String nombre, String color, int alquiler) {
         Locator etiqueta = etiqueta(posicion);
         assertThat(etiqueta).isVisible();
