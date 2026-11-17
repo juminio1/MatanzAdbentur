@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 @Service("servicioPropiedad")
@@ -287,7 +288,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     @Override
     public Integer calcularAlquiler(CasilleroPropiedad casillero, Propiedad propiedad) {
         Long idPartida = casillero.getPartidaId();
-        if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquiler(propiedad);
+        if (!POSICIONES_PARADA.contains(casillero.getPosicion())) return calcularAlquilerDeBarrio(casillero, propiedad);
         Jugador propietario = propiedad.getPropietario();
         if (propietario == null || idPartida == null) return 20;
         Partida referencia = new Partida();
@@ -300,6 +301,15 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
                 .count();
         return ALQUILERES_POR_PARADAS.get(
                 Math.toIntExact(Math.min(cantidadParadas, ALQUILERES_POR_PARADAS.size() - 1)));
+    }
+
+    // Si el dueño tiene todo el barrio y la propiedad no tiene mejoras, el alquiler se duplica.
+    private Integer calcularAlquilerDeBarrio(CasilleroPropiedad casillero, Propiedad propiedad) {
+        boolean barrioCompleto = Optional.ofNullable(propiedad.getPropietario())
+                .map(propietario -> esDuenioDeTodoElGrupo(propiedad, casillero, propietario))
+                .orElse(false);
+        return alquilerDeBarrio(calcularAlquiler(propiedad),
+                Objects.requireNonNullElse(propiedad.getNivelMejora(), 0), barrioCompleto);
     }
 
     @Override
@@ -367,15 +377,14 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     }
 
     private void validarGrupoCompleto(Propiedad propiedad, Jugador jugador) {
-        if (!esDuenioDeTodoElGrupo(propiedad, jugador)) {
+        if (!esDuenioDeTodoElGrupo(propiedad, buscarCasilleroDePropiedad(propiedad.getId()), jugador)) {
             throw new PropiedadNoMejorableException("Debes ser dueño de todas las propiedades de la localidad para mejorarlas.");
         }
     }
 
-    private Boolean esDuenioDeTodoElGrupo(Propiedad propiedad, Jugador jugador) {
+    private Boolean esDuenioDeTodoElGrupo(Propiedad propiedad, CasilleroPropiedad objetivo, Jugador jugador) {
         Set<Integer> posiciones = posicionesDelGrupo(propiedad.getGrupo());
         if (posiciones.isEmpty()) return false;
-        CasilleroPropiedad objetivo = buscarCasilleroDePropiedad(propiedad.getId());
         if (objetivo == null || objetivo.getPartidaId() == null
                 || !posiciones.contains(objetivo.getPosicion())) return false;
         Set<Integer> posicionesPropias = servicioCasillero.obtenerTodosLosCasilleros().stream()

@@ -2,6 +2,7 @@ package com.tallerwebi.dominio.catalogo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
@@ -46,17 +47,39 @@ class CatalogoTableroTest {
     @Test
     void dadoCadaNivelDeMejoraCuandoCalculoElAlquilerDaComoResultadoElBaseMultiplicado() {
         assertEquals(20, CatalogoTablero.alquilerConMejora(20, 0));
-        assertEquals(40, CatalogoTablero.alquilerConMejora(20, 1));
-        assertEquals(80, CatalogoTablero.alquilerConMejora(20, 2));
-        assertEquals(140, CatalogoTablero.alquilerConMejora(20, 3));
-        assertEquals(220, CatalogoTablero.alquilerConMejora(20, 4));
-        assertEquals(300, CatalogoTablero.alquilerConMejora(20, 5));
-        assertEquals(1500, CatalogoTablero.alquilerConMejora(100, 5));
+        assertEquals(60, CatalogoTablero.alquilerConMejora(20, 1));
+        assertEquals(100, CatalogoTablero.alquilerConMejora(20, 2));
+        assertEquals(160, CatalogoTablero.alquilerConMejora(20, 3));
+        assertEquals(240, CatalogoTablero.alquilerConMejora(20, 4));
+        assertEquals(320, CatalogoTablero.alquilerConMejora(20, 5));
+        assertEquals(1600, CatalogoTablero.alquilerConMejora(100, 5));
     }
 
     @Test
     void dadoUnNivelMayorAlMaximoCuandoCalculoElAlquilerDaComoResultadoElDelNivelMaximo() {
-        assertEquals(1500, CatalogoTablero.alquilerConMejora(100, 8));
+        assertEquals(1600, CatalogoTablero.alquilerConMejora(100, 8));
+    }
+
+    @Test
+    void dadoElBarrioCompletoSinMejorasCuandoCalculoElAlquilerDaComoResultadoElDoble() {
+        assertEquals(40, CatalogoTablero.alquilerDeBarrio(20, 0, true));
+    }
+
+    @Test
+    void dadoElBarrioIncompletoCuandoCalculoElAlquilerNoSeDuplica() {
+        assertEquals(20, CatalogoTablero.alquilerDeBarrio(20, 0, false));
+    }
+
+    @Test
+    void dadoElBarrioCompletoConMejorasCuandoCalculoElAlquilerNoSeDuplica() {
+        assertEquals(60, CatalogoTablero.alquilerDeBarrio(60, 1, true));
+    }
+
+    @Test
+    void dadoElBarrioCompletoCuandoMejoroUnaVezElAlquilerSubeIgual() {
+        int barrioCompleto = CatalogoTablero.alquilerDeBarrio(20, 0, true);
+        int primeraMejora = CatalogoTablero.alquilerConMejora(20, 1);
+        assertTrue(primeraMejora > barrioCompleto);
     }
 
     @Test

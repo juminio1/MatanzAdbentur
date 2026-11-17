@@ -156,7 +156,7 @@ public class ServicioPropiedadTest {
     public void alquilerDeberiaAumentarSegunElNivelDeMejoras() {
         Propiedad propiedad = new Propiedad(1L, "Plaza San Justo", 500, 100, null, SAN_JUSTO);
         propiedad.setNivelMejora(2);
-        assertEquals(400, servicioPropiedad.calcularAlquiler(propiedad));
+        assertEquals(500, servicioPropiedad.calcularAlquiler(propiedad));
     }
 
     @Test
