@@ -84,7 +84,7 @@ class EfectosPartidaIntegracionTest {
             ServicioTurnoImpl.class,
             ServicioEventoCasilleroImpl.class,
             ServicioCasilleroImpl.class,
-            ServicioPropiedadImpl.class,
+            ServicioPropiedadImpl.class, ServicioAlquilerImpl.class,
             ServicioGestionQuiebraImpl.class,
             ServicioFinalizacionPartidaImpl.class,
             RepositorioFinalizarPartidaImpl.class,

@@ -54,7 +54,7 @@ class EventosGlobalesIntegracionTest {
     @Import({ServicioPartidaImpl.class, ServicioTurnoImpl.class, ServicioParticipacionImpl.class,
             ServicioEventoImpl.class, AplicadorConsecuenciaEventoGlobal.class,
             ServicioEconomiaImpl.class, ServicioMovimientoImpl.class, ServicioGestionQuiebraImpl.class,
-            ServicioPropiedadImpl.class, ServicioCasilleroImpl.class, ServicioFinalizacionPartidaImpl.class,
+            ServicioPropiedadImpl.class, ServicioAlquilerImpl.class, ServicioCasilleroImpl.class, ServicioFinalizacionPartidaImpl.class,
             ServicioOfertaPropiedadImpl.class,
             ServicioJugadaImpl.class, ServicioEventoCasilleroImpl.class,
             RepositorioPartidaImpl.class, RepositorioUsuarioImpl.class, RepositorioEventoGlobalImpl.class, RepositorioDeudaPendienteImpl.class,
