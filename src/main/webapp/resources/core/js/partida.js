@@ -490,7 +490,7 @@ function actualizarBotonTirada() {
 
 // --- Cárcel ---
 
-const COSTO_FIANZA = 100;
+const COSTO_FIANZA = 300;
 const MAX_INTENTOS_CARCEL = 3;
 let pagandoFianza = false;
 
@@ -537,7 +537,7 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
         if (esUsuario) {
             reproducirComisaria();
             mostrarAvisoPartida(
-                "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
+                `Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $${COSTO_FIANZA} de fianza.`,
                 false, true,
             );
         }
