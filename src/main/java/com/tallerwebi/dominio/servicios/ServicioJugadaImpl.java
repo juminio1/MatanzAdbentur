@@ -195,7 +195,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         if (jugador.getDinero() == null || jugador.getDinero() < COSTO_FIANZA) {
             throw new DineroInsuficienteException(
-                "No tenés los $100 necesarios para pagar la fianza anticipada."
+                "No tenés los $" + COSTO_FIANZA + " necesarios para pagar la fianza anticipada."
             );
         }
 

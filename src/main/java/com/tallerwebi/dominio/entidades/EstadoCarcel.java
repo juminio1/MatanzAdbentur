@@ -6,7 +6,7 @@ import jakarta.persistence.Embeddable;
 public class EstadoCarcel {
 
     public static final int MAX_INTENTOS = 3;
-    public static final int COSTO_FIANZA = 100;
+    public static final int COSTO_FIANZA = 300;
 
     private Boolean encarcelado = false;
     private Integer intentosSalirCarcel = 0;
