@@ -176,7 +176,14 @@ public class AlquilerPropiedadesE2EIT extends EscenarioPartidaE2E {
                 movimientoId.equals(cuerpo.path("idMovimiento").asText()));
             assertEquals(movimiento, recibido, "Cada sesion debe recibir el movimiento real completo");
         }
-        for (Page pagina : paginas()) new VistaPartida(pagina).verificarPosicion(id(jugador), destino);
+        long idJugador = id(jugador);
+        for (Page pagina : paginas()) {
+            var ficha = pagina.locator("[data-casillero='" + destino
+                + "'] .ficha[data-jugador-id='" + idJugador + "']");
+            // Espera la llegada real de la ficha, tambien en documentos en segundo plano.
+            pagina.waitForCondition(() -> ficha.count() == 1);
+            new VistaPartida(pagina).verificarPosicion(idJugador, destino);
+        }
         verificarPantallas();
         return movimiento;
     }
