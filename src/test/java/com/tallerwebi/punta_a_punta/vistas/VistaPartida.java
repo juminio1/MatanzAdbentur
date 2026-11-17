@@ -100,6 +100,40 @@ public class VistaPartida extends VistaWeb {
         assertThat(page.locator("#modal-info-propiedad")).not().isVisible();
     }
 
+    public void prepararVentaAlBanco(String nombre, int importe) {
+        page.locator("#btn-info-vender").click();
+        assertThat(page.locator("#modal-vender-propiedad")).isVisible();
+        assertThat(page.locator("#vender-propiedad-nombre")).hasText(nombre);
+        page.locator("[data-destino-venta='banco']").click();
+        assertThat(page.locator("#venta-panel-banco")).isVisible();
+        assertThat(page.locator("#venta-banco-importe")).hasText("$" + importe);
+        assertThat(page.locator("#btn-vender-al-banco")).isEnabled();
+    }
+
+    public Response confirmarVentaAlBanco(int posicion) {
+        Response respuesta = esperarPost("/propiedades/" + posicion + "/vender", "#btn-vender-al-banco");
+        assertThat(page.locator("#modal-vender-propiedad")).not().isVisible();
+        return respuesta;
+    }
+
+    public void verificarInformacionSinPropietario(int precio) {
+        assertThat(page.locator("#popup-info-propietario")).hasText("Sin propietario");
+        assertThat(page.locator("#popup-info-precio")).isVisible();
+        assertThat(page.locator("#popup-info-precio")).hasText("$" + precio);
+        assertThat(page.locator("#popup-acciones-propias")).not().isVisible();
+    }
+
+    public void verificarAusenteEnMisPropiedades(String nombre) {
+        page.locator("#btn-bono-propiedades").click();
+        assertThat(page.locator("#modal-bono-propiedades")).isVisible();
+        // Espera a que termine la carga antes de comprobar una ausencia.
+        assertThat(page.locator("#bono-propiedades-mensaje")).hasText("Todavía no tenés propiedades.");
+        assertThat(page.locator("#lista-propiedades-propias .propiedad-propia")
+            .filter(new Locator.FilterOptions().setHasText(nombre))).hasCount(0);
+        page.locator("#btn-cerrar-bono-propiedades").click();
+        assertThat(page.locator("#modal-bono-propiedades")).not().isVisible();
+    }
+
     public void verificarPropietario(int posicion, String nombre, String color, int alquiler) {
         Locator etiqueta = etiqueta(posicion);
         assertThat(etiqueta).isVisible();
