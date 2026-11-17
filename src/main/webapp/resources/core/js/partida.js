@@ -5,8 +5,7 @@ import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante } from "./efectos-compra.js?v=partida-21";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, reproducirEventoGlobal, detenerSonidoEventoGlobal } from "./efectos-compra.js?v=partida-20";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante, reproducirEventoGlobal, detenerSonidoEventoGlobal } from "./efectos-compra.js?v=partida-21";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -1608,10 +1607,57 @@ function agregarAlHistorial(texto, idJugador, idEntrada) {
     if (!existente) lista.prepend(item);
 }
 
+// null indica que todavía no se incorporó una imagen para esa posición del catálogo.
+const imagenesCompraPorPosicion = Object.freeze({
+    1: "plaza-barrio-marina.jpg", // Plaza Barrio Marina
+    2: "parroquia-stella-maris.png", // Parroquia Stella Maris
+    4: "plaza-san-justo.png", // Plaza San Justo
+    5: "unlam.png", // UNLaM
+    6: "colectivo-242.png", // Colectivo 242
+    7: "shopping-san-justo.png", // San Justo Shopping
+    9: "cancha-brown.png", // Cancha de Brown
+    11: "jesse-james.png", // Jesse James
+    12: null, // Colectivo 96
+    13: "plaza-hipolito-yrigoyen.png", // Plaza Hipólito Yrigoyen
+    15: "feria-carlos-casares.png", // Feria Carlos Casares
+    16: "plaza-barrio-la-casona.png", // Plaza Barrio La Casona
+    17: "colectivo-621.png", // Colectivo 621
+    18: "estacion-laferrere.png",
+    19: "av-luro.png", // Av. Luro
+    21: "puente-12.png", // Puente 12
+    22: "superchino-luna.png", // Superchino Luna
+    23: "cementario-isrealita.png", // Cementerio Israelita
+    24: "colectivo-620.png", // Colectivo 620
+    25: "regimiento-la-tablada.png", // Regimiento de La Tablada
+    26: "bingo-ramos-mejia.png", // Bingo Ramos Mejía
+    27: "estacion-ramos-mejia.png", // Estación Ramos Mejía
+    29: "pinar-de-rocha.png", // Pinar de Rocha
+});
+
 function pintarDatosCompra(propiedad) {
     document.getElementById("modal-propiedad-titulo").textContent = propiedad.nombre;
     document.getElementById("compra-categoria").textContent = propiedad.descripcion || "";
-    document.getElementById("compra-ilustracion").hidden = !/^estaci[oó]n (?:de )?laferrere$/i.test(propiedad.nombre?.trim());
+    const ilustracion = document.getElementById("compra-ilustracion");
+    ilustracion.hidden = true;
+    ilustracion.onload = null;
+    ilustracion.onerror = null;
+    ilustracion.removeAttribute("src");
+    ilustracion.alt = "";
+    const archivoImagen = imagenesCompraPorPosicion[Number(propiedad.posicion)];
+    if (archivoImagen) {
+        const rutaImagen = `${basePath}/images/propiedades/${archivoImagen}`;
+        ilustracion.alt = propiedad.nombre || "";
+        ilustracion.onload = () => {
+            if (ilustracion.getAttribute("src") === rutaImagen) ilustracion.hidden = false;
+        };
+        ilustracion.onerror = () => {
+            if (ilustracion.getAttribute("src") !== rutaImagen) return;
+            ilustracion.hidden = true;
+            ilustracion.removeAttribute("src");
+            ilustracion.alt = "";
+        };
+        ilustracion.src = rutaImagen;
+    }
     document.getElementById("modal-propiedad-info").textContent = "";
     document.getElementById("compra-precio").textContent = `$${Number(propiedad.precioCompra).toLocaleString("es-AR")}`;
     document.getElementById("compra-alquiler").textContent = `$${Number(propiedad.alquiler).toLocaleString("es-AR")}`;

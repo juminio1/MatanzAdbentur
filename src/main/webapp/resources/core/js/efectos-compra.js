@@ -24,10 +24,10 @@ const sonidoDados = crearSonido("dados-globales.wav", 0.30);
 const sonidoDadosTablero = crearSonido("dados-tablero.wav", 0.34);
 const sonidosEventosGlobales = new Map([
     ["TRAMITES_AFIP", crearSonido("evento-afip.mp3", 0.30)],
-    ["INUNDACION", crearSonido("evento-inundacion.mp3", 0.30)],
-    ["PIQUETE", crearSonido("evento-piquete.mp3", 0.30)],
-    ["ROBO", crearSonido("evento-robo.mp3", 0.30)],
-    ["FIAT_600", crearSonido("evento-fiat600.mp3", 0.30)],
+    ["INUNDACION", crearSonido("evento-inundacion.mp3", 0.25)],
+    ["PIQUETE", crearSonido("evento-piquete.mp3", 0.25)],
+    ["ROBO", crearSonido("evento-robo.mp3", 0.35)],
+    ["FIAT_600", crearSonido("evento-fiat600.mp3", 0.35)],
     ["ACCIDENTE_SARMIENTO", crearSonido("evento-sarmiento.mp3", 0.30)],
 ]);
 let sonidoEventoGlobalActual;
