@@ -96,6 +96,8 @@ public void entregarPremioRobandoPropiedad(
             .orElseThrow(() -> new IllegalArgumentException(
                     "La propiedad elegida no está disponible."));
 
+    String nombrePropiedad = elegida.getNombre();
+    String propietarioAnterior = elegida.getPropietario().getApodo();
     servicioPropiedad.transferirPropiedadParaJugadores(
             elegida.getId(),
             elegida.getPropietario().getId(),
@@ -103,7 +105,7 @@ public void entregarPremioRobandoPropiedad(
             0
     );
 
-    trivia.registrarPremioEntregado("ROBAR");
+    trivia.registrarPremioRobado(nombrePropiedad, propietarioAnterior);
 }
 
 

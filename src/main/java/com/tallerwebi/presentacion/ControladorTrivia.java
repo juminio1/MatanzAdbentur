@@ -17,6 +17,7 @@ import com.tallerwebi.presentacion.mapeadores.MapeadorTrivia;
 import com.tallerwebi.presentacion.sesion.ResolutorJugadorSesion;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -54,6 +55,14 @@ public class ControladorTrivia {
                                                          HttpServletRequest request) {
         Long idJugador = resolverJugador(codigo, request);
         return ResponseEntity.ok(gestor.consultarEstado(codigo, trivia -> MapeadorTrivia.estado(codigo, trivia, idJugador)));
+    }
+
+    // Recupera los resultados de la misma partida sin volver a entregar sus premios.
+    @GetMapping("/historial")
+    public ResponseEntity<List<EstadoTriviaDTO>> obtenerHistorial(@PathVariable(CODIGO) String codigo,
+                                                                 HttpServletRequest request) {
+        resolverJugador(codigo, request);
+        return ResponseEntity.ok(gestor.consultarHistorial(codigo, trivia -> MapeadorTrivia.estado(codigo, trivia)));
     }
 
     // Los eliminados también pueden verla, como espectadores.

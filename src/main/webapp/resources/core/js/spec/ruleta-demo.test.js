@@ -12,6 +12,7 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
     let animarMock;
     let ruletaMock;
     let ventanaOriginal;
+    let confirmarMock;
 
    
     beforeEach(() => {
@@ -33,6 +34,7 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
 
         function crearElemento() {
             return {
+                dataset: {triviaSuscrita:"true"},
                 hidden: false,
                 disabled: false,
                 textContent: "",
@@ -47,7 +49,6 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
         elementos = {
             "btn-abrir-ruleta": crearElemento(),
             "btn-girar-ruleta": crearElemento(),
-            "btn-cerrar-ruleta": crearElemento(),
             "panel-ruleta": crearElemento(),
             "ruleta-visual": crearElemento(),
             "ruleta-resultado": crearElemento(),
@@ -81,6 +82,7 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
         crearMock = jasmine.createSpy("crear").and.returnValue(ruletaMock);
 
         animarMock = jasmine.createSpy("animar");
+        confirmarMock = jasmine.createSpy("confirmarPresentacion").and.resolveTo();
     });
 
     afterEach(() => {
@@ -101,7 +103,8 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
             solicitarMock,
             crearMock,
             animarMock,
-            consultarMock
+            consultarMock,
+            confirmarMock
         );
     }
 
@@ -116,6 +119,37 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
             venceEn: Date.now() + 10000
         };
     }
+
+    it("unOnRestDuplicadoNoReiniciaLosTresSegundosNiConfirmaDosVeces", () => {
+        configurar(); recibirEstado(estadoEsperando()); recibirEstado(estadoSorteado());
+        finalizarGiro(0); jasmine.clock().tick(2000); finalizarGiro(0);
+        jasmine.clock().tick(999);
+        expect(confirmarMock).not.toHaveBeenCalled();
+        jasmine.clock().tick(1); jasmine.clock().tick(3000);
+        expect(confirmarMock).toHaveBeenCalledOnceWith("/spring","ABC123","ACT-1");
+    });
+
+    it("unaReconexionConfirmaSolamenteCuandoYaPuedeRecibirLasPreguntasPorWebSocket", async () => {
+        elementos["panel-ruleta"].dataset.triviaSuscrita = "false";
+        consultarMock.and.resolveTo(estadoSorteado());
+        configurar();
+        await resolverPromesas();
+        expect(confirmarMock).not.toHaveBeenCalled();
+        elementos["panel-ruleta"].dataset.triviaSuscrita = "true";
+        eventos["trivia:suscrita"]();
+        expect(confirmarMock).toHaveBeenCalledOnceWith("/spring","ABC123","ACT-1");
+        expect(elementos["panel-ruleta"].hidden).toBeTrue();
+    });
+
+    it("cancelaLaPresentacionAnteriorYNoAbrePreguntasDeOtraActivacion", () => {
+        configurar(); recibirEstado(estadoEsperando()); recibirEstado(estadoSorteado());
+        finalizarGiro(0); jasmine.clock().tick(1000);
+        recibirEstado(estadoEsperando("ACT-2")); recibirEstado(estadoSorteado("ACT-2"));
+        finalizarGiro(0); jasmine.clock().tick(2000);
+        expect(confirmarMock).not.toHaveBeenCalled();
+        jasmine.clock().tick(1000);
+        expect(confirmarMock).toHaveBeenCalledOnceWith("/spring","ABC123","ACT-2");
+    });
 
     function estadoSorteado(activacionId = "ACT-1", dificultad = "FACIL") {
 
@@ -190,7 +224,6 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
 
             expect(elementos["btn-girar-ruleta"].disabled).toBeFalse();
 
-            expect(elementos["btn-cerrar-ruleta"].disabled).toBeTrue();
         }
     );
 
@@ -314,14 +347,12 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
 
             recibirEstado(estadoSorteado());
 
-            expect(elementos["btn-cerrar-ruleta"].disabled).toBeTrue();
 
             // Simula que la ruleta se detuvo en FACIL.
             finalizarGiro(0);
 
             expect(elementos["ruleta-resultado"].textContent).toBe("Resultado: FÁCIL");
 
-            expect(elementos["btn-cerrar-ruleta"].disabled).toBeFalse();
 
             expect(elementos["btn-girar-ruleta"].disabled).toBeTrue();
         }
@@ -375,9 +406,9 @@ describe("Integración del temporizador y WebSocket con la ruleta", () => {
 
             finalizarGiro(0);
 
-            hacerClick("btn-cerrar-ruleta");
+            jasmine.clock().tick(3000);
 
-            expect(elementos["panel-ruleta"].hidden).toBeTrue();
+            expect(elementos["panel-ruleta"].hidden).toBeFalse();
 
             hacerClick("btn-abrir-ruleta");
 

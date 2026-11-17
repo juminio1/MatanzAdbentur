@@ -60,6 +60,18 @@ public class ControladorRuleta {
         return ResponseEntity.ok(estado);
     }
 
+    @PostMapping("/{codigoPartida}/{activacionId}/presentacion-finalizada")
+    public ResponseEntity<Void> confirmarPresentacion(@PathVariable("codigoPartida") String codigo,
+            @PathVariable("activacionId") String activacionId, HttpServletRequest request) {
+        Long jugador = validarParticipante(codigo, request);
+        try {
+            gestorRuleta.confirmarPresentacion(codigo, activacionId, jugador);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
     private Long validarParticipante(String codigoPartida, HttpServletRequest request) {
         Partida partida = servicioPartida.obtenerPartida(codigoPartida);
 

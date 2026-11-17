@@ -1,6 +1,6 @@
 
 import { Wheel } from "./vendor/spin-wheel-esm.js";
-import { solicitarSorteoPartida, consultarEstadoRuleta } from "./servicio-ruleta.js";
+import { solicitarSorteoPartida, consultarEstadoRuleta, confirmarPresentacionRuleta } from "./servicio-ruleta.js?v=coordinada-1";
 import { calcularSegundosRestantes } from "./temporizador-ruleta.js";
 
 import { crearRuleta, girarRuleta } from "./ruleta.js?v=sin-texto-1";
@@ -18,19 +18,19 @@ export function configurarRuleta(
     solicitar = solicitarSorteoPartida,
     crear = inicializarRuleta,
     animar = ejecutarGiroRuleta,
-    consultar = consultarEstadoRuleta
+    consultar = consultarEstadoRuleta,
+    confirmar = confirmarPresentacionRuleta
 ) {
 
     const botonAbrir = documento.getElementById("btn-abrir-ruleta");
     const botonGirar = documento.getElementById("btn-girar-ruleta");
-    const botonCerrar = documento.getElementById("btn-cerrar-ruleta");
 
     const panel = documento.getElementById("panel-ruleta");
     const contenedor = documento.getElementById("ruleta-visual");
     const resultado = documento.getElementById("ruleta-resultado");
     const contador = documento.getElementById("ruleta-temporizador");
 
-    if (!botonGirar || !botonCerrar || !panel || !contenedor || !resultado || !contador) {
+    if (!botonGirar || !panel || !contenedor || !resultado || !contador) {
         return;
     }
 
@@ -58,6 +58,65 @@ export function configurarRuleta(
     let revisionEstado = 0;
     let esperandoNuevaActivacion = false;
     const activacionesConTrivia = new Set();
+    const activacionesCanceladas = new Set();
+    const movimientos = new Set();
+    const llegadasATrivia = new Set();
+    const activacionesPresentadas = new Set();
+    const estadosPendientes = [];
+    let temporizadorPresentacion = null;
+    const presentacionesAvisadas = new Set();
+    let confirmacionPendiente = null;
+
+    function confirmarAlEstarSuscrito(activacionId) {
+        if (panel.dataset?.triviaSuscrita !== "true") {
+            confirmacionPendiente = activacionId;
+            return;
+        }
+        confirmacionPendiente = null;
+        Promise.resolve(confirmar(basePath, codigoPartida, activacionId)).catch(error =>
+            console.warn("No se pudo confirmar la presentacion de trivia.", error));
+    }
+
+    documento.addEventListener("trivia:suscrita", () => {
+        if (confirmacionPendiente) confirmarAlEstarSuscrito(confirmacionPendiente);
+    });
+
+    function cancelarPresentacion() {
+        if (temporizadorPresentacion !== null) clearTimeout(temporizadorPresentacion);
+        temporizadorPresentacion = null;
+    }
+
+    function programarFinPresentacion() {
+        const id = activacionActual?.activacionId;
+        if (temporizadorPresentacion !== null || presentacionesAvisadas.has(id)) return;
+        temporizadorPresentacion = setTimeout(() => {
+            temporizadorPresentacion = null;
+            if (activacionActual?.activacionId === id && !girando) avisarFinDePresentacion(id);
+        }, 3000);
+    }
+
+    function marcarPresentacionPendiente(pendiente) {
+        if (panel.dataset) panel.dataset.presentacionPendiente = String(pendiente);
+    }
+
+    function avisarFinDePresentacion(activacionId) {
+        if (presentacionesAvisadas.has(activacionId)) return;
+        presentacionesAvisadas.add(activacionId);
+        const dificultad = dificultadElegida;
+        const avisar = () => {
+            if (activacionActual?.activacionId !== activacionId || activacionesConTrivia.has(activacionId)
+                    || activacionesCanceladas.has(activacionId)) return;
+            marcarPresentacionPendiente(false);
+            resultado.textContent = "Esperando preguntas del servidor...";
+            confirmarAlEstarSuscrito(activacionId);
+            const Evento = documento.defaultView?.CustomEvent ?? globalThis.CustomEvent;
+            documento.dispatchEvent?.(new Evento("ruleta:presentacion-finalizada", { detail: { dificultad, activacionId } }));
+        };
+        // La dificultad permaneció visible durante tres segundos.
+        const ventana = documento.defaultView;
+        if (ventana?.requestAnimationFrame) ventana.requestAnimationFrame(() => ventana.requestAnimationFrame(avisar));
+        else avisar();
+    }
 
     const nombres = {
         FACIL: "FÁCIL",
@@ -119,7 +178,6 @@ export function configurarRuleta(
 
             resultado.textContent = "Error al cargar la ruleta";
             botonGirar.disabled = true;
-            botonCerrar.disabled = false;
 
             return false;
         }
@@ -164,6 +222,7 @@ export function configurarRuleta(
     }
 
     function prepararNuevaActivacion(estado) {
+        cancelarPresentacion();
 
         activacionActual = estado;
         dificultadElegida = null;
@@ -171,6 +230,7 @@ export function configurarRuleta(
         giroCompletado = false;
         animacionIniciada = false;
         solicitudEnCurso = false;
+        marcarPresentacionPendiente(true);
 
         limpiarEstilosResultado();
 
@@ -182,7 +242,6 @@ export function configurarRuleta(
             ? "¡Probá tu suerte!"
             : "Esperando que el jugador habilitado gire la ruleta...";
 
-        botonCerrar.disabled = true;
 
         iniciarCuentaRegresiva();
     }
@@ -202,19 +261,21 @@ export function configurarRuleta(
         limpiarTemporizador();
 
         animacionIniciada = true;
+        marcarPresentacionPendiente(true);
         solicitudEnCurso = false;
         girando = true;
         giroCompletado = true;
         dificultadElegida = estado.dificultad;
 
         botonGirar.disabled = true;
-        botonCerrar.disabled = true;
         contador.hidden = true;
 
         limpiarEstilosResultado();
 
         if (!abrirPanel()) {
             girando = false;
+            mostrarResultado(dificultadElegida);
+            programarFinPresentacion();
             return;
         }
 
@@ -234,11 +295,36 @@ export function configurarRuleta(
 
             resultado.textContent = `Resultado: ${nombres[dificultadElegida]}`;
             girando = false;
-            botonCerrar.disabled = false;
+            programarFinPresentacion();
         }
     }
 
-    function procesarEstadoRuleta(estado) {
+    function cancelarActivacion(estado) {
+        if (activacionesCanceladas.has(estado.activacionId)) return;
+        activacionesCanceladas.add(estado.activacionId);
+        const estabaPendiente = estadosPendientes.some(pendiente => pendiente.activacionId === estado.activacionId);
+        for (let indice = estadosPendientes.length - 1; indice >= 0; indice--) {
+            if (estadosPendientes[indice].activacionId === estado.activacionId) estadosPendientes.splice(indice, 1);
+        }
+        if (confirmacionPendiente === estado.activacionId) confirmacionPendiente = null;
+        if (activacionActual && activacionActual.activacionId !== estado.activacionId
+                && (!estabaPendiente || !activacionesConTrivia.has(activacionActual.activacionId))) return;
+        if (estadosPendientes.length > 0) return;
+        cancelarPresentacion();
+        limpiarTemporizador();
+        marcarPresentacionPendiente(false);
+        activacionActual = estado;
+        panel.hidden = true;
+        contador.hidden = true;
+        botonGirar.disabled = true;
+        girando = false;
+        solicitudEnCurso = false;
+        dificultadElegida = null;
+        const Evento = documento.defaultView?.CustomEvent ?? globalThis.CustomEvent;
+        documento.dispatchEvent?.(new Evento("ruleta:cancelada", {detail:{activacionId:estado.activacionId}}));
+    }
+
+    function procesarEstadoRuleta(estado, recuperado = false) {
 
         if (!estado || !estado.activacionId || !codigoPartida) {
             return;
@@ -247,6 +333,12 @@ export function configurarRuleta(
         if (estado.codigoPartida !== codigoPartida) {
             return;
         }
+
+        if (estado.estado === "CANCELADA") {
+            cancelarActivacion(estado);
+            return;
+        }
+        if (activacionesCanceladas.has(estado.activacionId)) return;
 
         if (estado.estado !== "ESPERANDO" && estado.estado !== "SORTEADA") {
             return;
@@ -271,6 +363,18 @@ export function configurarRuleta(
         if (mismaActivacion && activacionActual.estado === "SORTEADA" && estado.estado === "ESPERANDO") {
             return;
         }
+
+        const jugador = String(estado.idJugador);
+        const hayFicha = documento.querySelector?.(`.ficha[data-jugador-id="${jugador}"]`);
+        if (!activacionesPresentadas.has(estado.activacionId)
+                && (movimientos.has(jugador) || hayFicha?.dataset.movimientoEnCurso === "true"
+                    || !recuperado && hayFicha && !llegadasATrivia.has(jugador))) {
+            marcarPresentacionPendiente(true);
+            estadosPendientes.push(estado);
+            return;
+        }
+        activacionesPresentadas.add(estado.activacionId);
+        llegadasATrivia.delete(jugador);
 
         if (!mismaActivacion) {
 
@@ -317,7 +421,6 @@ export function configurarRuleta(
 
         solicitudEnCurso = true;
         botonGirar.disabled = true;
-        botonCerrar.disabled = true;
 
         resultado.textContent = "Sorteando dificultad...";
 
@@ -377,12 +480,6 @@ export function configurarRuleta(
         } else {
             mostrarResultado(segmento.value);
 
-            // Avisa a la trivia que la ruleta frenó, para que arranque con esta dificultad.
-            if (typeof documento.dispatchEvent === "function") {
-                documento.dispatchEvent(new CustomEvent("ruleta:frenada", {
-                    detail: { dificultad: segmento.value, activacionId: activacionActual?.activacionId }
-                }));
-            }
         }
 
         girando = false;
@@ -390,10 +487,35 @@ export function configurarRuleta(
 
         // Una misma activación permite un único sorteo.
         botonGirar.disabled = true;
-        botonCerrar.disabled = false;
+        programarFinPresentacion();
+        const Evento = documento.defaultView?.CustomEvent ?? globalThis.CustomEvent;
+        documento.dispatchEvent?.(new Evento("ruleta:frenada", {
+            detail: { dificultad: dificultadElegida, activacionId: activacionActual?.activacionId },
+        }));
     }
 
+    documento.addEventListener("tablero:movimiento-iniciado", evento => {
+        const jugador = String(evento.detail.idJugador);
+        movimientos.add(jugador);
+        llegadasATrivia.delete(jugador);
+    });
+    documento.addEventListener("tablero:movimiento-finalizado", evento => {
+        const jugador = String(evento.detail.idJugador);
+        movimientos.delete(jugador);
+        if (evento.detail.enTrivia) llegadasATrivia.add(jugador);
+        const pendientes = estadosPendientes.filter(estado => String(estado.idJugador) === jugador);
+        for (const estado of pendientes) {
+            estadosPendientes.splice(estadosPendientes.indexOf(estado), 1);
+            activacionesPresentadas.add(estado.activacionId);
+            procesarEstadoRuleta(estado);
+        }
+    });
+
     documento.addEventListener("trivia:iniciada", () => {
+        cancelarPresentacion();
+        for (const estado of estadosPendientes) activacionesConTrivia.add(estado.activacionId);
+        estadosPendientes.length = 0;
+        marcarPresentacionPendiente(false);
         if (activacionActual) activacionesConTrivia.add(activacionActual.activacionId);
         esperandoNuevaActivacion = true;
         revisionEstado++;
@@ -401,7 +523,6 @@ export function configurarRuleta(
         panel.hidden = true;
         contador.hidden = true;
         botonGirar.disabled = true;
-        botonCerrar.disabled = true;
         girando = false;
         dificultadElegida = null;
     });
@@ -429,10 +550,8 @@ export function configurarRuleta(
 
                 if (activacionActual.estado === "ESPERANDO") {
                     actualizarCuentaRegresiva();
-                    botonCerrar.disabled = true;
                 } else {
                     botonGirar.disabled = true;
-                    botonCerrar.disabled = false;
                     contador.hidden = true;
                 }
 
@@ -444,24 +563,12 @@ export function configurarRuleta(
 
             resultado.textContent = "Esperando activación desde Trivia...";
             botonGirar.disabled = true;
-            botonCerrar.disabled = false;
             contador.hidden = true;
         });
     }
 
     botonGirar.addEventListener("click", () => {
         iniciarGiro();
-    });
-
-    botonCerrar.addEventListener("click", () => {
-
-        if (!girando && !botonCerrar.disabled) {
-
-            limpiarTemporizador();
-
-            panel.hidden = true;
-            contador.hidden = true;
-        }
     });
 
     async function recuperarEstadoActual() {
@@ -486,11 +593,12 @@ export function configurarRuleta(
             // su trivia ya empezó (o terminó) y tiene su propio modal.
             if (estado?.estado === "SORTEADA") {
                 ultimaActivacionResuelta = estado.activacionId;
+                confirmarAlEstarSuscrito(estado.activacionId);
                 return;
             }
 
             if (estado) {
-                procesarEstadoRuleta(estado);
+                procesarEstadoRuleta(estado, true);
             }
 
         } catch (error) {

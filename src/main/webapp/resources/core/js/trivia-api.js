@@ -10,6 +10,7 @@ export function crearApiTrivia({ base = "", codigo, solicitar = fetch } = {}) {
         return respuesta.json();
     }
     function obtenerEstado() { return consultar(""); }
+    function obtenerHistorial() { return consultar("/historial"); }
     function obtenerPregunta() { return consultar("/pregunta"); }
     async function enviarRespuesta(id, opcion) {
         const respuesta = await solicitar(ruta + "/respuesta", {
@@ -35,5 +36,5 @@ export function crearApiTrivia({ base = "", codigo, solicitar = fetch } = {}) {
         if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
         return respuesta.json();
     }
-    return { obtenerEstado, obtenerPregunta, enviarRespuesta, obtenerPropiedades, elegirPremio };
+    return { obtenerEstado, obtenerHistorial, obtenerPregunta, enviarRespuesta, obtenerPropiedades, elegirPremio };
 }

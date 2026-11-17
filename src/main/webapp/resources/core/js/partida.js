@@ -1,10 +1,11 @@
-import { conectarTriviaPartida } from "./trivia-partida.js?v=7";
+import { conectarTriviaPartida } from "./trivia-partida.js?v=12";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante } from "./efectos-compra.js?v=partida-21";
 import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, reproducirEventoGlobal, detenerSonidoEventoGlobal } from "./efectos-compra.js?v=partida-20";
 
 document.addEventListener("click", evento => {
@@ -325,7 +326,16 @@ function conectarWebSocketTurnos(base, codigo) {
             clienteWebSocketPartida = stompClient;
             conectarTriviaPartida({ cliente: stompClient, codigo, base,
                 idJugador: window.usuarioSesionId,
-                alPremioEntregado: function () { window.location.reload(); },
+                actualizarSaldo: (idJugador, dinero) => actualizarDineroJugador(idJugador, dinero, false, true),
+                registrarEnHistorial: agregarAlHistorial,
+                animarGanancia: function (idJugador, monto) {
+                    const tarjeta = document.getElementById(String(idJugador));
+                    return tarjeta ? mostrarMontoFlotante(tarjeta, `+$${Number(monto).toLocaleString("es-AR")}`, "gana",
+                        {sonido:true,sobreTablero:true,monedas:true}) : false;
+                },
+                alPremioEntregado: function (estado) {
+                    if (estado.tipoPremio !== "PLATA") window.location.reload();
+                },
                 estaPreso: function () { return estaPresoEnPantalla(window.usuarioSesionId); },
             });
             consultarResultadosFinales();
@@ -450,6 +460,8 @@ function conectarWebSocketTurnos(base, codigo) {
         },
         (error) => {
             clienteWebSocketPartida = null;
+            const panelRuleta = document.getElementById("panel-ruleta");
+            if (panelRuleta) panelRuleta.dataset.triviaSuscrita = "false";
             console.error("Error en la conexión WebSocket:", error);
             window.setTimeout(() => conectarWebSocketTurnos(base, codigo), 3000);
         },
@@ -857,6 +869,9 @@ async function procesarMovimiento(movimiento) {
                 Number(movimiento.posicionAnterior);
         const pasos = seQuedoEnElLugar ? 0 : Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        const fichaEnMovimiento = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        if (fichaEnMovimiento) fichaEnMovimiento.dataset.movimientoEnCurso = "true";
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-iniciado", { detail: { idJugador: movimiento.idJugador } }));
         if (modalDeuda?.open && !declarandoQuiebra) {
             aperturaDeudaPendiente = true;
             modalDeuda.close();
@@ -926,6 +941,16 @@ async function procesarMovimiento(movimiento) {
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        const ficha = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        // Incluye el salto y el brillo de llegada; no espera animaciones decorativas infinitas.
+        const animaciones = ficha?.getAnimations?.() ?? [];
+        await Promise.allSettled(animaciones.filter(animacion =>
+            animacion.effect?.getComputedTiming?.().iterations !== Infinity).map(animacion => animacion.finished));
+        if (ficha) delete ficha.dataset.movimientoEnCurso;
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-finalizado", { detail: {
+            idJugador: movimiento.idJugador,
+            enTrivia: Boolean(ficha?.closest(".casillero")?.querySelector(".casillero__nombre--trivia")),
+        } }));
         if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
             consultarDeudaPendiente(true);
         }
@@ -1230,7 +1255,6 @@ const posicionesPropiedad = new Set([
     1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29,
 ]);
 const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
-const nivelesAlquiler = [200, 300, 500, 1000, 1500];
 const posicionesLocalidades = {
     VILLA_LUZURIAGA: [1, 2],
     SAN_JUSTO: [4, 5, 7],
@@ -1421,8 +1445,7 @@ function mostrarInfoPropiedad(propiedad) {
     const acciones = document.getElementById("popup-acciones-propias");
     acciones.hidden = !esPropia;
     if (esPropia) {
-        const nivel = Number(propiedad.nivelMejora ?? 0);
-        const costo = nivelesAlquiler[nivel];
+        const costo = propiedad.costoMejora ?? null;
         const mejorar = document.getElementById("btn-info-mejorar");
         const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && costo != null;
         mejorar.textContent = puedeMejorarse ? `Mejorar por $${costo.toLocaleString("es-AR")}` : "Mejora no disponible";
@@ -1435,14 +1458,14 @@ function mostrarInfoPropiedad(propiedad) {
     }
 }
 
-function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
+function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silencioso = false) {
     const tarjeta = document.getElementById(String(idJugador));
     const saldo = tarjeta?.querySelector(".dinero");
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         const saldoAnterior = window.dineroUsuarioSesion;
         window.dineroUsuarioSesion = Number(dinero);
-        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion);
+        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion, {silencioso});
         actualizarControlesCarcel();
     }
     if (!enBancarrota) return;
@@ -1572,15 +1595,17 @@ async function comprarPropiedadActual() {
     }
 }
 
-function agregarAlHistorial(texto, idJugador) {
-    const item = document.createElement("li");
+function agregarAlHistorial(texto, idJugador, idEntrada) {
+    const lista = document.querySelector(".historial__lista");
+    if (!lista) return;
+    const existente = idEntrada && [...lista.children].find(item => item.dataset.idEntrada === idEntrada);
+    const item = existente || document.createElement("li");
+    if (idEntrada) item.dataset.idEntrada = idEntrada;
     item.textContent = texto;
     const color = obtenerColorFichaJugador(idJugador);
     if (color) item.dataset.color = color;
-    const lista = document.querySelector(".historial__lista");
-    if (!lista) return;
     lista.querySelector(".historial__vacio")?.remove();
-    lista.prepend(item);
+    if (!existente) lista.prepend(item);
 }
 
 function pintarDatosCompra(propiedad) {
@@ -1766,7 +1791,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     datos.className = "propiedad-propia__datos";
     if (propiedad.alquiler != null) agregarDatoPropiedad(datos, "Alquiler", propiedad.alquiler);
     const nivel = Number(propiedad.nivelMejora ?? 0);
-    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${nivelesAlquiler.length}`);
+    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${propiedad.nivelMaximoMejora ?? nivel}`);
     tarjeta.append(encabezado);
     if (datos.childElementCount) tarjeta.append(datos);
     if (soloResumen) return tarjeta;
@@ -1786,7 +1811,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     botonSubir.className = "btn-casillero btn-casillero--principal";
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
-    const costoMejora = nivelesAlquiler[nivel];
+    const costoMejora = propiedad.costoMejora ?? null;
     const puedeMejorarse = !esParada && costoMejora != null;
     botonSubir.disabled =
         partidaFinalizada ||
@@ -2239,9 +2264,11 @@ async function sincronizarEventoGlobal() {
     }
 }
 
+// El evento global también espera a que se cierre el cartel de la trivia.
 function debeEsperarPresentacionGlobal() {
     return movimientosDeJugadoresEnCurso.size > 0
-        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible");
+        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")
+        || document.getElementById("trivia")?.open === true;
 }
 
 function aplicarEventoGlobal(estado) {
@@ -2595,12 +2622,17 @@ document.addEventListener("click", evento => {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
-    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    // El cartel final de la trivia puede seguir abierto cuando empieza el evento: tiene que poder cerrarse.
+    if (evento.target.closest("#trivia, #aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
     if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat], #btn-sonido")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
 window.addEventListener("DOMContentLoaded", () => {
+    // Al cerrar la trivia se muestra enseguida el evento global que estaba esperando.
+    document.getElementById("trivia")?.addEventListener("close", () => {
+        if (estadoEventoGlobalCliente?.activo) mostrarEstadoGlobal(estadoEventoGlobalCliente);
+    });
     sincronizarEventoGlobal();
     consultarDeudaPendiente();
     window.setInterval(sincronizarEventoGlobal, 3000);

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -55,8 +56,9 @@ public class ServicioPreguntasTrivia {
     }
 
     /**
-     * La lista puede tener menos preguntas que las solicitadas, incluso ninguna si se agotó el banco.
-     * La modalidad que llama al servicio puede continuar el turno cuando no hay preguntas disponibles.
+     * Primero usa preguntas que todavía no salieron en la partida. Si se agotan, repite preguntas ya usadas.
+     * La lista solo puede quedar corta o vacía si el banco de esa dificultad tiene menos preguntas que las pedidas
+     * y la IA no generó ninguna; la modalidad que llama al servicio puede continuar el turno en ese caso.
      */
     private List<PreguntaTrivia> obtener(String codigoPartida, DificultadRuleta dificultadRuleta, int cantidad) {
         DificultadTrivia dificultad = DificultadTrivia.desdeRuleta(dificultadRuleta);
@@ -102,13 +104,27 @@ public class ServicioPreguntasTrivia {
         Set<UUID> usadas = repositorioPreguntas.buscarHuellasUsadas(partida);
         Map<UUID, PreguntaTrivia> seleccionadas = new LinkedHashMap<>();
         agregarSinRepetir(generadas, usadas, seleccionadas, cantidad);
+        List<PreguntaTrivia> respaldo = new ArrayList<>();
         if (seleccionadas.size() < cantidad) {
-            List<PreguntaTrivia> respaldo = new ArrayList<>(repositorioPreguntas.buscarPorDificultad(dificultad));
+            respaldo.addAll(repositorioPreguntas.buscarPorDificultad(dificultad));
             Collections.shuffle(respaldo);
             agregarSinRepetir(respaldo, usadas, seleccionadas, cantidad);
         }
         seleccionadas.keySet().forEach(huella -> repositorioPreguntas.registrarUso(partida, huella));
+        if (seleccionadas.size() < cantidad) {
+            completarConPreguntasYaUsadas(generadas, respaldo, seleccionadas, cantidad);
+        }
         return List.copyOf(seleccionadas.values());
+    }
+
+    // Si ya no quedan preguntas nuevas en la partida, se repiten preguntas que ya salieron,
+    // para que la trivia nunca se quede sin preguntas. Dentro de una misma trivia no se repiten.
+    private void completarConPreguntasYaUsadas(List<PreguntaTrivia> generadas, List<PreguntaTrivia> respaldo,
+                                               Map<UUID, PreguntaTrivia> seleccionadas, int cantidad) {
+        Set<UUID> enEstaTrivia = new HashSet<>(seleccionadas.keySet());
+        List<PreguntaTrivia> candidatas = new ArrayList<>(generadas);
+        candidatas.addAll(respaldo);
+        agregarSinRepetir(candidatas, enEstaTrivia, seleccionadas, cantidad);
     }
 
     private void agregarSinRepetir(List<PreguntaTrivia> candidatas, Set<UUID> usadas,

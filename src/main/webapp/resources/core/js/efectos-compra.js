@@ -165,7 +165,7 @@ function centroDelDinero(tarjeta) {
 }
 
 // Seis monedas que viajan en arco de un punto a otro de la pantalla; "altura" positiva curva hacia arriba.
-function volarMonedas(desde, hasta, altura) {
+function volarMonedas(desde, hasta, altura, sobreTablero = false) {
     const dx = hasta.x - desde.x;
     const dy = hasta.y - desde.y;
     const cantidad = 6;
@@ -176,6 +176,7 @@ function volarMonedas(desde, hasta, altura) {
         moneda.style.left = `${desde.x}px`;
         moneda.style.top = `${desde.y}px`;
         document.body.appendChild(moneda);
+        if (sobreTablero) elevarEfecto(moneda);
         const desvio = (Math.random() - 0.5) * 24;
         const vuelo = moneda.animate([
             { transform: "translate(0, 0) scale(0.6) rotateY(0deg)", opacity: 0 },
@@ -213,7 +214,22 @@ function lanzarConfeti(origen) {
     }
 }
 
-function mostrarMontoFlotante(tarjeta, texto, tipo) {
+function elevarEfecto(elemento) {
+    elemento.style.margin = "0";
+    elemento.style.border = "0";
+    const izquierda = elemento.style.left, arriba = elemento.style.top;
+    elemento.style.inset = "auto";
+    elemento.style.left = izquierda;
+    elemento.style.top = arriba;
+    elemento.style.zIndex = "10001";
+    if (typeof elemento.showPopover === "function") {
+        elemento.setAttribute("popover", "manual");
+        elemento.showPopover();
+    }
+}
+
+export function mostrarMontoFlotante(tarjeta, texto, tipo, {sonido = false, sobreTablero = false, monedas = false} = {}) {
+    if (!tarjeta?.isConnected) return false;
     const caja = (tarjeta.querySelector(".dinero") ?? tarjeta).getBoundingClientRect();
     const etiqueta = document.createElement("span");
     etiqueta.className = `monto-flotante monto-flotante--${tipo}`;
@@ -222,13 +238,26 @@ function mostrarMontoFlotante(tarjeta, texto, tipo) {
     etiqueta.style.left = `${caja.left + caja.width / 2}px`;
     etiqueta.style.top = `${caja.top}px`;
     document.body.appendChild(etiqueta);
+    if (sobreTablero) {
+        elevarEfecto(etiqueta);
+        const mitad = (etiqueta.getBoundingClientRect().width || 120) / 2;
+        const centro = caja.width ? caja.left + caja.width / 2 : window.innerWidth / 2;
+        etiqueta.style.left = `${Math.max(mitad + 8, Math.min(centro, window.innerWidth - mitad - 8))}px`;
+        etiqueta.style.top = `${Math.max(48, Math.min(caja.top, window.innerHeight - 24))}px`;
+    }
+    if (monedas) {
+        const hasta = {x:Number.parseFloat(etiqueta.style.left), y:Number.parseFloat(etiqueta.style.top)};
+        volarMonedas({x:hasta.x,y:Math.min(window.innerHeight - 16,hasta.y + 100)}, hasta, 60, sobreTablero);
+    }
     const sube = etiqueta.animate([
         { translate: "-50% 0", opacity: 0 },
         { translate: "-50% -14px", opacity: 1, offset: 0.2 },
         { translate: "-50% -26px", opacity: 1, offset: 0.75 },
         { translate: "-50% -36px", opacity: 0 },
     ], { duration: 1600, easing: "ease-out" });
+    if (sonido) moneda?.play();
     sube.finished.then(() => etiqueta.remove(), () => etiqueta.remove());
+    return etiqueta;
 }
 
 export function animarPasoFicha(ficha, llegada, esPropiedad) {
@@ -242,7 +271,8 @@ export function animarPasoFicha(ficha, llegada, esPropiedad) {
     ], { duration: 180, easing: "ease-out" });
 }
 
-export function reproducirCambioDeSaldo(saldoAnterior, saldoNuevo) {
+export function reproducirCambioDeSaldo(saldoAnterior, saldoNuevo, {silencioso = false} = {}) {
+    if (silencioso) return;
     if (!Number.isFinite(saldoAnterior) || !Number.isFinite(saldoNuevo)) return;
     if (saldoNuevo > saldoAnterior) moneda?.play();
     if (saldoNuevo < saldoAnterior) descuento?.play();

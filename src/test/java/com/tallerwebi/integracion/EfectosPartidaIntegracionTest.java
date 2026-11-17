@@ -450,13 +450,15 @@ class EfectosPartidaIntegracionTest {
         transaccion.executeWithoutResult(tx -> {
             ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(destino, resultado.nuevaPosicion());
-            verifyNoInteractions(gestorRuleta);
+            // Dentro de la transacción solo se reserva la trivia; la ruleta espera al commit.
+            verify(gestorRuleta, never()).activarRuleta(any(), any(), any());
         });
 
         ArgumentCaptor<String> activacion = ArgumentCaptor.forClass(String.class);
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), activacion.capture(), eq(idJugador));
         assertNotNull(activacion.getValue());
         assertFalse(activacion.getValue().isBlank());
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
@@ -485,12 +487,15 @@ class EfectosPartidaIntegracionTest {
         transaccion.executeWithoutResult(tx -> {
             ResultadoJugada resultado = assertDoesNotThrow(() -> servicioJugada.tirarYMover(codigo, idJugador));
             assertEquals(10, resultado.nuevaPosicion());
-            verifyNoInteractions(gestorRuleta);
+            verify(gestorRuleta, never()).activarRuleta(any(), any(), any());
             tx.setRollbackOnly();
         });
 
         assertEquals(8, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        verifyNoInteractions(gestorRuleta);
+        // La reserva hecha dentro de la transacción se deshace y la ruleta nunca se activa.
+        verify(gestorRuleta).reservarTrivia(codigo);
+        verify(gestorRuleta).cancelarReservaTrivia(codigo);
+        org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
     @Test
@@ -502,6 +507,7 @@ class EfectosPartidaIntegracionTest {
                 () -> servicioJugada.tirarYMover(codigo, idJugador));
 
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
         assertEquals(10, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
     }
@@ -523,6 +529,7 @@ class EfectosPartidaIntegracionTest {
         assertFalse(primera.getValue().isBlank());
         assertFalse(segunda.getValue().isBlank());
         assertNotEquals(primera.getValue(), segunda.getValue());
+        verify(gestorRuleta, times(2)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
@@ -534,6 +541,7 @@ class EfectosPartidaIntegracionTest {
 
         assertEquals(10, resultado.nuevaPosicion());
         verify(gestorRuleta, times(1)).activarRuleta(eq(codigo), any(String.class), eq(idJugador));
+        verify(gestorRuleta, times(1)).reservarTrivia(codigo);
         org.mockito.Mockito.verifyNoMoreInteractions(gestorRuleta);
     }
 
@@ -552,7 +560,7 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
-    void vencimientoSinTirarNoEjecutaDadosEventosNiAlquileres() {
+    void vencimientoSinTirarTiraUnaVezPorElJugadorAplicaElEventoYAvanzaElTurno() {
         cargarEvento(TipoEfectoEvento.SUMA, 500, null, null);
         cargarPropiedadConDueno();
         Runnable vencimiento = capturarVencimiento();
@@ -561,17 +569,42 @@ class EfectosPartidaIntegracionTest {
         transaccion.executeWithoutResult(tx -> vencimiento.run());
         transaccion.executeWithoutResult(tx -> vencimiento.run());
 
-        verifyNoInteractions(servicioDado);
-        assertEquals(1, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
-        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        verify(servicioDado, times(1)).tirarDados();
+        assertEquals(3, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        assertEquals(2500, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
         assertEquals(2000, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
         assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
         assertEquals(1, servicioPartida.obtenerPartida(codigo).getTurnosFinalizadosEnRonda());
-        verify(notificador, never()).convertAndSend(eq("/topic/partida/" + codigo), any(Object.class));
     }
 
     @Test
-    void vencimientoYTiradaManualConcurrentesConPlazoCeroNoGeneranMovimiento() throws Exception {
+    void vencimientoConPenalizacionPendienteNoTiraYAvanzaElTurno() {
+        Runnable vencimiento = capturarVencimiento();
+        transaccion.executeWithoutResult(tx ->
+                sesiones.getCurrentSession().find(Jugador.class, idJugador).setPierdeTurno(true));
+        org.mockito.Mockito.clearInvocations(servicioDado);
+
+        transaccion.executeWithoutResult(tx -> vencimiento.run());
+
+        verifyNoInteractions(servicioDado);
+        assertEquals(0, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
+    }
+
+    @Test
+    void tiradaPorVencimientoConPlazoCeroMueveLaFicha() throws Exception {
+        when(temporizador.obtenerSegundosRestantes(codigo)).thenReturn(0);
+        org.mockito.Mockito.clearInvocations(servicioDado);
+
+        var resultado = servicioJugada.tirarPorVencimiento(codigo, idJugador);
+
+        verify(servicioDado, times(1)).tirarDados();
+        assertEquals(2, resultado.nuevaPosicion());
+        assertEquals(2, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+    }
+
+    @Test
+    void vencimientoYTiradaManualConcurrentesConPlazoCeroMuevenUnaSolaVez() throws Exception {
         Runnable vencimiento = capturarVencimiento();
         org.mockito.Mockito.clearInvocations(servicioDado);
         var inicio = new java.util.concurrent.CyclicBarrier(2);
@@ -594,8 +627,8 @@ class EfectosPartidaIntegracionTest {
             ejecutor.shutdownNow();
             assertTrue(ejecutor.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS));
         }
-        verifyNoInteractions(servicioDado);
-        assertEquals(0, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
+        verify(servicioDado, times(1)).tirarDados();
+        assertEquals(2, servicioPartida.obtenerJugadorPorId(idJugador).getPosicionActual());
         assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
         assertEquals(idPropietario, servicioPartida.obtenerJugadorActual(codigo).getId());
         assertEquals(1, servicioPartida.obtenerPartida(codigo).getTurnosFinalizadosEnRonda());

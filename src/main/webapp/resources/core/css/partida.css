@@ -611,13 +611,14 @@
 
     .barra-superior {
         display: grid;
-        grid-template-columns: 4.5rem minmax(0, 1fr);
+        grid-template-columns: 4.5rem minmax(0, 1fr) auto;
         gap: 0.7rem;
         align-items: center;
     }
 
     .cronometro { grid-column: 1; grid-row: 1; }
     .contenedor-ronda { grid-column: 2; grid-row: 1; justify-self: end; }
+    .btn-sonido { grid-column: 3; grid-row: 1; margin-left: 0; }
     .jugadores { grid-column: 1 / -1; grid-row: 2; width: 100%; }
     .jugador { height: 4.25rem; }
     .avatar-jugador { width: 60px; height: 60px; }
@@ -2840,11 +2841,36 @@
 }
 
 /* Botón para silenciar la partida: muestra el parlante o el parlante tachado según el estado. */
+/* Va en la esquina superior derecha de la barra y se puede usar en cualquier momento. */
 .btn-sonido {
     display: inline-grid;
     place-items: center;
-    min-width: 42px;
-    padding-inline: 10px;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    margin-left: auto;
+    padding: 0;
+    border: var(--p-borde-grueso);
+    border-radius: 12px;
+    background: var(--p-superficie);
+    color: var(--p-texto);
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #111;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.2s ease;
+}
+.btn-sonido:hover {
+    background: var(--p-acento);
+    color: var(--tema-sobre-acento);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #111;
+}
+.btn-sonido:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+}
+.btn-sonido:focus-visible {
+    outline: 3px solid var(--p-acento);
+    outline-offset: 2px;
 }
 .btn-sonido__icono {
     width: 20px;
@@ -2861,8 +2887,8 @@
     display: none;
 }
 /* Silenciado: el botón queda hundido y con el color de acento, como un interruptor apretado. */
-.partida__pie .btn-sonido[aria-pressed="true"],
-.partida__pie .btn-sonido[aria-pressed="true"]:hover {
+.btn-sonido[aria-pressed="true"],
+.btn-sonido[aria-pressed="true"]:hover {
     background: var(--p-acento);
     color: var(--tema-sobre-acento);
     transform: translate(2px, 2px);
