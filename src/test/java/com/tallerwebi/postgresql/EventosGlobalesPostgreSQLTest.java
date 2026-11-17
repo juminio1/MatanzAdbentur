@@ -127,7 +127,7 @@ class EventosGlobalesPostgreSQLTest {
     }
 
     @Test
-    void dadoQueRoboTeniaMilCuandoSeInicializaDaComoResultadoQuinientosSinCambiarTarjetasNiIdentificador() {
+    void dadoQueRoboTeniaMilCuandoSeInicializaDaComoResultadoTrescientosSinCambiarTarjetasNiIdentificador() {
         try (var contexto = iniciar()) {
             var jdbc = new JdbcTemplate(contexto.getBean(DataSource.class));
             Integer identificador = jdbc.queryForObject("SELECT id FROM EventoGlobal WHERE tipoEventoGlobal = 'ROBO'", Integer.class);
@@ -135,8 +135,8 @@ class EventosGlobalesPostgreSQLTest {
             jdbc.update("UPDATE EventoGlobal SET valor = 1000 WHERE id = ?", identificador);
             jdbc.update("UPDATE Evento SET descripcion = 'Robo de $1000' WHERE id = ?", identificador);
             contexto.getBean(DataSourceInitializer.class).afterPropertiesSet();
-            assertEquals(500, jdbc.queryForObject("SELECT valor FROM EventoGlobal WHERE id = ?", Integer.class, identificador));
-            assertTrue(jdbc.queryForObject("SELECT descripcion FROM Evento WHERE id = ?", String.class, identificador).contains("$500"));
+            assertEquals(300, jdbc.queryForObject("SELECT valor FROM EventoGlobal WHERE id = ?", Integer.class, identificador));
+            assertTrue(jdbc.queryForObject("SELECT descripcion FROM Evento WHERE id = ?", String.class, identificador).contains("$300"));
             assertEquals(tarjetas, jdbc.queryForList("SELECT * FROM Evento e JOIN EventoCasillero c ON c.id = e.id ORDER BY e.id"));
         }
     }
@@ -151,7 +151,7 @@ class EventosGlobalesPostgreSQLTest {
             List<EventoGlobal> eventos = new RepositorioEventoGlobalImpl(sesiones).obtenerTodos();
             assertEquals(6, eventos.size());
             assertEquals(6, eventos.stream().map(EventoGlobal::getTipoEventoGlobal).distinct().count());
-            int[] valores = {0, -3, 0, 500, 400, 1};
+            int[] valores = {0, -3, 0, 300, 300, 1};
             var efectos = List.of(TipoEfectoEventoGlobal.MOVER_CASILLEROS, TipoEfectoEventoGlobal.MOVER_CASILLEROS,
                     TipoEfectoEventoGlobal.VOLVER_INICIO, TipoEfectoEventoGlobal.PERDER_PLATA,
                     TipoEfectoEventoGlobal.GANAR_PLATA, TipoEfectoEventoGlobal.PERDER_TURNO);
@@ -159,7 +159,7 @@ class EventosGlobalesPostgreSQLTest {
                     TipoEventoGlobal.TRAMITES_AFIP, "Caíste a hacer un trámite y hay terrible fila. Todos tiran los dados y el que saque la mayor suma se saltea toda la fila y avanza hasta el casillero del jugador más adelantado. Si hay empate, los empatados vuelven a tirar hasta definir un ganador.",
                     TipoEventoGlobal.INUNDACION, "Se largó el diluvio y el barrio parece una pileta. Todos tiran los dados y el que saque la mayor suma se lo lleva el agua puesto y retrocede 3 casilleros. Si hay empate, los empatados vuelven a tirar.",
                     TipoEventoGlobal.PIQUETE, "Quedaste atrapado en un piquete de volqueteros. Todos tiran los dados y el que saque la menor suma vuelve al Inicio. Si hay empate, los empatados vuelven a tirar.",
-                    TipoEventoGlobal.ROBO, "¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $500.",
+                    TipoEventoGlobal.ROBO, "¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $300.",
                     TipoEventoGlobal.FIAT_600, "Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.",
                     TipoEventoGlobal.ACCIDENTE_SARMIENTO, "Hubo un accidente en el tren Sarmiento y el servicio quedó parado. Justo [nombre del jugador] venía viajando y perdió el turno esperando que vuelva a funcionar.");
             for (EventoGlobal evento : eventos) {
