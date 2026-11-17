@@ -631,5 +631,74 @@ class ServicioEventoImplTest {
         verify(caso.temporizador, atLeastOnce()).cancelarTemporizadorEvento(eq("evento:GLOBAL"), anyLong());
     }
 
-    
+    // Simula una trivia (o la ruleta que la precede) en curso en la partida del escenario.
+    private GestorTriviaPartida simularTrivia(EscenarioPruebaEventoGlobal caso) {
+        GestorTriviaPartida trivia = mock(GestorTriviaPartida.class);
+        when(trivia.estaBloqueandoPartida("GLOBAL")).thenReturn(true);
+        @SuppressWarnings("unchecked")
+        org.springframework.beans.factory.ObjectProvider<GestorTriviaPartida> proveedor =
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(proveedor.getIfAvailable()).thenReturn(trivia);
+        ReflectionTestUtils.setField(caso.participacion, "gestorTrivia", proveedor);
+        return trivia;
+    }
+
+    @Test
+    void dadoQueElUltimoDeLaRondaCayoEnTriviaCuandoQuiereCerrarElTurnoDaComoResultadoQueLaRondaNoAvanza() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        simularTrivia(caso);
+        caso.jugador(1).setTiroEnTurno(true);
+
+        caso.iniciar();
+
+        assertEquals(4, caso.partida.getRondaActual());
+        assertEquals(1, caso.partida.getIndiceTurnoActual());
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+        verify(caso.catalogo, never()).obtenerTodos();
+    }
+
+    @Test
+    void dadoQueTerminaLaTriviaDeQuienYaTiroCuandoPasaElTurnoDaComoResultadoLaRondaYElEventoAntesDeTirar() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        GestorTriviaPartida trivia = simularTrivia(caso);
+        caso.jugador(1).setTiroEnTurno(true);
+        caso.iniciar();
+
+        when(trivia.estaBloqueandoPartida("GLOBAL")).thenReturn(false);
+        caso.partidas.reanudarDespuesDeTrivia("GLOBAL");
+        ArgumentCaptor<Runnable> pase = ArgumentCaptor.forClass(Runnable.class);
+        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), eq(0), pase.capture());
+        pase.getValue().run();
+
+        assertEquals(5, caso.partida.getRondaActual());
+        assertEquals(0, caso.partida.getIndiceTurnoActual());
+        assertTrue(caso.partida.getEventoGlobal().estaActivo());
+        assertEquals(5, caso.partida.getEventoGlobal().getUltimaRonda());
+        assertFalse(caso.jugador(0).getTiroEnTurno());
+        assertThrows(IllegalStateException.class,
+                () -> caso.participacion.validarAccionOrdinaria(caso.partida));
+    }
+
+    @Test
+    void dadoQueTerminaLaTriviaYElJugadorNoTiroCuandoSeReanudaDaComoResultadoQueConservaSuTiempo() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        when(caso.temporizador.consumirPausa("GLOBAL")).thenReturn(40);
+
+        caso.partidas.reanudarDespuesDeTrivia("GLOBAL");
+
+        verify(caso.temporizador).programarTemporizador(eq("GLOBAL"), eq(40), any(Runnable.class));
+        verify(caso.temporizador, never()).programarTemporizador(eq("GLOBAL"), eq(0), any(Runnable.class));
+        assertEquals(4, caso.partida.getRondaActual());
+        assertEquals(1, caso.partida.getIndiceTurnoActual());
+    }
+
+    @Test
+    void dadoQueHayUnaTriviaEnCursoCuandoSeIntentaActivarElEventoDaComoResultadoQueNoSeSuperponen() {
+        EscenarioPruebaEventoGlobal caso = new EscenarioPruebaEventoGlobal(2, TipoEventoGlobal.FIAT_600, 0);
+        simularTrivia(caso);
+        caso.partida.setRondaActual(5);
+
+        assertFalse(caso.eventos.activarSiCorresponde(caso.partida));
+        assertFalse(caso.partida.getEventoGlobal().estaActivo());
+    }
 }

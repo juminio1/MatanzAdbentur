@@ -63,7 +63,6 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     let enCurso = false;
     let espectador = null;
     // Propiedad que eligió robar el ganador, para nombrarla cuando el servidor confirma el premio.
-    let ultimoRobo = null;
     let respuestasHabilitadas = false;
     let versionModal = 0;
 
@@ -104,7 +103,6 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
         venceEn, alResponder,
     } = {}) {
         versionModal++;
-        ultimoRobo = null;
         respuestasHabilitadas = permitirResponder && !comoEspectador;
         botonCerrar.hidden = true;
         botonCerrar.onclick = null;
@@ -268,6 +266,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
     function mostrarFinal({
         ganador = null, soyGanador = false, montoPremio, puedeElegirPremio = false,
         premioPendiente = false, cancelada = false, tipoPremio, alElegirPremio = async () => {}, desempate = [],
+        propiedadRobada, propietarioAnterior,
         obtenerPropiedadesParaRobar = async () => [],
     } = {}) {
         const version = ++versionModal;
@@ -290,10 +289,10 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 : "Fue el último en pie";
         }
         premio.textContent = ganador ? textoPremio(montoPremio, puedeElegirPremio) : "";
-        // Solo el ganador sabe cuál eligió; los demás ven el tablero actualizado al volver.
+        // Todos reciben los datos confirmados por el servidor.
         if (tipoPremio === "ROBAR") {
-            premio.textContent = ultimoRobo
-                ? `Premio: ${ultimoRobo.nombre}, robada a ${ultimoRobo.propietario}`
+            premio.textContent = propiedadRobada && propietarioAnterior
+                ? `Premio: ${propiedadRobada}, robada a ${propietarioAnterior}`
                 : "Premio: robó una propiedad";
         }
 
@@ -369,7 +368,6 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
                 }
                 premio.textContent = "Elegí qué propiedad robar";
                 pintarPropiedadesParaRobar(propiedades, propiedad => {
-                    ultimoRobo = propiedad;
                     confirmar({ premio: "ROBAR", posicion: propiedad.posicion });
                 });
                 robar.hidden = false;

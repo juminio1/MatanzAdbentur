@@ -149,6 +149,40 @@ public class GestorTriviaPartidaTest {
     }
 
     @Test
+    public void elPlazoUnicoDelServidorEsDeVeinteSegundos() {
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        assertEquals(trivia.getInicioRonda().plusSeconds(20).toEpochMilli(), GestorTriviaPartida.venceEnMilisegundos(trivia));
+    }
+
+    @Test
+    public void laPausaEntreRondasNoConsumeElPlazoNiAceptaRespuestasAnticipadas() {
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        gestor.responder(CODIGO, 1L, 1, CORRECTA);
+        gestor.responder(CODIGO, 2L, 1, CORRECTA);
+        long vencimientoEsperado = reloj.instant().plusMillis(2500).plusSeconds(20).toEpochMilli();
+        assertEquals(vencimientoEsperado, GestorTriviaPartida.venceEnMilisegundos(trivia));
+        assertThrows(AccionTriviaInvalidaException.class, () -> gestor.responder(CODIGO, 1L, 2, CORRECTA));
+        reloj.adelantar(Duration.ofMillis(2499));
+        assertThrows(AccionTriviaInvalidaException.class, () -> gestor.responder(CODIGO, 1L, 2, CORRECTA));
+        assertFalse(trivia.yaRespondioEnRonda(ana));
+        reloj.adelantar(Duration.ofMillis(1));
+        assertEquals(reloj.instant().plusSeconds(20).toEpochMilli(), GestorTriviaPartida.venceEnMilisegundos(trivia));
+        assertTrue(gestor.responder(CODIGO, 1L, 2, CORRECTA));
+        assertEquals(vencimientoEsperado, GestorTriviaPartida.venceEnMilisegundos(trivia));
+    }
+
+    @Test
+    public void vencimientoDeVeinteSegundosSoloCierraYReanudaUnaVez() {
+        Trivia trivia = gestor.iniciar(CODIGO,DificultadRuleta.FACIL);
+        reloj.adelantar(Duration.ofSeconds(20));
+        gestor.cerrarPorTiempo(CODIGO,trivia,1);
+        gestor.cerrarPorTiempo(CODIGO,trivia,1);
+        assertTrue(trivia.estaFinalizada());
+        assertEquals(1,Collections.frequency(tiposAvisados(),TipoAvisoTrivia.FINALIZADA));
+        verify(servicioPartida,times(1)).reanudarDespuesDeTrivia(CODIGO);
+    }
+
+    @Test
     public void resultadoDeRuletaSeNotificaAntesDeLaPrimeraRondaDelTorneoReal() {
         List<String> pasos = new ArrayList<>();
         publicador.suscribir(evento -> pasos.add(evento.tipo().name()));
@@ -163,11 +197,24 @@ public class GestorTriviaPartidaTest {
         com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta sorteo =
                 mock(com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta.class);
         when(sorteo.sortearDificultad()).thenReturn(DificultadRuleta.MEDIO);
-        GestorRuletaPartida ruleta = new GestorRuletaPartida(sorteo, notificador,
-                mock(ScheduledExecutorService.class), gestor);
+        ScheduledExecutorService planificadorRuleta = mock(ScheduledExecutorService.class);
+        GestorRuletaPartida ruleta = new GestorRuletaPartida(sorteo, notificador, planificadorRuleta, gestor,
+                servicioPartida, new ServicioTriviaImpl(new ServicioParticipacionImpl(), mock(ServicioPreguntasTrivia.class)));
         ruleta.activarRuleta(CODIGO, "ACT-1", ana.getId());
 
         ruleta.sortearDificultad(CODIGO, "ACT-1", ana.getId());
+        assertEquals(List.of("RULETA_SORTEADA"), pasos);
+        assertThrows(TriviaNoEncontradaException.class, () -> gestor.responder(CODIGO,ana.getId(),1,CORRECTA));
+        ruleta.confirmarPresentacion(CODIGO,"ACT-1",ana.getId());
+        ruleta.confirmarPresentacion(CODIGO,"ACT-1",luna.getId());
+        ArgumentCaptor<Runnable> comienzo = ArgumentCaptor.forClass(Runnable.class);
+        verify(planificadorRuleta).schedule(comienzo.capture(), eq(7L), eq(TimeUnit.SECONDS));
+        comienzo.getValue().run();
+        EstadoTriviaDTO estadoAna = gestor.consultarEstado(CODIGO, trivia -> com.tallerwebi.presentacion.mapeadores.MapeadorTrivia.estado(CODIGO,trivia,ana.getId()));
+        EstadoTriviaDTO estadoLuna = gestor.consultarEstado(CODIGO, trivia -> com.tallerwebi.presentacion.mapeadores.MapeadorTrivia.estado(CODIGO,trivia,luna.getId()));
+        assertEquals(estadoAna.venceEn(),estadoLuna.venceEn());
+        assertEquals(reloj.instant().plusSeconds(20).toEpochMilli(),estadoAna.venceEn());
+        assertTrue(estadoAna.inicioCoordinado());
 
         assertEquals(List.of("RULETA_SORTEADA", "RONDA_NUEVA"), pasos);
         assertEquals(DificultadRuleta.MEDIO,
@@ -395,6 +442,7 @@ public class GestorTriviaPartidaTest {
         assertTrue(campos.containsAll(java.util.Set.of("id", "apodo")));
         assertTrue(java.util.Set.of("id", "apodo", "milisegundos").containsAll(campos));
 
+        reloj.adelantar(Duration.ofMillis(2500));
         gestor.responder(CODIGO, 1L, 2, CORRECTA);
         gestor.responder(CODIGO, 2L, 2, CORRECTA);
 
@@ -439,6 +487,7 @@ public class GestorTriviaPartidaTest {
         for (int ronda = 1; ronda <= 5; ronda++) {
             gestor.responder(CODIGO, 1L, ronda, CORRECTA);
             gestor.responder(CODIGO, 2L, ronda, CORRECTA);
+            reloj.adelantar(Duration.ofMillis(2500));
         }
 
         assertTrue(trivia.estaFinalizada());
@@ -650,7 +699,8 @@ public class GestorTriviaPartidaTest {
         gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
         gestor.cerrarPorTiempo(CODIGO, trivia, 1);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -662,7 +712,8 @@ public class GestorTriviaPartidaTest {
 
         gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
 
-        verify(servicioPartida, times(2)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).actualizarPausaPorDeuda(CODIGO);
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
         assertFalse(gestor.estaBloqueandoPartida(CODIGO));
     }
 
@@ -1124,5 +1175,82 @@ public class GestorTriviaPartidaTest {
         conAvisoRoto.iniciar(CODIGO, DificultadRuleta.FACIL);
 
         assertTrue(conAvisoRoto.responder(CODIGO, 1L, 1, CORRECTA));
+    }
+
+    @Test
+    public void caerEnTriviaBloqueaLaPartidaMientrasGiraLaRuleta() {
+        gestor.reservar(CODIGO);
+
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void laReservaNoImpideQueLaRuletaInicieLaTrivia() {
+        gestor.reservar(CODIGO);
+
+        Trivia trivia = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+
+        assertFalse(trivia.estaFinalizada());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void liberarUnaReservaSinTriviaReanudaLaPartida() {
+        gestor.reservar(CODIGO);
+
+        gestor.liberarReserva(CODIGO);
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        verify(servicioPartida).reanudarDespuesDeTrivia(CODIGO);
+    }
+
+    @Test
+    public void laConsultaFallidaDeRuletaLiberaLaReservaRealYReanudaUnaSolaVez() {
+        var reglas = mock(ServicioTriviaImpl.class);
+        when(reglas.participantesHabilitados(partida)).thenThrow(new IllegalStateException("Sin participantes"));
+        var sorteo = mock(com.tallerwebi.dominio.servicios.interfaces.ServicioRuleta.class);
+        when(sorteo.sortearDificultad()).thenReturn(DificultadRuleta.FACIL);
+        GestorRuletaPartida ruleta = new GestorRuletaPartida(sorteo, mock(NotificadorPartida.class),
+                planificador, gestor, servicioPartida, reglas);
+        ruleta.reservarTrivia(CODIGO);
+        ruleta.activarRuleta(CODIGO, "ACT-FALLIDA", ana.getId());
+        assertTrue(gestor.estaBloqueandoPartida(CODIGO));
+
+        assertThrows(IllegalStateException.class, () -> ruleta.sortearDificultad(CODIGO, "ACT-FALLIDA", ana.getId()));
+        ruleta.sortearDificultad(CODIGO, "ACT-FALLIDA", ana.getId());
+        ruleta.confirmarPresentacion(CODIGO, "ACT-FALLIDA", ana.getId());
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+        verify(servicioPartida, times(1)).reanudarDespuesDeTrivia(CODIGO);
+        assertTrue(avisos.isEmpty());
+    }
+
+    @Test
+    public void unInicioRechazadoLiberaLaReserva() {
+        gestor.reservar(CODIGO);
+        when(servicioPartida.obtenerPartida(CODIGO)).thenReturn(null);
+
+        assertThrows(AccionTriviaInvalidaException.class, () -> gestor.iniciar(CODIGO, DificultadRuleta.FACIL));
+
+        assertFalse(gestor.estaBloqueandoPartida(CODIGO));
+    }
+
+    @Test
+    public void historialConservaTorneosAnterioresYActualizaElPremioSinDuplicar() {
+        simularEntregaExitosa();
+        Trivia primera = triviaGanadaPorAna(DificultadRuleta.DIFICIL);
+        String identidad = primera.getIdTorneo();
+        assertEquals(List.of(primera), gestor.consultarHistorial(CODIGO, trivia -> trivia));
+        gestor.elegirPremio(CODIGO, ana.getId(), GestorTriviaPartida.PREMIO_PLATA, null);
+        assertEquals(identidad, primera.getIdTorneo());
+        assertTrue(gestor.consultarHistorial(CODIGO, Trivia::estaPremioEntregado).get(0));
+
+        Trivia segunda = gestor.iniciar(CODIGO, DificultadRuleta.FACIL);
+        assertEquals(1, gestor.consultarHistorial(CODIGO, trivia -> trivia).size());
+        gestor.responder(CODIGO, ana.getId(), 1, INCORRECTA);
+        gestor.responder(CODIGO, luna.getId(), 1, INCORRECTA);
+        assertEquals(List.of(primera, segunda), gestor.consultarHistorial(CODIGO, trivia -> trivia));
+        assertFalse(identidad.equals(segunda.getIdTorneo()));
+        assertTrue(gestor.consultarHistorial("OTRA", trivia -> trivia).isEmpty());
     }
 }

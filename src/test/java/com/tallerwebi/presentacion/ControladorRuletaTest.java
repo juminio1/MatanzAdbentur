@@ -52,6 +52,19 @@ public class ControladorRuletaTest {
     }
 
     @Test
+    public void confirmaLaPresentacionConElJugadorDeLaSesionYNoConUnIdEnviado() {
+        Partida partida = mock(Partida.class);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addParameter("idJugador","999");
+        when(servicioPartidaMock.obtenerPartida("ABC123")).thenReturn(partida);
+        try (MockedStatic<ResolutorJugadorSesion> sesion = mockStatic(ResolutorJugadorSesion.class)) {
+            sesion.when(() -> ResolutorJugadorSesion.resolverParticipante(partida,request,participacionMock)).thenReturn(10L);
+            assertEquals(204,controladorRuleta.confirmarPresentacion("ABC123","ACT-1",request).getStatusCode().value());
+            verify(gestorRuletaMock).confirmarPresentacion("ABC123","ACT-1",10L);
+        }
+    }
+
+    @Test
     public void deberiaDevolverDificultadFacilCuandoElServicioLaSortea() {
 
         Partida partidaMock = mock(Partida.class);

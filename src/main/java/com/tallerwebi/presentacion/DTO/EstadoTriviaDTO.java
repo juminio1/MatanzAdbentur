@@ -6,5 +6,6 @@ import java.util.List;
 public record EstadoTriviaDTO(String codigoPartida, Integer ronda, Integer totalRondas, String dificultad,
         Boolean finalizada, List<ParticipanteTriviaDTO> enJuego, Long idGanador, String ganador,
         Boolean premioPendiente, Integer segundosParaResponder, Long venceEn, Boolean yaRespondio, Boolean cancelada, Boolean premioEntregado,
-        Integer montoPremio, Boolean puedeElegirPremio, String tipoPremio) {
+        Integer montoPremio, Boolean puedeElegirPremio, String tipoPremio, Integer saldoGanador,
+        String idTorneo, String propiedadRobada, String propietarioAnterior, Boolean inicioCoordinado) {
 }
