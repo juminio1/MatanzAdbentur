@@ -67,14 +67,15 @@ class ServicioPropiedadOperacionesTest {
     }
 
     @Test
-    void venderAlBancoDevuelveLaMitadYEliminaDuenioYMejoras() {
+    void venderAlBancoDevuelveLaMitadDeLoInvertidoYEliminaDuenioYMejoras() {
         propiedad.setNivelMejora(3);
 
-        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        // (300 de compra + 3 mejoras de 150) / 2
+        assertEquals(375, servicio.venderPropiedadParaJugador(10L, 1L));
 
         assertNull(propiedad.getPropietario());
         assertEquals(0, propiedad.getNivelMejora());
-        verify(economia).sumarDinero(vendedor, 150);
+        verify(economia).sumarDinero(vendedor, 375);
         verify(partidas).actualizarJugador(vendedor);
         verify(repositorio).guardarPropiedad(propiedad);
     }
@@ -108,6 +109,19 @@ class ServicioPropiedadOperacionesTest {
         }
         verify(economia, never()).sumarDinero(any(), any());
         verify(repositorio, never()).guardarPropiedad(any());
+    }
+
+    @Test
+    void venderAlBancoSinMejorasDevuelveLaMitadDelPrecio() {
+        assertEquals(150, servicio.venderPropiedadParaJugador(10L, 1L));
+        verify(economia).sumarDinero(vendedor, 150);
+    }
+
+    @Test
+    void elPrecioDeVentaDeUnaPropiedadIncluyeSusMejoras() {
+        propiedad.setNivelMejora(5);
+        // (300 + 5 * 150) / 2
+        assertEquals(525, servicio.calcularPrecioVenta(propiedad));
     }
 
     @Test
@@ -175,9 +189,43 @@ class ServicioPropiedadOperacionesTest {
 
         assertEquals(1, propiedad.getNivelMejora());
         assertEquals(0, vecina.getNivelMejora());
-        assertEquals(100, servicio.calcularAlquiler(propiedad));
+        assertEquals(150, servicio.calcularAlquiler(propiedad));
         verify(economia).restarDinero(vendedor, 150);
         verify(partidas).actualizarJugador(vendedor);
+    }
+
+    @Test
+    void alquilerDeBarrioCompletoSinMejorasSeDuplica() {
+        Propiedad vecina = new Propiedad(11L, "Stella Maris", 300, 50, vendedor,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+        CasilleroPropiedad casilleroPropiedad = casillero(propiedad, 1, 100L);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                casilleroPropiedad, casillero(vecina, 2, 100L)));
+
+        assertEquals(100, servicio.calcularAlquiler(casilleroPropiedad, propiedad));
+    }
+
+    @Test
+    void alquilerDeBarrioIncompletoNoSeDuplica() {
+        Propiedad vecina = new Propiedad(11L, "Stella Maris", 300, 50, comprador,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+        CasilleroPropiedad casilleroPropiedad = casillero(propiedad, 1, 100L);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                casilleroPropiedad, casillero(vecina, 2, 100L)));
+
+        assertEquals(50, servicio.calcularAlquiler(casilleroPropiedad, propiedad));
+    }
+
+    @Test
+    void alquilerDeBarrioCompletoConMejorasUsaSoloLaMejora() {
+        Propiedad vecina = new Propiedad(11L, "Stella Maris", 300, 50, vendedor,
+                GrupoPropiedades.VILLA_LUZURIAGA);
+        propiedad.setNivelMejora(1);
+        CasilleroPropiedad casilleroPropiedad = casillero(propiedad, 1, 100L);
+        when(casilleros.obtenerTodosLosCasilleros()).thenReturn(List.of(
+                casilleroPropiedad, casillero(vecina, 2, 100L)));
+
+        assertEquals(150, servicio.calcularAlquiler(casilleroPropiedad, propiedad));
     }
 
     @Test

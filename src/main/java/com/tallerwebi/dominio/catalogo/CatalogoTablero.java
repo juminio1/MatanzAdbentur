@@ -78,8 +78,18 @@ public final class CatalogoTablero {
 
     public static final int NIVEL_MAXIMO_MEJORA = 5;
 
+    // Tener el barrio completo duplica el alquiler de las propiedades que todavía no tienen mejoras.
+    public static final int MULTIPLICADOR_BARRIO_COMPLETO = 2;
+
+    // Recibe el alquiler ya calculado con mejoras y lo duplica si el dueño tiene todo el barrio sin mejorar.
+    public static int alquilerDeBarrio(int alquiler, int nivelMejora, boolean barrioCompleto) {
+        if (!barrioCompleto || nivelMejora > 0) return alquiler;
+        return alquiler * MULTIPLICADOR_BARRIO_COMPLETO;
+    }
+
     // Cada nivel de mejora multiplica el alquiler base del barrio.
-    private static final List<Integer> MULTIPLICADORES_MEJORA = List.of(2, 4, 7, 11, 15);
+    // Arranca en x3 para que la primera mejora rinda más que tener el barrio completo.
+    private static final List<Integer> MULTIPLICADORES_MEJORA = List.of(3, 5, 8, 12, 16);
 
     public static int alquilerConMejora(int alquilerBase, int nivelMejora) {
         if (nivelMejora <= 0) return alquilerBase;
@@ -90,6 +100,12 @@ public final class CatalogoTablero {
     // Todas las mejoras de una propiedad cuestan la mitad de su precio de compra.
     public static int costoMejora(int precioCompra) {
         return precioCompra / 2;
+    }
+
+    // Al vender al banco se recupera la mitad de lo invertido: la compra más lo pagado en mejoras.
+    public static int precioVenta(int precioCompra, int nivelMejora) {
+        int nivel = Math.max(0, Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA));
+        return (precioCompra + nivel * costoMejora(precioCompra)) / 2;
     }
 
     private static GrupoPropiedades barrioDe(Integer posicion) {
