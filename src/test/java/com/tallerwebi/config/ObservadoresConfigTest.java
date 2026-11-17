@@ -13,11 +13,19 @@ import com.tallerwebi.dominio.entidades.Jugador;
 import com.tallerwebi.dominio.observadores.ObservadorVictoria;
 import com.tallerwebi.dominio.observadores.ObservadorVictoriaQuiebra;
 import com.tallerwebi.dominio.eventos.EventoTurnoCambiado;
+import com.tallerwebi.dominio.eventos.EventoTriviaActualizada;
+import com.tallerwebi.dominio.entidades.Evento.Trivia;
+import com.tallerwebi.dominio.enums.DificultadRuleta;
+import com.tallerwebi.dominio.enums.TipoAvisoTrivia;
+import com.tallerwebi.dominio.resultados.PreguntaGenerada;
+import com.tallerwebi.presentacion.mapeadores.MapeadorTrivia;
+import com.tallerwebi.dominio.servicios.GestorTriviaPartida;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.presentacion.WebSocket.NotificadorPartida;
 import com.tallerwebi.presentacion.WebSocket.NotificadorSala;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorSalaWebSocket;
 import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTurnoWebSocket;
+import com.tallerwebi.presentacion.WebSocket.observadores.ObservadorTriviaWebSocket;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -27,6 +35,53 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ObservadoresConfigTest {
+
+    @Test
+    void desconectarWebSocketNoSeInterpretaComoAbandono() {
+        GestorTriviaPartida gestor = mock(GestorTriviaPartida.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(com.tallerwebi.dominio.servicios.GestorTriviaPartida.class, () -> gestor);
+            contexto.register(com.tallerwebi.dominio.observadores.ObservadorTriviaAbandono.class);
+            contexto.refresh();
+
+            contexto.publishEvent(new org.springframework.web.socket.messaging.SessionDisconnectEvent(
+                    this, org.springframework.messaging.support.MessageBuilder.withPayload(new byte[0]).build(),
+                    "sesion-prueba", org.springframework.web.socket.CloseStatus.NORMAL));
+
+            verifyNoInteractions(gestor);
+        }
+    }
+
+    @Test
+    void springConectaElPublicadorDeTriviaConElObservadorWebSocket() {
+        NotificadorPartida notificador = mock(NotificadorPartida.class);
+        try (AnnotationConfigApplicationContext contexto = new AnnotationConfigApplicationContext()) {
+            contexto.registerBean(NotificadorPartida.class, () -> notificador);
+            contexto.register(ObservadoresConfig.class, ObservadorTriviaWebSocket.class,
+                    PublicadorTriviaInyectado.class);
+            contexto.refresh();
+            Trivia trivia = new Trivia();
+            trivia.setDificultad(DificultadRuleta.FACIL);
+            trivia.setRondaActual(1);
+            trivia.prepararPreguntas(List.of(new PreguntaGenerada(
+                    "FACIL", "Pregunta de prueba", List.of("A", "B", "C", "D"), 1)));
+            trivia.setInicioRonda(java.time.Instant.parse("2026-11-12T12:00:00Z"));
+            Map<String, Object> contenido = Map.of(
+                    "tipo", TipoAvisoTrivia.RONDA_NUEVA,
+                    "estado", MapeadorTrivia.estado("ABC123", trivia),
+                    "pregunta", MapeadorTrivia.pregunta(trivia));
+
+            contexto.getBean(PublicadorTriviaInyectado.class).trivia
+                    .notificar(new EventoTriviaActualizada("ABC123", TipoAvisoTrivia.RONDA_NUEVA, trivia, null));
+
+            verify(notificador).notificarTrivia("ABC123", contenido);
+        }
+    }
+
+    static class PublicadorTriviaInyectado {
+        @Autowired
+        private PublicadorEventos<EventoTriviaActualizada> trivia;
+    }
 
     @Test
     void springConectaElAvisoDeQuiebraAlNotificadorExistenteDespuesDelCommit() {

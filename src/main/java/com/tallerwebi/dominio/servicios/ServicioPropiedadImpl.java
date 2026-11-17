@@ -34,8 +34,6 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
     private final ServicioCasillero servicioCasillero;
     @Autowired(required = false)
     private com.tallerwebi.infraestructura.RepositorioDeudaPendiente deudas;
-    private static final Integer NIVEL_MAXIMO_MEJORA = 5;
-    private static final List<Integer> ALQUILERES_MEJORADOS = List.of(200, 300, 500, 1000, 1500);
     private static final List<Integer> ALQUILERES_POR_PARADAS = List.of(0, 20, 50, 100, 200);
     @Autowired
     public ServicioPropiedadImpl(RepositorioPropiedad repositorioPropiedad, RepositorioPartida repositorioPartida,
@@ -142,6 +140,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throws EstadoPartidaInvalidoException {
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
+        participacion.validarSinTrivia(partida);
         if (idJugador == null) {
             throw new EstadoPartidaInvalidoException("No perteneces a esta partida.");
         }
@@ -167,7 +166,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         Partida partida = repositorioPartida.buscarPartidaPorJugador(idJugador);
         repositorioPartida.bloquearPartida(partida);
         participacion.validarPartidaEnCurso(partida);
-        participacion.validarPartidaEnCurso(partida);
+        participacion.validarSinTrivia(partida);
         Propiedad propiedad = obtenerPropiedadExistente(idPropiedad);
         validarPropietarioDeVenta(propiedad, idJugador);
         Integer precioVenta = calcularPrecioVenta(propiedad.getPrecioCompra());
@@ -282,7 +281,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             throw new PropiedadInvalidaException("El nivel de mejora no es válido.");
         }
         if (nivelMejora == 0) return alquilerBase;
-        return ALQUILERES_MEJORADOS.get(Math.min(nivelMejora, NIVEL_MAXIMO_MEJORA) - 1);
+        return alquilerConMejora(alquilerBase, nivelMejora);
     }
 //Recibe el importe ya calculado
     @Override
@@ -316,7 +315,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         validarNivelMejora(propiedad);
 
         Integer nivelActual = propiedad.getNivelMejora() == null ? 0 : propiedad.getNivelMejora();
-        Integer costoMejora = ALQUILERES_MEJORADOS.get(nivelActual);
+        Integer costoMejora = calcularCostoMejora(propiedad);
         Jugador jugadorActualizado = jugador.getId() == null ? null : repositorioPartida.buscarJugadorPorId(jugador.getId());
         if (jugadorActualizado == null) jugadorActualizado = jugador;
         if (!economia.tieneDineroSuficiente(jugadorActualizado, costoMejora)) {
@@ -327,6 +326,14 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         jugador.setDinero(jugadorActualizado.getDinero());
         jugador.setEnBancarrota(jugadorActualizado.getEnBancarrota());
         propiedad.setNivelMejora(nivelActual + 1);
+    }
+
+    private Integer calcularCostoMejora(Propiedad propiedad) {
+        Integer precioCompra = propiedad.getPrecioCompra();
+        if (precioCompra == null || precioCompra < 0) {
+            throw new PropiedadInvalidaException("El precio de la propiedad no es válido.");
+        }
+        return costoMejora(precioCompra);
     }
 
     //Limita el nivel de mejoras hasta 5

@@ -252,6 +252,9 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         if (partida == null || partida.getEstado() != EstadoPartida.EN_CURSO) {
             throw new DeclaracionQuiebraInvalidaException("La partida no está en curso.");
         }
+        if (participacion.estaBloqueadaPorTrivia(partida)) {
+            throw new DeclaracionQuiebraInvalidaException("No podés declararte en quiebra durante la trivia.");
+        }
         if (!participacion.pertenece(partida, idJugador)) {
             throw new DeclaracionQuiebraInvalidaException("El jugador no pertenece a esta partida.");
         }

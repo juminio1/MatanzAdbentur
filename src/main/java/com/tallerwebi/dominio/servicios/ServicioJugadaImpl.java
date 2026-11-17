@@ -8,6 +8,10 @@ import com.tallerwebi.dominio.excepcion.*;
 import com.tallerwebi.dominio.resultados.*;
 import com.tallerwebi.dominio.servicios.interfaces.*;
 import java.util.Objects;
+import java.util.UUID;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
+import com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
     private final ServicioEventoCasillero eventos;
     private final ServicioGestionQuiebra quiebras;
     private final ServicioMovimiento movimiento;
+    @Autowired
+    private GestorRuletaPartida gestorRuleta;
 
     //inyecta las dependencias por constructor
     public ServicioJugadaImpl(
@@ -57,6 +63,18 @@ public class ServicioJugadaImpl implements ServicioJugada {
     @Override
     public ResultadoJugada tirarYMover(String codigo, Long idJugador)
         throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        return tirar(codigo, idJugador, true);
+    }
+
+    // Igual que una tirada normal, pero sin exigir tiempo restante: el turno ya venció.
+    @Override
+    public ResultadoJugada tirarPorVencimiento(String codigo, Long idJugador)
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
+        return tirar(codigo, idJugador, false);
+    }
+
+    private ResultadoJugada tirar(String codigo, Long idJugador, boolean exigirTiempo)
+        throws PartidaNoEncontradaException, JugadorNoEncontradoException {
         //busca la partida y sino la encuentra lanza excepcion
         Partida partida = partidas.obtenerPartida(codigo);
         if (partida == null) throw new PartidaNoEncontradaException();
@@ -66,7 +84,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
 
         //busca jugador y valida que el jugador cumpla con las condiciones.
         Jugador jugador = obtenerJugador(partida, idJugador);
-        validarTirada(codigo, jugador);
+        validarTirada(codigo, jugador, exigirTiempo);
 
         //guarda la posicion anterior del jugador.
         Integer anterior = jugador.getPosicionActual();
@@ -132,6 +150,8 @@ public class ServicioJugadaImpl implements ServicioJugada {
             );
         }
 
+        activarRuletaSiCorresponde(codigo, idJugador, jugador.getPosicionActual());
+
         //Devuelve el resultado completo de la jugada.
         return new ResultadoJugada(
             idJugador,
@@ -186,6 +206,18 @@ public class ServicioJugadaImpl implements ServicioJugada {
         partidas.actualizarJugador(jugador);
     }
 
+    private void activarRuletaSiCorresponde(String codigo, Long idJugador, Integer posicion) {
+        if (posicion == null || !CatalogoTablero.POSICIONES_TRIVIA.contains(posicion)) {
+            return;
+        }
+        String activacionId = UUID.randomUUID().toString();
+        // La reserva rige desde ya, dentro de la transacción: si el turno avanza antes de que gire
+        // la ruleta (o si la tirada fue automática), el evento global espera a que termine la trivia.
+        gestorRuleta.reservarTrivia(codigo);
+        DespuesDeConfirmar.siSeRevierte(() -> gestorRuleta.cancelarReservaTrivia(codigo));
+        DespuesDeConfirmar.ejecutar(() -> gestorRuleta.activarRuleta(codigo, activacionId, idJugador));
+    }
+
     //busca al jugador por id.
     private Jugador obtenerJugador(Partida partida, Long idJugador)
         throws JugadorNoEncontradoException {
@@ -205,9 +237,9 @@ public class ServicioJugadaImpl implements ServicioJugada {
         }
     }
 
-    private void validarTirada(String codigo, Jugador jugador) {
+    private void validarTirada(String codigo, Jugador jugador, boolean exigirTiempo) {
         Integer restantes = partidas.obtenerSegundosRestantesTurno(codigo);
-        if (restantes != null && restantes <= 0) {
+        if (exigirTiempo && restantes != null && restantes <= 0) {
             throw new TiradaNoPermitidaException("El tiempo del turno terminó.");
         }
         validarJugadorEnTurno(codigo, jugador);

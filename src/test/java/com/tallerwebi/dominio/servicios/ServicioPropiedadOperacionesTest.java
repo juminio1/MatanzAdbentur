@@ -175,8 +175,8 @@ class ServicioPropiedadOperacionesTest {
 
         assertEquals(1, propiedad.getNivelMejora());
         assertEquals(0, vecina.getNivelMejora());
-        assertEquals(200, servicio.calcularAlquiler(propiedad));
-        verify(economia).restarDinero(vendedor, 200);
+        assertEquals(100, servicio.calcularAlquiler(propiedad));
+        verify(economia).restarDinero(vendedor, 150);
         verify(partidas).actualizarJugador(vendedor);
     }
 

@@ -66,6 +66,7 @@ class EventosGlobalesIntegracionTest {
             return new DriverManagerDataSource("jdbc:hsqldb:mem:eventos_integracion", "sa", "");
         }
         @Bean ServicioDado dados() { return mock(ServicioDado.class); }
+        @Bean GestorRuletaPartida gestorRuletaPartida() { return mock(GestorRuletaPartida.class); }
         @Bean @Primary RepositorioEventoCasillero tarjetas() { return mock(RepositorioEventoCasillero.class); }
         @Bean ServicioInicioPartida inicio() { return mock(ServicioInicioPartida.class); }
         @Bean GestorTemporizadorPartida temporizador() { return mock(GestorTemporizadorPartida.class); }
@@ -146,7 +147,7 @@ class EventosGlobalesIntegracionTest {
     }
 
     @Test
-    void vencimientoDeLaUltimaOportunidadActivaElEventoDeLaNuevaRondaUnaSolaVez() {
+    void vencimientoDeLaUltimaOportunidadTiraPorElJugadorYActivaElEventoDeLaNuevaRondaUnaSolaVez() {
         when(aleatorio.nextInt(6)).thenReturn(TipoEventoGlobal.FIAT_600.ordinal());
         when(temporizador.programarTemporizadorSiNoExiste(eq(codigo), eq(60), any(Runnable.class)))
                 .thenReturn(true);
@@ -165,8 +166,8 @@ class EventosGlobalesIntegracionTest {
         assertEquals(TipoEventoGlobal.FIAT_600, partida.getEventoGlobal().getEvento().getTipoEventoGlobal());
         assertEquals(2400, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
         assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(2)).getDinero());
-        assertEquals(13, partidas.obtenerJugadorPorId(jugadores.get(2)).getPosicionActual());
-        verify(dados, never()).tirarDados();
+        assertEquals(25, partidas.obtenerJugadorPorId(jugadores.get(2)).getPosicionActual());
+        verify(dados, times(1)).tirarDados();
     }
 
     @Test
@@ -229,14 +230,14 @@ class EventosGlobalesIntegracionTest {
             crearPropiedad(5, 1, 2);
             iniciar(tipo);
             tirarTodos();
-            assertEquals(1700, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2300, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
-            assertTrue(eventos.consultar(codigo, jugadores.get(0)).get("consecuencia").toString().contains("Alquiler: $300"));
+            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertTrue(eventos.consultar(codigo, jugadores.get(0)).get("consecuencia").toString().contains("Alquiler: $120"));
             assertThrows(IllegalStateException.class, () -> eventos.tirar(codigo, jugadores.get(0), 5, 1));
             confirmarTodos();
             eventos.confirmar(codigo, jugadores.get(0), 5);
-            assertEquals(1700, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2300, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
         });
     }
 
@@ -270,13 +271,13 @@ class EventosGlobalesIntegracionTest {
     Stream<DynamicTest> dadoQueElAlquilerSuperaElSaldoCuandoPuedeVenderDaComoResultadoDeudaSinDuplicados() {
         return destinosDeMovimiento(tipo -> {
             prepararDestino(tipo, 5);
-            crearPropiedad(5, 1, 2);
-            Long vendible = crearPropiedad(1, 0, 0);
-            cambiarDinero(jugadores.get(0), 200);
+            crearPropiedad(5, 1, 5);
+            Long vendible = crearPropiedad(29, 0, 0);
+            cambiarDinero(jugadores.get(0), 250);
             iniciar(tipo);
             tirarTodos();
             DeudaPendiente deuda = quiebras.obtenerDeudaPendiente(codigo, jugadores.get(0));
-            assertEquals(300, deuda.getMontoPendiente());
+            assertEquals(450, deuda.getMontoPendiente());
             assertEquals(jugadores.get(1), deuda.getJugadorAcreedor().getId());
             confirmarTodos();
             assertEquals(true, eventos.consultar(codigo, jugadores.get(0)).get("activo"));
@@ -284,7 +285,7 @@ class EventosGlobalesIntegracionTest {
             assertTrue(quiebras.venderPropiedadYResolverDeuda(codigo, jugadores.get(0), vendible));
             assertNull(quiebras.obtenerDeudaPendiente(codigo, jugadores.get(0)));
             assertFalse(quiebras.intentarResolverDeuda(codigo, jugadores.get(0)));
-            assertEquals(2300, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(2450, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
             assertFalse(partidas.obtenerPartida(codigo).getEventoGlobal().estaActivo());
         });
     }
@@ -312,8 +313,8 @@ class EventosGlobalesIntegracionTest {
             iniciar(tipo);
             tirarTodos();
             assertEquals(5, partidas.obtenerJugadorPorId(jugadores.get(0)).getPosicionActual());
-            assertEquals(1700, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2300, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
             eventos.consultar(codigo, jugadores.get(0));
             verify(tarjetas, times(1)).obtenerTodos();
         });
@@ -771,14 +772,14 @@ class EventosGlobalesIntegracionTest {
             Integer finalizados = partidas.obtenerPartida(codigo).getTurnosFinalizadosEnRonda();
             var respuesta = controladorPropiedades().responderCompraDeEvento(codigo, Map.of("ronda", 5, "aceptar", true), sesionPropietario());
             assertEquals(200, respuesta.getStatusCode().value(), () -> respuesta.getBody().toString());
-            assertEquals(1700, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(1800, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
             assertEquals(jugadores.get(0), transaccion.execute(estado -> casilleros.buscarCasilleroPropiedad(partidas.obtenerPartida(codigo), 5).getPropiedad().getPropietario().getId()));
             assertEquals(jugadorActual, partidas.obtenerJugadorActual(codigo).getId());
             assertEquals(ronda, partidas.obtenerPartida(codigo).getRondaActual());
             assertEquals(finalizados, partidas.obtenerPartida(codigo).getTurnosFinalizadosEnRonda());
             assertNull(eventos.consultar(codigo, jugadores.get(0)).get("compraPendiente"));
             assertEquals(409, controladorPropiedades().responderCompraDeEvento(codigo, Map.of("ronda", 5, "aceptar", true), sesionPropietario()).getStatusCode().value());
-            assertEquals(1700, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(1800, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
         });
     }
 

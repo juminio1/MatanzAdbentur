@@ -10,6 +10,7 @@ public class SalaActualizadaDTO {
     private List<String> fichasOcupadas;
     private Map<String, String> fichasAsignadas = new java.util.HashMap<>();
     private String creador;
+    private Map<String, String> avatares = new java.util.HashMap<>();
 
     public SalaActualizadaDTO() {
     }
@@ -63,5 +64,13 @@ public class SalaActualizadaDTO {
 
     public void setCreador(String creador) {
         this.creador = creador;
+    }
+
+    public Map<String, String> getAvatares() {
+        return avatares;
+    }
+
+    public void setAvatares(Map<String, String> avatares) {
+        this.avatares = avatares;
     }
 }

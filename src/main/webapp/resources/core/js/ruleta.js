@@ -43,25 +43,17 @@ export function girarRuleta(dificultad, ruleta) {
 
 export function obtenerOpcionesVisualesRuleta() {
 
-    const nombres = {
-        FACIL: "FÁCIL",
-        MEDIO: "MEDIA",
-        DIFICIL: "DIFÍCIL"
-    };
-
     const colores = {
         FACIL: "#83CBA8",
         MEDIO: "#F5CA78",
         DIFICIL: "#EF9299"
     };
 
-    // Recorre los 10 segmentos y prepara la información visual de cada uno.
+    // Recorre los 10 segmentos: solo color, sin texto adentro.
     return ORDEN_SEGMENTOS.map(dificultad => ({
-        label: nombres[dificultad], //Indica que texto aparece en cada segmento
         value: dificultad, //Guarda la dificultad a la que pertenece el segmento
         weight: 1, //Todos los segmentos tienen el mismo tamaño (10% cada uno)
-        backgroundColor: colores[dificultad], //Asigna un color para cada dificultad
-        labelColor: "#FFFFFF" //Color del texto
+        backgroundColor: colores[dificultad] //Asigna un color para cada dificultad
     }));
 }
 
@@ -81,14 +73,7 @@ export function crearRuleta(contenedor, Wheel) {
 
         radius: 0.9,
         lineWidth: 3,
-        lineColor: "#FFFFFF",
-
-        // Tipografía redondeada para las dificultades.
-        itemLabelFont: "'Nunito', 'Trebuchet MS', sans-serif",
-        itemLabelFontSizeMax: 28,
-        itemLabelAlign: "center",
-        itemLabelRadius: 0.72,
-        itemLabelRadiusMax: 0.27
+        lineColor: "#FFFFFF"
     };
 
     return new Wheel(contenedor, configuracion);

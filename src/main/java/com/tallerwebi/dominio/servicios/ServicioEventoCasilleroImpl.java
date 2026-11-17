@@ -2,6 +2,7 @@
 package com.tallerwebi.dominio.servicios;
 
 import com.tallerwebi.dominio.entidades.Jugador;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
 import com.tallerwebi.dominio.entidades.Casillero.CasilleroEvento;
 import com.tallerwebi.dominio.entidades.Evento.EventoCasillero;
 import com.tallerwebi.dominio.enums.TipoEfectoEvento;
@@ -134,6 +135,9 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     private Boolean esCasilleroDeEvento(Integer posicion) {
+        if (CatalogoTablero.POSICIONES_TRIVIA.contains(posicion)) {
+            return false;
+        }
         return servicioCasillero.obtenerTodosLosCasilleros().stream()
                 .filter(CasilleroEvento.class::isInstance)
                 .map(CasilleroEvento.class::cast)

@@ -2,10 +2,13 @@ package com.tallerwebi.postgresql;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tallerwebi.config.DatabaseInitializationConfig;
 import com.tallerwebi.config.HibernateConfig;
 import com.tallerwebi.dominio.entidades.Usuario;
+import com.tallerwebi.dominio.enums.DificultadTrivia;
+import com.tallerwebi.infraestructura.RepositorioPreguntaTriviaImpl;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,13 @@ class PostgreSQLTest {
         var transaction = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
         transaction.executeWithoutResult(status -> {
           var session = sessions.getCurrentSession();
+          var banco = new RepositorioPreguntaTriviaImpl(sessions);
+          for (DificultadTrivia dificultad : DificultadTrivia.values()) {
+            assertTrue(banco.buscarPorDificultad(dificultad).size() >= 10);
+          }
+          assertEquals(1, banco.buscarPorDificultad(DificultadTrivia.SIMPLE).stream()
+              .filter(pregunta -> "¿Cuál es la capital de Argentina?".equals(pregunta.getEnunciado()))
+              .count());
           assertEquals(1L, session.createQuery(
               "select count(u) from Usuario u where u.email = :email", Long.class)
               .setParameter("email", "test@unlam.edu.ar").uniqueResult());

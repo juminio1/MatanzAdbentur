@@ -51,6 +51,10 @@ public class NotificadorPartida {
         template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/evento-global", estado);
     }
 
+    public void notificarTrivia(String codigoPartida, Map<String, Object> notificacion) {
+        template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/trivia", notificacion);
+    }
+
     public void notificarTiempoAgotadoEnCarcel(EventoTiempoAgotadoEnCarcel evento) {
         Map<String, Object> aviso = new HashMap<>();
         aviso.put(CLAVE_ID_JUGADOR, evento.idJugador());

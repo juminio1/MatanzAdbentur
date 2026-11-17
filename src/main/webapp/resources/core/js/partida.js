@@ -1,10 +1,11 @@
+import { conectarTriviaPartida } from "./trivia-partida.js?v=12";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero } from "./efectos-compra.js?v=partida-13";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante } from "./efectos-compra.js?v=partida-21";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -198,9 +199,14 @@ function moverFichaEnTablero(idJugador, nuevaPosicion, efecto) {
     casilleroDestino.appendChild(ficha);
     if (efecto) animarPasoFicha(ficha, efecto === "llegada", posicionesPropiedad.has(Number(nuevaPosicion)));
     if (efecto === "llegada") {
-        const colorFicha = getComputedStyle(ficha).backgroundColor;
+        // Brillo del color de la ficha alrededor del peón al llegar.
+        const colorFicha = getComputedStyle(ficha).getPropertyValue("--color-ficha").trim() || "#ffffff";
+        const sombraBase = "drop-shadow(1px 2px 0 rgb(0 0 0 / 45%))";
         ficha.animate(
-            [{ boxShadow: `0 0 0 3px ${colorFicha}` }, { boxShadow: "0 0 0 8px transparent" }],
+            [
+                { filter: `${sombraBase} drop-shadow(0 0 2px ${colorFicha}) drop-shadow(0 0 6px ${colorFicha})` },
+                { filter: `${sombraBase} drop-shadow(0 0 0 transparent) drop-shadow(0 0 0 transparent)` },
+            ],
             { duration: 650, easing: "ease-out" },
         );
     }
@@ -314,6 +320,20 @@ function conectarWebSocketTurnos(base, codigo) {
         () => {
             console.log("WebSocket conectado a la partida:", codigo);
             clienteWebSocketPartida = stompClient;
+            conectarTriviaPartida({ cliente: stompClient, codigo, base,
+                idJugador: window.usuarioSesionId,
+                actualizarSaldo: (idJugador, dinero) => actualizarDineroJugador(idJugador, dinero, false, true),
+                registrarEnHistorial: agregarAlHistorial,
+                animarGanancia: function (idJugador, monto) {
+                    const tarjeta = document.getElementById(String(idJugador));
+                    return tarjeta ? mostrarMontoFlotante(tarjeta, `+$${Number(monto).toLocaleString("es-AR")}`, "gana",
+                        {sonido:true,sobreTablero:true,monedas:true}) : false;
+                },
+                alPremioEntregado: function (estado) {
+                    if (estado.tipoPremio !== "PLATA") window.location.reload();
+                },
+                estaPreso: function () { return estaPresoEnPantalla(window.usuarioSesionId); },
+            });
             consultarResultadosFinales();
 
             stompClient.subscribe(`/topic/partida/${codigo}/evento-global`, mensaje => {
@@ -409,13 +429,6 @@ function conectarWebSocketTurnos(base, codigo) {
                 if (modalOfertaRecibida?.open) return; // Se muestra al cerrar la oferta actual.
                 mostrarOfertaRecibida(oferta);
             });
-            
-            // Sincroniza la ruleta entre todos los jugadores de la partida.
-            stompClient.subscribe(`/topic/partida/${codigo}/ruleta`, (mensaje) => {
-                const estadoRuleta = JSON.parse(mensaje.body);
-                document.dispatchEvent(new CustomEvent("ruleta:estado", { detail: estadoRuleta }));
-            });
-
 
             // Recupera las ofertas que llegaron antes de conectarse (por ejemplo, al recargar la página).
             revisarOfertasPendientes();
@@ -443,6 +456,8 @@ function conectarWebSocketTurnos(base, codigo) {
         },
         (error) => {
             clienteWebSocketPartida = null;
+            const panelRuleta = document.getElementById("panel-ruleta");
+            if (panelRuleta) panelRuleta.dataset.triviaSuscrita = "false";
             console.error("Error en la conexión WebSocket:", error);
             window.setTimeout(() => conectarWebSocketTurnos(base, codigo), 3000);
         },
@@ -693,21 +708,39 @@ function registrarPremioPorInicio(movimiento) {
         `${nombreJugador} recibió $${monto} por pasar por Inicio.`,
         movimiento.idJugador,
     );
+    animarPasoPorInicio(
+        document.querySelector('.casillero[data-casillero="0"]'),
+        document.getElementById(String(movimiento.idJugador)),
+        monto,
+    );
     if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(`Recibiste $${monto} por pasar por Inicio.`);
     }
 }
 
-function mostrarAvisoAlquiler(aviso) {
+function mostrarAvisoAlquiler(aviso, posicion) {
     agregarAlHistorial(
         `${aviso.pagador} pagó $${aviso.monto} de alquiler a ${aviso.propietario} por ${aviso.propiedad}.`,
         aviso.idJugadorPagador,
     );
+    animarAlquiler(aviso, posicion);
     if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
         mostrarAvisoPartida(
             `Se te descontaron $${aviso.monto} de alquiler por ${aviso.propiedad}. Se lo pagaste a ${aviso.propietario}.`,
         );
     }
+}
+
+// Monedas que vuelan del que paga el alquiler al dueño de la propiedad.
+// El aviso no trae el id del dueño: lo saco de la propiedad donde cayó y, si no está, lo busco por nombre.
+function animarAlquiler(aviso, posicion) {
+    const tarjetaPagador = document.getElementById(String(aviso.idJugadorPagador));
+    const idDueno = catalogoPropiedadesActual.get(Number(posicion))?.propietarioId;
+    const tarjetaDueno = (idDueno != null && document.getElementById(String(idDueno)))
+        || [...document.querySelectorAll(".jugador")].find(
+            (tarjeta) => tarjeta.querySelector(".nombre-jugador")?.textContent.trim() === aviso.propietario,
+        );
+    animarPagoEntreJugadores(tarjetaPagador, tarjetaDueno, aviso.monto);
 }
 
 function aplicarSaldosMovimiento(movimiento) {
@@ -725,7 +758,7 @@ function aplicarSaldosMovimiento(movimiento) {
 function registrarCaidaEnHistorial(idJugador, posicion) {
     const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
     const nombreCasillero =
-        casillero?.querySelector(".casillero__nombre")?.textContent.trim() ||
+        casillero?.querySelector(".casillero__nombre")?.textContent.replace(/\u00ad/g, "").trim() ||
         `casillero #${posicion}`;
     const nombreJugador =
         document
@@ -754,14 +787,31 @@ function iniciarAnimacionDadosTablero() {
     let cambio;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         pintarAlAzar();
-        giro = [...caras].map((cara, indice) => {
+        const sombras = [...panel.querySelectorAll(".dados-tablero__sombra")];
+        // Los dados caen desde arriba (grandes, como cerca de la cámara), golpean el tablero y rebotan dos veces.
+        // "ease-in" en las bajadas simula la gravedad y "ease-out" en las subidas, el frenado del rebote.
+        giro = caras.flatMap((cara, indice) => {
             const lado = indice === 0 ? -1 : 1;
-            return cara.animate([
-                { transform: `translate(${lado * 60}px, -64px) rotate(0deg) scale(.76)`, opacity: 0.65 },
-                { transform: `translate(${lado * 28}px, 8px) rotate(${lado * 155}deg)`, opacity: 1, offset: 0.42 },
-                { transform: `translate(${lado * 10}px, -14px) rotate(${lado * 270}deg)`, offset: 0.68 },
-                { transform: `translate(0, 0) rotate(${lado * 360}deg)` },
-            ], { duration: 530, easing: "ease-out" });
+            const demora = indice * 70;
+            const caida = cara.animate([
+                { transform: `translate(${lado * 46}px, -190px) rotate(${lado * -90}deg) scale(2.2)`, opacity: 0, easing: "ease-in" },
+                { opacity: 1, offset: 0.08, easing: "ease-in" },
+                { transform: `translate(${lado * 10}px, 0) rotate(${lado * 200}deg) scale(1.12, 0.86)`, offset: 0.46, easing: "ease-out" },
+                { transform: `translate(${lado * 5}px, -38px) rotate(${lado * 290}deg) scale(1.06)`, offset: 0.62, easing: "ease-in" },
+                { transform: `translate(${lado * 2}px, 0) rotate(${lado * 340}deg) scale(1.06, 0.94)`, offset: 0.76, easing: "ease-out" },
+                { transform: `translate(0, -12px) rotate(${lado * 354}deg) scale(1.02)`, offset: 0.86, easing: "ease-in" },
+                { transform: `translate(0, 0) rotate(${lado * 360}deg) scale(1)` },
+            ], { duration: 950, delay: demora, fill: "backwards" });
+            // La sombra queda en el tablero: chica y clara mientras el dado está alto, grande y oscura al tocar.
+            const sombra = sombras[indice]?.animate([
+                { transform: `translateX(${lado * 46}px) scale(.25)`, opacity: 0, easing: "ease-in" },
+                { transform: `translateX(${lado * 10}px) scale(1.05)`, opacity: 1, offset: 0.46, easing: "ease-out" },
+                { transform: `translateX(${lado * 5}px) scale(.7)`, opacity: 0.6, offset: 0.62, easing: "ease-in" },
+                { transform: `translateX(${lado * 2}px) scale(1)`, opacity: 1, offset: 0.76, easing: "ease-out" },
+                { transform: "translateX(0) scale(.88)", opacity: 0.85, offset: 0.86, easing: "ease-in" },
+                { transform: "translateX(0) scale(1)", opacity: 1 },
+            ], { duration: 950, delay: demora, fill: "backwards" });
+            return sombra ? [caida, sombra] : [caida];
         });
         cambio = setInterval(() => {
             if (numero === numeroTiradaTablero) pintarAlAzar();
@@ -815,6 +865,9 @@ async function procesarMovimiento(movimiento) {
                 Number(movimiento.posicionAnterior);
         const pasos = seQuedoEnElLugar ? 0 : Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        const fichaEnMovimiento = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        if (fichaEnMovimiento) fichaEnMovimiento.dataset.movimientoEnCurso = "true";
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-iniciado", { detail: { idJugador: movimiento.idJugador } }));
         if (modalDeuda?.open && !declarandoQuiebra) {
             aperturaDeudaPendiente = true;
             modalDeuda.close();
@@ -866,7 +919,7 @@ async function procesarMovimiento(movimiento) {
             }
             aplicarSaldosMovimiento(movimiento);
             registrarPremioPorInicio(movimiento);
-            if (movimiento.alquiler) mostrarAvisoAlquiler(movimiento.alquiler);
+            if (movimiento.alquiler) mostrarAvisoAlquiler(movimiento.alquiler, posicionFinal);
             if (permiteCompra && Date.now() < vencimientoMovimiento) {
                 await atenderCaidaEnCasillero(movimiento.idJugador, posicionFinal);
             }
@@ -884,6 +937,16 @@ async function procesarMovimiento(movimiento) {
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        const ficha = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        // Incluye el salto y el brillo de llegada; no espera animaciones decorativas infinitas.
+        const animaciones = ficha?.getAnimations?.() ?? [];
+        await Promise.allSettled(animaciones.filter(animacion =>
+            animacion.effect?.getComputedTiming?.().iterations !== Infinity).map(animacion => animacion.finished));
+        if (ficha) delete ficha.dataset.movimientoEnCurso;
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-finalizado", { detail: {
+            idJugador: movimiento.idJugador,
+            enTrivia: Boolean(ficha?.closest(".casillero")?.querySelector(".casillero__nombre--trivia")),
+        } }));
         if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
             consultarDeudaPendiente(true);
         }
@@ -1188,7 +1251,6 @@ const posicionesPropiedad = new Set([
     1, 2, 4, 5, 6, 7, 9, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 29,
 ]);
 const coloresFicha = ["rojo", "azul", "verde", "amarillo"];
-const nivelesAlquiler = [200, 300, 500, 1000, 1500];
 const posicionesLocalidades = {
     VILLA_LUZURIAGA: [1, 2],
     SAN_JUSTO: [4, 5, 7],
@@ -1261,7 +1323,7 @@ function actualizarEtiquetaPrecioPropiedad(propiedad) {
         ? `Alquiler: $${monto} \u00b7 Propietario: ${propiedad.propietario}`
         : `Precio de compra: $${monto}`;
     etiqueta.setAttribute("aria-label", etiqueta.title);
-    casillero.title = `${propiedad.nombre || casillero.querySelector(".casillero__nombre")?.textContent.trim()} · ${etiqueta.title}`;
+    casillero.title = `${propiedad.nombre || casillero.querySelector(".casillero__nombre")?.textContent.replace(/\u00ad/g, "").trim()} ·${etiqueta.title}`;
     const colorPropietario = tieneDueno ? obtenerColorFichaJugador(propiedad.propietarioId) : null;
     if (colorPropietario) {
         etiqueta.dataset.color = colorPropietario;
@@ -1284,6 +1346,7 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
                 `${comprador} compr\u00f3 ${propiedad.nombre} por $${propiedad.precioCompra}.`,
                 propietarioId,
             );
+            animarCompra(posicion, propietarioId);
         } else if (propietarioId == null) {
             const vendedor = obtenerNombreJugadorHistorial(anterior.propietarioId);
             const precio = Number(propiedad.precioVenta ?? 0).toLocaleString("es-AR");
@@ -1299,6 +1362,15 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
                 propiedad.intercambio ? `${comprador} recibió ${propiedad.nombre} de ${vendedor} en un intercambio.` : `${comprador} compr\u00f3 ${propiedad.nombre} a ${vendedor} por $${precio}.`,
                 propietarioId,
             );
+            if (!propiedad.intercambio) {
+                animarCompra(posicion, propietarioId);
+                // Venta entre jugadores: la plata va del comprador al vendedor.
+                animarPagoEntreJugadores(
+                    document.getElementById(String(propietarioId)),
+                    document.getElementById(String(anterior.propietarioId)),
+                    propiedad.precioVenta ?? 0,
+                );
+            }
         }
     } else if (anterior && nivel > anterior.nivel) {
         const propietario = obtenerNombreJugadorHistorial(propietarioId);
@@ -1309,6 +1381,12 @@ function registrarCambioPropiedadEnHistorial(propiedad) {
     }
 
     estadoPropiedadesConocido.set(posicion, { propietarioId, nivel });
+}
+
+// Sello de "VENDIDO" con el color del comprador sobre el casillero que se acaba de comprar.
+function animarCompra(posicion, idComprador) {
+    const casillero = document.querySelector(`.casillero[data-casillero="${posicion}"]`);
+    animarCompraCasillero(casillero, obtenerColorFichaJugador(idComprador));
 }
 
 function obtenerNombreJugadorHistorial(idJugador) {
@@ -1363,8 +1441,7 @@ function mostrarInfoPropiedad(propiedad) {
     const acciones = document.getElementById("popup-acciones-propias");
     acciones.hidden = !esPropia;
     if (esPropia) {
-        const nivel = Number(propiedad.nivelMejora ?? 0);
-        const costo = nivelesAlquiler[nivel];
+        const costo = propiedad.costoMejora ?? null;
         const mejorar = document.getElementById("btn-info-mejorar");
         const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && costo != null;
         mejorar.textContent = puedeMejorarse ? `Mejorar por $${costo.toLocaleString("es-AR")}` : "Mejora no disponible";
@@ -1377,14 +1454,14 @@ function mostrarInfoPropiedad(propiedad) {
     }
 }
 
-function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
+function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silencioso = false) {
     const tarjeta = document.getElementById(String(idJugador));
     const saldo = tarjeta?.querySelector(".dinero");
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         const saldoAnterior = window.dineroUsuarioSesion;
         window.dineroUsuarioSesion = Number(dinero);
-        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion);
+        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion, {silencioso});
         actualizarControlesCarcel();
     }
     if (!enBancarrota) return;
@@ -1514,15 +1591,17 @@ async function comprarPropiedadActual() {
     }
 }
 
-function agregarAlHistorial(texto, idJugador) {
-    const item = document.createElement("li");
+function agregarAlHistorial(texto, idJugador, idEntrada) {
+    const lista = document.querySelector(".historial__lista");
+    if (!lista) return;
+    const existente = idEntrada && [...lista.children].find(item => item.dataset.idEntrada === idEntrada);
+    const item = existente || document.createElement("li");
+    if (idEntrada) item.dataset.idEntrada = idEntrada;
     item.textContent = texto;
     const color = obtenerColorFichaJugador(idJugador);
     if (color) item.dataset.color = color;
-    const lista = document.querySelector(".historial__lista");
-    if (!lista) return;
     lista.querySelector(".historial__vacio")?.remove();
-    lista.prepend(item);
+    if (!existente) lista.prepend(item);
 }
 
 function pintarDatosCompra(propiedad) {
@@ -1708,7 +1787,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     datos.className = "propiedad-propia__datos";
     if (propiedad.alquiler != null) agregarDatoPropiedad(datos, "Alquiler", propiedad.alquiler);
     const nivel = Number(propiedad.nivelMejora ?? 0);
-    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${nivelesAlquiler.length}`);
+    if (!esParada && propiedad.nivelMejora != null) agregarDatoPropiedad(datos, "Nivel de mejora", `${nivel} / ${propiedad.nivelMaximoMejora ?? nivel}`);
     tarjeta.append(encabezado);
     if (datos.childElementCount) tarjeta.append(datos);
     if (soloResumen) return tarjeta;
@@ -1728,7 +1807,7 @@ function crearTarjetaPropiedad(propiedad, seleccionar, soloResumen = false) {
     botonSubir.className = "btn-casillero btn-casillero--principal";
     const localidadCompleta = tieneLocalidadCompleta(propiedad);
     const esTurnoPropio = String(window.turnoActualId) === String(window.usuarioSesionId);
-    const costoMejora = nivelesAlquiler[nivel];
+    const costoMejora = propiedad.costoMejora ?? null;
     const puedeMejorarse = !esParada && costoMejora != null;
     botonSubir.disabled =
         partidaFinalizada ||
@@ -2181,9 +2260,11 @@ async function sincronizarEventoGlobal() {
     }
 }
 
+// El evento global también espera a que se cierre el cartel de la trivia.
 function debeEsperarPresentacionGlobal() {
     return movimientosDeJugadoresEnCurso.size > 0
-        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible");
+        || document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible")
+        || document.getElementById("trivia")?.open === true;
 }
 
 function aplicarEventoGlobal(estado) {
@@ -2535,12 +2616,17 @@ document.addEventListener("click", evento => {
     if (!estadoEventoGlobalCliente?.activo || partidaFinalizada) return;
     if (debeEsperarPresentacionGlobal()
             && evento.target.closest("#aviso-evento, #btn-continuar-evento")) return;
-    if (evento.target.closest("#aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
-    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat]")) return;
+    // El cartel final de la trivia puede seguir abierto cuando empieza el evento: tiene que poder cerrarse.
+    if (evento.target.closest("#trivia, #aviso-global, #modal-deuda-pendiente, #deuda-confirmacion, #modal-bono-propiedades, #modal-vender-propiedad, #modal-elegir-propiedad-venta, #modal-abandonar, #btn-abandonar, #modal-victoria")) return;
+    if (evento.target.closest("#modal-oferta-recibida, #btn-bono-propiedades, #btn-ayuda-propiedades, #modal-ayuda-propiedades, #btn-deuda-pendiente, #aviso-espera-quiebra, #modal-intercambio, #modal-intercambio-recibido, #chat-partida, [data-abrir-chat], #btn-sonido")) return;
     evento.preventDefault();
     evento.stopImmediatePropagation();
 }, true);
 window.addEventListener("DOMContentLoaded", () => {
+    // Al cerrar la trivia se muestra enseguida el evento global que estaba esperando.
+    document.getElementById("trivia")?.addEventListener("close", () => {
+        if (estadoEventoGlobalCliente?.activo) mostrarEstadoGlobal(estadoEventoGlobalCliente);
+    });
     sincronizarEventoGlobal();
     consultarDeudaPendiente();
     window.setInterval(sincronizarEventoGlobal, 3000);
@@ -2600,9 +2686,11 @@ function desbloquearControles() {
 }
 
 // Alineo el historial con el tamaño del tablero.
+// En pantalla ancha los botones van debajo del historial, así que le resto su alto para que la columna termine donde termina el tablero.
 function alinearHistorialConTablero() {
     const tablero = document.querySelector(".tablero");
     const lateral = document.querySelector(".partida__lateral");
+    const acciones = document.querySelector(".partida__pie .acciones");
     if (!tablero || !lateral) return;
     const actualizar = () => {
         if (window.matchMedia("(max-width: 1250px)").matches) {
@@ -2610,14 +2698,20 @@ function alinearHistorialConTablero() {
             lateral.style.removeProperty("--historial-desplazamiento");
             return;
         }
+        // El historial puede empezar más arriba que el tablero (en el borde de la mesa), pero termina a su misma altura.
         const limites = tablero.getBoundingClientRect();
-        const desplazamiento = Math.max(0, limites.top - lateral.getBoundingClientRect().top);
-        lateral.style.setProperty("--historial-alto", `${limites.height}px`);
-        lateral.style.setProperty("--historial-desplazamiento", `${desplazamiento}px`);
+        const inicio = lateral.getBoundingClientRect().top;
+        const estiloPie = getComputedStyle(lateral.parentElement);
+        const separacion = parseFloat(estiloPie.rowGap) || 0;
+        const reservaChat = parseFloat(estiloPie.paddingBottom) || 0;
+        const altoAcciones = acciones ? acciones.offsetHeight + separacion : 0;
+        lateral.style.setProperty("--historial-alto", `${Math.max(0, limites.bottom - inicio - altoAcciones - reservaChat)}px`);
+        lateral.style.setProperty("--historial-desplazamiento", "0px");
     };
     const observador = new ResizeObserver(actualizar);
     observador.observe(tablero);
     observador.observe(document.querySelector(".partida__main"));
+    if (acciones) observador.observe(acciones);
     window.addEventListener("resize", actualizar);
     actualizar();
 }
@@ -2901,7 +2995,7 @@ function abrirModalPartida(modal) {
 function bloquearAccionesFinalizadas() {
     if (!partidaFinalizada) return;
     document.querySelectorAll("button").forEach(boton => {
-        if (!boton.closest("#modal-victoria, #chat-partida, [data-abrir-chat]") && !boton.disabled) boton.disabled = true;
+        if (!boton.closest("#modal-victoria, #chat-partida, [data-abrir-chat], #btn-sonido") && !boton.disabled) boton.disabled = true;
     });
 }
 
@@ -2912,7 +3006,7 @@ observadorFinalizacion.observe(document.body, {
 window.addEventListener("pagehide", () => observadorFinalizacion.disconnect());
 
 document.addEventListener("click", evento => {
-    if (partidaFinalizada && !evento.target.closest("#modal-victoria, #chat-partida, [data-abrir-chat]")) {
+    if (partidaFinalizada && !evento.target.closest("#modal-victoria, #chat-partida, [data-abrir-chat], #btn-sonido")) {
         evento.preventDefault();
         evento.stopImmediatePropagation();
     }

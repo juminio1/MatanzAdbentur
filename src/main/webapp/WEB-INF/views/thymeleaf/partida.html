@@ -17,8 +17,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=barrio-12)}"
-            href="../../../resources/core/css/partida.css?v=barrio-12"
+            th:href="@{/css/partida.css(v=mesa-54)}"
+            href="../../../resources/core/css/partida.css?v=mesa-54"
         />
         <link
             rel="stylesheet"
@@ -27,8 +27,13 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/ruleta.css}"
-            href="../../../resources/core/css/ruleta.css"
+            th:href="@{/css/ruleta.css(v=girar-3)}"
+            href="../../../resources/core/css/ruleta.css?v=girar-3"
+        />
+        <link
+            rel="stylesheet"
+            th:href="@{/css/trivia.css(v=4)}"
+            href="../../../resources/core/css/trivia.css?v=4"
         />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -40,6 +45,19 @@
         />
     </head>
     <body class="pagina-partida">
+        <!-- La pava y el mate de la mesa del fondo: al hacer clic, la pava ceba un mate. -->
+        <div class="mesa-mate" aria-hidden="true">
+            <span class="mesa-mate__sombra"></span>
+            <img class="mesa-mate__pava" th:src="@{/images/fondo/pava.png(v=2)}" src="../../../resources/core/images/fondo/pava.png?v=2" alt="">
+            <span class="mesa-mate__chorro"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+            <span class="mesa-mate__vapor"></span>
+        </div>
+        <button type="button" class="mesa-mate__boton" aria-label="Cebar un mate" title="Cebar un mate"></button>
+
         <dialog
             id="aviso-espera-quiebra"
             class="aviso-espera-quiebra"
@@ -150,6 +168,25 @@
                     </div>
                 </article>
             </section>
+
+            <!-- Silenciar: siempre disponible, aunque no sea tu turno -->
+            <button
+                type="button"
+                class="btn-sonido"
+                id="btn-sonido"
+                aria-pressed="false"
+                aria-label="Silenciar sonido"
+                title="Silenciar sonido"
+            >
+                <svg class="btn-sonido__icono btn-sonido__icono--activo" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9h4l5-4v14l-5-4H4z" />
+                    <path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
+                </svg>
+                <svg class="btn-sonido__icono btn-sonido__icono--silenciado" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9h4l5-4v14l-5-4H4z" />
+                    <path d="M16.5 9.5l5 5M21.5 9.5l-5 5" />
+                </svg>
+            </button>
         </header>
         <!-- Zona principal: tablero + acciones -->
         <main class="partida__main">
@@ -191,7 +228,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 10; --fila: 5" data-casillero="2">
-                            <span class="casillero__nombre">Parroquia Stella Maris</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Parroquia<br>Stella<br>Maris</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -251,7 +288,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 6; --fila: 5" data-casillero="6">
-                            <span class="casillero__nombre">Colectivo 242</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Colectivo<br>242</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -266,7 +303,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 5; --fila: 5" data-casillero="7">
-                            <span class="casillero__nombre">San Justo Shopping</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">San Justo<br>Shopping</span>
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
                                     <div
@@ -317,7 +354,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 2; --fila: 5" data-casillero="10">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -353,7 +390,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 1; --fila: 4" data-casillero="12">
-                            <span class="casillero__nombre">Colectivo 96</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Colectivo<br>96</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -369,7 +406,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 1; --fila: 3" data-casillero="13">
-                            <span class="casillero__nombre">Plaza Hipólito Yrigoyen</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Plaza<br>Hipolito<br>Yrigoyen</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -421,7 +458,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 2; --fila: 1" data-casillero="16">
-                            <span class="casillero__nombre">Plaza Barrio La Casona</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Plaza<br>Barrio<br>La Casona</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -437,7 +474,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 3; --fila: 1" data-casillero="17">
-                            <span class="casillero__nombre">Colectivo 621</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Colectivo<br>621</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -453,7 +490,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 4; --fila: 1" data-casillero="18">
-                            <span class="casillero__nombre">Estación Laferrere</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Estación<br>Laferrere</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -485,7 +522,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 6; --fila: 1" data-casillero="20">
-                            <span class="casillero__nombre casillero__nombre--evento">EVENTOS</span>
+                            <span class="casillero__nombre casillero__nombre--trivia">TRIVIA</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -517,7 +554,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 8; --fila: 1" data-casillero="22">
-                            <span class="casillero__nombre">Superchino Luna</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Superchino<br>Luna</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -533,7 +570,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 9; --fila: 1" data-casillero="23">
-                            <span class="casillero__nombre">Cementerio Israelita</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Cementerio<br>Israelita</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -549,7 +586,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 10; --fila: 1" data-casillero="24">
-                            <span class="casillero__nombre">Colectivo 620</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Colectivo<br>620</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -565,7 +602,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 11; --fila: 1" data-casillero="25">
-                            <span class="casillero__nombre">Regimiento de La Tablada</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Regimiento<br>de La<br>Tablada</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -585,7 +622,7 @@
                             style="--col: 12; --fila: 1"
                             data-casillero="26"
                         >
-                            <span class="casillero__nombre">Bingo Ramos Mejía</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Bingo<br>Ramos<br>Mejía</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -601,7 +638,7 @@
                         </li>
 
                         <li class="casillero" style="--col: 12; --fila: 2" data-casillero="27">
-                            <span class="casillero__nombre">Estación Ramos Mejía</span>
+                            <span class="casillero__nombre" style="white-space: nowrap; hyphens: none">Estación<br>Ramos<br>Mejía</span>
 
                             <div class="fichas-en-casillero">
                                 <th:block th:each="jugador : ${partida.jugadores}">
@@ -654,8 +691,15 @@
                             <h1 class="tablero__titulo">El Matancero</h1>
                             <div id="dados-tablero" class="dados-tablero" hidden>
                                 <div class="dados-tablero__caras" aria-hidden="true">
-                                    <span class="aviso-global__dado" data-cara="1"></span>
-                                    <span class="aviso-global__dado" data-cara="1"></span>
+                                    <!-- Cada dado tiene su sombra sobre el tablero, que crece mientras cae. -->
+                                    <span class="dados-tablero__dado">
+                                        <span class="dados-tablero__sombra"></span>
+                                        <span class="aviso-global__dado" data-cara="1"></span>
+                                    </span>
+                                    <span class="dados-tablero__dado">
+                                        <span class="dados-tablero__sombra"></span>
+                                        <span class="aviso-global__dado" data-cara="1"></span>
+                                    </span>
                                 </div>
                                 <output
                                     id="dados-tablero-total"
@@ -695,10 +739,6 @@
                         Propiedades
                     </button>
 
-                    <!-- Botón temporal de prueba de Spin Wheel -->
-                    <button type="button" class="btn-accion" id="btn-abrir-ruleta">
-                        Probar ruleta
-                    </button>
                     <button
                         type="button"
                         class="btn-tirar"
@@ -1337,6 +1377,63 @@
             </button>
         </section>
 
+        <!-- Trivia: se abre con showModal() para todos y bloquea el resto de la pantalla hasta que termina.
+             Ronda, reloj, opciones y mensajes los completa trivia.js. -->
+        <dialog id="trivia" class="trivia" aria-labelledby="trivia-enunciado">
+            <header class="trivia__cabecera">
+                <span class="trivia__etiqueta">Trivia</span>
+                <span id="trivia-ronda" class="trivia__ronda"></span>
+                <span id="trivia-dificultad" class="trivia__dificultad"></span>
+            </header>
+            <div class="trivia__reloj" role="timer" aria-label="Tiempo para responder">
+                <span class="trivia__reloj-barra"></span>
+                <span id="trivia-segundos" class="trivia__reloj-segundos"></span>
+            </div>
+            <p id="trivia-aviso" class="trivia__aviso"></p>
+            <h2 id="trivia-enunciado" class="trivia__enunciado"></h2>
+            <ol id="trivia-opciones" class="trivia__opciones"></ol>
+            <p id="trivia-estado" class="trivia__estado" role="status" aria-live="polite"></p>
+            <p id="trivia-jugadores" class="trivia__jugadores"></p>
+            <!-- Pantalla final: ganador, desempate por tiempo o "nadie ganó". -->
+            <div class="trivia__final">
+                <h2 id="trivia-final-titulo" class="trivia__final-titulo"></h2>
+                <p id="trivia-final-detalle" class="trivia__final-detalle"></p>
+                <p id="trivia-premio" class="trivia__premio"></p>
+                <!-- Solo para quien gana una Complicada: elige entre la plata o robar una propiedad. -->
+                <div id="trivia-elegir-premio" class="trivia__elegir-premio" hidden>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--principal"
+                        data-premio="PLATA"
+                    >
+                        Cobrar $500
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-casillero btn-casillero--secundario"
+                        data-premio="ROBAR"
+                    >
+                        Robar una propiedad
+                    </button>
+                </div>
+                <!-- Lista de propiedades de los demás para elegir cuál robar. La completa trivia.js. -->
+                <div id="trivia-robar" class="trivia__robar" hidden>
+                    <div id="trivia-robar-lista" class="trivia__robar-lista"></div>
+                    <button type="button" id="trivia-robar-volver" class="btn-casillero trivia__robar-volver">
+                        Volver
+                    </button>
+                </div>
+                <ol id="trivia-tiempos" class="trivia__tiempos"></ol>
+                <button
+                    id="trivia-cerrar"
+                    type="button"
+                    class="btn-casillero btn-casillero--principal trivia__cerrar"
+                >
+                    Volver al tablero
+                </button>
+            </div>
+        </dialog>
+
         <section
             id="aviso-global"
             class="aviso-evento aviso-global"
@@ -1607,7 +1704,6 @@
                 GIRAR
             </button>
 
-            <button type="button" id="btn-cerrar-ruleta" class="ruleta-btn-cerrar">Cerrar</button>
         </section>
 
         <!-- Librerías de WebSocket -->
@@ -1653,14 +1749,30 @@
 
         <script
             type="module"
-            th:src="@{/js/partida.js(v=barrio-15)}"
-            src="../../../resources/core/js/partida.js?v=barrio-15"
+            th:src="@{/js/partida.js(v=mesa-20)}"
+            src="../../../resources/core/js/partida.js?v=mesa-20"
             charset="UTF-8"
         ></script>
         <script
             type="module"
-            th:src="@{/js/ruleta-demo.js}"
-            src="../../../resources/core/js/ruleta-demo.js"
+            th:src="@{/js/ruleta-demo.js(v=trivia-7)}"
+            src="../../../resources/core/js/ruleta-demo.js?v=trivia-7"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/trivia-partida.js(v=3)}"
+            src="../../../resources/core/js/trivia-partida.js?v=3"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/sonido-partida.js(v=1)}"
+            src="../../../resources/core/js/sonido-partida.js?v=1"
+        ></script>
+        <script
+            type="module"
+            th:src="@{/js/cebar-mate.js(v=5)}"
+            src="../../../resources/core/js/cebar-mate.js?v=5"
+            charset="UTF-8"
         ></script>
     </body>
 </html>

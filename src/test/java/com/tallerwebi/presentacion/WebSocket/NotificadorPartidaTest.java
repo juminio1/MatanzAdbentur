@@ -27,6 +27,28 @@ public class NotificadorPartidaTest {
         notificadorPartida = new NotificadorPartida(templateMock);
     }
 
+
+   //comprueba que el back notifique por websockets la trivia.
+    @Test
+    public void laCancelacionDeRuletaSeDifundeAlTopicCompartidoConSuActivacion() {
+        var cancelada = new com.tallerwebi.presentacion.DTO.EstadoRuletaDTO("ABC123", "ACT-1", 10L,
+                com.tallerwebi.dominio.enums.EstadoRuleta.CANCELADA,
+                com.tallerwebi.dominio.enums.DificultadRuleta.FACIL, 123L);
+
+        notificadorPartida.notificarRuleta("ABC123", cancelada);
+
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/ruleta", cancelada);
+    }
+
+    @Test
+    public void dadoUnaNotificacionDeTriviaLaPublicaEnElTopicDeLaPartidaConElContenidoEnviado() {
+        Map<String, Object> notificacion = Map.of("contenido", "notificacion de prueba");
+
+        notificadorPartida.notificarTrivia("ABC123", notificacion);
+
+        verify(templateMock).convertAndSend("/topic/partida/ABC123/trivia", notificacion);
+    }
+
     @Test
     void laTiradaAutomaticaSePublicaComoTurnoVencido() {
         var resultado = new com.tallerwebi.dominio.resultados.ResultadoJugada(

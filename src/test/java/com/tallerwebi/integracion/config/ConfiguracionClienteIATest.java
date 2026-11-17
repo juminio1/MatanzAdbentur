@@ -159,7 +159,7 @@ public class ConfiguracionClienteIATest {
             propiedades.load(archivo);
         }
 
-        assertEquals("${GEMINI_API_KEY}", propiedades.getProperty("gemini.api-key"));
+        assertEquals("${GEMINI_API_KEY:}", propiedades.getProperty("gemini.api-key"));
         //Comprueba que las propiedades tengan el mismo formato esperado
         assertEquals("${GEMINI_MODELO:gemini-3.5-flash-lite}", propiedades.getProperty("gemini.modelo")); 
     }

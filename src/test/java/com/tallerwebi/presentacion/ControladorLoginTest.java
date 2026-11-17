@@ -6,14 +6,14 @@ import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 import static org.hamcrest.Matchers.is;
 
 import com.tallerwebi.dominio.entidades.Usuario;
 import com.tallerwebi.dominio.excepcion.CredencialesInvalidasException;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioLogin;
 import com.tallerwebi.presentacion.DTO.LoginDTO;
+import com.tallerwebi.dominio.servicios.interfaces.ClienteIA;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -30,6 +30,9 @@ public class ControladorLoginTest {
   private HttpServletRequest requestMock;
   private HttpSession sessionMock;
   private ServicioLogin servicioLoginMock;
+  
+  @MockitoBean
+private ClienteIA clienteIA;
 
   @BeforeEach
   public void init() {

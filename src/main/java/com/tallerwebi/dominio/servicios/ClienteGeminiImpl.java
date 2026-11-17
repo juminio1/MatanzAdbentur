@@ -52,6 +52,9 @@ public class ClienteGeminiImpl implements ClienteIA{ //Esta clase se encarga de 
     @Override 
     public List<PreguntaGenerada> generarPreguntas(String dificultad, Integer cantidad) {
 
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new ClienteIAException("La clave de Gemini no está configurada");
+        }
         this.validarAntesDeLaSolicitud(dificultad, cantidad);
 
         try {

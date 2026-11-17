@@ -140,6 +140,7 @@ public class ServicioOfertaPropiedadImpl implements ServicioOfertaPropiedad {
 
     private void validarVenta(Partida partida) {
         participacion.validarPartidaEnCurso(partida);
+        participacion.validarSinTrivia(partida);
     }
 
     private boolean participantesValidos(Partida partida, Long idVendedor, Long idComprador) {

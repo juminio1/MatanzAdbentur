@@ -469,5 +469,25 @@ public void queSeleccionarLaMismaFichaNoGenereUnaExcepcion() {
                         "ROJO".equals(dto.getFichasAsignadas().get("rafael"))
         ));
     }
+
+    @Test
+    public void dadoQueUnJugadorTieneAvatarCuandoSeActualizaLaSalaDaComoResultadoQueSeNotificaSuAvatar() throws Exception {
+        Usuario usuario = crearUsuarioEjemplo(1L, "jugador@test.com");
+        usuario.setUsername("rafael");
+        usuario.setAvatar("/images/personajes/pixel/avatar-3.png");
+
+        SalaDeEspera sala = new SalaDeEspera();
+        sala.setCodigoUnico("ABC123");
+        sala.getUsuarios().add(usuario);
+
+        when(this.repositorioUsuarioMock.buscarUsuarioPorId(1L)).thenReturn(usuario);
+        when(this.repositorioSalaDeEsperaMock.buscarPorCodigo("ABC123")).thenReturn(sala);
+
+        this.servicioSalaDeEspera.seleccionarFicha("ABC123", 1L, ColorFicha.ROJO);
+
+        verify(this.notificadorSalaMock).notificarSalaActualizada(argThat(dto ->
+                "/images/personajes/pixel/avatar-3.png".equals(dto.getAvatares().get("rafael"))
+        ));
+    }
 }
 

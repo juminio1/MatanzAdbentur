@@ -10,8 +10,19 @@ import java.util.Objects;
 public interface ServicioParticipacion {
     void validarPartidaEnCurso(Partida partida);
 
+    default boolean estaBloqueadaPorTrivia(Partida partida) {
+        return false;
+    }
+
+    default void validarSinTrivia(Partida partida) {
+        if (estaBloqueadaPorTrivia(partida)) {
+            throw new IllegalStateException("La partida está pausada por una trivia o un premio pendiente.");
+        }
+    }
+
     default void validarAccionOrdinaria(Partida partida) {
         validarPartidaEnCurso(partida);
+        validarSinTrivia(partida);
         if (partida.getEventoGlobal().estaActivo()) {
             throw new IllegalStateException("La partida está pausada por un evento global.");
         }
@@ -20,6 +31,7 @@ public interface ServicioParticipacion {
     default void validarCompraEnPartida(Partida partida)
             throws com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException {
         validarPartidaEnCurso(partida);
+        validarSinTrivia(partida);
         if (partida.getEventoGlobal().estaActivo()) {
             throw new com.tallerwebi.dominio.excepcion.EstadoPartidaInvalidoException(
                     "La partida está pausada por un evento global.");
@@ -28,6 +40,7 @@ public interface ServicioParticipacion {
 
     default void validarVentaParaDeuda(Partida partida, Boolean tieneDeuda) {
         validarPartidaEnCurso(partida);
+        validarSinTrivia(partida);
         if (partida.getEventoGlobal().estaActivo() && !Boolean.TRUE.equals(tieneDeuda)) {
             throw new IllegalStateException("Durante el evento sólo podés vender para pagar una deuda.");
         }
@@ -57,6 +70,7 @@ public interface ServicioParticipacion {
         }
     }
     default void validarGestionAntesDeTirar(Partida partida, Long idJugador, boolean paraDeuda) {
+        validarSinTrivia(partida);
         if (paraDeuda) return;
         Jugador jugador = partida.getJugadores().stream()
             .filter(j -> Objects.equals(j.getId(), idJugador)).findFirst().orElse(null);
