@@ -31,9 +31,11 @@ final class ObservadorPartidaE2E {
         pagina.waitForCondition(() -> suscripciones.contains(destino));
     }
 
-    void esperarMensaje(String destino, Predicate<JsonNode> esperado) {
+    JsonNode esperarMensaje(String destino, Predicate<JsonNode> esperado) {
         pagina.waitForCondition(() -> mensajes.stream().anyMatch(
             mensaje -> destino.equals(mensaje.destino()) && esperado.test(mensaje.cuerpo())));
+        return mensajes.stream().filter(mensaje -> destino.equals(mensaje.destino())
+            && esperado.test(mensaje.cuerpo())).findFirst().orElseThrow().cuerpo();
     }
 
     void descartarMensajesAnteriores() {
@@ -63,7 +65,7 @@ final class ObservadorPartidaE2E {
                 String destino = mensaje.substring(0, separador).lines()
                     .filter(linea -> linea.startsWith("destination:"))
                     .map(linea -> linea.substring("destination:".length())).findFirst().orElse("");
-                if (!destino.matches("/topic/partida/[^/]+/(propiedades|dinero)")) continue;
+                if (!destino.matches("/topic/partida/[^/]+(?:/(propiedades|dinero|turno))?")) continue;
                 mensajes.add(new Mensaje(destino,
                     JSON.readTree(mensaje.substring(separador + 2).replace("\0", ""))));
             }

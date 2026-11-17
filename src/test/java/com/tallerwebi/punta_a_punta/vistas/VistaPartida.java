@@ -64,9 +64,19 @@ public class VistaPartida extends VistaWeb {
     }
 
     public void verificarPropietario(int posicion, String nombre, String color) {
+        verificarPropietario(posicion, nombre, color, 30);
+    }
+
+    public void pasarSinComprar() {
+        assertThat(page.locator("#modal-compra-propiedad")).isVisible();
+        page.locator("#btn-modal-pasar").click();
+        assertThat(page.locator("#modal-compra-propiedad")).not().isVisible();
+    }
+
+    public void verificarPropietario(int posicion, String nombre, String color, int alquiler) {
         Locator etiqueta = etiqueta(posicion);
         assertThat(etiqueta).isVisible();
-        assertThat(etiqueta).hasAttribute("aria-label", "Alquiler: $30 · Propietario: " + nombre);
+        assertThat(etiqueta).hasAttribute("aria-label", "Alquiler: $" + alquiler + " · Propietario: " + nombre);
         assertThat(etiqueta).hasAttribute("data-color", color);
         String fondo = switch (color) {
             case "rojo" -> "rgb(118, 45, 48)";
