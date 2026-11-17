@@ -148,6 +148,53 @@ public class VistaPartida extends VistaWeb {
         assertThat(etiqueta).hasCSS("background-color", fondo);
     }
 
+    public void prepararOferta(String propiedad, long idComprador, int precio) {
+        page.locator("#btn-info-vender").click();
+        assertThat(page.locator("#modal-vender-propiedad")).isVisible();
+        assertThat(page.locator("#vender-propiedad-nombre")).hasText(propiedad);
+        page.locator("[data-destino-venta='jugador']").click();
+        page.locator("input[name='oferta-jugador'][value='" + idComprador + "']").check();
+        page.locator("#oferta-precio").fill(String.valueOf(precio));
+    }
+
+    public Response enviarOferta(int posicion) {
+        Response respuesta = esperarPost("/propiedades/" + posicion + "/ofertas", "#btn-enviar-oferta");
+        assertThat(page.locator("#modal-vender-propiedad")).not().isVisible();
+        return respuesta;
+    }
+
+    public void verificarOfertaRecibida(String vendedor, String propiedad, int precio) {
+        assertThat(page.locator("#modal-oferta-recibida")).isVisible();
+        assertThat(page.locator("#oferta-recibida-detalle")).hasText(vendedor + " te ofrece esta propiedad.");
+        assertThat(page.locator("#oferta-recibida-tarjeta h3")).hasText(propiedad);
+        Locator precioOferta = page.locator("#oferta-recibida-tarjeta dl div")
+            .filter(new Locator.FilterOptions().setHasText("Precio de la oferta"));
+        assertThat(precioOferta.locator("dd")).hasText("$" + precio);
+        assertThat(page.locator("#btn-aceptar-oferta")).isEnabled();
+    }
+
+    public void verificarSinOfertaVisible() {
+        assertThat(page.locator("#modal-oferta-recibida")).not().isVisible();
+    }
+
+    public Response aceptarOferta(String idOferta) {
+        Response respuesta = esperarPost("/ofertas/" + idOferta + "/responder", "#btn-aceptar-oferta");
+        assertThat(page.locator("#modal-oferta-recibida")).not().isVisible();
+        return respuesta;
+    }
+
+    public void verificarPresenteEnMisPropiedades(String nombre, int alquiler, int nivel) {
+        page.locator("#btn-bono-propiedades").click();
+        assertThat(page.locator("#modal-bono-propiedades")).isVisible();
+        Locator tarjeta = page.locator("#lista-propiedades-propias .propiedad-propia")
+            .filter(new Locator.FilterOptions().setHasText(nombre));
+        assertThat(tarjeta).hasCount(1);
+        assertThat(tarjeta.locator("dd").nth(0)).hasText("$" + alquiler);
+        assertThat(tarjeta.locator("dd").nth(1)).hasText(nivel + " / 5");
+        page.locator("#btn-cerrar-bono-propiedades").click();
+        assertThat(page.locator("#modal-bono-propiedades")).not().isVisible();
+    }
+
     private Locator etiqueta(int posicion) {
         return page.locator("[data-casillero='" + posicion + "'] .casillero__precio");
     }

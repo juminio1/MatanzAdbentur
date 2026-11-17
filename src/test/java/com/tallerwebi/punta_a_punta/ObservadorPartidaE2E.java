@@ -65,7 +65,7 @@ final class ObservadorPartidaE2E {
                 String destino = mensaje.substring(0, separador).lines()
                     .filter(linea -> linea.startsWith("destination:"))
                     .map(linea -> linea.substring("destination:".length())).findFirst().orElse("");
-                if (!destino.matches("/topic/partida/[^/]+(?:/(propiedades|dinero|turno))?")) continue;
+                if (!destino.matches("/topic/partida/[^/]+(?:/(propiedades|dinero|turno|ofertas))?")) continue;
                 mensajes.add(new Mensaje(destino,
                     JSON.readTree(mensaje.substring(separador + 2).replace("\0", ""))));
             }
