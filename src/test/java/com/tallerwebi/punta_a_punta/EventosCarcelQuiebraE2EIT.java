@@ -14,6 +14,7 @@ import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.tallerwebi.dominio.ConfiguracionDadosE2E;
 import com.tallerwebi.dominio.ConfiguracionEventosE2E;
+import com.tallerwebi.dominio.entidades.EstadoCarcel;
 import com.tallerwebi.punta_a_punta.vistas.VistaSalaEspera;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -64,24 +65,26 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     private static final int CASILLERO_COMISARIA = 8;
     private static final int CASILLERO_EVENTO_14 = 14;
     private static final int DINERO_INICIAL = 2000;
-    private static final int COSTO_FIANZA = 100;
-    private static final int DINERO_ANTES_DE_QUIEBRA = 200;
+    private static final int COSTO_FIANZA = EstadoCarcel.COSTO_FIANZA;
+    // Alcanza para la fianza ($300) pero lo que queda ($100) no alcanza para la multa ($300).
+    private static final int DINERO_ANTES_DE_QUIEBRA = 400;
 
     private static final String EVENTO_BENEFICIO = "Changa de finde";
-    private static final int MONTO_BENEFICIO = 500;
+    private static final int MONTO_BENEFICIO = 300;
     private static final String EVENTO_PIERDE_TURNO = "Choripán traicionero";
     private static final String EVENTO_IR_A_CASILLERO = "Cine en el Shopping";
     private static final String EVENTO_MULTA = "Anda con cuidado";
     private static final String EVENTO_GLOBAL = "PIQUETE";
     private static final String EVENTO_GLOBAL_SIN_DADOS = "ROBO";
-    private static final int MONTO_ROBO = 500;
+    private static final int MONTO_ROBO = 300;
     private static final String EVENTO_MULTA_LLAVES = "Copia de llaves";
-    private static final int MONTO_MULTA = 200;
+    private static final int MONTO_MULTA = 300;
     private static final int CASILLERO_PLAZA_SAN_JUSTO = 4;
     private static final int CASILLERO_UNLAM = 5;
     private static final String NOMBRE_SHOPPING = "San Justo Shopping";
     private static final int PRECIO_SAN_JUSTO = 200;
-    private static final int DINERO_ANTES_DE_VENDER = 150;
+    // No alcanza para la multa ($300), pero vendiendo el Shopping al banco ($100) sí.
+    private static final int DINERO_ANTES_DE_VENDER = 250;
     private static final int DINERO_ANTES_DE_QUEBRAR = 50;
 
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
@@ -222,10 +225,10 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         }
         verificarHistorialEnTodasLasPantallas("Evento global «" + EVENTO_GLOBAL_SIN_DADOS + "» (ronda 5).");
         for (Page pagina : paginas()) {
-            assertThat(pagina.locator("#global-consecuencia")).containsText("perdió $500 en el robo.");
+            assertThat(pagina.locator("#global-consecuencia")).containsText("perdió $" + MONTO_ROBO + " en el robo.");
         }
 
-        // La víctima se sortea: se verifica que sea exactamente una y que solo a ella le falten $500.
+        // La víctima se sortea: se verifica que sea exactamente una y que solo a ella le falte el monto del robo.
         List<String> victimas = new ArrayList<>();
         for (String nombre : List.of(j0, j1, j2)) {
             long id = idDeSesion(paginaDe(nombre));
@@ -256,7 +259,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     ) throws IOException, SQLException {
         Page jugador = verificarPermisoDeTirada(nombre);
         long id = idDeSesion(jugador);
-        // Preparación: no alcanza para la multa de $200, pero sí vendiendo la propiedad ($100).
+        // Preparación: no alcanza para la multa, pero sí vendiendo la propiedad al banco.
         actualizarDinero(id, DINERO_ANTES_DE_VENDER);
 
         JsonNode tirada = tirar(jugador, 3, 4, EVENTO_MULTA);
@@ -512,8 +515,8 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
             Pattern.compile(
                 // Sin Pattern.quote: Playwright pasa la expresión al navegador y JavaScript no entiende \\Q...\\E.
                 nombre +
-                    " (no sacó dobles en 3 intentos: le cobran \\$100 de fianza" +
-                    "|pagó \\$100 de fianza y salió de la comisaría)"
+                    " (no sacó dobles en 3 intentos: le cobran \\$" + COSTO_FIANZA + " de fianza" +
+                    "|pagó \\$" + COSTO_FIANZA + " de fianza y salió de la comisaría)"
             )
         );
     }
@@ -540,7 +543,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         assertFalse(estado.encarcelado());
         assertEquals(dineroEsperado, estado.dinero());
         verificarHistorialEnTodasLasPantallas(
-            nombre + " pagó $100 de fianza y salió de la comisaría."
+            nombre + " pagó $" + COSTO_FIANZA + " de fianza y salió de la comisaría."
         );
         // Ya libre, puede tirar en este mismo turno.
         assertThat(preso.locator("#btn-tirar")).isEnabled();
@@ -648,7 +651,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
             j2 + " no sacó dobles y sigue preso (intento 1 de 3).",
             j1 + " quedó detenido en la comisaría.",
             j2 + " no sacó dobles y sigue preso (intento 2 de 3).",
-            j1 + " pagó $100 de fianza y salió de la comisaría.",
+            j1 + " pagó $" + COSTO_FIANZA + " de fianza y salió de la comisaría.",
             j1 + " sacó el evento «" + EVENTO_MULTA + "»",
             j1 + " se declaró en quiebra.",
             "Resultado de «" + EVENTO_GLOBAL + "»",
