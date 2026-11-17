@@ -1117,9 +1117,9 @@ class EfectosPartidaIntegracionTest {
 
         assertEquals(3, resultado.getPosicionCaidaEvento());
         assertEquals(2, resultado.getNuevaPosicion());
-        assertEquals(200, resultado.getDineroPorInicio());
-        assertEquals(2200, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
-        assertEquals(2200, resultado.getSaldos().stream()
+        assertEquals(150, resultado.getDineroPorInicio());
+        assertEquals(2150, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2150, resultado.getSaldos().stream()
                 .filter(saldo -> saldo.idJugador().equals(idJugador)).findFirst().orElseThrow().dinero());
     }
 
