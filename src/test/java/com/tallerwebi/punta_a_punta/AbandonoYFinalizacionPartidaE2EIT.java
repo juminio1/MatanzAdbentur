@@ -1,5 +1,6 @@
 package com.tallerwebi.punta_a_punta;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.microsoft.playwright.Locator;
@@ -10,25 +11,84 @@ import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.tallerwebi.punta_a_punta.vistas.VistaHome;
 import com.tallerwebi.punta_a_punta.vistas.VistaSalaEspera;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 
 public class AbandonoYFinalizacionPartidaE2EIT extends EscenarioPartidaE2E {
 
     private final Set<Page> sesionesSuscritasAlAbandono = new HashSet<>();
+    private boolean tablerosPreparados;
+    private Page paginaGanador;
+
+    @Override
+    @BeforeEach
+    public void prepararEscenario(TestInfo testInfo) {
+        verificarBaseDePruebas();
+        // Esta sobrescritura reemplaza el @BeforeEach heredado y lo delega una sola vez.
+        // El @AfterEach original sigue siendo el único responsable de cerrar los contextos.
+        super.prepararEscenario(testInfo);
+    }
+
+    private void verificarBaseDePruebas() {
+        // Consulta de solo lectura, antes del TRUNCATE del helper compartido.
+        try (Connection conexion = ReiniciarDB.abrirConexionE2E();
+             Statement consulta = conexion.createStatement();
+             ResultSet resultado = consulta.executeQuery("""
+                 SELECT current_database() AS base, inet_server_addr() AS servidor,
+                        inet_server_port() AS puerto, current_setting('TimeZone') AS zona
+                 """)) {
+            assertTrue(resultado.next(), "Debe poder identificarse la conexión real antes de limpiar");
+            assertEquals("tallerwebi_e2e", resultado.getString("base"),
+                "No se autoriza la limpieza de una base diferente de tallerwebi_e2e");
+            assertEquals("America/Argentina/Buenos_Aires", resultado.getString("zona"),
+                "La conexión E2E debe conservar la zona horaria válida de PostgreSQL");
+            diagnostico("Destino E2E verificado antes de limpiar: " + resultado.getString("base")
+                + "; servidor=" + resultado.getString("servidor")
+                + "; puerto=" + resultado.getInt("puerto")
+                + "; zona=" + resultado.getString("zona"));
+        } catch (SQLException excepcion) {
+            throw new IllegalStateException(
+                "No se pudo verificar tallerwebi_e2e. No se ejecutó la limpieza. "
+                    + "Revisar la instancia y el puerto de PostgreSQL antes de ejecutar con -Pe2e.",
+                excepcion
+            );
+        }
+    }
+
+    @Override
+    void pausarSiCorresponde(String etapa) {
+        // El helper también llama a 'inicio' antes de la preparación: se difiere al tablero.
+        if (!tablerosPreparados || !etapa.equals(System.getProperty("e2e.pause", "ninguna"))) {
+            return;
+        }
+        Page pagina = "fin".equals(etapa) ? paginaGanador : paginaAnfitrion;
+        System.out.println("[E2E partida] Pausa en " + etapa + "; pulsar Resume en Playwright Inspector.");
+        pagina.bringToFront();
+        pagina.pause();
+    }
 
     @Test
     void cuandoLosOponentesAbandonanEntoncesLaPartidaFinalizaYSeMuestraElResumen() {
         String codigo = iniciarPartidaConTresJugadores();
+        tablerosPreparados = true;
+        pausarSiCorresponde("inicio");
+        // Leer el turno después de la pausa: el reloj real del servidor puede seguir avanzando.
         String primerNombre = obtenerJugadorEnTurno(paginaAnfitrion);
         Page primerAbandono = verificarPermisoDeTirada(primerNombre);
         List<Page> restantes = paginas().stream()
             .filter(pagina -> pagina != primerAbandono).toList();
         Page segundoAbandono = restantes.get(0);
         Page ganador = restantes.get(1);
+        paginaGanador = ganador;
         String urlPartida = ganador.url();
 
         diagnostico("Cancelar el abandono conserva al jugador y su turno");
@@ -92,7 +152,6 @@ public class AbandonoYFinalizacionPartidaE2EIT extends EscenarioPartidaE2E {
             sala.elegirFicha(colores.get(indice));
             sala.verificarFichaDeJugador(nombres().get(indice), colores.get(indice));
         }
-        pausarSiCorresponde("sala");
         iniciarPartidaYEsperarTableros(codigo);
         paginaAnfitrion.waitForCondition(() -> sesionesSuscritasAlAbandono.containsAll(paginas()));
         for (Page pagina : paginas()) {
@@ -103,6 +162,8 @@ public class AbandonoYFinalizacionPartidaE2EIT extends EscenarioPartidaE2E {
                 PlaywrightAssertions.assertThat(tarjetaJugador(pagina, nombre)).isVisible();
             }
         }
+        verificarPermisoDeTirada(obtenerJugadorEnTurno(paginaAnfitrion));
+        diagnostico("Preparación completa: los tres jugadores están activos en el mismo tablero");
         return codigo;
     }
 
@@ -122,6 +183,10 @@ public class AbandonoYFinalizacionPartidaE2EIT extends EscenarioPartidaE2E {
         PlaywrightAssertions.assertThat(pagina.locator("#modal-abandonar")).isVisible();
         PlaywrightAssertions.assertThat(pagina.locator("#titulo-abandonar"))
             .hasText("¿Seguro que querés abandonar?");
+        for (String opcion : List.of("No, seguir jugando", "Sí, abandonar")) {
+            PlaywrightAssertions.assertThat(pagina.locator("#modal-abandonar").getByRole(AriaRole.BUTTON,
+                new Locator.GetByRoleOptions().setName(opcion).setExact(true))).isVisible();
+        }
     }
 
     private void confirmarAbandono(Page pagina, String codigo) {
@@ -139,7 +204,7 @@ public class AbandonoYFinalizacionPartidaE2EIT extends EscenarioPartidaE2E {
         return pagina.locator(".jugadores .jugador").filter(new Locator.FilterOptions().setHas(
             pagina.getByRole(AriaRole.HEADING,
                 new Page.GetByRoleOptions().setName(nombre).setExact(true))
-        )); 
+        ));
     }
 
     private void verificarJugadoresActivos(Page pagina, Integer cantidad) {
