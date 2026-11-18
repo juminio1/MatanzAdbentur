@@ -54,7 +54,7 @@ class EventosGlobalesIntegracionTest {
     @Import({ServicioPartidaImpl.class, ServicioTurnoImpl.class, ServicioParticipacionImpl.class,
             ServicioEventoImpl.class, AplicadorConsecuenciaEventoGlobal.class,
             ServicioEconomiaImpl.class, ServicioMovimientoImpl.class, ServicioGestionQuiebraImpl.class,
-            ServicioPropiedadImpl.class, ServicioCasilleroImpl.class, ServicioFinalizacionPartidaImpl.class,
+            ServicioPropiedadImpl.class, ServicioAlquilerImpl.class, ServicioCasilleroImpl.class, ServicioFinalizacionPartidaImpl.class,
             ServicioOfertaPropiedadImpl.class,
             ServicioJugadaImpl.class, ServicioEventoCasilleroImpl.class,
             RepositorioPartidaImpl.class, RepositorioUsuarioImpl.class, RepositorioEventoGlobalImpl.class, RepositorioDeudaPendienteImpl.class,
@@ -230,14 +230,14 @@ class EventosGlobalesIntegracionTest {
             crearPropiedad(5, 1, 2);
             iniciar(tipo);
             tirarTodos();
-            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
-            assertTrue(eventos.consultar(codigo, jugadores.get(0)).get("consecuencia").toString().contains("Alquiler: $120"));
+            assertEquals(1850, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2150, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertTrue(eventos.consultar(codigo, jugadores.get(0)).get("consecuencia").toString().contains("Alquiler: $150"));
             assertThrows(IllegalStateException.class, () -> eventos.tirar(codigo, jugadores.get(0), 5, 1));
             confirmarTodos();
             eventos.confirmar(codigo, jugadores.get(0), 5);
-            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(1850, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2150, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
         });
     }
 
@@ -277,7 +277,7 @@ class EventosGlobalesIntegracionTest {
             iniciar(tipo);
             tirarTodos();
             DeudaPendiente deuda = quiebras.obtenerDeudaPendiente(codigo, jugadores.get(0));
-            assertEquals(450, deuda.getMontoPendiente());
+            assertEquals(480, deuda.getMontoPendiente());
             assertEquals(jugadores.get(1), deuda.getJugadorAcreedor().getId());
             confirmarTodos();
             assertEquals(true, eventos.consultar(codigo, jugadores.get(0)).get("activo"));
@@ -285,7 +285,7 @@ class EventosGlobalesIntegracionTest {
             assertTrue(quiebras.venderPropiedadYResolverDeuda(codigo, jugadores.get(0), vendible));
             assertNull(quiebras.obtenerDeudaPendiente(codigo, jugadores.get(0)));
             assertFalse(quiebras.intentarResolverDeuda(codigo, jugadores.get(0)));
-            assertEquals(2450, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(2480, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
             assertFalse(partidas.obtenerPartida(codigo).getEventoGlobal().estaActivo());
         });
     }
@@ -313,8 +313,8 @@ class EventosGlobalesIntegracionTest {
             iniciar(tipo);
             tirarTodos();
             assertEquals(5, partidas.obtenerJugadorPorId(jugadores.get(0)).getPosicionActual());
-            assertEquals(1880, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
-            assertEquals(2120, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
+            assertEquals(1850, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            assertEquals(2150, partidas.obtenerJugadorPorId(jugadores.get(1)).getDinero());
             eventos.consultar(codigo, jugadores.get(0));
             verify(tarjetas, times(1)).obtenerTodos();
         });

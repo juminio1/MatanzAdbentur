@@ -1,11 +1,11 @@
-import { conectarTriviaPartida } from "./trivia-partida.js?v=7";
+import { conectarTriviaPartida } from "./trivia-partida.js?v=12";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
 import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
 import { esperarContinuacion } from "./plazo-evento.js";
-import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio } from "./efectos-compra.js?v=partida-18";
+import { animarPasoFicha, ocultarAvisoPartida, presentarAvisoPartida, reproducirCambioDeSaldo, reproducirAccionPartida, reproducirIntercambioConfirmado, reproducirDadosGlobales, reproducirComisaria, reproducirChatEntrante, reproducirDadosTablero, animarCompraCasillero, animarPagoEntreJugadores, animarPasoPorInicio, mostrarMontoFlotante } from "./efectos-compra.js?v=partida-21";
 
 document.addEventListener("click", evento => {
     if (!evento.isTrusted) return;
@@ -322,7 +322,16 @@ function conectarWebSocketTurnos(base, codigo) {
             clienteWebSocketPartida = stompClient;
             conectarTriviaPartida({ cliente: stompClient, codigo, base,
                 idJugador: window.usuarioSesionId,
-                alPremioEntregado: function () { window.location.reload(); },
+                actualizarSaldo: (idJugador, dinero) => actualizarDineroJugador(idJugador, dinero, false, true),
+                registrarEnHistorial: agregarAlHistorial,
+                animarGanancia: function (idJugador, monto) {
+                    const tarjeta = document.getElementById(String(idJugador));
+                    return tarjeta ? mostrarMontoFlotante(tarjeta, `+$${Number(monto).toLocaleString("es-AR")}`, "gana",
+                        {sonido:true,sobreTablero:true,monedas:true}) : false;
+                },
+                alPremioEntregado: function (estado) {
+                    if (estado.tipoPremio !== "PLATA") window.location.reload();
+                },
                 estaPreso: function () { return estaPresoEnPantalla(window.usuarioSesionId); },
             });
             consultarResultadosFinales();
@@ -447,6 +456,8 @@ function conectarWebSocketTurnos(base, codigo) {
         },
         (error) => {
             clienteWebSocketPartida = null;
+            const panelRuleta = document.getElementById("panel-ruleta");
+            if (panelRuleta) panelRuleta.dataset.triviaSuscrita = "false";
             console.error("Error en la conexión WebSocket:", error);
             window.setTimeout(() => conectarWebSocketTurnos(base, codigo), 3000);
         },
@@ -479,7 +490,7 @@ function actualizarBotonTirada() {
 
 // --- Cárcel ---
 
-const COSTO_FIANZA = 100;
+const COSTO_FIANZA = 300;
 const MAX_INTENTOS_CARCEL = 3;
 let pagandoFianza = false;
 
@@ -526,7 +537,7 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
         if (esUsuario) {
             reproducirComisaria();
             mostrarAvisoPartida(
-                "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
+                `Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $${COSTO_FIANZA} de fianza.`,
                 false, true,
             );
         }
@@ -854,6 +865,9 @@ async function procesarMovimiento(movimiento) {
                 Number(movimiento.posicionAnterior);
         const pasos = seQuedoEnElLugar ? 0 : Number(movimiento.dado1) + Number(movimiento.dado2);
         movimientosDeJugadoresEnCurso.add(String(movimiento.idJugador));
+        const fichaEnMovimiento = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        if (fichaEnMovimiento) fichaEnMovimiento.dataset.movimientoEnCurso = "true";
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-iniciado", { detail: { idJugador: movimiento.idJugador } }));
         if (modalDeuda?.open && !declarandoQuiebra) {
             aperturaDeudaPendiente = true;
             modalDeuda.close();
@@ -923,6 +937,16 @@ async function procesarMovimiento(movimiento) {
     } catch (error) {
         console.error("Error al animar el movimiento:", error);
     } finally {
+        const ficha = document.querySelector(`.ficha[data-jugador-id="${movimiento.idJugador}"]`);
+        // Incluye el salto y el brillo de llegada; no espera animaciones decorativas infinitas.
+        const animaciones = ficha?.getAnimations?.() ?? [];
+        await Promise.allSettled(animaciones.filter(animacion =>
+            animacion.effect?.getComputedTiming?.().iterations !== Infinity).map(animacion => animacion.finished));
+        if (ficha) delete ficha.dataset.movimientoEnCurso;
+        document.dispatchEvent(new CustomEvent("tablero:movimiento-finalizado", { detail: {
+            idJugador: movimiento.idJugador,
+            enTrivia: Boolean(ficha?.closest(".casillero")?.querySelector(".casillero__nombre--trivia")),
+        } }));
         if (String(movimiento.idJugador) === String(window.usuarioSesionId)) {
             consultarDeudaPendiente(true);
         }
@@ -1430,14 +1454,14 @@ function mostrarInfoPropiedad(propiedad) {
     }
 }
 
-function actualizarDineroJugador(idJugador, dinero, enBancarrota = false) {
+function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silencioso = false) {
     const tarjeta = document.getElementById(String(idJugador));
     const saldo = tarjeta?.querySelector(".dinero");
     if (saldo && dinero != null) saldo.textContent = `$${Number(dinero).toLocaleString("es-AR")}`;
     if (dinero != null && String(idJugador) === String(window.usuarioSesionId)) {
         const saldoAnterior = window.dineroUsuarioSesion;
         window.dineroUsuarioSesion = Number(dinero);
-        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion);
+        reproducirCambioDeSaldo(saldoAnterior, window.dineroUsuarioSesion, {silencioso});
         actualizarControlesCarcel();
     }
     if (!enBancarrota) return;
@@ -1567,15 +1591,17 @@ async function comprarPropiedadActual() {
     }
 }
 
-function agregarAlHistorial(texto, idJugador) {
-    const item = document.createElement("li");
+function agregarAlHistorial(texto, idJugador, idEntrada) {
+    const lista = document.querySelector(".historial__lista");
+    if (!lista) return;
+    const existente = idEntrada && [...lista.children].find(item => item.dataset.idEntrada === idEntrada);
+    const item = existente || document.createElement("li");
+    if (idEntrada) item.dataset.idEntrada = idEntrada;
     item.textContent = texto;
     const color = obtenerColorFichaJugador(idJugador);
     if (color) item.dataset.color = color;
-    const lista = document.querySelector(".historial__lista");
-    if (!lista) return;
     lista.querySelector(".historial__vacio")?.remove();
-    lista.prepend(item);
+    if (!existente) lista.prepend(item);
 }
 
 function pintarDatosCompra(propiedad) {

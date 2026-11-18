@@ -24,7 +24,7 @@ import java.util.Set;
 public class ServicioTriviaImpl {
 
     private static final Duration TIEMPO_LIMITE_PREDETERMINADO =
-            Duration.ofSeconds(30);
+            Duration.ofSeconds(20);
 
     private static final int MAXIMO_RONDAS = 5;
     private static final int CANTIDAD_UNICA = 1;
@@ -80,13 +80,7 @@ public class ServicioTriviaImpl {
         trivia.setDificultad(dificultad);
         trivia.setRondaActual(1);
 
-        for (Jugador jugador : partida.getJugadores()) {
-            if (servicioParticipacion.estaActivo(jugador)
-                    && !Boolean.TRUE.equals(
-                            jugador.getEstadoCarcel().getEncarcelado())) {
-                trivia.getParticipantes().add(jugador);
-            }
-        }
+        trivia.getParticipantes().addAll(participantesHabilitados(partida));
 
         if (trivia.getParticipantes().isEmpty()) {
             trivia.finalizar();
@@ -107,6 +101,11 @@ public class ServicioTriviaImpl {
         return trivia;
     }
 
+    List<Jugador> participantesHabilitados(Partida partida) {
+        return partida.getJugadores().stream().filter(servicioParticipacion::estaActivo)
+                .filter(jugador -> !Boolean.TRUE.equals(jugador.getEstadoCarcel().getEncarcelado())).toList();
+    }
+
     public void responderPregunta(Trivia trivia,
                                   Jugador jugador,
                                   int opcionElegida) {
@@ -120,6 +119,11 @@ public class ServicioTriviaImpl {
         validarOpcion(trivia, opcionElegida);
 
         Instant ahora = reloj.instant();
+
+        if (ahora.isBefore(trivia.getInicioRonda())) {
+            throw new com.tallerwebi.dominio.excepcion.AccionTriviaInvalidaException(
+                    "La siguiente pregunta todavía no está habilitada.");
+        }
 
         if (vencioTiempo(trivia, ahora)) {
             cerrarRondaPorTiempo(trivia, ahora);

@@ -1,6 +1,12 @@
 
 const DIFICULTADES_VALIDAS = ["FACIL", "MEDIO", "DIFICIL"];
 
+export async function confirmarPresentacionRuleta(basePath, codigo, activacion, solicitar = fetch) {
+    const respuesta = await solicitar(`${basePath}/ruleta/${encodeURIComponent(codigo)}/${encodeURIComponent(activacion)}/presentacion-finalizada`,
+        {method:"POST",credentials:"same-origin"});
+    if (!respuesta.ok) throw new Error("No se pudo confirmar la presentación de la ruleta.");
+}
+
 export async function solicitarSorteoPartida(basePath, codigoPartida, activacionId, fetchFuncion = fetch) {
 
     if (!codigoPartida || !activacionId) {

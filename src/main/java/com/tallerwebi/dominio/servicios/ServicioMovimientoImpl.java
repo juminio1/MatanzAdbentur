@@ -11,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ServicioMovimientoImpl implements ServicioMovimiento {
-    public static final int PREMIO_INICIO = 200;
+    // Con 30 casilleros se da una vuelta cada ~4 turnos; 150 evita que la salida pese más que los alquileres.
+    public static final int PREMIO_INICIO = 150;
     private final ServicioEconomia economia;
     private final RepositorioPartida repositorioPartida;
     private final ServicioParticipacion participacion;

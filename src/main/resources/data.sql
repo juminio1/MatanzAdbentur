@@ -56,15 +56,15 @@ OR (
 
 WITH datos(nombre, descripcion, tipo_efecto, monto, cantidad_casilleros, posicion_destino) AS (
     VALUES
-        ('Anda con cuidado', 'Te extorsionaron unos barra brava del barrio y les diste $200 para que no te hagan nada.', 'RESTA', 200, NULL, NULL),
+        ('Anda con cuidado', 'Te extorsionaron unos barra brava del barrio y les diste $300 para que no te hagan nada.', 'RESTA', 300, NULL, NULL),
         ('Sin entradas para ver a Boquita', 'Llegaste tarde a comprar la popular y te quedaste afuera. Te pasas la tarde escuchando el partido por radio. Pierdes el turno.', 'PIERDE_TURNO', NULL, NULL, NULL),
         ('Choripán traicionero', 'El chori de la previa te cayó mal y necesitas reposo. Pierdes el turno.', 'PIERDE_TURNO', NULL, NULL, NULL),
         ('Fila en la fotocopiadora', 'Fuiste a comprar los apuntes a la UNLAM y la fila daba la vuelta al campus. Pierdes el turno.', 'PIERDE_TURNO', NULL, NULL, NULL),
         ('Servicio reducido', 'Yendo a Once te quedaste varado en la estación de Ramos Mejía por problemas técnicos en las vías. Pierdes un turno.', 'PIERDE_TURNO', NULL, NULL, NULL),
-        ('Changa de finde', 'Le hiciste de flete a un vecino con el auto para mover un mueble y te salvó la tarde. Ganaste $500.', 'SUMA', 500, NULL, NULL),
-        ('Encontraste guita', 'Ibas caminando por av. Luro y te encontraste $500 en la vereda. Ganaste $500.', 'SUMA', 500, NULL, NULL),
-        ('Devolución de AFIP', 'Ocurrió un milagro de fin de año y la AFIP te devolvió las percepciones que te debía. Cobraste $1500.', 'SUMA', 1500, NULL, NULL),
-        ('Copia de llaves', 'Te olvidaste las llaves adentro de tu casa y tuviste que ir corriendo a la cerrajería del barrio para hacer una copia de emergencia. Pagás $200.', 'RESTA', 200, NULL, NULL),
+        ('Changa de finde', 'Le hiciste de flete a un vecino con el auto para mover un mueble y te salvó la tarde. Ganaste $300.', 'SUMA', 300, NULL, NULL),
+        ('Encontraste guita', 'Ibas caminando por av. Luro y te encontraste $200 en la vereda. Ganaste $200.', 'SUMA', 200, NULL, NULL),
+        ('Devolución de AFIP', 'Ocurrió un milagro de fin de año y la AFIP te devolvió las percepciones que te debía. Cobraste $600.', 'SUMA', 600, NULL, NULL),
+        ('Copia de llaves', 'Te olvidaste las llaves adentro de tu casa y tuviste que ir corriendo a la cerrajería del barrio para hacer una copia de emergencia. Pagás $150.', 'RESTA', 150, NULL, NULL),
         ('Asfalto nuevo', 'La municipalidad por fin terminó de tapar los pozos de tu cuadra. Ahora salís rapidísimo de tu casa sin tener que esquivar cráteres. Avanzas 2 casilleros.', 'AVANZA_CASILLEROS', NULL, 2, NULL),
         ('Asiento libre en el bondi', 'Subiste al colectivo en plena hora pico y mágicamente quedó un asiento vacío al fondo. Viajás como un rey. Avanzas 2 casilleros.', 'AVANZA_CASILLEROS', NULL, 2, NULL),
         ('Cine en el Shopping', 'Ligaste entradas 2x1 para el Cinemark y te vas directo a ver el estreno de la ultima de Spiderman. Avanzas hasta el casillero del Shopping de San Justo.', 'AVANZA_A_POSICION', NULL, NULL, 7),
@@ -130,12 +130,12 @@ WITH datos(tipo_evento, nombre, descripcion, tipo_efecto, valor) AS (
          'VOLVER_INICIO', 0),
 
         ('ROBO', 'ROBO',
-         '¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $500.',
-         'PERDER_PLATA', 500),
+         '¡Cuidado, andan robando por la zona! [nombre del jugador] fue víctima de un robo y perdió $300.',
+         'PERDER_PLATA', 300),
 
         ('FIAT_600', 'FIAT_600',
          'Se le quedó el Fiat 600 a Germancho. [nombre del jugador] se puso la 10 para ayudarlo a empujar la máquina y recibió unos mangos por la changuita.',
-         'GANAR_PLATA', 400),
+         'GANAR_PLATA', 300),
 
         ('ACCIDENTE_SARMIENTO', 'ACCIDENTE_SARMIENTO',
          'Hubo un accidente en el tren Sarmiento y el servicio quedó parado. Justo [nombre del jugador] venía viajando y perdió el turno esperando que vuelva a funcionar.',
