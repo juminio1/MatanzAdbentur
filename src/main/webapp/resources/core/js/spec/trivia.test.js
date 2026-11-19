@@ -89,6 +89,11 @@ describe("Modal de trivia", () => {
         expect(elemento("trivia-segundos").textContent).toBe("7");
         expect(opciones().every(b => b.disabled)).toBeTrue();
     });
+    it("ocultaElAvisoDeEliminadosSiTodosSiguenEnJuego", () => {
+        modal.mostrarPregunta(PREGUNTA);
+        modal.mostrarCierre(null, 1, [], ["Ana", "Luna"]);
+        expect(elemento("trivia-aviso").textContent).toBe("");
+    });
     it("muestraLaCorrectaYLasListasSinInferirLaRespuestaTrasRecargar", () => {
         modal.mostrarPregunta(PREGUNTA);
         modal.mostrarCierre(null, 1, ["Luna"], ["Ana"]);

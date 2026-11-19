@@ -189,7 +189,7 @@ export function crearModalTrivia(dialogo = document.getElementById("trivia")) {
         // Despues de recargar no conocemos la opcion elegida: no inferir un error.
         estado.textContent = "La respuesta correcta era la " + LETRAS[correcta];
         estado.className = "trivia__estado";
-        aviso.textContent = "Eliminados: " + (eliminados.join(", ") || "ninguno");
+        aviso.textContent = eliminados.length ? "Eliminados: " + eliminados.join(", ") : "";
         jugadores.textContent = "Clasificados: " + (clasificados.join(", ") || "ninguno");
     }
 
