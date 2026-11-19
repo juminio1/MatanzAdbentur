@@ -1,9 +1,9 @@
 import { conectarTriviaPartida } from "./trivia-partida.js?v=13";
-import { inicializarChat } from "./chat-partida.js?v=7";
+import { inicializarChat } from "./chat-partida.js?v=8";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
 import { crearCargaPropiedades } from "./propiedades-vista.js";
-import { validarRespuestaDeuda, sincronizarEsperaQuiebra } from "./deuda.js?v=saldo-0";
+import { validarRespuestaDeuda, sincronizarEsperaQuiebra, hayPausaPorDeuda } from "./deuda.js?v=saldo-1";
 import { esperarContinuacion } from "./plazo-evento.js";
 import {
     animarPasoFicha,
@@ -23,7 +23,7 @@ import {
     reproducirEventoGlobal,
     detenerSonidoEventoGlobal,
     sonidosEventosCasillero,
-} from "./efectos-compra.js?v=partida-21";
+} from "./efectos-compra.js?v=partida-22";
 
 document.addEventListener(
     "click",
@@ -590,8 +590,8 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
 
     if (!anterior.encarcelado && actual.encarcelado) {
         agregarAlHistorial(`${nombre} quedó detenido en la comisaría.`, idJugador);
+        reproducirComisaria();
         if (esUsuario) {
-            reproducirComisaria();
             mostrarAvisoPartida(
                 `Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $${COSTO_FIANZA} de fianza.`,
                 false, true,
@@ -739,7 +739,8 @@ async function mostrarPopupEvento(
     exigirTurno = false,
     sonido,
 ) {
-    if (partidaFinalizada) return;
+    if (partidaFinalizada || window.usuarioEnBancarrota ||
+        hayPausaPorDeuda(estadoEventoGlobalCliente, window.turnoPausadoPorDeuda)) return false;
     const popup =
         String(idJugador) === String(window.usuarioSesionId)
             ? document.getElementById("aviso-evento")
@@ -1230,8 +1231,12 @@ function aplicarTurnoDTO(turnoDTO) {
         consultarDeudaPendiente(true);
     }
     if (cambioDeTurno && modalBonoPropiedades?.open) cargarPropiedadesPropias();
+    const empiezaPausa = !window.turnoPausadoPorDeuda && turnoDTO.pausadoPorDeuda;
     window.turnoPausadoPorDeuda = Boolean(turnoDTO.pausadoPorDeuda);
-    if (window.turnoPausadoPorDeuda) consultarDeudaPendiente(true);
+    if (empiezaPausa) {
+        document.dispatchEvent(new Event("fin-plazo-turno"));
+        consultarDeudaPendiente(true);
+    }
     actualizarAvisoEsperaQuiebra();
     if (window.turnoPausadoPorDeuda) {
         clearInterval(intervaloReloj);
@@ -1347,12 +1352,11 @@ function abrirAvisoDeuda(solicitudManual = false) {
     )
         return;
     if (!solicitudManual && estadoDeudaLocal.estado !== "actualizado") return;
-    // El afectado ve primero la consecuencia global (robo, alquiler o tarjeta).
-    // La deuda se abre desde «Resolver mi deuda» mientras dura esa presentación.
+    // Durante una pausa por deuda, el deudor necesita poder resolverla antes de ver el evento.
     if (
         !solicitudManual &&
         estadoDeudaLocal.deuda &&
-        (!eventoGlobalSincronizado || estadoEventoGlobalCliente?.activo)
+        (!eventoGlobalSincronizado || (estadoEventoGlobalCliente?.activo && !estadoEventoGlobalCliente.deudaPendiente))
     )
         return;
     if (modalDeuda.open) return;
@@ -1721,12 +1725,13 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silenc
     if (!tarjeta) return;
 
     tarjeta.dataset.bancarrota = "true";
+    chatPartida?.actualizarJugador(idJugador);
     tarjeta.classList.add("jugador--bancarrota");
     actualizarCompradoresVenta();
     if (!tarjeta.querySelector(".estado-bancarrota")) {
         const etiqueta = document.createElement("span");
         etiqueta.className = "estado-bancarrota";
-        etiqueta.textContent = "Fuera de juego";
+        etiqueta.textContent = "se fundió";
         tarjeta.querySelector(".datos-jugador")?.appendChild(etiqueta);
     }
     if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
@@ -2666,6 +2671,7 @@ async function sincronizarEventoGlobal() {
     if (!codigoPartida || partidaFinalizada || peticionEventoGlobal || consultaEventoGlobalEnCurso)
         return;
     consultaEventoGlobalEnCurso = true;
+    const estadoAlConsultar = estadoEventoGlobalCliente;
     try {
         const respuesta = await fetch(
             `${basePath}/partida/${encodeURIComponent(codigoPartida)}/evento-global`,
@@ -2675,7 +2681,10 @@ async function sincronizarEventoGlobal() {
             },
         );
         if (!respuesta.ok) throw new Error(`No se pudo consultar el evento (${respuesta.status}).`);
-        aplicarEventoGlobal(await respuesta.json());
+        const siguiente = await respuesta.json();
+        if (estadoAlConsultar === estadoEventoGlobalCliente || siguiente.revision > estadoEventoGlobalCliente?.revision) {
+            aplicarEventoGlobal(siguiente);
+        }
     } catch (error) {
         console.warn("No se pudo sincronizar el evento global.", error);
     } finally {
@@ -2686,6 +2695,7 @@ async function sincronizarEventoGlobal() {
 // El evento global también espera a que se cierre el cartel de la trivia.
 function debeEsperarPresentacionGlobal() {
     return (
+        hayPausaPorDeuda(estadoEventoGlobalCliente, window.turnoPausadoPorDeuda) ||
         movimientosDeJugadoresEnCurso.size > 0 ||
         document.getElementById("aviso-evento")?.classList.contains("aviso-evento--visible") ||
         document.getElementById("trivia")?.open === true
@@ -2698,7 +2708,10 @@ function aplicarEventoGlobal(estado) {
     const estabaActivo = estadoEventoGlobalCliente?.activo;
     const empezoPausaPorDeuda = estado.deudaPendiente && !estadoEventoGlobalCliente?.deudaPendiente;
     estadoEventoGlobalCliente = estado;
-    if (empezoPausaPorDeuda) consultarDeudaPendiente(true);
+    if (empezoPausaPorDeuda) {
+        document.dispatchEvent(new Event("fin-plazo-turno"));
+        consultarDeudaPendiente(true);
+    }
     actualizarAvisoEsperaQuiebra();
     eventoGlobalSincronizado = true;
     // El backend ya pausó la partida. El popup espera a que termine el evento del casillero.
@@ -3382,6 +3395,7 @@ modalAbandonar.addEventListener("cancel", (evento) => {
 function mostrarJugadorAbandonado(idJugador) {
     const tarjeta = document.getElementById(String(idJugador));
     if (tarjeta) tarjeta.dataset.abandono = "true";
+    chatPartida?.actualizarJugador(idJugador);
 
     if (tarjeta && !tarjeta.querySelector(".estado-abandono")) {
         const nombre = tarjeta.querySelector(".nombre-jugador");
@@ -3491,6 +3505,10 @@ function procesarNotificacionQuiebra(datos) {
         quiebrasNotificadas.add(String(datos.idJugador));
         agregarAlHistorial(`${datos.apodo} se declaró en quiebra.`, datos.idJugador);
         actualizarDineroJugador(datos.idJugador, null, true);
+        if (!datos.partidaFinalizada) {
+            actualizarTurnoDesdeServidor(basePath, codigoPartida);
+            sincronizarEventoGlobal();
+        }
         const tarjeta = document.getElementById(String(datos.idJugador));
         tarjeta?.classList.remove("turno-activo");
         tarjeta?.querySelector(".contenedor-turno")?.replaceChildren();
@@ -3689,10 +3707,11 @@ function mostrarResultadosFinales(datos) {
 function actualizarAvisoEsperaQuiebra() {
     sincronizarEsperaQuiebra(document.getElementById("aviso-espera-quiebra"), {
         pausado:
+            !window.usuarioEnBancarrota &&
             !ofertaActiva &&
             !document.getElementById("chat-telefono")?.open &&
             !viendoPropiedadesDuranteEspera &&
-            (window.turnoPausadoPorDeuda || estadoEventoGlobalCliente?.deudaPendiente),
+            hayPausaPorDeuda(estadoEventoGlobalCliente, window.turnoPausadoPorDeuda),
         estadoDeuda: estadoDeudaLocal,
         finalizada: partidaFinalizada,
     });

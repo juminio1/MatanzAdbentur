@@ -44,6 +44,10 @@ export function validarRespuestaDeuda(datos) {
 
 // La pausa es global, pero este cartel solo corresponde a quienes no tienen deuda propia.
 // Un estado desconocido o fallido nunca debe tapar las acciones para resolverla.
+export function hayPausaPorDeuda(evento, turnoPausado) {
+    return Boolean(evento?.activo ? evento.deudaPendiente : turnoPausado);
+}
+
 export function sincronizarEsperaQuiebra(aviso, { pausado, estadoDeuda, finalizada }) {
     if (!aviso) return;
     const mostrar = Boolean(pausado && estadoDeuda.estado === "actualizado"

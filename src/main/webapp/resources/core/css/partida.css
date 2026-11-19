@@ -1787,7 +1787,6 @@
     color: #fff;
     font-size: 0.75rem;
     font-weight: 800;
-    text-transform: uppercase;
 }
 
 .jugador--bancarrota {
@@ -2512,7 +2511,11 @@
     font-size: 14px;
 }
 .aviso-espera-quiebra .deuda-acciones .btn-casillero:hover { background: #432d75; }
-#popup-acciones-propias { flex-wrap: wrap; }
+#popup-acciones-propias {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#btn-info-mejorar { grid-column: 1 / -1; }
 #popup-acciones-propias[hidden] { display: none; }
 
 #modal-intercambio label { font-weight: 800; }

@@ -92,7 +92,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     private static final String DIFICULTAD_COMPLICADA = "DIFICIL";
     private static final int PREMIO_COMPLICADA = 500;
     // Texto de la tarjeta de un jugador en quiebra.
-    private static final String ETIQUETA_QUIEBRA = "Fuera de juego";
+    private static final String ETIQUETA_QUIEBRA = "se fundió";
 
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
     private final Map<Page, Map<String, String>> cabecerasFijas = new HashMap<>();
@@ -117,6 +117,9 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         String j0 = orden.get(0);
         String j1 = orden.get(1);
         String j2 = orden.get(2);
+
+        // Preparación: el saldo alcanza para la fianza pero no para la multa, y no tiene propiedades.
+        actualizarDinero(idDeSesion(paginaDe(j1)), DINERO_ANTES_DE_QUIEBRA);
 
         // --- Ronda 1 ---------------------------------------------------------------------------
         cuandoUnJugadorCaeEnUnEventoIndividualEntoncesVeLaDescripcionYCobraElBeneficio(j0);
@@ -145,8 +148,6 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
 
         // --- Ronda 4 ---------------------------------------------------------------------------
         moverYPasar(j0, 11, 16, 2, 3);
-        // Preparación: el saldo alcanza para la fianza pero no para la multa, y no tiene propiedades.
-        actualizarDinero(idDeSesion(paginaDe(j1)), DINERO_ANTES_DE_QUIEBRA);
         cuandoElJugadorPresoPagaLaFianzaEntoncesSaleDeLaComisaria(j1, DINERO_ANTES_DE_QUIEBRA);
         cuandoUnJugadorSinDineroNiPropiedadesNoPuedePagarUnaMultaEntoncesQuedaEnQuiebra(j1, j2);
         // El último turno de la ronda 4 abre la ronda 5, que tiene evento global.
@@ -427,10 +428,10 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
 
         JsonNode tirada = tirar(jugador, 3, 4, EVENTO_MULTA);
         assertEquals(CASILLERO_EVENTO_14, tirada.path("posicionCaidaEvento").asInt(-1));
-        jugador.locator("#btn-continuar-evento").click();
 
         // Solo el deudor ve la ventana de deuda.
         assertThat(jugador.locator("#modal-deuda-pendiente")).isVisible();
+        assertThat(jugador.locator("#aviso-evento")).isHidden();
         assertThat(jugador.locator("#deuda-importe")).hasText("$" + MONTO_MULTA);
         for (Page pagina : paginas()) {
             if (pagina != jugador) {
@@ -472,10 +473,10 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
 
         JsonNode tirada = tirar(jugador, 4, 6, EVENTO_MULTA_LLAVES);
         assertEquals(CASILLERO_EVENTO_14, tirada.path("posicionCaidaEvento").asInt(-1));
-        jugador.locator("#btn-continuar-evento").click();
 
         // Tiene una propiedad para vender, así que la quiebra no es automática: la declara él.
         assertThat(jugador.locator("#modal-deuda-pendiente")).isVisible();
+        assertThat(jugador.locator("#aviso-evento")).isHidden();
         assertFalse(consultarJugador(id).enBancarrota());
         jugador.locator("#btn-declarar-quiebra").click();
         assertThat(jugador.locator("#deuda-confirmacion")).isVisible();
@@ -713,11 +714,11 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         assertTrue(pago.ok(), "El preso con dinero suficiente puede pagar la fianza");
 
         int dineroEsperado = dineroAntes - COSTO_FIANZA;
-        verificarLibreEnTodasLasPantallas(id);
-        verificarDineroEnTodasLasPantallas(id, dineroEsperado);
         EstadoJugador estado = consultarJugador(id);
         assertFalse(estado.encarcelado());
         assertEquals(dineroEsperado, estado.dinero());
+        verificarLibreEnTodasLasPantallas(id);
+        verificarDineroEnTodasLasPantallas(id, dineroEsperado);
         verificarHistorialEnTodasLasPantallas(
             nombre + " pagó $" + COSTO_FIANZA + " de fianza y salió de la comisaría."
         );

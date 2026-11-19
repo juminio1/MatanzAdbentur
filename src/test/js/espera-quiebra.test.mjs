@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sincronizarEsperaQuiebra } from "../../main/webapp/resources/core/js/deuda.js";
+import { hayPausaPorDeuda, sincronizarEsperaQuiebra } from "../../main/webapp/resources/core/js/deuda.js";
 
 function cartel() {
     return { open: false, aperturas: 0, cierres: 0,
@@ -55,4 +55,18 @@ test("la espera termina al reanudar la partida o finalizarla", () => {
     sincronizarEsperaQuiebra(aviso, estado(null));
     sincronizarEsperaQuiebra(aviso, estado(null, "actualizado", true, true));
     assert.equal(aviso.open, false);
+});
+
+test("al comenzar el evento se cierra la espera del turno anterior", () => {
+    const aviso = cartel();
+    sincronizarEsperaQuiebra(aviso, estado(null, "actualizado", hayPausaPorDeuda(null, true)));
+    assert.equal(aviso.open, true);
+    const evento = { activo: true, deudaPendiente: false };
+    sincronizarEsperaQuiebra(aviso, estado(null, "actualizado", hayPausaPorDeuda(evento, true)));
+    assert.equal(aviso.open, false);
+});
+
+test("una deuda del evento mantiene la pausa aunque el turno anterior no la tuviera", () => {
+    assert.equal(hayPausaPorDeuda({ activo: true, deudaPendiente: true }, false), true);
+    assert.equal(hayPausaPorDeuda({ activo: false, deudaPendiente: false }, true), true);
 });

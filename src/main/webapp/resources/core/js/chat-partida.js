@@ -20,6 +20,9 @@ export function inicializarChat({ basePath, codigo, usuarioId, notificar, alCamb
 
     function colorearJugador(elemento, id) {
         const jugador = document.getElementById(String(id));
+        elemento.dataset.jugador = String(id);
+        elemento.classList.toggle("chat-mensaje--inactivo",
+            jugador?.dataset.bancarrota === "true" || jugador?.dataset.abandono === "true");
         const color = jugador ? getComputedStyle(jugador).getPropertyValue("--color-ficha").trim() : "";
         elemento.style.setProperty("--chat-color", color || "#aac1cf");
     }
@@ -159,5 +162,11 @@ export function inicializarChat({ basePath, codigo, usuarioId, notificar, alCamb
     const consulta = window.setInterval(revisar, 5000);
     window.addEventListener("pagehide", () => clearInterval(consulta));
     queueMicrotask(revisar);
-    return { recibir: mensaje => recibir([mensaje]), revisar };
+    function actualizarJugador(id) {
+        for (const fila of lista.children) {
+            if (fila.dataset.jugador === String(id)) colorearJugador(fila, id);
+        }
+    }
+
+    return { recibir: mensaje => recibir([mensaje]), revisar, actualizarJugador };
 }
