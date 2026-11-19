@@ -12,6 +12,8 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.tallerwebi.dominio.ConfiguracionDadosE2E;
+import com.tallerwebi.dominio.catalogo.CatalogoTablero;
+import com.tallerwebi.dominio.servicios.ServicioMovimientoImpl;
 import com.tallerwebi.punta_a_punta.vistas.VistaSalaEspera;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -23,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -32,6 +35,10 @@ import org.junit.jupiter.api.Test;
 public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    // El turno dura 60 segundos (ServicioPartidaImpl); se deja margen para la tirada automática.
+    private static final double ESPERA_VENCIMIENTO_MS = 90_000;
+    // Recorrido de la vuelta: dos paradas en propiedades (se pasa sin comprar) y la llegada a la salida.
+    private static final List<Integer> PARADAS_DEL_RECORRIDO = List.of(11, 22);
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
     private final Map<Page, List<MensajePartida>> mensajesPorPagina = new HashMap<>();
 
@@ -68,6 +75,7 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
         String documento = marcarDocumentos();
 
         verificarEstadoEnPantallas(1, 0, documento);
+        verificarQueElRecorridoEviteLosEfectosDelTablero();
 
         // En las dos primeras rondas cada jugador avanza once casilleros y pasa sin comprar.
         for (int ronda = 1; ronda <= 2; ronda++) {
@@ -87,8 +95,19 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
         }
 
         Page primerJugador = verificarPermisoDeTirada(orden.get(0));
-        verificarPosicionEnTodasLasPantallas(idDeSesion(primerJugador), 22);
-        verificarMovimiento(codigo, primerJugador, 22, 0, 3, 5);
+        long idPrimerJugador = idDeSesion(primerJugador);
+        verificarPosicionEnTodasLasPantallas(idPrimerJugador, 22);
+        int dineroAntesDeLaVuelta = dineroEnPantalla(primerJugador, idPrimerJugador);
+        JsonNode vuelta = verificarMovimiento(codigo, primerJugador, 22, 0, 3, 5);
+
+        // Al completar la vuelta cobra el premio de la salida, y todos ven el saldo nuevo.
+        int premio = ServicioMovimientoImpl.PREMIO_INICIO;
+        assertEquals(premio, vuelta.path("dineroPorInicio").asInt(-1));
+        assertEquals(dineroAntesDeLaVuelta + premio, saldoInformado(vuelta, idPrimerJugador));
+        for (Page pagina : paginas()) {
+            PlaywrightAssertions.assertThat(dineroDe(pagina, idPrimerJugador))
+                .hasText(formatearDinero(dineroAntesDeLaVuelta + premio));
+        }
 
         String nombreSiguiente = orden.get(1);
         esperarMensajeDeTurno(codigo, nombreSiguiente, 3, 1);
@@ -134,6 +153,53 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
         pausarSiCorresponde("fin");
     }
 
+    @Test
+    void cuandoElJugadorEnTurnoNoTiraAntesDeQueVenzaElTiempoEntoncesElServidorTiraPorElYPasaElTurno()
+        throws IOException, SQLException {
+        String codigo = iniciarPartidaConTresJugadores();
+        List<String> orden = obtenerOrdenDeTurnos(codigo);
+        String documento = marcarDocumentos();
+
+        // El primer jugador juega normalmente; así el segundo arranca su turno con el temporizador completo.
+        Page primero = verificarPermisoDeTirada(orden.get(0));
+        verificarMovimiento(codigo, primero, 0, 11, 5, 6);
+        primero.locator("#btn-modal-pasar").click();
+        esperarMensajeDeTurno(codigo, orden.get(1), 1, 1);
+
+        Page ausente = verificarPermisoDeTirada(orden.get(1));
+        long idAusente = idDeSesion(ausente);
+        long idSinJugar = idDeSesion(paginaDe(orden.get(2)));
+        // Sin la cabecera de la tirada, el perfil e2e usa los dados por defecto.
+        int dadoUno = ConfiguracionDadosE2E.DADO_UNO;
+        int dadoDos = ConfiguracionDadosE2E.DADO_DOS;
+        int destino = dadoUno + dadoDos;
+
+        // Nadie toca el botón: al vencer el turno, el servidor tira por el jugador y avisa a todos.
+        JsonNode automatica = esperarMensajeEnTodasLasSesiones(topic(codigo), cuerpo ->
+            cuerpo.path("turnoVencido").asBoolean(false) &&
+            cuerpo.path("idJugador").asLong() == idAusente,
+            ESPERA_VENCIMIENTO_MS
+        );
+        assertEquals(dadoUno, automatica.path("dado1").asInt());
+        assertEquals(dadoDos, automatica.path("dado2").asInt());
+        assertEquals(destino, automatica.path("suma").asInt());
+        assertEquals(0, automatica.path("posicionAnterior").asInt(-1));
+        assertEquals(destino, automatica.path("nuevaPosicion").asInt(-1));
+        verificarPosicionEnTodasLasPantallas(idAusente, destino);
+
+        // Cae en una propiedad libre, pero la tirada automática no compra ni abre el modal de compra.
+        assertTrue(CatalogoTablero.POSICIONES_PROPIEDAD.contains(destino));
+        PlaywrightAssertions.assertThat(ausente.locator("#modal-compra-propiedad")).not().isVisible();
+        assertEquals(saldoInformado(automatica, idSinJugar), saldoInformado(automatica, idAusente),
+            "Sin compra, el jugador ausente conserva el mismo dinero que quien todavía no jugó");
+
+        // El turno pasa solo al siguiente jugador, sin cambiar de ronda.
+        esperarMensajeDeTurno(codigo, orden.get(2), 1, 2);
+        verificarPermisoDeTirada(orden.get(2));
+        verificarEstadoEnPantallas(1, 2, documento);
+        pausarSiCorresponde("fin");
+    }
+
     private Response tirarDados(Page jugador) {
         Response tirada = jugador.waitForResponse(
             respuesta -> respuesta.url().contains("/partida/tirar-dados?") &&
@@ -144,11 +210,11 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
         return tirada;
     }
 
-    private void verificarMovimiento(String codigo, Page jugador, int origen, int destino) throws IOException {
-        verificarMovimiento(codigo, jugador, origen, destino, ConfiguracionDadosE2E.DADO_UNO, ConfiguracionDadosE2E.DADO_DOS);
+    private JsonNode verificarMovimiento(String codigo, Page jugador, int origen, int destino) throws IOException {
+        return verificarMovimiento(codigo, jugador, origen, destino, ConfiguracionDadosE2E.DADO_UNO, ConfiguracionDadosE2E.DADO_DOS);
     }
 
-    private void verificarMovimiento(String codigo, Page jugador, int origen, int destino, int dadoUnoEsperado, int dadoDosEsperado)
+    private JsonNode verificarMovimiento(String codigo, Page jugador, int origen, int destino, int dadoUnoEsperado, int dadoDosEsperado)
         throws IOException {
         JsonNode tirada;
         jugador.setExtraHTTPHeaders(Map.of(ConfiguracionDadosE2E.CABECERA_TIRADA, dadoUnoEsperado + "," + dadoDosEsperado));
@@ -183,6 +249,7 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
             cuerpo.path("nuevaPosicion").asInt(-1) == destino
         );
         verificarPosicionEnTodasLasPantallas(idJugador, destino);
+        return tirada;
     }
 
     private void verificarPosicionEnTodasLasPantallas(long idJugador, int posicion) {
@@ -256,12 +323,55 @@ public class DesarrolloPartidaE2EIT extends EscenarioPartidaE2E {
         }
     }
 
-    private void esperarMensajeEnTodasLasSesiones(String destino, Predicate<JsonNode> esperado) {
+    private JsonNode esperarMensajeEnTodasLasSesiones(String destino, Predicate<JsonNode> esperado) {
+        return esperarMensajeEnTodasLasSesiones(destino, esperado, 30_000);
+    }
+
+    private JsonNode esperarMensajeEnTodasLasSesiones(String destino, Predicate<JsonNode> esperado, double timeoutMs) {
+        Predicate<MensajePartida> coincide = mensaje -> destino.equals(mensaje.destino()) && esperado.test(mensaje.cuerpo());
         for (Page pagina : paginas()) {
-            pagina.waitForCondition(() -> mensajesPorPagina.get(pagina).stream().anyMatch(mensaje ->
-                destino.equals(mensaje.destino()) && esperado.test(mensaje.cuerpo())
-            ));
+            pagina.waitForCondition(
+                () -> mensajesPorPagina.get(pagina).stream().anyMatch(coincide),
+                new Page.WaitForConditionOptions().setTimeout(timeoutMs)
+            );
         }
+        return mensajesPorPagina.get(paginaAnfitrion).stream().filter(coincide).findFirst().orElseThrow().cuerpo();
+    }
+
+    private void verificarQueElRecorridoEviteLosEfectosDelTablero() {
+        // Las paradas deben ser propiedades (se pasa sin comprar) y nunca casilleros de trivia o de eventos,
+        // que abren la ruleta o sortean una tarjeta y cambiarían posiciones, turnos o rondas.
+        for (Integer parada : PARADAS_DEL_RECORRIDO) {
+            assertTrue(CatalogoTablero.POSICIONES_PROPIEDAD.contains(parada), "La parada " + parada + " debe ser una propiedad");
+            assertFalse(CatalogoTablero.POSICIONES_TRIVIA.contains(parada), "La parada " + parada + " no puede ser trivia");
+        }
+    }
+
+    private Page paginaDe(String apodo) {
+        return paginas().get(nombres().indexOf(apodo));
+    }
+
+    private Locator dineroDe(Page pagina, long idJugador) {
+        // Cada tarjeta de jugador usa su id como id del elemento (partida.html).
+        return pagina.locator(".jugadores .jugador[id='" + idJugador + "'] .dinero");
+    }
+
+    private int dineroEnPantalla(Page pagina, long idJugador) {
+        return Integer.parseInt(dineroDe(pagina, idJugador).innerText().replaceAll("[^0-9]", ""));
+    }
+
+    private int saldoInformado(JsonNode movimiento, long idJugador) {
+        for (JsonNode saldo : movimiento.path("saldos")) {
+            if (saldo.path("idJugador").asLong() == idJugador) {
+                return saldo.path("dinero").asInt();
+            }
+        }
+        throw new AssertionError("El movimiento no informa el saldo del jugador " + idJugador);
+    }
+
+    private String formatearDinero(int monto) {
+        // Igual que partida.js (toLocaleString "es-AR"): separador de miles con punto.
+        return "$" + String.format(Locale.ROOT, "%,d", monto).replace(',', '.');
     }
 
     private void esperarMensajeDeTurno(String codigo, String jugador, int ronda, int finalizados) {
