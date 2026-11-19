@@ -68,7 +68,8 @@ export function reproducirEventoGlobal(nombre) {
 export function reproducirDadosTablero() {
     sonidoDadosTablero?.play();
 }
-const sonidoComisaria = crearSonido("comisaria.wav", 0.32);
+// endritprenku (CC0): https://freesound.org/people/endritprenku/sounds/613498/
+const sonidoComisaria = crearSonido("puerta-carcel.mp3", 0.32);
 const sonidoChat = crearSonido("chat-entrante.wav?v=2", 0.26);
 
 export function reproducirComisaria() {
