@@ -524,7 +524,7 @@ public class ControladorPartidaTest {
     }
 
     @Test
-    public void queAlPasarPorInicioSePaguenEInformenLosDoscientos() throws Exception {
+    public void queAlPasarPorInicioSePagueEInformeElPremio() throws Exception {
         Jugador jugador = new Jugador();
         jugador.setId(1L);
         jugador.setPosicionActual(28);
@@ -541,9 +541,9 @@ public class ControladorPartidaTest {
 
         RespuestaMovimientoDTO respuesta = controladorPartida.tirarDados("INICIO", 1L, solicitudJugador("INICIO",  1L));
 
-        assertEquals(200, respuesta.getDineroPorInicio());
+        assertEquals(150, respuesta.getDineroPorInicio());
         assertEquals(3, respuesta.getNuevaPosicion());
-        verify(economia, times(1)).sumarDinero(jugador, 200);
+        verify(economia, times(1)).sumarDinero(jugador, 150);
         verify(notificadorWebSocketMock).convertAndSend("/topic/partida/INICIO", respuesta);
     }
 

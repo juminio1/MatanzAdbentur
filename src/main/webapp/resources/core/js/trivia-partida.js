@@ -1,4 +1,4 @@
-import { crearModalTrivia } from "./trivia.js?v=7";
+import { crearModalTrivia } from "./trivia.js?v=8";
 import { crearApiTrivia } from "./trivia-api.js?v=3";
 
 // Tiempo para ver la respuesta correcta antes de la ronda siguiente o del final.

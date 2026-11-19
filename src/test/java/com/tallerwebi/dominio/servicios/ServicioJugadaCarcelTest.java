@@ -243,7 +243,7 @@ class ServicioJugadaCarcelTest {
         verify(servicioQuiebraMock).procesarMulta(
             eq(codigo),
             eq(jugador),
-            eq(100),
+            eq(300),
             eq("FIANZA_CARCEL")
         );
         assertFalse(jugador.getEstadoCarcel().getEncarcelado());
@@ -284,7 +284,7 @@ class ServicioJugadaCarcelTest {
         Partida partida = mock(Partida.class);
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
-        jugador.setDinero(300);
+        jugador.setDinero(500);
         jugador.getEstadoCarcel().encarcelar();
 
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);
@@ -295,7 +295,7 @@ class ServicioJugadaCarcelTest {
         verify(servicioQuiebraMock).procesarMulta(
             eq(codigo),
             eq(jugador),
-            eq(100),
+            eq(300),
             eq("FIANZA_CARCEL")
         );
     }
@@ -308,7 +308,7 @@ class ServicioJugadaCarcelTest {
         Partida partida = mock(Partida.class);
         Jugador jugador = new Jugador();
         jugador.setId(idJugador);
-        jugador.setDinero(50); // Menor a COSTO_FIANZA (100)
+        jugador.setDinero(250); // Alcanzaba para la fianza vieja, pero no para la de 300
         jugador.getEstadoCarcel().encarcelar();
 
         when(servicioPartidaMock.obtenerPartida(codigo)).thenReturn(partida);

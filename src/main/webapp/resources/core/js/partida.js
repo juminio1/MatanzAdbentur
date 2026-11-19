@@ -1,4 +1,4 @@
-import { conectarTriviaPartida } from "./trivia-partida.js?v=12";
+import { conectarTriviaPartida } from "./trivia-partida.js?v=13";
 import { inicializarChat } from "./chat-partida.js?v=7";
 import { crearHistorialEventosGlobales } from "./historial-eventos-globales.js";
 import { inicializarIntercambios } from "./intercambios.js?v=8";
@@ -546,7 +546,7 @@ function actualizarBotonTirada() {
 
 // --- Cárcel ---
 
-const COSTO_FIANZA = 100;
+const COSTO_FIANZA = 300;
 const MAX_INTENTOS_CARCEL = 3;
 let pagandoFianza = false;
 
@@ -593,9 +593,8 @@ function registrarCambioCarcelEnHistorial(idJugador, anterior, actual, contexto)
         if (esUsuario) {
             reproducirComisaria();
             mostrarAvisoPartida(
-                "Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $100 de fianza.",
-                false,
-                true,
+                `Caíste en la comisaría. En tu próximo turno sacá dobles o pagá $${COSTO_FIANZA} de fianza.`,
+                false, true,
             );
         }
         return;
@@ -1679,6 +1678,9 @@ function mostrarInfoPropiedad(propiedad) {
     const acciones = document.getElementById("popup-acciones-propias");
     acciones.hidden = !esPropia;
     if (esPropia) {
+        const intercambiar = document.getElementById("btn-info-intercambiar");
+        intercambiar.dataset.posicionIntercambio = String(propiedad.posicion);
+        gestionIntercambios?.actualizarEstado();
         const costo = propiedad.costoMejora ?? null;
         const mejorar = document.getElementById("btn-info-mejorar");
         const puedeMejorarse = !posicionesParadas.has(Number(propiedad.posicion)) && costo != null;
@@ -1724,7 +1726,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silenc
     if (!tarjeta.querySelector(".estado-bancarrota")) {
         const etiqueta = document.createElement("span");
         etiqueta.className = "estado-bancarrota";
-        etiqueta.textContent = "En quiebra";
+        etiqueta.textContent = "Fuera de juego";
         tarjeta.querySelector(".datos-jugador")?.appendChild(etiqueta);
     }
     if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
@@ -2528,6 +2530,7 @@ function mostrarOfertaRecibida(oferta) {
         `${oferta.apodoVendedor} te ofrece esta propiedad.`;
     pintarTarjetaOferta(oferta);
     mensajeOfertaRecibida.textContent = "";
+    actualizarAvisoEsperaQuiebra();
     abrirModalPartida(modalOfertaRecibida);
     if (!catalogoPropiedadesActual.has(Number(oferta.posicion))) {
         cargarPropiedadesPropias().then(() => {
@@ -2535,6 +2538,16 @@ function mostrarOfertaRecibida(oferta) {
         });
     }
 }
+
+modalOfertaRecibida.addEventListener("cancel", evento => {
+    if (document.getElementById("btn-aceptar-oferta").disabled) evento.preventDefault();
+});
+modalOfertaRecibida.addEventListener("close", () => {
+    if (!modalOfertaRecibida.open) {
+        ofertaActiva = null;
+        actualizarAvisoEsperaQuiebra();
+    }
+});
 
 async function responderOfertaVenta(aceptar) {
     if (!ofertaActiva || window.usuarioEnBancarrota || partidaFinalizada) return;
@@ -2555,7 +2568,16 @@ async function responderOfertaVenta(aceptar) {
                 body: JSON.stringify({ aceptar }),
             },
         );
+        if (respuesta.status === 410) {
+            modalOfertaRecibida.close();
+            mostrarAvisoPartida("La oferta ya no está disponible.");
+            revisarOfertasPendientes();
+            return;
+        }
         const datos = await leerRespuestaJson(respuesta);
+        modalOfertaRecibida.close();
+        ofertaActiva = null;
+        revisarOfertasPendientes();
         if (aceptar) {
             consultarDeudaPendiente(true);
             actualizarEtiquetaPrecioPropiedad(datos);
@@ -2566,10 +2588,7 @@ async function responderOfertaVenta(aceptar) {
                 datos.bancarrotaVendedor,
             );
         }
-        modalOfertaRecibida.close();
-        ofertaActiva = null;
         if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
-        revisarOfertasPendientes(); // Muestra la siguiente oferta, si llegó otra mientras tanto.
     } catch (error) {
         mensajeOfertaRecibida.textContent = error.message || "No se pudo responder la oferta.";
     } finally {
@@ -3670,6 +3689,7 @@ function mostrarResultadosFinales(datos) {
 function actualizarAvisoEsperaQuiebra() {
     sincronizarEsperaQuiebra(document.getElementById("aviso-espera-quiebra"), {
         pausado:
+            !ofertaActiva &&
             !document.getElementById("chat-telefono")?.open &&
             !viendoPropiedadesDuranteEspera &&
             (window.turnoPausadoPorDeuda || estadoEventoGlobalCliente?.deudaPendiente),
@@ -3701,6 +3721,12 @@ document.getElementById("btn-info-mejorar")?.addEventListener("click", () => {
             document.getElementById("btn-info-mejorar"),
             notaModalInfo,
         );
+});
+document.getElementById("btn-info-intercambiar")?.addEventListener("click", () => {
+    if (!propiedadSeleccionada) return;
+    const posicion = propiedadSeleccionada.posicion;
+    modalInfoPropiedad.close();
+    gestionIntercambios?.abrir(posicion);
 });
 document.getElementById("btn-info-vender")?.addEventListener("click", () => {
     if (!propiedadSeleccionada) return;

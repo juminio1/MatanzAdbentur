@@ -17,8 +17,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=mesa-54)}"
-            href="../../../resources/core/css/partida.css?v=mesa-54"
+            th:href="@{/css/partida.css(v=mesa-55)}"
+            href="../../../resources/core/css/partida.css?v=mesa-55"
         />
         <link
             rel="stylesheet"
@@ -149,7 +149,7 @@
                             >$0</span
                         >
                         <span class="estado-bancarrota" th:if="${jugador.enBancarrota}"
-                            >En quiebra</span
+                            >Fuera de juego</span
                         >
                         <!-- El texto lo completa partida.js según los intentos -->
                         <span class="estado-carcel" hidden>Preso</span>
@@ -719,7 +719,7 @@
                                     class="btn-casillero btn-casillero--secundario"
                                     id="btn-pagar-fianza"
                                 >
-                                    Pagar fianza ($100)
+                                    Pagar fianza ($300)
                                 </button>
                             </section>
                         </li>
@@ -1285,6 +1285,8 @@
                     >
                         Vender
                     </button>
+                    <button type="button" id="btn-info-intercambiar"
+                        class="btn-casillero btn-casillero--secundario">Intercambiar</button>
                 </div>
             </div>
         </dialog>
@@ -1746,8 +1748,8 @@
 
         <script
             type="module"
-            th:src="@{/js/partida.js(v=mesa-23)}"
-            src="../../../resources/core/js/partida.js?v=mesa-23"
+            th:src="@{/js/partida.js(v=mesa-22)}"
+            src="../../../resources/core/js/partida.js?v=mesa-22"
             charset="UTF-8"
         ></script>
         <script

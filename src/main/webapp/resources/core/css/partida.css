@@ -1791,7 +1791,15 @@
 }
 
 .jugador--bancarrota {
-    opacity: 0.65;
+    filter: grayscale(1);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.jugador--bancarrota .dinero,
+.jugador--bancarrota .estado-carcel,
+.jugador--bancarrota .contenedor-turno {
+    display: none;
 }
 
 .casillero {
@@ -2504,6 +2512,7 @@
     font-size: 14px;
 }
 .aviso-espera-quiebra .deuda-acciones .btn-casillero:hover { background: #432d75; }
+#popup-acciones-propias { flex-wrap: wrap; }
 #popup-acciones-propias[hidden] { display: none; }
 
 #modal-intercambio label { font-weight: 800; }
