@@ -1253,6 +1253,10 @@ function aplicarTurnoDTO(turnoDTO) {
     }
     actualizarTurnoEnPantalla(turnoDTO);
     actualizarRondaActual(turnoDTO.rondaActual);
+    // Si un evento global dejó al jugador en una propiedad libre, la compra se ofrece al empezar su turno.
+    if (cambioDeTurno && estadoEventoGlobalCliente && !estadoEventoGlobalCliente.activo) {
+        mostrarCompraDeEvento(estadoEventoGlobalCliente);
+    }
 }
 
 function actualizarRondaActual(rondaActual) {
@@ -2844,6 +2848,9 @@ async function mostrarCompraDeEvento(estado) {
         partidaFinalizada ||
         window.usuarioEnBancarrota ||
         String(estado.seleccionado) !== String(window.usuarioSesionId) ||
+        // La compra habilitada por el evento solo se ofrece en el turno propio, antes de tirar.
+        String(window.turnoActualId) !== String(window.usuarioSesionId) ||
+        yaTiroEnEsteTurno ||
         debeEsperarPresentacionGlobal() ||
         document.querySelector("dialog[open]")
     )

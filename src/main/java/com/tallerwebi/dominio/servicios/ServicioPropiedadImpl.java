@@ -120,6 +120,7 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
             partida.getEventoGlobal().ofrecerCompra(null);
             return null;
         }
+        validarTurnoParaCompraDeEvento(partida, jugador);
         Integer posicion = partida.getEventoGlobal().getPosicionCompra();
         if (!Objects.equals(posicion, jugador.getPosicionActual())) {
             throw new PropiedadNoDisponibleException("Ya no estás en el casillero de esta oportunidad de compra.");
@@ -128,6 +129,17 @@ public class ServicioPropiedadImpl implements ServicioPropiedad {
         ejecutarCompra(casillero.getPropiedad().getId(), jugador);
         partida.getEventoGlobal().ofrecerCompra(null);
         return new CompraPreparada(codigoPartida, jugador, casillero);
+    }
+
+    // La compra que habilita un evento global solo se hace en el turno del jugador, antes de tirar.
+    private void validarTurnoParaCompraDeEvento(Partida partida, Jugador jugador) {
+        Jugador actual = turnos.obtenerJugadorActual(partida);
+        if (actual == null || !Objects.equals(actual.getId(), jugador.getId())) {
+            throw new PropiedadNoDisponibleException("Solo podés comprar esta propiedad durante tu turno.");
+        }
+        if (Boolean.TRUE.equals(jugador.getTiroEnTurno())) {
+            throw new PropiedadNoDisponibleException("La oportunidad de compra se pierde al tirar los dados.");
+        }
     }
 
     private void ejecutarCompra(Long idPropiedad, Jugador comprador) {

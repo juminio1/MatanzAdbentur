@@ -89,6 +89,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         //guarda la posicion anterior del jugador.
         Integer anterior = jugador.getPosicionActual();
         jugador.setTiroEnTurno(true); //marca que el juagador ya tiró sus dados en su turno.
+        descartarCompraDeEventoPendiente(partida, jugador);
 
         //Llama al ServicioDado y devuelve un objeto ResultadoTirada, que representa el resultado obtenido.
         ResultadoTirada tirada = dados.tirarDados();
@@ -246,6 +247,15 @@ public class ServicioJugadaImpl implements ServicioJugada {
         validarPenalizacionTurno(jugador);
         validarTiradaAnterior(jugador);
         validarDeudaPendiente(codigo, jugador);
+    }
+
+    // Al tirar los dados se pierde la compra que había habilitado un evento global.
+    private void descartarCompraDeEventoPendiente(Partida partida, Jugador jugador) {
+        var estado = partida.getEventoGlobal();
+        if (estado != null && estado.getPosicionCompra() != null
+            && Objects.equals(estado.getSeleccionado(), jugador.getId())) {
+            estado.ofrecerCompra(null);
+        }
     }
 
     // Verifica que el jugador esté activo y sea su turno.
