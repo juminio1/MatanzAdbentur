@@ -424,7 +424,8 @@ function conectarWebSocketTurnos(base, codigo) {
                 gestionIntercambios?.refrescar();
                 if (propiedadSeleccionada?.posicion === propiedad.posicion)
                     mostrarInfoPropiedad(propiedad);
-                if (modalBonoPropiedades?.open) cargarPropiedadesPropias();
+                // También cambian los alquileres de las otras propiedades del barrio.
+                cargarListaPropiedades(true);
                 if (propiedad.idVendedor != null && propiedad.dineroVendedor != null) {
                     actualizarDineroJugador(
                         propiedad.idVendedor,

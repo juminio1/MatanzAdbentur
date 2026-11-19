@@ -29,12 +29,12 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
     private Page propietario;
 
     @Test
-    void cuandoCompletaIsidroCasanovaYMejoraCanchaDeBrownEntoncesOtroJugadorPagaOchenta()
+    void cuandoCompletaIsidroCasanovaYMejoraCanchaDeBrownEntoncesOtroJugadorPagaCientoVeinte()
         throws IOException {
         preparar();
         propietario = verificarPermisoDeTirada(obtenerJugadorEnTurno(paginaAnfitrion));
         mover(propietario, 0, 9, 4, 5);
-        comprar(9, "Cancha de Brown");
+        comprar(9, "Cancha de Brown", 40);
         Page jugadorB = siguiente(propietario);
         pasar(jugadorB, 0, 2, 1, 1, "Parroquia Stella Maris", 150);
         Page jugadorC = siguiente(jugadorB);
@@ -48,7 +48,7 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         vista.verificarPermisoDeMejora(false, 125);
         vista.cerrarInformacionPropiedad();
         mover(propietario, 9, 11, 1, 1);
-        comprar(11, "Jesse James");
+        comprar(11, "Jesse James", 40);
         siguiente(propietario);
         pasar(jugadorB, 2, 5, 1, 2, "UNLaM", 200);
         siguiente(jugadorB);
@@ -56,7 +56,13 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         assertEquals(propietario, siguiente(jugadorC));
 
         mover(propietario, 11, 13, 1, 1);
-        comprar(13, "Plaza Hipólito Yrigoyen");
+        comprar(13, "Plaza Hipólito Yrigoyen", 80);
+        String color = List.of("rojo", "azul", "verde").get(paginas().indexOf(propietario));
+        for (Page pagina : paginas()) {
+            for (int posicion : List.of(9, 11, 13)) {
+                new VistaPartida(pagina).verificarPropietario(posicion, nombre(propietario), color, 80);
+            }
+        }
         siguiente(propietario);
         pasar(jugadorB, 5, 7, 1, 1, "San Justo Shopping", 200);
         siguiente(jugadorB);
@@ -71,19 +77,19 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         assertEquals(jugadorB, siguiente(propietario));
         JsonNode caida = mover(jugadorB, 7, 9, 1, 1);
         JsonNode alquiler = caida.path("alquiler");
-        assertEquals(80, alquiler.path("monto").asInt(-1));
+        assertEquals(120, alquiler.path("monto").asInt(-1));
         assertEquals(identidades.get(jugadorB).longValue(), alquiler.path("idJugadorPagador").asLong(-1));
         assertEquals(nombre(jugadorB), alquiler.path("pagador").asText());
         assertEquals(nombre(propietario), alquiler.path("propietario").asText());
         assertEquals("Cancha de Brown", alquiler.path("propiedad").asText());
-        saldos.put(propietario, 1125 + 80);
-        saldos.put(jugadorB, 2000 - 80);
+        saldos.put(propietario, 1125 + 120);
+        saldos.put(jugadorB, 2000 - 120);
         verificarSaldosMovimiento(caida);
         verificarPantallas();
         assertEquals(jugadorC, siguiente(jugadorB));
         verificarPropiedades();
-        assertEquals(1205, saldos.get(propietario));
-        assertEquals(1920, saldos.get(jugadorB));
+        assertEquals(1245, saldos.get(propietario));
+        assertEquals(1880, saldos.get(jugadorB));
         assertEquals(2000, saldos.get(jugadorC));
     }
 
@@ -107,19 +113,19 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         verificarPantallas();
     }
 
-    private void comprar(int posicion, String nombrePropiedad) throws IOException {
+    private void comprar(int posicion, String nombrePropiedad, int alquilerEsperado) throws IOException {
         VistaPartida vista = new VistaPartida(propietario);
         vista.verificarOportunidadDeCompra(nombrePropiedad, 250);
         descartarMensajes();
         JsonNode compra = JSON.readTree(vista.comprar(posicion).text());
         saldos.compute(propietario, (pagina, saldo) -> saldo - 250);
-        verificarDatosPropiedad(compra, posicion, 0, 40);
+        verificarDatosPropiedad(compra, posicion, 0, alquilerEsperado);
         assertEquals(250, compra.path("precioCompra").asInt(-1));
         assertEquals(saldos.get(propietario).intValue(), compra.path("dineroJugador").asInt(-1));
         for (ObservadorPartidaE2E observador : observadores) {
             JsonNode recibido = observador.esperarMensaje(topic + "/propiedades", cuerpo ->
                 cuerpo.path("posicion").asInt(-1) == posicion);
-            verificarDatosPropiedad(recibido, posicion, 0, 40);
+            verificarDatosPropiedad(recibido, posicion, 0, alquilerEsperado);
         }
         verificarPantallas();
     }
@@ -128,20 +134,20 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         VistaPartida vista = new VistaPartida(propietario);
         vista.abrirInformacionPropiedad(9, "Cancha de Brown");
         vista.verificarPermisoDeMejora(true, 125);
-        vista.verificarAlquilerEnInformacion(40);
+        vista.verificarAlquilerEnInformacion(80);
         descartarMensajes();
         JsonNode mejora = JSON.readTree(vista.mejorar(9).text());
-        verificarDatosPropiedad(mejora, 9, 1, 80);
+        verificarDatosPropiedad(mejora, 9, 1, 120);
         saldos.put(propietario, 1250 - 125);
         for (ObservadorPartidaE2E observador : observadores) {
             JsonNode recibido = observador.esperarMensaje(topic + "/propiedades", cuerpo ->
                 cuerpo.path("posicion").asInt(-1) == 9 && cuerpo.path("nivelMejora").asInt(-1) == 1);
-            verificarDatosPropiedad(recibido, 9, 1, 80);
+            verificarDatosPropiedad(recibido, 9, 1, 120);
             assertEquals(1125, recibido.path("dineroJugador").asInt(-1));
             assertEquals(identidades.get(propietario).longValue(), recibido.path("idJugador").asLong(-1));
         }
         assertEquals(1125, mejora.path("dineroJugador").asInt(-1));
-        vista.verificarAlquilerEnInformacion(80);
+        vista.verificarAlquilerEnInformacion(120);
         vista.cerrarInformacionPropiedad();
         verificarPropiedades();
         verificarPantallas();
@@ -155,7 +161,7 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
             Locator tarjeta = propietario.locator("#lista-propiedades-propias .propiedad-propia")
                 .filter(new Locator.FilterOptions().setHasText(propiedad));
             assertThat(tarjeta).hasCount(1);
-            assertThat(tarjeta.locator("dd").nth(0)).hasText(propiedad.equals("Cancha de Brown") ? "$80" : "$40");
+            assertThat(tarjeta.locator("dd").nth(0)).hasText(propiedad.equals("Cancha de Brown") ? "$120" : "$80");
             assertThat(tarjeta.locator("dd").nth(1)).hasText(propiedad.equals("Cancha de Brown") ? "1 / 5" : "0 / 5");
         }
         propietario.locator("#btn-cerrar-bono-propiedades").click();
@@ -229,7 +235,7 @@ public class AumentoAlquilerE2EIT extends EscenarioPartidaE2E {
         String color = List.of("rojo", "azul", "verde").get(paginas().indexOf(propietario));
         for (Page pagina : paginas()) {
             for (int posicion : List.of(9, 11, 13)) {
-                new VistaPartida(pagina).verificarPropietario(posicion, nombre(propietario), color, posicion == 9 ? 80 : 40);
+                new VistaPartida(pagina).verificarPropietario(posicion, nombre(propietario), color, posicion == 9 ? 120 : 80);
             }
         }
     }

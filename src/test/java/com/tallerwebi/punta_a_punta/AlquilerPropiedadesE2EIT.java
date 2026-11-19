@@ -70,13 +70,13 @@ public class AlquilerPropiedadesE2EIT extends EscenarioPartidaE2E {
         }
         for (Page jugador : orden) {
             verificarPermisoDeTirada(nombre(jugador));
-            mover(jugador, 22, 0, 3, 5, 0, 200);
+            mover(jugador, 22, 0, 3, 5, 0, 150);
             siguienteJugador(jugador);
         }
 
-        assertEquals(2030, saldos.get(propietario));
-        assertEquals(2160, saldos.get(invitadoUno));
-        assertEquals(2160, saldos.get(invitadoDos));
+        assertEquals(1980, saldos.get(propietario));
+        assertEquals(2110, saldos.get(invitadoUno));
+        assertEquals(2110, saldos.get(invitadoDos));
         Map<Page, Integer> antesDeCaer = Map.copyOf(saldos);
         verificarPantallas();
         JsonNode caidaPropia = mover(propietario, 0, 11, 5, 6, 0, 0);
