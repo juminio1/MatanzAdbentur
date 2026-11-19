@@ -4,14 +4,18 @@ const icono = document.getElementById("animacion-compra");
 let animacion;
 
 // Grabaciones CC0 de Freesound: Gerent (558991) e ilyaShevelev (847351).
-const moneda = window.Howl && new window.Howl({
-    src: [new URL("../audio/cobro-monedas.mp3", import.meta.url).href],
-    volume: 0.35,
-});
-const descuento = window.Howl && new window.Howl({
-    src: [new URL("../audio/pago-monedas.mp3", import.meta.url).href],
-    volume: 0.35,
-});
+const moneda =
+    window.Howl &&
+    new window.Howl({
+        src: [new URL("../audio/cobro-monedas.mp3", import.meta.url).href],
+        volume: 0.35,
+    });
+const descuento =
+    window.Howl &&
+    new window.Howl({
+        src: [new URL("../audio/pago-monedas.mp3", import.meta.url).href],
+        volume: 0.35,
+    });
 
 const pasoFicha = crearSonido("paso-ficha.wav", 0.22);
 const llegadaFicha = crearSonido("llegada-ficha.wav", 0.28);
@@ -20,15 +24,31 @@ const sonidoContinuar = crearSonido("accion-confirmar.wav", 0.24);
 const sonidoPasar = crearSonido("accion-pasar.wav", 0.24);
 const sonidoCaidaPropiedad = crearSonido("llegada-propiedad.wav", 0.28);
 const sonidoIntercambio = crearSonido("intercambio-confirmado.wav", 0.32);
-const sonidoDados = crearSonido("dados-globales.wav", 0.30);
+const sonidoDados = crearSonido("dados-globales.wav", 0.3);
 const sonidoDadosTablero = crearSonido("dados-tablero.wav", 0.34);
+export const sonidosEventosCasillero = new Map([
+    ["Anda con cuidado", crearSonido("evento-anda-con-cuidado.mp3", 0.30)],
+    ["Antojo de chipá", crearSonido("evento-antojo-chipa.mp3", 0.30)],
+    ["Asfalto nuevo", crearSonido("evento-asfalto-nuevo.mp3", 0.30)],
+    ["Asiento libre en el bondi", crearSonido("evento-asiento-libre-bondi.mp3", 0.30)],
+    ["Changa de finde", crearSonido("evento-changa-finde.mp3", 0.30)],
+    ["Choripán traicionero", crearSonido("evento-choripan-traicionero.mp3", 0.30)],
+    ["Cine en el Shopping", crearSonido("evento-cine-shopping.mp3", 0.30)],
+    ["Copia de llaves", crearSonido("evento-copia-llaves.mp3", 0.30)],
+    ["Devolución de AFIP", crearSonido("evento-afip.mp3", 0.30)],
+    ["Encontraste guita", crearSonido("evento-encontraste-guita.mp3", 0.30)],
+    ["Fila en la fotocopiadora", crearSonido("evento-fila-fotocopiadora.mp3", 0.30)],
+    ["Salvando las milanesas", crearSonido("evento-salvando-milanesas.mp3", 0.30)],
+    ["Servicio reducido", crearSonido("evento-servicio-reducido.mp3", 0.30)],
+    ["Sin entradas para ver a Boquita", crearSonido("evento-sin-entradas-boquita.mp3", 0.30)],
+]);
 const sonidosEventosGlobales = new Map([
-    ["TRAMITES_AFIP", crearSonido("evento-afip.mp3", 0.30)],
+    ["TRAMITES_AFIP", crearSonido("evento-afip.mp3", 0.3)],
     ["INUNDACION", crearSonido("evento-inundacion.mp3", 0.25)],
     ["PIQUETE", crearSonido("evento-piquete.mp3", 0.25)],
-    ["ROBO", crearSonido("evento-robo.mp3", 0.35)],
+    ["ROBO", crearSonido("evento_robo.mp3", 0.35)],
     ["FIAT_600", crearSonido("evento-fiat600.mp3", 0.35)],
-    ["ACCIDENTE_SARMIENTO", crearSonido("evento-sarmiento.mp3", 0.30)],
+    ["ACCIDENTE_SARMIENTO", crearSonido("evento-sarmiento.mp3", 0.3)],
 ]);
 let sonidoEventoGlobalActual;
 
@@ -72,10 +92,13 @@ export function reproducirAccionPartida(pasar) {
 }
 
 function crearSonido(archivo, volume) {
-    return window.Howl && new window.Howl({
-        src: [new URL(`../audio/${archivo}`, import.meta.url).href],
-        volume,
-    });
+    return (
+        window.Howl &&
+        new window.Howl({
+            src: [new URL(`../audio/${archivo}`, import.meta.url).href],
+            volume,
+        })
+    );
 }
 
 // Al comprarse una propiedad cae un sello de "VENDIDO" con el color del comprador y el casillero destella.
@@ -88,30 +111,51 @@ export function animarCompraCasillero(casillero, color) {
     if (color) sello.dataset.color = color;
     sello.setAttribute("aria-hidden", "true");
     casillero.appendChild(sello);
-    const colorDestello = getComputedStyle(sello).getPropertyValue("--color-sello").trim() || "#ffda6a";
+    const colorDestello =
+        getComputedStyle(sello).getPropertyValue("--color-sello").trim() || "#ffda6a";
 
     const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const golpe = sello.animate(sinMovimiento
-        ? [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }]
-        : [
-            // Cae desde arriba grande, golpea, rebota un poquito y se queda; al final se desvanece.
-            { scale: 2.6, opacity: 0, easing: "ease-in" },
-            { scale: 0.9, opacity: 1, offset: 0.14, easing: "ease-out" },
-            { scale: 1.06, offset: 0.2, easing: "ease-in-out" },
-            { scale: 1, offset: 0.26 },
-            { scale: 1, opacity: 1, offset: 0.82 },
-            { scale: 1.08, opacity: 0 },
-        ], { duration: 1500 });
-    golpe.finished.then(() => sello.remove(), () => sello.remove());
+    const golpe = sello.animate(
+        sinMovimiento
+            ? [
+                  { opacity: 0 },
+                  { opacity: 1, offset: 0.15 },
+                  { opacity: 1, offset: 0.8 },
+                  { opacity: 0 },
+              ]
+            : [
+                  // Cae desde arriba grande, golpea, rebota un poquito y se queda; al final se desvanece.
+                  { scale: 2.6, opacity: 0, easing: "ease-in" },
+                  { scale: 0.9, opacity: 1, offset: 0.14, easing: "ease-out" },
+                  { scale: 1.06, offset: 0.2, easing: "ease-in-out" },
+                  { scale: 1, offset: 0.26 },
+                  { scale: 1, opacity: 1, offset: 0.82 },
+                  { scale: 1.08, opacity: 0 },
+              ],
+        { duration: 1500 },
+    );
+    golpe.finished.then(
+        () => sello.remove(),
+        () => sello.remove(),
+    );
 
     if (!sinMovimiento) {
-        casillero.animate([
-            { boxShadow: `inset 0 0 0 0 ${colorDestello}` },
-            { boxShadow: `inset 0 0 0 4px ${colorDestello}, 0 0 14px ${colorDestello}`, offset: 0.2 },
-            { boxShadow: `inset 0 0 0 0 transparent`, offset: 0.45 },
-            { boxShadow: `inset 0 0 0 4px ${colorDestello}, 0 0 14px ${colorDestello}`, offset: 0.65 },
-            { boxShadow: "inset 0 0 0 0 transparent" },
-        ], { duration: 1100, delay: 180, easing: "ease-out" });
+        casillero.animate(
+            [
+                { boxShadow: `inset 0 0 0 0 ${colorDestello}` },
+                {
+                    boxShadow: `inset 0 0 0 4px ${colorDestello}, 0 0 14px ${colorDestello}`,
+                    offset: 0.2,
+                },
+                { boxShadow: `inset 0 0 0 0 transparent`, offset: 0.45 },
+                {
+                    boxShadow: `inset 0 0 0 4px ${colorDestello}, 0 0 14px ${colorDestello}`,
+                    offset: 0.65,
+                },
+                { boxShadow: "inset 0 0 0 0 transparent" },
+            ],
+            { duration: 1100, delay: 180, easing: "ease-out" },
+        );
     }
 }
 
@@ -143,13 +187,16 @@ export function animarPasoPorInicio(casilleroInicio, tarjetaJugador, monto) {
         return;
     }
 
-    casilleroInicio.animate([
-        { boxShadow: "inset 0 0 0 0 #ffda6a" },
-        { boxShadow: "inset 0 0 0 4px #ffda6a, 0 0 18px #ffda6a", offset: 0.2 },
-        { boxShadow: "inset 0 0 0 0 transparent", offset: 0.45 },
-        { boxShadow: "inset 0 0 0 4px #ffda6a, 0 0 18px #ffda6a", offset: 0.65 },
-        { boxShadow: "inset 0 0 0 0 transparent" },
-    ], { duration: 1100, easing: "ease-out" });
+    casilleroInicio.animate(
+        [
+            { boxShadow: "inset 0 0 0 0 #ffda6a" },
+            { boxShadow: "inset 0 0 0 4px #ffda6a, 0 0 18px #ffda6a", offset: 0.2 },
+            { boxShadow: "inset 0 0 0 0 transparent", offset: 0.45 },
+            { boxShadow: "inset 0 0 0 4px #ffda6a, 0 0 18px #ffda6a", offset: 0.65 },
+            { boxShadow: "inset 0 0 0 0 transparent" },
+        ],
+        { duration: 1100, easing: "ease-out" },
+    );
 
     const caja = casilleroInicio.getBoundingClientRect();
     const origen = { x: caja.left + caja.width / 2, y: caja.top + caja.height / 2 };
@@ -178,20 +225,50 @@ function volarMonedas(desde, hasta, altura, sobreTablero = false) {
         document.body.appendChild(moneda);
         if (sobreTablero) elevarEfecto(moneda);
         const desvio = (Math.random() - 0.5) * 24;
-        const vuelo = moneda.animate([
-            { transform: "translate(0, 0) scale(0.6) rotateY(0deg)", opacity: 0 },
-            { opacity: 1, offset: 0.1 },
-            { transform: `translate(${dx * 0.5 + desvio}px, ${dy * 0.5 - altura}px) scale(1.15) rotateY(540deg)`, offset: 0.5 },
-            { transform: `translate(${dx}px, ${dy}px) scale(0.8) rotateY(1080deg)`, opacity: 1, offset: 0.92 },
-            { transform: `translate(${dx}px, ${dy}px) scale(0.5) rotateY(1080deg)`, opacity: 0 },
-        ], { duration: 850, delay: i * 90, easing: "cubic-bezier(.45,0,.55,1)", fill: "backwards" });
-        vuelo.finished.then(() => moneda.remove(), () => moneda.remove());
+        const vuelo = moneda.animate(
+            [
+                { transform: "translate(0, 0) scale(0.6) rotateY(0deg)", opacity: 0 },
+                { opacity: 1, offset: 0.1 },
+                {
+                    transform: `translate(${dx * 0.5 + desvio}px, ${dy * 0.5 - altura}px) scale(1.15) rotateY(540deg)`,
+                    offset: 0.5,
+                },
+                {
+                    transform: `translate(${dx}px, ${dy}px) scale(0.8) rotateY(1080deg)`,
+                    opacity: 1,
+                    offset: 0.92,
+                },
+                {
+                    transform: `translate(${dx}px, ${dy}px) scale(0.5) rotateY(1080deg)`,
+                    opacity: 0,
+                },
+            ],
+            {
+                duration: 850,
+                delay: i * 90,
+                easing: "cubic-bezier(.45,0,.55,1)",
+                fill: "backwards",
+            },
+        );
+        vuelo.finished.then(
+            () => moneda.remove(),
+            () => moneda.remove(),
+        );
     }
 }
 
 // Confeti chico con los colores de los barrios, que salta desde un punto y cae.
 function lanzarConfeti(origen) {
-    const colores = ["#91d64b", "#ed5da8", "#42b6e8", "#ffbd42", "#a17be8", "#f16c5e", "#38c8b5", "#f0df4c"];
+    const colores = [
+        "#91d64b",
+        "#ed5da8",
+        "#42b6e8",
+        "#ffbd42",
+        "#a17be8",
+        "#f16c5e",
+        "#38c8b5",
+        "#f0df4c",
+    ];
     for (let i = 0; i < 18; i++) {
         const papel = document.createElement("span");
         papel.className = "confeti";
@@ -205,19 +282,34 @@ function lanzarConfeti(origen) {
         const x = Math.cos(angulo) * fuerza;
         const y = Math.sin(angulo) * fuerza;
         const giro = (Math.random() - 0.5) * 720;
-        const caida = papel.animate([
-            { transform: "translate(0, 0) rotate(0deg)", opacity: 1 },
-            { transform: `translate(${x}px, ${y}px) rotate(${giro * 0.5}deg)`, opacity: 1, offset: 0.4, easing: "ease-in" },
-            { transform: `translate(${x * 1.3}px, ${y + 70}px) rotate(${giro}deg)`, opacity: 0 },
-        ], { duration: 1100 + Math.random() * 300, easing: "ease-out" });
-        caida.finished.then(() => papel.remove(), () => papel.remove());
+        const caida = papel.animate(
+            [
+                { transform: "translate(0, 0) rotate(0deg)", opacity: 1 },
+                {
+                    transform: `translate(${x}px, ${y}px) rotate(${giro * 0.5}deg)`,
+                    opacity: 1,
+                    offset: 0.4,
+                    easing: "ease-in",
+                },
+                {
+                    transform: `translate(${x * 1.3}px, ${y + 70}px) rotate(${giro}deg)`,
+                    opacity: 0,
+                },
+            ],
+            { duration: 1100 + Math.random() * 300, easing: "ease-out" },
+        );
+        caida.finished.then(
+            () => papel.remove(),
+            () => papel.remove(),
+        );
     }
 }
 
 function elevarEfecto(elemento) {
     elemento.style.margin = "0";
     elemento.style.border = "0";
-    const izquierda = elemento.style.left, arriba = elemento.style.top;
+    const izquierda = elemento.style.left,
+        arriba = elemento.style.top;
     elemento.style.inset = "auto";
     elemento.style.left = izquierda;
     elemento.style.top = arriba;
@@ -228,7 +320,12 @@ function elevarEfecto(elemento) {
     }
 }
 
-export function mostrarMontoFlotante(tarjeta, texto, tipo, {sonido = false, sobreTablero = false, monedas = false} = {}) {
+export function mostrarMontoFlotante(
+    tarjeta,
+    texto,
+    tipo,
+    { sonido = false, sobreTablero = false, monedas = false } = {},
+) {
     if (!tarjeta?.isConnected) return false;
     const caja = (tarjeta.querySelector(".dinero") ?? tarjeta).getBoundingClientRect();
     const etiqueta = document.createElement("span");
@@ -246,17 +343,31 @@ export function mostrarMontoFlotante(tarjeta, texto, tipo, {sonido = false, sobr
         etiqueta.style.top = `${Math.max(48, Math.min(caja.top, window.innerHeight - 24))}px`;
     }
     if (monedas) {
-        const hasta = {x:Number.parseFloat(etiqueta.style.left), y:Number.parseFloat(etiqueta.style.top)};
-        volarMonedas({x:hasta.x,y:Math.min(window.innerHeight - 16,hasta.y + 100)}, hasta, 60, sobreTablero);
+        const hasta = {
+            x: Number.parseFloat(etiqueta.style.left),
+            y: Number.parseFloat(etiqueta.style.top),
+        };
+        volarMonedas(
+            { x: hasta.x, y: Math.min(window.innerHeight - 16, hasta.y + 100) },
+            hasta,
+            60,
+            sobreTablero,
+        );
     }
-    const sube = etiqueta.animate([
-        { translate: "-50% 0", opacity: 0 },
-        { translate: "-50% -14px", opacity: 1, offset: 0.2 },
-        { translate: "-50% -26px", opacity: 1, offset: 0.75 },
-        { translate: "-50% -36px", opacity: 0 },
-    ], { duration: 1600, easing: "ease-out" });
+    const sube = etiqueta.animate(
+        [
+            { translate: "-50% 0", opacity: 0 },
+            { translate: "-50% -14px", opacity: 1, offset: 0.2 },
+            { translate: "-50% -26px", opacity: 1, offset: 0.75 },
+            { translate: "-50% -36px", opacity: 0 },
+        ],
+        { duration: 1600, easing: "ease-out" },
+    );
     if (sonido) moneda?.play();
-    sube.finished.then(() => etiqueta.remove(), () => etiqueta.remove());
+    sube.finished.then(
+        () => etiqueta.remove(),
+        () => etiqueta.remove(),
+    );
     return etiqueta;
 }
 
@@ -264,14 +375,13 @@ export function animarPasoFicha(ficha, llegada, esPropiedad) {
     const sonido = llegada ? (esPropiedad ? sonidoCaidaPropiedad : llegadaFicha) : pasoFicha;
     sonido?.play();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    ficha.animate([
-        { scale: 0.82 },
-        { scale: llegada ? 1.12 : 1.04 },
-        { scale: 1 },
-    ], { duration: 180, easing: "ease-out" });
+    ficha.animate([{ scale: 0.82 }, { scale: llegada ? 1.12 : 1.04 }, { scale: 1 }], {
+        duration: 180,
+        easing: "ease-out",
+    });
 }
 
-export function reproducirCambioDeSaldo(saldoAnterior, saldoNuevo, {silencioso = false} = {}) {
+export function reproducirCambioDeSaldo(saldoAnterior, saldoNuevo, { silencioso = false } = {}) {
     if (silencioso) return;
     if (!Number.isFinite(saldoAnterior) || !Number.isFinite(saldoNuevo)) return;
     if (saldoNuevo > saldoAnterior) moneda?.play();
@@ -294,7 +404,6 @@ export function presentarAvisoPartida(texto, compra, silencioso = false) {
             path: new URL("./compra-confirmada.json", import.meta.url).href,
         });
     }
-
 }
 
 export function ocultarAvisoPartida() {
