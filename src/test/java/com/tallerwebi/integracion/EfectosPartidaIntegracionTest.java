@@ -930,6 +930,11 @@ class EfectosPartidaIntegracionTest {
         assertTrue(servicioPartida.obtenerJugadorPorId(idJugador).getEnBancarrota());
         assertNull(servicioPartida.obtenerPartida(codigo));
         assertNull(servicioGestionQuiebra.obtenerDeudaPendiente(codigo, idJugador));
+        // Al quebrar, el dueño de la propiedad se queda con todo lo que le quedaba.
+        assertEquals(0, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2003, servicioPartida.obtenerJugadorPorId(idPropietario).getDinero());
+        verify(notificador).convertAndSend(
+                eq("/topic/partida/" + codigo + "/deuda-pagada"), any(Map.class));
         verify(notificador).convertAndSend("/topic/partida/" + codigo + "/abandono",
                 Map.of("motivo", "QUIEBRA", "idJugador", idJugador, "apodo", "Ana",
                         "partidaFinalizada", true, "idGanador", idPropietario));

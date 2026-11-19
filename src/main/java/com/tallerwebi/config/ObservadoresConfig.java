@@ -1,5 +1,6 @@
 package com.tallerwebi.config;
 
+import com.tallerwebi.dominio.eventos.EventoDeudaPagada;
 import com.tallerwebi.dominio.eventos.EventoJugadorAbandonado;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.eventos.EventoSalaActualizada;
@@ -49,6 +50,12 @@ public class ObservadoresConfig {
     @Bean
     public PublicadorEventos<EventoJugadorQuebrado> publicadorQuiebra(
             List<Observador<EventoJugadorQuebrado>> observadores) {
+        return new PublicadorEventos<>(observadores);
+    }
+
+    @Bean
+    public PublicadorEventos<EventoDeudaPagada> publicadorDeudaPagada(
+            List<Observador<EventoDeudaPagada>> observadores) {
         return new PublicadorEventos<>(observadores);
     }
 

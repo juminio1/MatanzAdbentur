@@ -345,10 +345,14 @@ public class ServicioJugadaImpl implements ServicioJugada {
             jugador,
             alquiler
         );
-        //devuelve si quedó una deuda pendiente y los datos del alquiler
-
+        //devuelve si quedó una deuda pendiente y los datos del alquiler.
+        //El aviso (y su animación) solo va si el alquiler se pagó en el momento;
+        //si quedó pendiente o terminó en quiebra, el pago se avisa cuando se resuelve.
+        if (deuda != ResultadoDeuda.RESUELTA) {
+            return new Destino(deuda == ResultadoDeuda.PENDIENTE, null);
+        }
         return new Destino(
-            deuda == ResultadoDeuda.PENDIENTE,
+            false,
             new AlquilerJugada(
                 jugador.getId(),
                 jugador.getApodo(),

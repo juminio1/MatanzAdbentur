@@ -99,6 +99,21 @@ public class NotificadorPartida {
         template.convertAndSend(TOPIC_PARTIDA_PREFIX + codigoPartida + "/alquiler", aviso);
     }
 
+    // Avisa a todos que se pagó una deuda entre jugadores para mostrar la animación del pago.
+    public void notificarDeudaPagada(com.tallerwebi.dominio.eventos.EventoDeudaPagada evento) {
+        Map<String, Object> aviso = new HashMap<>();
+        aviso.put("idJugadorPagador", evento.idPagador());
+        aviso.put("pagador", evento.pagador());
+        aviso.put("dineroPagador", evento.dineroPagador());
+        aviso.put("idJugadorPropietario", evento.idAcreedor());
+        aviso.put("propietario", evento.acreedor());
+        aviso.put("dineroPropietario", evento.dineroAcreedor());
+        aviso.put("posicion", evento.posicion());
+        aviso.put("monto", evento.monto());
+        aviso.put("porQuiebra", Boolean.TRUE.equals(evento.porQuiebra()));
+        this.template.convertAndSend(TOPIC_PARTIDA_PREFIX + evento.codigoPartida() + "/deuda-pagada", aviso);
+    }
+
     // Reutiliza el canal de salida sin presentar la quiebra como un abandono.
     public void notificarQuiebraPorWebSocket(Partida partida, Long idJugador) {
         Jugador quebrado = partida.getJugadores().stream()
