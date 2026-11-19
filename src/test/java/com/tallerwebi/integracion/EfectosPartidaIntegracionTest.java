@@ -153,6 +153,14 @@ class EfectosPartidaIntegracionTest {
         SimpMessagingTemplate mensajeriaQuiebra() {
             return mock(SimpMessagingTemplate.class);
         }
+
+        @Bean
+        PublicadorEventos<com.tallerwebi.dominio.eventos.EventoDeudaPagada> publicadorDeudaPagada(
+                SimpMessagingTemplate mensajeriaQuiebra) {
+            return new PublicadorEventos<>(List.of(
+                    new com.tallerwebi.presentacion.WebSocket.observadores.ObservadorDeudaPagadaWebSocket(
+                            new NotificadorPartida(mensajeriaQuiebra))));
+        }
     }
 
     @Autowired private SessionFactory sesiones;
