@@ -17,8 +17,8 @@
         />
         <link
             rel="stylesheet"
-            th:href="@{/css/partida.css(v=mesa-56)}"
-            href="../../../resources/core/css/partida.css?v=mesa-56"
+            th:href="@{/css/partida.css(v=mesa-58)}"
+            href="../../../resources/core/css/partida.css?v=mesa-58"
         />
         <link
             rel="stylesheet"
@@ -149,8 +149,9 @@
                             >$0</span
                         >
                         <span class="estado-bancarrota" th:if="${jugador.enBancarrota}"
-                            >se fundió</span
+                            >SE FUNDIÓ</span
                         >
+                        <span class="estado-abandono" th:if="${jugador.abandono}">ABANDONÓ</span>
                         <!-- El texto lo completa partida.js según los intentos -->
                         <span class="estado-carcel" hidden>Preso</span>
                     </div>
@@ -1574,14 +1575,23 @@
             class="modal-propiedad modal-victoria"
             aria-labelledby="titulo-finalizacion"
         >
-            <div class="modal-propiedad__contenido">
-                <h2 id="titulo-finalizacion">¡PARTIDA FINALIZADA!</h2>
-
+            <header class="victoria-escenario">
+                <p class="victoria-rotulo">Partida finalizada</p>
+                <h2 id="titulo-finalizacion"><span id="ganadores-partida"></span></h2>
                 <p id="mensaje-victoria" hidden></p>
-                <p id="ganadores-partida" class="ganadores-partida" aria-live="polite"></p>
+                <ol id="podio-final" class="podio-final" aria-label="Podio"></ol>
+                <template id="puesto-podio">
+                    <li class="podio-puesto">
+                        <span class="podio-retrato"><img alt=""></span>
+                        <strong class="podio-nombre"></strong>
+                        <span class="podio-escalon"></span>
+                    </li>
+                </template>
+            </header>
+            <div class="victoria-balance">
+                <h3>Balance final</h3>
                 <ol id="ranking-final" class="ranking-final" aria-label="Ranking final"></ol>
-
-                <a th:href="@{/home}" class="btn-victoria"> Volver al inicio </a>
+                <a th:href="@{/home}" class="btn-casillero btn-casillero--principal btn-victoria">Volver al inicio</a>
             </div>
         </dialog>
 
@@ -1748,8 +1758,8 @@
 
         <script
             type="module"
-            th:src="@{/js/partida.js(v=mesa-26)}"
-            src="../../../resources/core/js/partida.js?v=mesa-26"
+            th:src="@{/js/partida.js(v=mesa-28)}"
+            src="../../../resources/core/js/partida.js?v=mesa-28"
             charset="UTF-8"
         ></script>
         <script

@@ -12,7 +12,8 @@ public record EventoSalaActualizada(
     List<String> fichasOcupadas,
     Map<String, String> fichasAsignadas,
     String creador,
-    Map<String, String> avatares
+    Map<String, String> avatares,
+    long revision
 ) {
     public EventoSalaActualizada {
         usernames = Collections.unmodifiableList(new ArrayList<>(usernames));
@@ -28,6 +29,6 @@ public record EventoSalaActualizada(
         Map<String, String> fichasAsignadas,
         String creador
     ) {
-        this(codigo, usernames, fichasOcupadas, fichasAsignadas, creador, Map.of());
+        this(codigo, usernames, fichasOcupadas, fichasAsignadas, creador, Map.of(), 0L);
     }
 }

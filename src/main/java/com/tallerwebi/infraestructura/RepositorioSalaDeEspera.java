@@ -4,6 +4,8 @@ import com.tallerwebi.dominio.entidades.SalaDeEspera;
 
 public interface RepositorioSalaDeEspera {
 
+    void bloquearPorCodigo(String codigoUnico);
+
     void guardar(SalaDeEspera sala);
 
     void modificar(SalaDeEspera sala);

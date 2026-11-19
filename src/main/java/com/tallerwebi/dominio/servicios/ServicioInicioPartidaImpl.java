@@ -154,7 +154,9 @@ public class ServicioInicioPartidaImpl implements ServicioInicioPartida {
     private void validarFichasSeleccionadas(SalaDeEspera sala) throws FichaNoDisponibleException {
         for (Usuario usuario : sala.getUsuarios()) {
             if (usuario.getFicha() == null) {
-                throw new FichaNoDisponibleException("No se puede iniciar: Todos los jugadores deben seleccionar una ficha.");
+                throw new FichaNoDisponibleException(
+                    "Para iniciar la partida, falta que " + usuario.getUsername() + " elija su ficha."
+                );
             }
         }
     }

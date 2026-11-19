@@ -61,6 +61,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public SalaDeEspera unirseASalaDeEspera(Long idUsuario, String codigoUnico)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, SalaDeEsperaLlenaException {
+        repositorioSalaDeEspera.bloquearPorCodigo(codigoUnico);
         Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
@@ -83,9 +84,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
 
         sala.getUsuarios().add(usuario);
 
-        repositorioSalaDeEspera.modificar(sala);
-
-        notificarCambioDeSala(sala);
+        guardarYNotificarCambio(sala);
 
         return sala;
     }
@@ -93,6 +92,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public void abandonarSala(Long idUsuario, String codigoUnico)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException {
+        repositorioSalaDeEspera.bloquearPorCodigo(codigoUnico);
         Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
@@ -108,9 +108,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
             .removeIf(u -> u.getId() != null && u.getId().equals(usuario.getId()));
 
         if (removido) {
-            repositorioSalaDeEspera.modificar(sala);
-
-            notificarCambioDeSala(sala);
+            guardarYNotificarCambio(sala);
         }
     }
 
@@ -141,10 +139,12 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         }
 
         String creador = sala.getCreador() == null ? null : sala.getCreador().getUsername();
-        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador, avatares);
+        return new EventoSalaActualizada(sala.getCodigoUnico(), usernames, fichas, asignadas, creador, avatares, sala.getRevision());
     }
 
-    private void notificarCambioDeSala(SalaDeEspera sala) {
+    private void guardarYNotificarCambio(SalaDeEspera sala) {
+        sala.avanzarRevision();
+        repositorioSalaDeEspera.modificar(sala);
         EventoSalaActualizada estadoActualizado = obtenerEstadoSala(sala);
 
         DespuesDeConfirmar.ejecutar(() -> publicadorSala.notificar(estadoActualizado));
@@ -165,6 +165,7 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
     @Override
     public void seleccionarFicha(String codigoUnico, Long idUsuario, ColorFicha ficha)
         throws UsuarioNoEncontradoException, SalaNoEncontradaException, FichaOcupadaException {
+        repositorioSalaDeEspera.bloquearPorCodigo(codigoUnico);
         Usuario usuario = obtenerUsuarioExistente(idUsuario);
 
         SalaDeEspera sala = obtenerSalaPorCodigo(codigoUnico);
@@ -191,8 +192,6 @@ public class ServicioSalaDeEsperaImpl implements ServicioSalaDeEspera {
         sala.getFichasOcupadas().add(ficha);
 
         repositorioUsuario.modificar(usuario);
-        repositorioSalaDeEspera.modificar(sala);
-
-        notificarCambioDeSala(sala);
+        guardarYNotificarCambio(sala);
     }
 }

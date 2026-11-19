@@ -75,7 +75,7 @@ public class ServicioSalaDeEsperaTest {
                 .forEach(TransactionSynchronization::afterCommit);
 
             verify(notificadorSalaMock).notificarSalaActualizada(argThat(estado ->
-                    estado.getUsernames().equals(List.of("Ana"))
+                    estado.getRevision() == 1 && estado.getUsernames().equals(List.of("Ana"))
                     && estado.getFichasOcupadas().equals(List.of("ROJO"))
                     && estado.getFichasAsignadas().equals(java.util.Map.of("Ana", "ROJO"))));
         } finally {

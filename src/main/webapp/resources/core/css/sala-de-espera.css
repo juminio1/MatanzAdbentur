@@ -223,7 +223,6 @@ body {
     opacity: 0.45 !important;
     cursor: not-allowed !important;
     filter: grayscale(85%) !important;
-    pointer-events: none !important;
     border-color: var(--tema-borde) !important;
     background: var(--tema-elevado) !important;
     color: var(--tema-secundario) !important;
@@ -722,4 +721,12 @@ body:has(.salaEspera) {
     justify-content: center;
     padding-top: 40px;
     padding-bottom: 40px;
+}
+
+.salaEspera__error {
+    margin-top: .75rem;
+    padding: .65rem .85rem;
+    border-left: 3px solid #fbbf24;
+    background: #302635;
+    color: #ffe8a6;
 }

@@ -92,7 +92,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     private static final String DIFICULTAD_COMPLICADA = "DIFICIL";
     private static final int PREMIO_COMPLICADA = 500;
     // Texto de la tarjeta de un jugador en quiebra.
-    private static final String ETIQUETA_QUIEBRA = "se fundió";
+    private static final String ETIQUETA_QUIEBRA = "SE FUNDIÓ";
 
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
     private final Map<Page, Map<String, String>> cabecerasFijas = new HashMap<>();

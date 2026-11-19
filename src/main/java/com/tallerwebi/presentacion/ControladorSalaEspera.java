@@ -59,6 +59,7 @@ public class ControladorSalaEspera {
 
             ModelAndView modelo = new ModelAndView(SALA_DE_ESPERA);
             modelo.addObject(CODIGO_UNICO, codigoUnico);
+            modelo.addObject("revisionSala", sala.getRevision());
             modelo.addObject("usuarios", sala.getUsuarios());
             modelo.addObject("cantidadUsuarios", sala.getUsuarios().size());
             modelo.addObject("idUsuario", idUsuario);

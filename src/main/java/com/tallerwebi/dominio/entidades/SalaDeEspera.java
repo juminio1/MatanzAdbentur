@@ -29,6 +29,10 @@ public class SalaDeEspera {
     @Column(name = "codigo_unico", unique = true, nullable = false)
     private String codigoUnico;
 
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private long revision;
+
     @ManyToOne
     @JoinColumn(name = "creador_id", nullable = false)
     private Usuario creador;
@@ -52,6 +56,14 @@ public class SalaDeEspera {
     }
 
     // --- Getters y Setters ---
+
+    public long getRevision() {
+        return revision;
+    }
+
+    public void avanzarRevision() {
+        revision++;
+    }
 
     public Long getId() {
         return id;
