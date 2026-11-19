@@ -932,7 +932,7 @@ public class ServicioFinalizacionPartidaTest {
         contexto.registerBean(com.tallerwebi.infraestructura.temporizadores.GestorTemporizadorPartida.class,
                 () -> temporizadorCierre);
         contexto.register(
-                com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig.class,
+                BaseDeCierre.class,
                 ServicioFinalizacionPartidaImpl.class, ServicioParticipacionImpl.class,
                 com.tallerwebi.infraestructura.RepositorioPropiedadImpl.class,
                 com.tallerwebi.infraestructura.RepositorioDeudaPendienteImpl.class,
@@ -940,6 +940,26 @@ public class ServicioFinalizacionPartidaTest {
                 com.tallerwebi.infraestructura.RepositorioPartidaImpl.class);
         contexto.refresh();
         return contexto;
+    }
+
+    /**
+     * Estos tests confirman sus transacciones de verdad, así que usan una base en memoria propia. Con la base
+     * compartida (db_) dejaban partidas en curso que después veían los tests de repositorio, como
+     * RepositorioPartidaTest, según el orden en que corrieran.
+     */
+    @org.springframework.context.annotation.Configuration
+    static class BaseDeCierre extends com.tallerwebi.infraestructura.config.HibernateInfraestructuraTestConfig {
+        @org.springframework.context.annotation.Bean
+        @Override
+        public javax.sql.DataSource dataSource() {
+            org.springframework.jdbc.datasource.DriverManagerDataSource fuente =
+                    new org.springframework.jdbc.datasource.DriverManagerDataSource();
+            fuente.setDriverClassName("org.hsqldb.jdbcDriver");
+            fuente.setUrl("jdbc:hsqldb:mem:finalizacion_cierre");
+            fuente.setUsername("sa");
+            fuente.setPassword("");
+            return fuente;
+        }
     }
 
     private Partida persistirPartidaParaCierre(org.hibernate.SessionFactory sesiones) {
