@@ -788,14 +788,14 @@ class EfectosPartidaIntegracionTest {
     }
 
     @Test
-    void unEventoDeDosVueltasNoOtorgaPremioAunqueTermineEnLaMismaPosicion() throws Exception {
+    void unEventoDeDosVueltasOtorgaAmbosPremiosAunqueTermineEnLaMismaPosicion() throws Exception {
         cargarEvento(TipoEfectoEvento.AVANZA_CASILLEROS, null, 60, null);
         RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
 
         assertEquals(3, resultado.getNuevaPosicion());
-        assertEquals(0, resultado.getDineroPorInicio());
-        assertEquals(2000, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
-        assertEquals(2000, resultado.getSaldos().stream()
+        assertEquals(300, resultado.getDineroPorInicio());
+        assertEquals(2300, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2300, resultado.getSaldos().stream()
                 .filter(saldo -> saldo.idJugador().equals(idJugador))
                 .findFirst().orElseThrow().dinero());
     }
@@ -1106,15 +1106,15 @@ class EfectosPartidaIntegracionTest {
         cargarPropiedadConDueno();
         RespuestaMovimientoDTO resultado = controlador.tirarDados(codigo, idJugador, solicitudJugador(codigo,  idJugador));
         assertEquals(2, resultado.getNuevaPosicion());
-        assertEquals(0, resultado.getDineroPorInicio());
+        assertEquals(150, resultado.getDineroPorInicio());
         assertEquals(50, resultado.getAlquiler().monto());
-        assertEquals(1950, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
-        assertEquals(1950, resultado.getSaldos().stream().filter(saldo -> saldo.idJugador().equals(idJugador))
+        assertEquals(2100, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2100, resultado.getSaldos().stream().filter(saldo -> saldo.idJugador().equals(idJugador))
                 .findFirst().orElseThrow().dinero());
     }
 
     @Test
-    void dadosYTarjetaCruzanInicioPeroSoloLosDadosOtorganPremio() throws Exception {
+    void dadosYTarjetaCruzanInicioYOtorganUnPremioPorCadaCruce() throws Exception {
         cargarEvento(TipoEfectoEvento.AVANZA_A_POSICION, null, null, 2);
         transaccion.executeWithoutResult(estado ->
                 sesiones.getCurrentSession().find(Jugador.class, idJugador).setPosicionActual(28));
@@ -1125,9 +1125,9 @@ class EfectosPartidaIntegracionTest {
 
         assertEquals(3, resultado.getPosicionCaidaEvento());
         assertEquals(2, resultado.getNuevaPosicion());
-        assertEquals(150, resultado.getDineroPorInicio());
-        assertEquals(2150, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
-        assertEquals(2150, resultado.getSaldos().stream()
+        assertEquals(300, resultado.getDineroPorInicio());
+        assertEquals(2300, servicioPartida.obtenerJugadorPorId(idJugador).getDinero());
+        assertEquals(2300, resultado.getSaldos().stream()
                 .filter(saldo -> saldo.idJugador().equals(idJugador)).findFirst().orElseThrow().dinero());
     }
 

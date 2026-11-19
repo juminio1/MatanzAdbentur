@@ -219,11 +219,11 @@ class ControladorPropiedadesPartidaOfertasTest {
     }
 
     @Test
-    void informaConflictoSiLaOfertaYaNoExiste() {
+    void informaQueLaOfertaYaNoExiste() {
         ResponseEntity<Map<String, Object>> respuesta = controlador.responderOferta(CODIGO, "inexistente",
                 Map.of("aceptar", true), sesion(ID_COMPRADOR));
 
-        assertEquals(HttpStatus.CONFLICT, respuesta.getStatusCode());
+        assertEquals(HttpStatus.GONE, respuesta.getStatusCode());
     }
 
     @Test

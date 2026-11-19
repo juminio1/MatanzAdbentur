@@ -169,15 +169,10 @@ public class ServicioEventoCasilleroImpl implements ServicioEventoCasillero {
     }
 
     private int avanzarCasilleros(EventoCasillero evento, Jugador jugador) {
-        movimiento.moverJugador(jugador, evento.getCantidadCasilleros(),
-                com.tallerwebi.dominio.catalogo.CatalogoTablero.TOTAL_CASILLEROS);
-        return 0;
+        return movimiento.avanzar(jugador, evento.getCantidadCasilleros());
     }
+
     private int avanzarAPosicion(EventoCasillero evento, Jugador jugador) {
-        int destino = evento.getPosicionDestino();
-        int total = com.tallerwebi.dominio.catalogo.CatalogoTablero.TOTAL_CASILLEROS;
-        if (destino < 0 || destino >= total) throw new IllegalArgumentException("Posición inválida");
-        movimiento.moverJugador(jugador, Math.floorMod(destino - jugador.getPosicionActual(), total), total);
-        return 0;
+        return movimiento.avanzarAPosicion(jugador, evento.getPosicionDestino());
     }
 }

@@ -119,7 +119,7 @@ class ServicioEventoCasilleroImplTest {
     }
 
     @TestFactory
-    Stream<DynamicTest> movimientosDeTarjetaQueCruzanInicioNoOtorganPremio() {
+    Stream<DynamicTest> movimientosDeTarjetaQueCruzanInicioOtorganPremio() {
         return Stream.of(
                 new EventoCasillero(1, "Avance", "", TipoEfectoEvento.AVANZA_CASILLEROS, null, 5, null),
                 new EventoCasillero(2, "Destino", "", TipoEfectoEvento.AVANZA_A_POSICION, null, null, 3),
@@ -146,8 +146,8 @@ class ServicioEventoCasilleroImplTest {
 
             assertEquals(tarjeta.getPosicionDestino() == null ? 3 : tarjeta.getPosicionDestino(),
                     jugador.getPosicionActual());
-            assertEquals(2000, jugador.getDinero());
-            assertEquals(0, resultado.dineroPorInicio());
+            assertEquals(2000 + ServicioMovimientoImpl.PREMIO_INICIO, jugador.getDinero());
+            assertEquals(ServicioMovimientoImpl.PREMIO_INICIO, resultado.dineroPorInicio());
         }));
     }
 

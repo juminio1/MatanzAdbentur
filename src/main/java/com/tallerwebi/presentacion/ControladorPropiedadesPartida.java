@@ -380,7 +380,7 @@ public class ControladorPropiedadesPartida {
         } catch (OfertaNoPermitidaException ex) {
             return error(HttpStatus.FORBIDDEN, ex.getMessage());
         } catch (OfertaNoDisponibleException ex) {
-            return error(HttpStatus.CONFLICT, ex.getMessage());
+            return error(HttpStatus.GONE, ex.getMessage());
         } catch (RuntimeException ex) {
             return error(HttpStatus.CONFLICT, obtenerMensajeError(ex, "No se pudo aceptar la oferta."));
         }
