@@ -59,7 +59,7 @@ public class ControladorSalaEsperaWebSocketTest {
         controladorWebSocket.seleccionarFicha(seleccion);
 
         verify(messagingTemplateMock).convertAndSend(
-            "/topic/partida/ABC123/errores",
+            "/topic/partida/ABC123/errores/2",
             "La ficha ya se encuentra seleccionada"
         );
     }

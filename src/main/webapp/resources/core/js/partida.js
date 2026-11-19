@@ -1732,7 +1732,7 @@ function actualizarDineroJugador(idJugador, dinero, enBancarrota = false, silenc
     if (!tarjeta.querySelector(".estado-bancarrota")) {
         const etiqueta = document.createElement("span");
         etiqueta.className = "estado-bancarrota";
-        etiqueta.textContent = "se fundió";
+        etiqueta.textContent = "SE FUNDIÓ";
         tarjeta.querySelector(".datos-jugador")?.appendChild(etiqueta);
     }
     if (String(idJugador) === String(window.usuarioSesionId)) actualizarAvisoDeuda();
@@ -3399,14 +3399,14 @@ function mostrarJugadorAbandonado(idJugador) {
     chatPartida?.actualizarJugador(idJugador);
 
     if (tarjeta && !tarjeta.querySelector(".estado-abandono")) {
-        const nombre = tarjeta.querySelector(".nombre-jugador");
+        const datos = tarjeta.querySelector(".datos-jugador");
 
-        if (nombre) {
+        if (datos) {
             const etiqueta = document.createElement("span");
             etiqueta.className = "estado-abandono";
             etiqueta.textContent = "ABANDONÓ";
 
-            nombre.insertAdjacentElement("afterend", etiqueta);
+            datos.appendChild(etiqueta);
 
             tarjeta.classList.remove("turno-activo");
         }
@@ -3658,13 +3658,37 @@ function consultarResultadosFinales() {
     return consultaResultadosEnCurso;
 }
 
+function mostrarPodioFinal(resultados, cantidadGanadores) {
+    const podio = document.getElementById("podio-final");
+    podio.replaceChildren();
+    podio.hidden = cantidadGanadores === 0;
+    if (podio.hidden) return;
+
+    const plantilla = document.getElementById("puesto-podio");
+    resultados.slice(0, Math.max(3, cantidadGanadores)).forEach((resultado, indice) => {
+        const puesto = plantilla.content.firstElementChild.cloneNode(true);
+        const posicion = resultado.ganador ? 1 : indice + 1;
+        puesto.dataset.puesto = posicion;
+        puesto.querySelector(".podio-nombre").textContent = resultado.apodo;
+        puesto.querySelector(".podio-escalon").textContent = posicion + "º";
+        const avatar = document.getElementById(String(resultado.idJugador))?.querySelector(".avatar-jugador");
+        puesto.querySelector("img").src = avatar?.src || basePath + "/images/personajes/personajeTurro.jpg";
+        podio.append(puesto);
+    });
+    // En el podio clásico el primer puesto ocupa el centro.
+    podio.classList.toggle("podio-final--clasico", cantidadGanadores === 1 && podio.children.length === 3);
+}
+
 function mostrarResultadosFinales(datos) {
     const mensaje = document.getElementById("mensaje-victoria");
     mensaje.textContent = datos.motivo || "";
     mensaje.hidden = !datos.motivo;
     const ganadores = datos.resultados.filter((resultado) => resultado.ganador === true);
-    document.getElementById("ganadores-partida").textContent =
-        `${ganadores.length === 1 ? "Ganador" : "Ganadores"}: ${ganadores.map((resultado) => resultado.apodo).join(" · ")}`;
+    let titulo = "Partida sin ganador";
+    if (ganadores.length === 1) titulo = `¡Ganó ${ganadores[0].apodo}!`;
+    if (ganadores.length > 1) titulo = "¡Victoria compartida!";
+    document.getElementById("ganadores-partida").textContent = titulo;
+    mostrarPodioFinal(datos.resultados, ganadores.length);
     const ranking = document.getElementById("ranking-final");
     ranking.replaceChildren();
     datos.resultados.forEach((resultado, indice) => {
@@ -3675,7 +3699,7 @@ function mostrarResultadosFinales(datos) {
         const estado = { QUEBRADO: "En quiebra", ABANDONADO: "Abandonó" }[
             resultado.estadoParticipante
         ];
-        resumen.textContent = `${indice + 1}. ${resultado.apodo}${estado ? ` · ${estado}` : ""}${resultado.ganador === true ? " · GANADOR" : ""}`;
+        resumen.textContent = `${resultado.ganador ? 1 : indice + 1}. ${resultado.apodo}${estado ? ` · ${estado}` : ""}${resultado.ganador === true ? " · GANADOR" : ""}`;
         const lista = document.createElement("dl");
         const campos = [
             ["Dinero final", resultado.dineroFinal, true],

@@ -22,6 +22,7 @@ public class ObservadorSalaWebSocket implements Observador<EventoSalaActualizada
             evento.codigo(), evento.usernames(), evento.fichasOcupadas()
         );
         estado.setFichasAsignadas(evento.fichasAsignadas());
+        estado.setRevision(evento.revision());
         estado.setCreador(evento.creador());
         estado.setAvatares(evento.avatares());
         notificadorSala.notificarSalaActualizada(estado);

@@ -16,6 +16,15 @@ public class RepositorioSalaDeEsperaImpl implements RepositorioSalaDeEspera {
     }
 
     @Override
+    public void bloquearPorCodigo(String codigoUnico) {
+        sessionFactory.getCurrentSession()
+            .createQuery("select s.id from SalaDeEspera s where s.codigoUnico = :codigo", Long.class)
+            .setParameter("codigo", codigoUnico)
+            .setLockMode("s", org.hibernate.LockMode.PESSIMISTIC_WRITE)
+            .uniqueResult();
+    }
+
+    @Override
     public void guardar(SalaDeEspera sala) {
         this.sessionFactory.getCurrentSession().persist(sala);
     }

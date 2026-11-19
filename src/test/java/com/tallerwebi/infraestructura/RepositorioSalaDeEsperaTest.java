@@ -36,12 +36,15 @@ class RepositorioSalaDeEsperaTest {
         sala.setCreador(creador);
         sala.getFichasOcupadas().addAll(Arrays.asList(ColorFicha.values()));
         RepositorioSalaDeEspera repositorio = new RepositorioSalaDeEsperaImpl(sessionFactory);
+        sala.avanzarRevision();
         repositorio.guardar(sala);
         sessionFactory.getCurrentSession().flush();
         sessionFactory.getCurrentSession().clear();
 
+        repositorio.bloquearPorCodigo("COLORES");
         SalaDeEspera recuperada = repositorio.buscarPorCodigo("COLORES");
 
+        assertEquals(1L, recuperada.getRevision());
         assertEquals(4, recuperada.getFichasOcupadas().size());
         assertEquals(java.util.Set.of(ColorFicha.values()),
                 java.util.Set.copyOf(recuperada.getFichasOcupadas()));

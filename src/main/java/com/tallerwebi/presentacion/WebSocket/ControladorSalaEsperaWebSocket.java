@@ -50,14 +50,14 @@ public class ControladorSalaEsperaWebSocket {
         } catch (FichaOcupadaException e) {
             if (messagingTemplate != null) {
                 messagingTemplate.convertAndSend(
-                        "/topic/partida/" + seleccion.getCodigoUnicoPartida() + "/errores",
+                        "/topic/partida/" + seleccion.getCodigoUnicoPartida() + "/errores/" + seleccion.getIdUsuario(),
                         "La ficha ya se encuentra seleccionada"
                 );
             }
         } catch (Exception e) {
             if (messagingTemplate != null) {
                 messagingTemplate.convertAndSend(
-                        "/topic/partida/" + seleccion.getCodigoUnicoPartida() + "/errores",
+                        "/topic/partida/" + seleccion.getCodigoUnicoPartida() + "/errores/" + seleccion.getIdUsuario(),
                         e.getMessage()
                 );
             }

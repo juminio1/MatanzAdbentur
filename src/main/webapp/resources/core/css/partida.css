@@ -1778,6 +1778,7 @@
     line-height: 1.5;
 }
 
+.estado-abandono,
 .estado-bancarrota {
     display: inline-block;
     margin-left: 8px;
@@ -2134,40 +2135,152 @@
 
 
 .modal-victoria {
-    width: min(640px, calc(100vw - 32px));
-    max-height: calc(100dvh - 32px);
+    width: min(580px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    padding: 0;
     overflow-y: auto;
-    border: 3px solid var(--tema-acento);
+    overscroll-behavior: contain;
+    border: 1px solid var(--tema-acento);
+    background: #242429;
     border-radius: 16px;
-    text-align: center;
 }
 
 .modal-victoria::backdrop {
-    background: rgba(0, 0, 0, 0.85);
+    background: rgb(15 10 24 / 80%);
     backdrop-filter: blur(4px);
 }
 
-.modal-victoria h2 {
-    color: var(--tema-acento);
-    font-size: 28px;
-    font-weight: 900;
+.victoria-escenario {
+    padding: 20px clamp(12px, 5vw, 36px) 0;
+    text-align: center;
+    color: #fff8e8;
+    background: linear-gradient(180deg, rgb(29 15 47 / 83%), rgb(44 23 68 / 70%) 65%, #30203e),
+        url("../images/barrio-luna-atardecer.png") center / cover;
+    border-bottom: 1px solid #80639a;
 }
 
-.btn-victoria {
-    display: inline-block;
-    padding: 12px 25px;
-    border-radius: 10px;
-    background: var(--tema-acento);
-    color: #111;
-    font-weight: bold;
-    text-decoration: none;
-}
-
-.ganadores-partida {
-    color: var(--tema-acento);
+.victoria-rotulo {
+    margin: 0;
+    font-size: .72rem;
     font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #f1d5ab;
+}
+
+.modal-victoria h2 {
+    margin: 5px 0 14px;
+    font-size: clamp(1.5rem, 5vw, 2.35rem);
+    line-height: 1.12;
     overflow-wrap: anywhere;
 }
+
+.podio-final {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    gap: clamp(4px, 2vw, 10px);
+    margin: 0;
+    padding: 12px 0 0;
+    list-style: none;
+}
+
+.podio-final[hidden] { display: none; }
+.podio-final--clasico [data-puesto="2"] { order: -1; }
+
+.podio-puesto {
+    --metal: #d9a781;
+    --altura: 31px;
+    --base: #624337;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    max-width: 145px;
+}
+
+.podio-puesto[data-puesto="2"] {
+    --metal: #d9ddea;
+    --altura: 43px;
+    --base: #4b4b62;
+}
+
+.podio-puesto[data-puesto="1"] {
+    --metal: #ffdc81;
+    --altura: 58px;
+    --base: #775025;
+}
+
+.podio-retrato {
+    position: relative;
+    width: clamp(38px, 10vw, 60px);
+    aspect-ratio: 1;
+}
+
+.podio-retrato img {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    background: #433451;
+    border: 3px solid var(--metal);
+    box-shadow: 0 3px 8px #1b102e;
+}
+
+[data-puesto="1"] .podio-retrato::before {
+    content: "";
+    position: absolute;
+    top: -13px;
+    left: calc(50% - 14px);
+    width: 28px;
+    height: 18px;
+    background: linear-gradient(#fff0af, #ffc34b);
+    clip-path: polygon(0 12%, 30% 45%, 50% 0, 70% 45%, 100% 12%, 87% 100%, 13% 100%);
+}
+
+.podio-nombre {
+    max-width: 100%;
+    margin: 7px 0;
+    font-size: clamp(.73rem, 2vw, .96rem);
+    overflow-wrap: anywhere;
+}
+
+.podio-escalon {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--altura);
+    padding-top: 4px;
+    border-top: 3px solid var(--metal);
+    border-radius: 7px 7px 0 0;
+    background: linear-gradient(var(--base), #2f213b);
+    color: var(--metal);
+    font-size: 1.3rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .modal-victoria[open] [data-puesto="1"] .podio-retrato {
+        animation: festejar-victoria 1.45s ease-in-out 3;
+    }
+
+    @keyframes festejar-victoria {
+        25% { transform: translateX(-5px) rotate(-7deg); }
+        75% { transform: translateX(5px) rotate(7deg); }
+    }
+}
+
+.victoria-balance {
+    display: grid;
+    gap: 12px;
+    padding: clamp(12px, 4vw, 20px);
+}
+
+.victoria-balance h3 { margin: 0; font-size: 1rem; }
+.btn-victoria { box-sizing: border-box; text-align: center; text-decoration: none; }
 
 .ranking-final {
     display: grid;

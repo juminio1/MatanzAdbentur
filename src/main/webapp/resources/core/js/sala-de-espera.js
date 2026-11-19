@@ -2,11 +2,13 @@
 let stompClient = null;
 let redirigiendo = false;
 let miFichaSeleccionada = null;
+let miNombreUsuario;
 const AVATAR_POR_DEFECTO = "https://pub-d107f234b4134823bfda878a81c2c3de.r2.dev/default.png";
 
 // CONEXIÓN WEBSOCKET
 
 function conectarWebSocket(codigoSala, urlWebSocket) {
+    let ultimaRevision = Number(document.getElementById("datos-sala").dataset.revision);
     const socket = new SockJS(urlWebSocket);
 
     stompClient = Stomp.over(socket);
@@ -20,43 +22,19 @@ function conectarWebSocket(codigoSala, urlWebSocket) {
             "/topic/sala/" + codigoSala,
             function (mensaje) {
                 const salaActualizada = JSON.parse(mensaje.body);
-                console.log("Sala actualizada:", salaActualizada);
+                const revision = salaActualizada.revision;
+                if (!Number.isSafeInteger(revision) || revision <= ultimaRevision) return;
+                ultimaRevision = revision;
 
+                miFichaSeleccionada = salaActualizada.fichasAsignadas?.[miNombreUsuario] ?? null;
                 actualizarJugadores(salaActualizada);
                 actualizarDisponibilidadFichas(salaActualizada); // <-- Actualiza todas las fichas
             }
         );
 
-        // SELECCIÓN DE FICHAS PROPIA
         stompClient.subscribe(
-            "/topic/partida/" + codigoSala,
-            function (mensaje) {
-                const seleccion = JSON.parse(mensaje.body);
-                console.log("ColorFicha seleccionada:", seleccion);
-
-                const datosSala = document.getElementById("datos-sala");
-                if (!datosSala) return;
-
-                const idUsuario = datosSala.dataset.usuarioId;
-                if (String(seleccion.idUsuario) === idUsuario) {
-                    miFichaSeleccionada = seleccion.fichaSeleccionada;
-                    actualizarSeleccionVisual(seleccion.fichaSeleccionada);
-                }
-            }
-        );
-
-        // ERRORES AL SELECCIONAR FICHA
-        stompClient.subscribe(
-            "/topic/partida/" + codigoSala + "/errores",
-            function (mensaje) {
-                const errorContainer = document.getElementById("mensajeFichaError");
-                if (errorContainer) {
-                    errorContainer.textContent = mensaje.body;
-                    errorContainer.hidden = false;
-                }
-                // Si la ficha ya estaba ocupada, revertimos la selección local
-                miFichaSeleccionada = null;
-            }
+            "/topic/partida/" + codigoSala + "/errores/" + document.getElementById("datos-sala").dataset.usuarioId,
+            mensaje => mostrarAvisoFicha(mensaje.body)
         );
 
         // INICIO DE PARTIDA
@@ -237,6 +215,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    const miFila = document.querySelector('#lista-jugadores [data-jugador-id="' + datosSala.dataset.usuarioId + '"]');
+    miNombreUsuario = miFila?.dataset.username;
     const jugadoresConFicha = [...document.querySelectorAll("#lista-jugadores [data-ficha-inicial]")];
     miFichaSeleccionada = jugadoresConFicha.find(
         jugador => jugador.dataset.jugadorId === datosSala.dataset.usuarioId
@@ -254,14 +234,15 @@ function seleccionarFicha(colorFicha) {
 
     // 1. Buscar el elemento por data-ficha (más permisivo)
     const boton = document.querySelector(`[data-ficha="${colorFicha}"]`);
-    if (boton && boton.disabled) {
+    if (boton?.getAttribute("aria-disabled") === "true" || miFichaSeleccionada === colorFicha) {
+        mostrarAvisoFicha("La ficha ya se encuentra seleccionada");
         console.warn("Ficha bloqueada, no se puede seleccionar:", colorFicha);
         return;
     }
 
     // 2. Verificar conexión STOMP
     if (!stompClient || !stompClient.connected) {
-        console.error("STOMP no conectado al hacer clic");
+        mostrarAvisoFicha("Esperá a que se conecte la sala y volvé a elegir tu ficha.");
         return;
     }
 
@@ -283,38 +264,14 @@ function seleccionarFicha(colorFicha) {
     console.log("Enviando selección al servidor:", seleccion);
 
     // 3. Enviar al WebSocket
+    mostrarAvisoFicha("");
     stompClient.send("/app/seleccionar-ficha", {}, JSON.stringify(seleccion));
-
-    // 4. Actualizar visualmente la selección en la pantalla local
-    miFichaSeleccionada = colorFicha;
-    actualizarSeleccionVisual(colorFicha);
 }
 
-// ACTUALIZAR SELECCIÓN VISUAL DE LA FICHA
-
-function actualizarSeleccionVisual(colorFicha) {
-
-    const botones = document.querySelectorAll(".salaEspera__ficha");
-
-    botones.forEach(function (btn) {
-
-        const check = btn.querySelector(".salaEspera__check");
-
-        btn.classList.remove("salaEspera__ficha--seleccionada");
-
-        if (check) {
-            check.style.display = "none";
-        }
-
-        if (btn.getAttribute("data-ficha") === colorFicha) {
-
-            btn.classList.add("salaEspera__ficha--seleccionada");
-
-            if (check) {
-                check.style.display = "flex";
-            }
-        }
-    });
+function mostrarAvisoFicha(mensaje) {
+    const aviso = document.getElementById("mensajeFichaError");
+    aviso.textContent = mensaje;
+    aviso.hidden = !mensaje;
 }
 
 function actualizarDisponibilidadFichas(salaActualizada) {
@@ -329,7 +286,7 @@ function actualizarDisponibilidadFichas(salaActualizada) {
 
         // Limpiamos estados con la clase exacta de tu CSS
         boton.classList.remove("salaEspera__ficha--ocupada", "salaEspera__ficha--seleccionada");
-        boton.disabled = false;
+        boton.removeAttribute("aria-disabled");
         boton.removeAttribute("title");
         if (check) check.style.display = "none";
 
@@ -340,7 +297,7 @@ function actualizarDisponibilidadFichas(salaActualizada) {
         } else if (estaOcupada) {
             // Ficha tomada por otro jugador (usa tu clase .salaEspera__ficha--ocupada)
             boton.classList.add("salaEspera__ficha--ocupada");
-            boton.disabled = true;
+            boton.setAttribute("aria-disabled", "true");
             boton.title = "Ficha seleccionada por otro jugador";
         }
     });

@@ -6,6 +6,7 @@ import java.util.Map;
 public class SalaActualizadaDTO {
 
     private String codigo;
+    private long revision;
     private List<String> usernames;
     private List<String> fichasOcupadas;
     private Map<String, String> fichasAsignadas = new java.util.HashMap<>();
@@ -24,6 +25,14 @@ public class SalaActualizadaDTO {
         this.codigo = codigo;
         this.usernames = usernames;
         this.fichasOcupadas = fichasOcupadas;
+    }
+
+    public long getRevision() {
+        return revision;
+    }
+
+    public void setRevision(long revision) {
+        this.revision = revision;
     }
 
     public String getCodigo() {
