@@ -14,6 +14,7 @@ import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.tallerwebi.dominio.ConfiguracionDadosE2E;
 import com.tallerwebi.dominio.ConfiguracionEventosE2E;
+import com.tallerwebi.dominio.ConfiguracionTriviaE2E;
 import com.tallerwebi.dominio.entidades.EstadoCarcel;
 import com.tallerwebi.punta_a_punta.vistas.VistaSalaEspera;
 import java.io.IOException;
@@ -86,6 +87,9 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     // No alcanza para la multa ($300), pero vendiendo el Shopping al banco ($100) sí.
     private static final int DINERO_ANTES_DE_VENDER = 250;
     private static final int DINERO_ANTES_DE_QUEBRAR = 50;
+    private static final int CASILLERO_TRIVIA = 10;
+    private static final String DIFICULTAD_COMPLICADA = "DIFICIL";
+    private static final int PREMIO_COMPLICADA = 500;
 
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
     private final Map<Page, Map<String, String>> cabecerasFijas = new HashMap<>();
@@ -209,6 +213,162 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         verificarHistorialEnTodasLasPantallas(j1 + " se declaró en quiebra.");
         assertEquals(List.of(), erroresDePagina, "Ninguna pantalla debe registrar errores de JavaScript");
         pausarSiCorresponde("fin");
+    }
+
+    /**
+     * Tercera partida: J1 compra el Shopping y en la ronda 2 J0 cae en el casillero de trivia (10). La ruleta da
+     * Complicada, J0 es el único que acierta y como premio le roba el Shopping a J1.
+     */
+    @Test
+    void dadoQueUnaPartidaEstaEnCursoCuandoUnJugadorGanaUnaTriviaComplicadaEntoncesLeRobaUnaPropiedadAOtro()
+        throws IOException, SQLException {
+        String codigo = iniciarPartidaConTresJugadores();
+        List<String> orden = obtenerOrdenDeTurnos(codigo);
+        String j0 = orden.get(0);
+        String j1 = orden.get(1);
+        String j2 = orden.get(2);
+
+        // --- Ronda 1: J1 compra el Shopping, que después le van a robar -------------------------
+        moverYPasar(j0, CASILLERO_INICIO, CASILLERO_UNLAM, 2, 3);
+        moverYComprar(j1, CASILLERO_INICIO, CASILLERO_SHOPPING, 3, 4);
+        moverYPasar(j2, CASILLERO_INICIO, CASILLERO_PLAZA_SAN_JUSTO, 1, 3);
+
+        // --- Ronda 2: J0 cae en la trivia ----------------------------------------------------------
+        cuandoUnJugadorCaeEnLaTriviaEntoncesGiraLaRuletaYSaleComplicada(j0, codigo);
+        String enunciado = entoncesTodosVenLaMismaPreguntaComplicada();
+        cuandoSoloUnJugadorAciertaEntoncesGanaLaTrivia(j0, enunciado);
+        cuandoElGanadorEligeRobarEntoncesSeQuedaConLaPropiedadDelOtro(j0, j1);
+
+        // Con el premio entregado, la partida sigue con el turno de J1.
+        verificarPermisoDeTirada(j1);
+        assertEquals(List.of(), erroresDePagina, "Ninguna pantalla debe registrar errores de JavaScript");
+        pausarSiCorresponde("fin");
+    }
+
+    private void cuandoUnJugadorCaeEnLaTriviaEntoncesGiraLaRuletaYSaleComplicada(String nombre, String codigo)
+        throws IOException {
+        Page jugador = verificarPermisoDeTirada(nombre);
+        long id = idDeSesion(jugador);
+        verificarFichaEnTodasLasPantallas(id, CASILLERO_UNLAM);
+
+        JsonNode tirada = tirar(jugador, 2, 3, null);
+        assertEquals(CASILLERO_TRIVIA, tirada.path("nuevaPosicion").asInt(-1));
+        verificarFichaEnTodasLasPantallas(id, CASILLERO_TRIVIA);
+
+        // Todos ven la ruleta, pero solo el que cayó puede girarla.
+        for (Page pagina : paginas()) {
+            assertThat(pagina.locator("#panel-ruleta")).isVisible();
+            Locator girar = pagina.locator("#btn-girar-ruleta");
+            if (pagina == jugador) {
+                assertThat(girar).isEnabled();
+            } else {
+                assertThat(girar).isDisabled();
+            }
+        }
+
+        Map<String, String> cabeceras = new HashMap<>(cabecerasFijas.getOrDefault(jugador, Map.of()));
+        cabeceras.put(ConfiguracionTriviaE2E.CABECERA_DIFICULTAD, DIFICULTAD_COMPLICADA);
+        jugador.setExtraHTTPHeaders(cabeceras);
+        try {
+            Response giro = jugador.waitForResponse(
+                r -> r.url().contains("/ruleta/" + codigo + "/") && r.url().endsWith("/sortear") &&
+                    "POST".equals(r.request().method()),
+                jugador.locator("#btn-girar-ruleta")::click
+            );
+            assertTrue(giro.ok(), "El jugador que cayó en la trivia puede girar la ruleta");
+            assertEquals(DIFICULTAD_COMPLICADA, JSON.readTree(giro.text()).path("dificultad").asText());
+        } finally {
+            restaurarCabeceras(jugador);
+        }
+        for (Page pagina : paginas()) {
+            assertThat(pagina.locator("#ruleta-resultado")).containsText("DIFÍCIL");
+        }
+    }
+
+    private String entoncesTodosVenLaMismaPreguntaComplicada() {
+        String enunciado = null;
+        for (Page pagina : paginas()) {
+            assertThat(pagina.locator("#trivia")).isVisible();
+            assertThat(pagina.locator("#trivia-ronda")).hasText("Ronda 1 de 5");
+            assertThat(pagina.locator("#trivia-dificultad")).hasText("Complicada");
+            assertThat(pagina.locator("#trivia-enunciado")).not().isEmpty();
+            assertThat(opcionesDeTrivia(pagina)).hasCount(4);
+            String texto = pagina.locator("#trivia-enunciado").innerText().trim();
+            if (enunciado == null) {
+                enunciado = texto;
+            } else {
+                assertEquals(enunciado, texto, "Todos los jugadores responden la misma pregunta");
+            }
+        }
+        return enunciado;
+    }
+
+    private void cuandoSoloUnJugadorAciertaEntoncesGanaLaTrivia(String ganador, String enunciado)
+        throws SQLException {
+        // La respuesta correcta nunca llega al navegador: se busca la pregunta en el banco de la base.
+        int correcta = respuestaCorrectaDelBanco(enunciado);
+        int incorrecta = (correcta + 1) % 4;
+        for (Page pagina : paginas()) {
+            boolean esGanador = pagina == paginaDe(ganador);
+            Response respuesta = pagina.waitForResponse(
+                r -> r.url().contains("/trivia/respuesta") && "POST".equals(r.request().method()),
+                opcionesDeTrivia(pagina).nth(esGanador ? correcta : incorrecta)::click
+            );
+            assertTrue(respuesta.ok(), "Cada jugador puede responder una vez");
+        }
+
+        for (Page pagina : paginas()) {
+            String titulo = pagina == paginaDe(ganador) ? "¡Ganaste la trivia!" : "Ganó " + ganador;
+            assertThat(pagina.locator("#trivia-final-titulo")).hasText(titulo);
+            assertThat(pagina.locator("#trivia-final-detalle")).hasText("Fue el último en pie");
+        }
+    }
+
+    private void cuandoElGanadorEligeRobarEntoncesSeQuedaConLaPropiedadDelOtro(String ganador, String robado)
+        throws SQLException {
+        Page paginaGanador = paginaDe(ganador);
+        long idGanador = idDeSesion(paginaGanador);
+        long idRobado = idDeSesion(paginaDe(robado));
+
+        // Solo el ganador elige el premio: la plata o robar una propiedad.
+        assertThat(paginaGanador.locator("#trivia-elegir-premio")).isVisible();
+        assertThat(paginaGanador.locator("[data-premio='PLATA']")).hasText("Cobrar $" + PREMIO_COMPLICADA);
+        for (Page pagina : paginas()) {
+            if (pagina != paginaGanador) {
+                assertThat(pagina.locator("#trivia-elegir-premio")).isHidden();
+            }
+        }
+
+        paginaGanador.locator("[data-premio='ROBAR']").click();
+        assertThat(paginaGanador.locator("#trivia-robar")).isVisible();
+        assertThat(paginaGanador.locator("#trivia-robar-lista")).containsText("De " + robado);
+        Locator shopping = paginaGanador.locator(".trivia__robar-opcion")
+            .filter(new Locator.FilterOptions().setHasText(NOMBRE_SHOPPING));
+        Response premio = paginaGanador.waitForResponse(
+            r -> r.url().contains("/trivia/premio") && "POST".equals(r.request().method()),
+            shopping::click
+        );
+        assertTrue(premio.ok(), "El ganador de una trivia complicada puede robar una propiedad");
+
+        String textoPremio = "Premio: " + NOMBRE_SHOPPING + ", robada a " + robado;
+        for (Page pagina : paginas()) {
+            assertThat(pagina.locator("#trivia-premio")).hasText(textoPremio);
+            pagina.locator("#trivia-cerrar").click();
+            assertThat(pagina.locator("#trivia")).isHidden();
+        }
+
+        assertEquals(1, contarPropiedades(idGanador), "El ganador se queda con la propiedad robada");
+        assertEquals(0, contarPropiedades(idRobado), "Al robado le sacan la propiedad");
+        // Robar no cuesta nada ni devuelve plata: los saldos no cambian.
+        assertEquals(DINERO_INICIAL, consultarJugador(idGanador).dinero());
+        assertEquals(DINERO_INICIAL - PRECIO_SAN_JUSTO, consultarJugador(idRobado).dinero());
+        verificarHistorialEnTodasLasPantallas(
+            ganador + " ganó la trivia y recibió " + NOMBRE_SHOPPING + ", robada a " + robado + "."
+        );
+    }
+
+    private Locator opcionesDeTrivia(Page pagina) {
+        return pagina.locator("#trivia-opciones .trivia__opcion");
     }
 
     private void cuandoHayUnRoboEntoncesSoloUnJugadorPierdeElDinero(String j0, String j1, String j2)
@@ -854,6 +1014,21 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
             consulta.setLong(1, idJugador);
             try (ResultSet fila = consulta.executeQuery()) {
                 fila.next();
+                return fila.getInt(1);
+            }
+        }
+    }
+
+    private int respuestaCorrectaDelBanco(String enunciado) throws SQLException {
+        try (
+            Connection conexion = ReiniciarDB.abrirConexionE2E();
+            PreparedStatement consulta = conexion.prepareStatement(
+                "SELECT respuesta_correcta FROM pregunta_trivia WHERE enunciado = ?"
+            )
+        ) {
+            consulta.setString(1, enunciado);
+            try (ResultSet fila = consulta.executeQuery()) {
+                assertTrue(fila.next(), "En el E2E la pregunta tiene que salir del banco: " + enunciado);
                 return fila.getInt(1);
             }
         }
