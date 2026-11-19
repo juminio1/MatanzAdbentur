@@ -1,3 +1,25 @@
+// El panel decide cuándo llamar: un resultado puede seguir siendo un evento activo.
+export function crearPresentadorSonidoEventoGlobal(codigo, reproducir, obtenerAlmacen) {
+    const presentados = new Set();
+    let ultimaRonda = 0;
+    return estado => {
+        if (!estado?.activo || !Number.isSafeInteger(estado.ronda)
+                || estado.ronda <= 0 || estado.ronda < ultimaRonda) return;
+        ultimaRonda = estado.ronda;
+        const clave = `sonido-evento-global:${codigo}:${estado.ronda}:${estado.nombre}`;
+        if (presentados.has(clave)) return;
+        presentados.add(clave);
+        try {
+            const almacen = obtenerAlmacen();
+            if (almacen?.getItem(clave)) return;
+            almacen?.setItem(clave, "presentado");
+        } catch {
+            // Sin almacenamiento, el Set evita repeticiones durante esta carga.
+        }
+        reproducir(estado.nombre);
+    };
+}
+
 // Las revisiones pertenecen a la partida y crecen también cuando se cierra el evento.
 export function aceptarEstadoEvento(actual, siguiente) {
     return !!siguiente && Number.isSafeInteger(siguiente.revision)
