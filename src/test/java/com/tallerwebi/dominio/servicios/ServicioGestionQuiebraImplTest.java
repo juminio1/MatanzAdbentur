@@ -8,6 +8,7 @@ import com.tallerwebi.dominio.enums.EstadoParticipante;
 import com.tallerwebi.dominio.servicios.interfaces.ServicioFinalizacionPartida;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl.DeclaracionQuiebraInvalidaException;
 import org.mockito.ArgumentCaptor;
+import com.tallerwebi.dominio.eventos.EventoDeudaPagada;
 import com.tallerwebi.dominio.eventos.EventoJugadorQuebrado;
 import com.tallerwebi.dominio.publicadores.PublicadorEventos;
 import com.tallerwebi.dominio.servicios.ServicioGestionQuiebraImpl;
@@ -407,6 +408,84 @@ class ServicioGestionQuiebraImplTest {
         verify(repositorioDeuda, never()).eliminar(any());
         verify(repositorioPartida, never()).actualizarJugador(any());
         verifyNoInteractions(servicioPropiedad, publicadorQuiebra, finalizacion);
+    }
+
+    @Test
+    void dadoQueDebeUnAlquilerCuandoSeDeclaraEnQuiebraDaComoResultadoQueElDuenoRecibeTodoSuDinero() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador dueno = agregarAcreedor(deuda, 2000);
+        PublicadorEventos<EventoDeudaPagada> pagos = registrarPublicadorDePagos();
+
+        servicio.declararQuiebra("PARTIDA123", 1L);
+
+        assertEquals(0, deuda.getJugadorDeudor().getDinero());
+        assertEquals(2100, dueno.getDinero());
+        assertTrue(deuda.getJugadorDeudor().getEnBancarrota());
+        verify(repositorioPartida).actualizarJugador(dueno);
+        ArgumentCaptor<EventoDeudaPagada> pago = ArgumentCaptor.forClass(EventoDeudaPagada.class);
+        verify(pagos).notificar(pago.capture());
+        assertEquals(100, pago.getValue().monto());
+        assertEquals(2L, pago.getValue().idAcreedor());
+        assertTrue(pago.getValue().porQuiebra());
+    }
+
+    @Test
+    void dadoQueLaDeudaNoEsConOtroJugadorCuandoSeDeclaraEnQuiebraDaComoResultadoQueNadieRecibeSuDinero() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        PublicadorEventos<EventoDeudaPagada> pagos = registrarPublicadorDePagos();
+
+        servicio.declararQuiebra("PARTIDA123", 1L);
+
+        assertEquals(100, deuda.getJugadorDeudor().getDinero());
+        verifyNoInteractions(pagos);
+    }
+
+    @Test
+    void dadoQueElDuenoYaNoJuegaCuandoSeDeclaraEnQuiebraDaComoResultadoQueNoRecibeElDinero() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        Jugador dueno = agregarAcreedor(deuda, 2000);
+        dueno.setAbandono(true);
+        PublicadorEventos<EventoDeudaPagada> pagos = registrarPublicadorDePagos();
+
+        servicio.declararQuiebra("PARTIDA123", 1L);
+
+        assertEquals(100, deuda.getJugadorDeudor().getDinero());
+        assertEquals(2000, dueno.getDinero());
+        verifyNoInteractions(pagos);
+    }
+
+    @Test
+    void dadoQueReuneElDineroCuandoPagaUnAlquilerPendienteDaComoResultadoQueSeAvisaElPagoAlDueno() {
+        DeudaPendiente deuda = prepararDeudaParaQuiebra();
+        deuda.getJugadorDeudor().setDinero(500);
+        Jugador dueno = agregarAcreedor(deuda, 2000);
+        PublicadorEventos<EventoDeudaPagada> pagos = registrarPublicadorDePagos();
+
+        assertTrue(servicio.intentarResolverDeuda("PARTIDA123", 1L));
+
+        assertEquals(100, deuda.getJugadorDeudor().getDinero());
+        assertEquals(2400, dueno.getDinero());
+        ArgumentCaptor<EventoDeudaPagada> pago = ArgumentCaptor.forClass(EventoDeudaPagada.class);
+        verify(pagos).notificar(pago.capture());
+        assertEquals(400, pago.getValue().monto());
+        assertFalse(pago.getValue().porQuiebra());
+    }
+
+    private Jugador agregarAcreedor(DeudaPendiente deuda, Integer dinero) {
+        Jugador dueno = new Jugador();
+        dueno.setId(2L);
+        dueno.setOrden(1);
+        dueno.setDinero(dinero);
+        deuda.setJugadorAcreedor(dueno);
+        deuda.getPartida().setJugadores(java.util.List.of(deuda.getJugadorDeudor(), dueno));
+        return dueno;
+    }
+
+    @SuppressWarnings("unchecked")
+    private PublicadorEventos<EventoDeudaPagada> registrarPublicadorDePagos() {
+        PublicadorEventos<EventoDeudaPagada> pagos = mock(PublicadorEventos.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(servicio, "publicadorPagos", pagos);
+        return pagos;
     }
 
     // Prepara una partida en curso con un jugador endeudado.

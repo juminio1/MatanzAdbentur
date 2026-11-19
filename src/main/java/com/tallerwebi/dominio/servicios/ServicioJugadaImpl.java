@@ -89,6 +89,7 @@ public class ServicioJugadaImpl implements ServicioJugada {
         //guarda la posicion anterior del jugador.
         Integer anterior = jugador.getPosicionActual();
         jugador.setTiroEnTurno(true); //marca que el juagador ya tiró sus dados en su turno.
+        descartarCompraDeEventoPendiente(partida, jugador);
 
         //Llama al ServicioDado y devuelve un objeto ResultadoTirada, que representa el resultado obtenido.
         ResultadoTirada tirada = dados.tirarDados();
@@ -248,6 +249,15 @@ public class ServicioJugadaImpl implements ServicioJugada {
         validarDeudaPendiente(codigo, jugador);
     }
 
+    // Al tirar los dados se pierde la compra que había habilitado un evento global.
+    private void descartarCompraDeEventoPendiente(Partida partida, Jugador jugador) {
+        var estado = partida.getEventoGlobal();
+        if (estado != null && estado.getPosicionCompra() != null
+            && Objects.equals(estado.getSeleccionado(), jugador.getId())) {
+            estado.ofrecerCompra(null);
+        }
+    }
+
     // Verifica que el jugador esté activo y sea su turno.
     private void validarJugadorEnTurno(String codigo, Jugador jugador) {
         Jugador actual = partidas.obtenerJugadorActual(codigo);
@@ -335,10 +345,14 @@ public class ServicioJugadaImpl implements ServicioJugada {
             jugador,
             alquiler
         );
-        //devuelve si quedó una deuda pendiente y los datos del alquiler
-
+        //devuelve si quedó una deuda pendiente y los datos del alquiler.
+        //El aviso (y su animación) solo va si el alquiler se pagó en el momento;
+        //si quedó pendiente o terminó en quiebra, el pago se avisa cuando se resuelve.
+        if (deuda != ResultadoDeuda.RESUELTA) {
+            return new Destino(deuda == ResultadoDeuda.PENDIENTE, null);
+        }
         return new Destino(
-            deuda == ResultadoDeuda.PENDIENTE,
+            false,
             new AlquilerJugada(
                 jugador.getId(),
                 jugador.getApodo(),

@@ -47,6 +47,10 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
     @org.springframework.context.annotation.Lazy
     private com.tallerwebi.dominio.servicios.interfaces.ServicioPartida turnos;
 
+    // Opcional para no cambiar el constructor que usan los tests.
+    @Autowired(required = false)
+    private PublicadorEventos<com.tallerwebi.dominio.eventos.EventoDeudaPagada> publicadorPagos;
+
     @Autowired
     public ServicioGestionQuiebraImpl(
             RepositorioDeudaPendiente repositorioDeudaPendiente,
@@ -123,6 +127,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
 
         repositorioPartida.actualizarJugador(deudor);
         repositorioDeudaPendiente.eliminar(deuda);
+        avisarPago(codigoPartida, deudor, acreedor, monto, false);
 
         if (eventosGlobales != null && partida.getEventoGlobal().estaActivo()) {
             eventosGlobales.participantesCambiaron(partida);
@@ -223,6 +228,7 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
             throw new DeclaracionQuiebraInvalidaException("El jugador ya abandonó o está en quiebra.");
         }
 
+        entregarDineroRestanteAlAcreedor(codigoPartida, deuda);
         finalizacion.conservarResultadoEconomico(partida, jugador, EstadoParticipante.QUEBRADO);
         jugador.setEnBancarrota(true);
         repositorioPartida.actualizarJugador(jugador);
@@ -236,6 +242,36 @@ public class ServicioGestionQuiebraImpl implements ServicioGestionQuiebra {
         }
         if (turnos != null) turnos.actualizarPausaPorDeuda(codigoPartida);
         return partida;
+    }
+
+    // Al quebrar con una deuda con otro jugador (por ejemplo, un alquiler),
+    // el acreedor se queda con todo el dinero que le quedaba al deudor.
+    private void entregarDineroRestanteAlAcreedor(String codigoPartida, DeudaPendiente deuda) {
+        Jugador deudor = deuda.getJugadorDeudor();
+        Jugador acreedor = deuda.getJugadorAcreedor();
+        Integer disponible = deudor.getDinero() == null ? 0 : deudor.getDinero();
+        Integer monto = Math.min(disponible, deuda.getMontoPendiente());
+        if (acreedor == null || monto <= 0 || !participacion.estaActivo(acreedor)) {
+            return;
+        }
+        economia.restarDinero(deudor, monto);
+        economia.sumarDinero(acreedor, monto);
+        repositorioPartida.actualizarJugador(acreedor);
+        repositorioPartida.actualizarJugador(deudor);
+        avisarPago(codigoPartida, deudor, acreedor, monto, true);
+    }
+
+    // Publica el pago cuando se confirma la transacción, para que todos vean la animación.
+    private void avisarPago(String codigoPartida, Jugador deudor, Jugador acreedor, Integer monto, Boolean porQuiebra) {
+        if (publicadorPagos == null || acreedor == null) {
+            return;
+        }
+        var evento = new com.tallerwebi.dominio.eventos.EventoDeudaPagada(
+            codigoPartida, deudor.getId(), deudor.getApodo(), deudor.getDinero(),
+            acreedor.getId(), acreedor.getApodo(), acreedor.getDinero(),
+            deudor.getPosicionActual(), monto, porQuiebra);
+        com.tallerwebi.infraestructura.transacciones.DespuesDeConfirmar.ejecutar(
+            () -> publicadorPagos.notificar(evento));
     }
 
     private Boolean esQuiebraPorCaidaGlobal(Partida partida, Long idJugador) {

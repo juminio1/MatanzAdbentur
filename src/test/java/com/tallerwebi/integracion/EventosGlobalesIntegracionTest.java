@@ -766,8 +766,8 @@ class EventosGlobalesIntegracionTest {
             assertEquals(5, eventos.consultar(codigo, jugadores.get(0)).get("compraPendiente"));
             assertThrows(IllegalStateException.class, () -> propiedades.responderCompraDeEvento(codigo, jugadores.get(0), 5, true));
             confirmarTodos();
-            partidas.avanzarTurno(codigo);
             Long jugadorActual = partidas.obtenerJugadorActual(codigo).getId();
+            assertEquals(jugadores.get(0), jugadorActual);
             Integer ronda = partidas.obtenerPartida(codigo).getRondaActual();
             Integer finalizados = partidas.obtenerPartida(codigo).getTurnosFinalizadosEnRonda();
             var respuesta = controladorPropiedades().responderCompraDeEvento(codigo, Map.of("ronda", 5, "aceptar", true), sesionPropietario());
@@ -780,6 +780,23 @@ class EventosGlobalesIntegracionTest {
             assertNull(eventos.consultar(codigo, jugadores.get(0)).get("compraPendiente"));
             assertEquals(409, controladorPropiedades().responderCompraDeEvento(codigo, Map.of("ronda", 5, "aceptar", true), sesionPropietario()).getStatusCode().value());
             assertEquals(1800, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+        });
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dadoQueCaeEnPropiedadLibrePorEventoCuandoIntentaComprarFueraDeSuTurnoDaComoResultadoCompraRechazada() {
+        return destinosDeMovimiento(tipo -> {
+            prepararDestino(tipo, 5);
+            iniciar(tipo);
+            tirarTodos();
+            confirmarTodos();
+            partidas.avanzarTurno(codigo);
+            assertNotEquals(jugadores.get(0), partidas.obtenerJugadorActual(codigo).getId());
+            var respuesta = controladorPropiedades().responderCompraDeEvento(codigo, Map.of("ronda", 5, "aceptar", true), sesionPropietario());
+            assertEquals(409, respuesta.getStatusCode().value());
+            assertEquals(2000, partidas.obtenerJugadorPorId(jugadores.get(0)).getDinero());
+            // La oportunidad sigue guardada hasta que le toque su turno.
+            assertEquals(5, eventos.consultar(codigo, jugadores.get(0)).get("compraPendiente"));
         });
     }
 

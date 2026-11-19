@@ -464,6 +464,11 @@ function conectarWebSocketTurnos(base, codigo) {
                     tipo: "saldo",
                 });
             });
+            // Llega cuando se paga una deuda entre jugadores: un alquiler que quedó pendiente
+            // y se pagó después de vender, o lo que entrega al dueño quien se declara en quiebra.
+            stompClient.subscribe(`/topic/partida/${codigo}/deuda-pagada`, (mensaje) => {
+                mostrarPagoDeDeuda(JSON.parse(mensaje.body));
+            });
             // Llega cuando a un jugador preso se le acaba el tiempo sin tirar.
             stompClient.subscribe(`/topic/partida/${codigo}/carcel`, (mensaje) => {
                 const aviso = JSON.parse(mensaje.body);
@@ -811,11 +816,39 @@ function mostrarAvisoAlquiler(aviso, posicion) {
     }
 }
 
+// Pago de una deuda que había quedado pendiente (o de lo que quedaba al quebrar).
+// La animación sale recién ahora, cuando la plata efectivamente pasa al dueño.
+function mostrarPagoDeDeuda(aviso) {
+    if (partidaFinalizada || !aviso) return;
+    actualizarDineroJugador(aviso.idJugadorPagador, aviso.dineroPagador);
+    actualizarDineroJugador(aviso.idJugadorPropietario, aviso.dineroPropietario);
+    const propiedad =
+        catalogoPropiedadesActual.get(Number(aviso.posicion))?.nombre || "la propiedad";
+    const monto = Number(aviso.monto ?? 0).toLocaleString("es-AR");
+    agregarAlHistorial(
+        aviso.porQuiebra
+            ? `${aviso.pagador} se fundió y le entregó a ${aviso.propietario} los $${monto} que le quedaban por el alquiler de ${propiedad}.`
+            : `${aviso.pagador} pagó $${monto} de alquiler a ${aviso.propietario} por ${propiedad}.`,
+        aviso.idJugadorPagador,
+    );
+    animarAlquiler(aviso, aviso.posicion);
+    if (String(aviso.idJugadorPagador) === String(window.usuarioSesionId)) {
+        mostrarAvisoPartida(
+            aviso.porQuiebra
+                ? `Le entregaste a ${aviso.propietario} los $${monto} que te quedaban.`
+                : `Pagaste $${monto} de alquiler a ${aviso.propietario} por ${propiedad}.`,
+        );
+    } else if (String(aviso.idJugadorPropietario) === String(window.usuarioSesionId)) {
+        mostrarAvisoPartida(`${aviso.pagador} te pagó $${monto} de alquiler.`);
+    }
+}
+
 // Monedas que vuelan del que paga el alquiler al dueño de la propiedad.
-// El aviso no trae el id del dueño: lo saco de la propiedad donde cayó y, si no está, lo busco por nombre.
+// Si el aviso no trae el id del dueño, lo saco de la propiedad donde cayó y, si no está, lo busco por nombre.
 function animarAlquiler(aviso, posicion) {
     const tarjetaPagador = document.getElementById(String(aviso.idJugadorPagador));
-    const idDueno = catalogoPropiedadesActual.get(Number(posicion))?.propietarioId;
+    const idDueno =
+        aviso.idJugadorPropietario ?? catalogoPropiedadesActual.get(Number(posicion))?.propietarioId;
     const tarjetaDueno =
         (idDueno != null && document.getElementById(String(idDueno))) ||
         [...document.querySelectorAll(".jugador")].find(
@@ -1253,6 +1286,10 @@ function aplicarTurnoDTO(turnoDTO) {
     }
     actualizarTurnoEnPantalla(turnoDTO);
     actualizarRondaActual(turnoDTO.rondaActual);
+    // Si un evento global dejó al jugador en una propiedad libre, la compra se ofrece al empezar su turno.
+    if (cambioDeTurno && estadoEventoGlobalCliente && !estadoEventoGlobalCliente.activo) {
+        mostrarCompraDeEvento(estadoEventoGlobalCliente);
+    }
 }
 
 function actualizarRondaActual(rondaActual) {
@@ -2844,6 +2881,9 @@ async function mostrarCompraDeEvento(estado) {
         partidaFinalizada ||
         window.usuarioEnBancarrota ||
         String(estado.seleccionado) !== String(window.usuarioSesionId) ||
+        // La compra habilitada por el evento solo se ofrece en el turno propio, antes de tirar.
+        String(window.turnoActualId) !== String(window.usuarioSesionId) ||
+        yaTiroEnEsteTurno ||
         debeEsperarPresentacionGlobal() ||
         document.querySelector("dialog[open]")
     )
