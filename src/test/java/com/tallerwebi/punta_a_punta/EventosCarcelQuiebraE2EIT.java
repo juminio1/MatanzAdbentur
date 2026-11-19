@@ -3,6 +3,7 @@ package com.tallerwebi.punta_a_punta;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,6 +91,8 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
     private static final int CASILLERO_TRIVIA = 10;
     private static final String DIFICULTAD_COMPLICADA = "DIFICIL";
     private static final int PREMIO_COMPLICADA = 500;
+    // Texto de la tarjeta de un jugador en quiebra.
+    private static final String ETIQUETA_QUIEBRA = "Fuera de juego";
 
     private final Set<Page> sesionesSuscritasAlTurno = new HashSet<>();
     private final Map<Page, Map<String, String>> cabecerasFijas = new HashMap<>();
@@ -202,7 +205,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         // --- Ronda 5 ---------------------------------------------------------------------------
         cuandoHayUnRoboEntoncesSoloUnJugadorPierdeElDinero(j0, j1, j2);
         cuandoUnJugadorConPropiedadesNoPuedePagarEntoncesVendeAlBancoYSaldaLaDeuda(j0, j1);
-        cuandoUnJugadorConPropiedadesNoPuedePagarEntoncesSeDeclaraEnQuiebra(j1, j2);
+        cuandoUnJugadorConPropiedadesNoPuedePagarEntoncesSeDeclaraEnQuiebra(j1, j2, codigo);
         moverYPasar(j2, CASILLERO_UNLAM, 9, 1, 3);
         // El turno vuelve a J0 y saltea a J1, que está en quiebra.
         verificarPermisoDeTirada(j0);
@@ -460,7 +463,8 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
 
     private void cuandoUnJugadorConPropiedadesNoPuedePagarEntoncesSeDeclaraEnQuiebra(
         String nombre,
-        String siguiente
+        String siguiente,
+        String codigo
     ) throws IOException, SQLException {
         Page jugador = verificarPermisoDeTirada(nombre);
         long id = idDeSesion(jugador);
@@ -482,10 +486,15 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         assertTrue(declaracion.ok(), "La declaración de quiebra debe ser aceptada");
 
         for (Page pagina : paginas()) {
-            assertThat(tarjeta(pagina, id).locator(".estado-bancarrota")).hasText("En quiebra");
+            assertThat(tarjeta(pagina, id).locator(".estado-bancarrota")).hasText(ETIQUETA_QUIEBRA);
         }
         assertTrue(consultarJugador(id).enBancarrota());
         assertEquals(0, contarPropiedades(id), "Las propiedades del jugador en quiebra se liberan");
+        // Se liberan al banco: la Plaza San Justo queda sin dueño, no pasa a otro jugador.
+        assertNull(
+            propietarioDeLaPropiedad(codigo, CASILLERO_PLAZA_SAN_JUSTO),
+            "La propiedad del jugador en quiebra vuelve al banco"
+        );
         assertThat(jugador.locator("#modal-deuda-pendiente")).isHidden();
         verificarPermisoDeTirada(siguiente);
         assertThat(jugador.locator("#btn-tirar")).isDisabled();
@@ -531,6 +540,11 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
         // Solo el jugador que cayó ve el aviso del evento.
         assertThat(jugador.locator("#aviso-evento-nombre")).hasText(EVENTO_BENEFICIO);
         assertThat(jugador.locator("#aviso-evento-descripcion")).hasText(descripcion);
+        for (Page pagina : paginas()) {
+            if (pagina != jugador) {
+                assertThat(pagina.locator("#aviso-evento")).isHidden();
+            }
+        }
         jugador.locator("#btn-continuar-evento").click();
 
         verificarFichaEnTodasLasPantallas(id, CASILLERO_EVENTO);
@@ -579,7 +593,9 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
 
         // La ficha sigue sola hasta el destino del evento y se ofrece la compra de esa propiedad.
         verificarFichaEnTodasLasPantallas(id, CASILLERO_SHOPPING);
-        assertThat(jugador.locator("#btn-modal-pasar")).isVisible();
+        assertThat(jugador.locator("#btn-modal-comprar")).isVisible();
+        assertThat(jugador.locator("#btn-modal-comprar")).isEnabled();
+        // Se pasa para que el resto del recorrido (saldos y rondas siguientes) no cambie.
         jugador.locator("#btn-modal-pasar").click();
         assertEquals(CASILLERO_SHOPPING, consultarJugador(id).posicion());
         verificarHistorialEnTodasLasPantallas(
@@ -740,7 +756,7 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
             assertThat(tarjeta(pagina, id)).hasClass(
                 Pattern.compile(".*\\bjugador--bancarrota\\b.*")
             );
-            assertThat(tarjeta(pagina, id).locator(".estado-bancarrota")).hasText("En quiebra");
+            assertThat(tarjeta(pagina, id).locator(".estado-bancarrota")).hasText(ETIQUETA_QUIEBRA);
         }
         assertTrue(consultarJugador(id).enBancarrota());
         verificarHistorialEnTodasLasPantallas(nombre + " se declaró en quiebra.");
@@ -1015,6 +1031,34 @@ public class EventosCarcelQuiebraE2EIT extends EscenarioPartidaE2E {
             try (ResultSet fila = consulta.executeQuery()) {
                 fila.next();
                 return fila.getInt(1);
+            }
+        }
+    }
+
+    /** Id del dueño de la propiedad en esa posición de la partida, o null si es del banco. */
+    private Long propietarioDeLaPropiedad(String codigo, int posicion) throws SQLException {
+        try (
+            Connection conexion = ReiniciarDB.abrirConexionE2E();
+            PreparedStatement consulta = conexion.prepareStatement(
+                """
+                SELECT propiedad.propietario_id
+                FROM CasilleroPropiedad casilleroPropiedad
+                JOIN Casillero casillero ON casillero.id = casilleroPropiedad.id
+                JOIN Propiedad propiedad ON propiedad.id = casilleroPropiedad.propiedad_id
+                JOIN Partida partida ON partida.id = casilleroPropiedad.partida_id
+                WHERE partida.codigoUnico = ? AND casillero.posicion = ?
+                """
+            )
+        ) {
+            consulta.setString(1, codigo);
+            consulta.setInt(2, posicion);
+            try (ResultSet fila = consulta.executeQuery()) {
+                assertTrue(
+                    fila.next(),
+                    "La propiedad del casillero " + posicion + " debe existir en la partida"
+                );
+                long propietario = fila.getLong(1);
+                return fila.wasNull() ? null : propietario;
             }
         }
     }
