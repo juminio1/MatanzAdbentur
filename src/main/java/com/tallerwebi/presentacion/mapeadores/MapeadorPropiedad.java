@@ -50,7 +50,7 @@ public final class MapeadorPropiedad {
         dto.put("precioCompra", propiedad.getPrecioCompra());
         dto.put(
                 "precioVenta",
-                servicioPropiedad.calcularPrecioVenta(propiedad.getPrecioCompra())
+                servicioPropiedad.calcularPrecioVenta(propiedad)
         );
         dto.put("alquiler", servicioPropiedad.calcularAlquiler(casillero, propiedad));
         dto.put("propietario", propietario == null ? null : propietario.getApodo());
